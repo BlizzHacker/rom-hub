@@ -56,18 +56,24 @@ foreclose them.
 | **C** | Cross-server federation / friend libraries | deferred |
 | **D** | Multiplayer + netplay | deferred |
 
-**Deferred is not discarded.** Two seams already exist that C and D will want,
-and knowing they exist shaped decisions below:
+**Deferred is not discarded.** C and D were given a design pass specifically to
+find out what they demand of the RPP contract before v1 is frozen — see
+[DESIGN-federation-netplay.md](DESIGN-federation-netplay.md). The outcome:
+**one addition and two reservations**, both folded in below.
+
+Relevant existing surfaces, as actually verified:
 
 - `/api/client-tokens/{id}/pair` + `/api/client-tokens/pair/{code}/status` — a
-  device-pairing code flow, which is the natural primitive for authorising a
-  friend's server.
-- `/api/sync/negotiate`, `/api/sync/sessions/*`, `/api/netplay/list` — existing
-  sync-session and netplay surfaces.
+  device-pairing code flow.
+- `/api/netplay/list` — `Get Rooms`. RomM 4.9.2 already has a netplay room
+  concept.
+- `/api/sync/*` — **NOT server-to-server.** Verified: this is save-state sync
+  between a *client device* and the server ("the client sends its current save
+  state, and the server returns operations to bring both sides in sync"). It is
+  handheld/device sync and does **not** give federation a head start.
 
-C in particular is a distributed-systems problem (identity, trust, partial
-availability, NAT traversal) that is larger than A and B combined. It should
-not be designed in the same pass.
+C remains a distributed-systems problem (identity, trust, partial availability,
+NAT traversal) larger than A and B combined, and is not built in this pass.
 
 ---
 
@@ -142,6 +148,23 @@ grows lives on the estate or the USB4 array, never on `C:`.
 
 `.gitignore` enforces this.
 
+### Operational risk: watchtower
+
+LXC 104 runs **watchtower**, which auto-updates containers — including RomM
+(currently `rommapp/romm:4.9.2`). A sidecar depends on RomM's API shape, so an
+unattended major-version jump can break the Hub with no human in the loop.
+
+Two mitigations, both cheap, and they compose:
+
+1. Pin RomM in watchtower (or exclude it via
+   `com.centurylinklabs.watchtower.enable=false`) so upgrades are deliberate.
+2. The RomM adapter records the API version it negotiated at startup and
+   **fails loudly with a clear message** on an unexpected shape, rather than
+   failing obscurely mid-import.
+
+This risk is an argument *for* the sidecar, not against it: a fork would have
+the same exposure plus a permanent merge burden.
+
 ---
 
 ## The plugin contract (RPP v1)
@@ -175,6 +198,7 @@ romm_api = ["roms:create", "platforms:read", "collections:write"]
 
 [config]                                    # user-editable schema
 collections = { type = "list[str]", default = ["softwarelibrary"] }
+api_key     = { type = "secret" }           # never logged, never in git
 ```
 
 ### Capabilities
@@ -187,9 +211,19 @@ collections = { type = "list[str]", default = ["softwarelibrary"] }
 | `stream` | `resolve(result)` | `StreamTarget` |
 | `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` |
 
+**Reserved, unimplemented in v1:** `peer`, `netplay`. Reserved so that
+sub-projects C and D cannot collide with a v1 name later.
+
 A minimal plugin implements `search` + `importer` only — the ~50-line
 community contribution that makes this worth building. Archive.org implements
 all five.
+
+### `secret` config type
+
+Config fields typed `secret` are stored encrypted in the Hub DB, redacted from
+logs and API responses, and passed to the plugin subprocess only at call time.
+Required by sub-project C (per-peer credentials); specified in v1 so peer
+support does not force a contract revision.
 
 ---
 
@@ -221,6 +255,17 @@ Three consequences, all load-bearing:
 Plus per-call timeouts, memory caps and output-size caps: one wedged plugin
 cannot hang a search across the others.
 
+### The cost, stated honestly
+
+A plugin cannot open a socket, so it cannot use `requests`, `httpx`, or
+Archive.org's own `internetarchive` SDK. This is the price of the permission
+being real rather than advisory, and it is a genuine tax on the "50-line
+plugin" premise.
+
+Mitigation: ship a **`requests`-shaped adapter** over `ctx.http`, so the idiom
+plugin authors already know (`ctx.http.get(url).json()`) works unchanged. The
+constraint stays; the unfamiliarity does not.
+
 ### Rejected alternatives
 
 - **SDK model** (scoped short-lived token + client library). Nicer to write
@@ -239,8 +284,9 @@ cannot hang a search across the others.
 1. User searches in the Hub UI.
 2. Dispatcher fans out to all enabled `search` plugins **in parallel**,
    each in its own subprocess.
-3. Results normalised, merged, and **deduped against the existing RomM library**
-   (name + platform + size) so re-imports are visible before they happen.
+3. Results normalised, merged, and **deduped against the existing RomM library
+   by file hash** (RomM stores hashes; matching on name + size is both slower
+   and wrong at the margins), so re-imports are visible before they happen.
 4. User selects an item; dispatcher calls `importer.plan(result)`.
 5. Host validates the returned `FetchPlan` against the plugin's permissions.
 6. **Host** downloads (resumable, via range requests) to `var/downloads/`.
@@ -307,13 +353,22 @@ than a visible gap.
 
 ## UI
 
-The Hub serves its own web UI at `hub.moveweight.com`. Traefik (LXC 107) injects
-a single `<script>` into RomM's `index.html` that adds one "Plugins" entry to
-RomM's existing nav.
+The Hub serves its own web UI at `hub.moveweight.com`. **RomM's UI is not
+modified and no nav entry is injected into it.**
 
-Deliberately one-directional: RomM is not modified, and **if the injection is
-removed, nothing breaks** — you lose a nav shortcut, not a feature. The Hub UI
-remains fully usable on its own hostname.
+An earlier draft specified injecting a `<script>` into RomM's `index.html` via
+Traefik. That was investigated and rejected on evidence:
+
+- Traefik has **no native response-body rewriting**. LXC 107 runs 3.6.13 with
+  no plugins configured and no plugin storage directory.
+- Enabling it means `experimental.plugins`, a third-party body-rewrite plugin,
+  and a Traefik restart — which interrupts **every service on the estate** and
+  adds a boot-time remote-code fetch to the reverse proxy fronting all of it.
+- RomM has no custom-head/CSS hook either: its container exposes no
+  `CUSTOM_*`/`HEAD`/`CSS` environment variable.
+
+Estate-wide proxy risk for a nav shortcut is a bad trade. The Hub is reached at
+its own hostname.
 
 ---
 
