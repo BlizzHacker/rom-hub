@@ -1,0 +1,26 @@
+# Heavy working data must NOT land on the Windows C: drive.
+# Plugin clones, downloaded ROMs, cores and venvs live on the the hypervisor estate
+# (an LXC container) or the USB4 array. See docs/DESIGN.md "Where things live".
+/plugins/
+/var/
+/downloads/
+/cores/
+*.sqlite
+*.sqlite-journal
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node (Hub web UI)
+node_modules/
+dist/
+
+# Local config with secrets
+.env
+config.local.toml
