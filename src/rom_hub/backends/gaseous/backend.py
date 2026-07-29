@@ -135,6 +135,11 @@ class GaseousBackend:
 
     # Mirrored onto the class so `backends.describe()` can read them
     # without opening a connection.
+    #: How this backend's own project spells its name. Read by
+    #: `describe()` so nothing outside this package has to keep a
+    #: table of product names -- `romm`.title() is "Romm", which is
+    #: wrong, and the fix belongs where the product is known.
+    LABEL = "Gaseous"
     SETTING_NAMES = SETTING_NAMES
     CAPABILITIES = CAPABILITIES
 

@@ -129,6 +129,11 @@ class RetromBackend:
     # Mirrored onto the class so `backends.describe()` can read them from
     # the class alone, without a second convention for finding a module's
     # constants.
+    #: How this backend's own project spells its name. Read by
+    #: `describe()` so nothing outside this package has to keep a
+    #: table of product names -- `romm`.title() is "Romm", which is
+    #: wrong, and the fix belongs where the product is known.
+    LABEL = "Retrom"
     SETTING_NAMES = SETTING_NAMES
     CAPABILITIES = CAPABILITIES
 

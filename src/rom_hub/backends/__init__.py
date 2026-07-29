@@ -57,6 +57,11 @@ class BackendInfo:
     capabilities: frozenset[str]
     settings: tuple[str, ...]
     summary: str
+    #: The product's own spelling of its name, for prose and for the plugin
+    #: directory. Declared by the backend rather than derived, because
+    #: `"romm".title()` is "Romm" and the only place that is known to be
+    #: wrong is inside the package that implements it.
+    label: str = ""
 
 
 def available() -> list[str]:
@@ -92,6 +97,7 @@ def describe(name: str) -> BackendInfo:
         name=name,
         capabilities=frozenset(getattr(cls, "CAPABILITIES", ())),
         settings=settings,
+        label=str(getattr(cls, "LABEL", "") or name),
         summary=(getattr(cls, "__doc__", "") or "").strip().splitlines()[0]
         if (getattr(cls, "__doc__", "") or "").strip()
         else "",
