@@ -66,21 +66,35 @@ Worth being exact, because "sandboxed" is doing less work than it sounds:
 
 ## Which backends a plugin works against
 
-Every plugin here works against **all three** supported library servers —
-RomM, Gaseous and Retrom — because a plugin never talks to one. It returns a
-*description* (a `FetchPlan`, a `MetadataPatch`) and the host executes it
-against whichever backend `ROM_HUB_BACKEND` selects. So this directory carries
-no per-plugin backend column: the plugin is not what decides.
+**Every plugin here is portable, and that is not the same as every plugin
+being useful everywhere.** A plugin never talks to a library server. It
+returns a *description* — a `FetchPlan`, a `MetadataPatch` — and the host
+executes it against whichever backend `ROM_HUB_BACKEND` selects. Nothing in a
+plugin has ever known which server is on the other side.
 
-What the *backend* decides is whether an optional step in that description can
-be honoured. A `metadata` plugin (libretro-thumbnails, retroachievements)
-writes fields, which Gaseous cannot do — so an enrich against Gaseous is
-refused up front, because writing nothing is not a degraded write. An `importer`
-plugin that files its results under a collection (archive-org defaults to
-"Archive.org") still imports against a backend with no collections — Gaseous and
-Retrom — with the grouping skipped and reported, because the ROM is the job and
-the collection is a nicety on top. The rule is per capability, not per plugin,
-and it lives in `README.md` under *Cannot-do-the-job vs cannot-do-an-extra*.
+What the *backend* decides is whether that description can be carried out.
+The three supported servers do not do the same things:
+
+| | RomM | Gaseous | Retrom |
+|---|---|---|---|
+| `import` (upload + list) | yes | yes | yes |
+| `scan` (post-upload registration) | yes | yes | yes |
+| `metadata` (write a rom's fields) | yes | **no** | yes |
+| `artwork` (store a cover) | yes | **no** | yes |
+| `collections` (group roms) | yes | **no** | **no** |
+
+So a `metadata` plugin does nothing useful against Gaseous, and the Hub says
+so up front rather than fetching a cover it cannot store: writing nothing is
+not a degraded write. An `importer` plugin that files its results under a
+collection (archive-org defaults to "Archive.org") *does* still import against
+a backend with no collections, with the grouping skipped and reported —
+because the ROM is the job and the collection is a nicety on top. The rule is
+per capability, not per plugin, and it lives in `README.md` under
+*Cannot-do-the-job vs cannot-do-an-extra*.
+
+The **Backends** column below applies that rule to each plugin's declared
+capabilities. It is generated from the two declarations — the plugin's and the
+backend's — so it cannot drift out of step with either.
 
 ## These plugins ship in-tree
 
@@ -115,15 +129,19 @@ Installs from a URL are pinned to a tag. Updating is deliberate — re-run
 
 ## Plugins
 
-| Source | Author (Repository) | Version | Last update | Install | Capabilities | Flags | Network |
-|---|---|---|---|---|---|---|---|
-| ✔ Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/archive-org` (in-tree) | `search`, `importer`, `metadata`, `stream` | — | `archive.org`, `*.archive.org` |
-| ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer`, `metadata` | — | `hh3.gbdev.io` |
-| ❗ itch.io (free games) — NO IMPORT | BlizzHacker (in-tree, no public repo yet) | 0.3.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer`, `metadata` | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
-| ✔ libretro cores (buildbot) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-cores` (in-tree) | `cores` | — | `buildbot.libretro.com` |
-| ✔ libretro Thumbnails | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-thumbnails` (in-tree) | `metadata` | — | `thumbnails.libretro.com` |
-| ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.1 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | — | `archive.org`, `*.archive.org` |
-| ❗ RetroAchievements | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/retroachievements` (in-tree) | `metadata` | **API key required** (stored in clear text) | `retroachievements.org` |
+| Source | Author (Repository) | Version | Last update | Install | Capabilities | Backends | Flags | Network |
+|---|---|---|---|---|---|---|---|---|
+| ✔ Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/archive-org` (in-tree) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
+| ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
+| ❗ itch.io (free games) — NO IMPORT | BlizzHacker (in-tree, no public repo yet) | 0.3.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
+| ✔ libretro cores (buildbot) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-cores` (in-tree) | `cores` | Gaseous · Retrom · RomM | — | `buildbot.libretro.com` |
+| ✔ libretro Thumbnails | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-thumbnails` (in-tree) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `thumbnails.libretro.com` |
+| ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.1 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
+| ❗ RetroAchievements | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/retroachievements` (in-tree) | `metadata` | ~~Gaseous~~ · Retrom · RomM | **API key required** (stored in clear text) | `retroachievements.org` |
+
+**Reading the Backends column.** A plain name means everything this plugin declares works there. `*` means it all runs but an *extra* is skipped — a collection not created, a cover not stored — and the skip is reported in the outcome. `!` means one of its capabilities cannot run at all and is refused up front, while the rest still work. A struck-through name is a server the plugin is no use against. The per-plugin sections below name the capability and the reason in each case.
+
+The column is **derived** from what the plugin declares and what each backend declares. Nobody maintains it by hand, so it cannot disagree with either — and a backend that gains a capability changes this page on the next regeneration rather than leaving a stale promise behind.
 
 ### ✔ Archive.org — `archive-org`
 
@@ -132,6 +150,8 @@ Searches the Internet Archive's software collections by title and imports the it
 **Source terms.** Mixed, and the Archive says which is which. The default `softwarelibrary` scope holds public-domain and abandonware software alongside commercial titles still under copyright — the Internet Archive hosts them under its own library and DMCA position, not under a licence that passes to you. Items the Archive will only let you play in a browser are marked `stream_only`, and the importer refuses those outright rather than working around the restriction. Access is public and unauthenticated; `/advancedsearch.php`, `/metadata/` and `/download/` are not disallowed by the Archive's robots.txt.
 
 **Comments.** Results carry `extra.stream_only` so a UI can route an item to streaming instead of offering an import that would be refused. `metadata.emulator` maps to a RomM platform through an exact-match table with no fallback: an unmapped emulator fails loudly as "needs mapping" rather than filing a ROM under a guessed system. Search terms are confined to the title field — a bare term used to go to Archive.org's default field, which returned `Die Hard` for `sonic`.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
 
 **Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
@@ -142,6 +162,8 @@ Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports th
 **Source terms.** The cleanest source in this directory. Homebrew Hub indexes games written by their authors for the Game Boy, published by those authors for free distribution — the rights holder is the uploader, so there is no third-party copyright being routed around. Individual entries carry their own licences, which vary; the Hub's own catalogue metadata is community-maintained and openly published. Nothing here is a commercial ROM.
 
 **Comments.** The only plugin in this directory built from the start for material that is unambiguously free to redistribute. One host does both jobs — `/api/search` answers queries and `/static/` serves the ROMs with no redirect off it — so the allowlist is a single host. `hh.gbdev.io`, the human-facing site those results link to, is deliberately not declared, because the plugin shows that URL and never fetches it. `metadata` proposes the Hub's title and the entry's `cover.*` image, and nothing else. It may write a title where libretro-thumbnails may not, because for homebrew the submitter *is* the publisher of record — but only a file actually named `cover.*` becomes artwork, since roughly half the entries carry in-game screenshots instead and promoting one would fill a library with gameplay stills. Resolution is exact or it refuses: three live entries are titled exactly "Snake", and a query landing on those names all three rather than choosing.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
 
 **Network requested.** `hh3.gbdev.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
@@ -155,6 +177,8 @@ Finds free games on itch.io and proposes the developer's own title and cover art
 
 **Comments.** The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes. `metadata` is what makes it worth installing: it cannot fetch the game, but it reads the developer's own title and cover off the game page, which is what a library is missing for a title it already has. `img.itch.zone` joins the allowlist for that alone — the host fetches the cover this plugin names, so an undeclared image host would fail every enrich as a policy violation. There is no lookup by name, deliberately: robots.txt disallows /search and the browse listings are a small popularity-ordered slice, so hunting one title through them would attach the wrong developer's cover more often than the right one. Pass --source-id.
 
+**Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+
 **Network requested.** `itch.io`, `*.itch.io`, `img.itch.zone` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ libretro cores (buildbot) — `libretro-cores`
@@ -164,6 +188,8 @@ Lists and installs emulator cores from libretro's public buildbot, for a build t
 **Source terms.** A public distribution point used the way it is meant to be used. libretro's buildbot serves the cores libretro itself builds, unauthenticated, and its `.index-extended` catalogue exists so that software can read it — RetroArch's own core updater is the reference consumer. Nothing is circumvented; `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing. The cores themselves are other people's software under their own licences — mostly GPL/LGPL, some more restrictive — and each core's licence travels with the core, not with this plugin.
 
 **Comments.** The only plugin here exercising `cores`, which is what shows that capability is a real contract rather than a line in a spec. The build target is config and is never detected from the host OS: the Hub is routinely not running on the machine that will load these cores, and a Linux `.so` handed to a Windows frontend fails silently weeks later. An unknown target is refused by name. `system` is filled from a hand-kept table and is blank when unknown — libretro publishes that mapping only inside a zip, and `ctx.http` returns text, so a blank means "not known" rather than a guess. The crc32 the index prints is deliberately not verified: the plugin never sees the bytes, the host fetches them, and claiming a check that does not happen would be worse than silence.
+
+**Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
 
 **Network requested.** `buildbot.libretro.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
@@ -175,6 +201,8 @@ Proposes box art, title screens and in-game screenshots for a ROM by matching it
 
 **Comments.** Metadata only — it proposes art and never touches a ROM. Matching is by exact No-Intro-style filename against the per-system index, so a name this plugin cannot spell yields no art rather than the wrong game's box. One host, verified to serve images with zero redirects, so there is no CDN hop to declare.
 
+**Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
+
 **Network requested.** `thumbnails.libretro.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ❗ No-Intro sets on Archive.org — `nointro-archive`
@@ -184,6 +212,8 @@ Reads plain HTTP directory indexes of No-Intro sets held on the Internet Archive
 **Source terms.** Plainly: these are copyrighted commercial console ROMs, and this plugin does not launder that. No-Intro sets are checksum-verified dumps of retail cartridges; the copyright belongs to the publishers, most of whom have never licensed redistribution. Whether you may download one depends on where you live and on whether you own the original media — in the United States the archival exemption courts have recognised does not extend to downloading a copy of something you do not own. The plugin circumvents no access control, paywall, login or robots directive, and `https://archive.org/download/` is a public unauthenticated listing the Archive's robots.txt does not disallow. If you want only material that is unambiguously free to redistribute, use `homebrew` instead.
 
 **Comments.** Formerly `myrient`. Myrient (myrient.erista.me) shut down on 31 March 2026 and now answers HTTP 200 with the same 2,334-byte notice for every path — including paths it never served — so status codes cannot detect it. The plugin therefore checks that a page actually parsed as an index, which is the only thing standing between a dead source and an HTML page filed as a ROM. Its Myrient index parser and Wayback-captured fixture are retained in case a mirror reproduces that layout. MiNERVA, the successor, `Disallow`s `/browse/` and `/rom/` and is deliberately not used.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
 
 **Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
@@ -196,6 +226,8 @@ Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your R
 **Source terms.** An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.
 
 **Comments.** READ THIS BEFORE INSTALLING: the API key is stored in the Hub's plugin config **in clear text**. RPP v1 reserves a `secret` config type and this host rejects it — `manifest.py` raises "reserved in RPP v1 but not implemented in Phase 1" for any field declaring it (re-verified 2026-07-29) — so `api_key` is a plain `str` and there is no encrypted store to put it in. Treat it as a credential written to disk in the open. Without a key the plugin returns nothing; that is the missing key, not a fault.
+
+**Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
 
 **Network requested.** `retroachievements.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
