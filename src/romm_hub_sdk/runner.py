@@ -1,0 +1,103 @@
+"""Plugin subprocess entrypoint.
+
+Started by the host as `python -m romm_hub_sdk.runner`. Reads the plugin
+directory and entrypoints from the handshake, then serves capability calls
+until stdin closes.
+"""
+
+import importlib
+import sys
+import traceback
+from typing import Any
+
+from romm_hub.protocol import read_message, write_message
+
+from .context import HttpClient, PluginContext
+
+
+class StdioChannel:
+    """Duplex channel over the process's own stdin/stdout."""
+
+    def __init__(self, stdin, stdout):
+        self._stdin = stdin
+        self._stdout = stdout
+
+    def send(self, msg: dict) -> None:
+        write_message(self._stdout, msg)
+
+    def await_result(self, call_id: str) -> Any:
+        while True:
+            msg = read_message(self._stdin)
+            if msg is None:
+                raise RuntimeError("host closed the connection mid-call")
+            if msg.get("id") != call_id:
+                continue
+            if msg["kind"] == "error":
+                raise RuntimeError(msg["error"]["message"])
+            return msg["result"]
+
+
+def _load(entrypoint: str, ctx: PluginContext):
+    module_name, _, class_name = entrypoint.partition(":")
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)(ctx)
+
+
+def run_plugin(stdin, stdout) -> None:
+    channel = StdioChannel(stdin, stdout)
+    instances: dict[str, Any] = {}
+    ctx: PluginContext | None = None
+    entrypoints: dict[str, str] = {}
+
+    while True:
+        msg = read_message(stdin)
+        if msg is None:
+            return
+        if msg["kind"] != "call":
+            continue
+
+        call_id = msg["id"]
+        method = msg["method"]
+        params = msg.get("params") or {}
+
+        try:
+            if method == "init":
+                sys.path.insert(0, params["plugin_dir"])
+                entrypoints = params["entrypoints"]
+                ctx = PluginContext(
+                    config=params.get("config") or {}, http=HttpClient(channel)
+                )
+                result: Any = {"ok": True}
+            elif method == "search":
+                if ctx is None:
+                    raise RuntimeError("init must be called before search")
+                if "search" not in instances:
+                    instances["search"] = _load(entrypoints["search"], ctx)
+                results = instances["search"].search(
+                    params["query"], params.get("platform"), params.get("limit", 50)
+                )
+                result = [r.model_dump() for r in results]
+            else:
+                raise RuntimeError(f"unknown method {method!r}")
+
+            write_message(stdout, {"kind": "result", "id": call_id, "result": result})
+        except Exception as exc:  # noqa: BLE001 - surfaced to the host verbatim
+            write_message(
+                stdout,
+                {
+                    "kind": "error",
+                    "id": call_id,
+                    "error": {
+                        "message": f"{type(exc).__name__}: {exc}",
+                        "traceback": traceback.format_exc(),
+                    },
+                },
+            )
+
+
+def main() -> None:
+    run_plugin(sys.stdin, sys.stdout)
+
+
+if __name__ == "__main__":
+    main()
