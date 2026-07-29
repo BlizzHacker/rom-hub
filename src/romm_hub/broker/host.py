@@ -24,6 +24,10 @@ class PluginCallError(Exception):
     """A plugin call failed: it raised, timed out, or violated policy."""
 
 
+class SandboxRefused(PluginCallError):
+    """The plugin could not be confined and the policy does not permit that."""
+
+
 class PluginProcess:
     def __init__(
         self,
@@ -32,12 +36,16 @@ class PluginProcess:
         config: dict,
         fetcher: Fetcher,
         timeout: float = 30.0,
+        allow_unsandboxed: bool = False,
     ):
         self.plugin_dir = Path(plugin_dir)
         self.manifest = manifest
         self.config = config
         self.fetcher = fetcher
         self.timeout = timeout
+        self.allow_unsandboxed = allow_unsandboxed
+        self.sandboxed = False
+        self.sandbox_reason = "not started"
         self._proc: subprocess.Popen | None = None
         self._counter = 0
         self._timed_out = False
@@ -64,7 +72,7 @@ class PluginProcess:
             bufsize=1,
             cwd=str(self.plugin_dir),
         )
-        self._call(
+        reply = self._call(
             "init",
             {
                 "plugin_dir": str(self.plugin_dir),
@@ -72,6 +80,16 @@ class PluginProcess:
                 "config": self.config,
             },
         )
+        self.sandboxed = bool(reply.get("sandboxed", False))
+        self.sandbox_reason = reply.get("sandbox_reason", "no reason reported")
+        if not self.sandboxed and not self.allow_unsandboxed:
+            self.close()
+            raise SandboxRefused(
+                f"refusing to run plugin {self.manifest.slug} unsandboxed: "
+                f"{self.sandbox_reason}. Its declared network allowlist cannot "
+                f"be enforced against a hostile plugin here. Set "
+                f"ROMM_HUB_ALLOW_UNSANDBOXED=1 to override for development."
+            )
 
     def _kill_for_timeout(self) -> None:
         """Watchdog. Killing the process unblocks the host's pending read."""
