@@ -4,9 +4,35 @@ These validate data coming back from untrusted plugin subprocesses, so
 constraints here are load-bearing rather than cosmetic.
 """
 
-import posixpath
+from pathlib import PurePosixPath, PureWindowsPath
 
 from pydantic import BaseModel, Field, field_validator
+
+# Windows refuses these whatever the extension, and several of them are
+# devices rather than files: bytes written to NUL are silently discarded,
+# so the ROM would hash as empty and the upload would then fail with a
+# misleading "cannot upload empty file".
+_RESERVED_STEMS = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
+
+# An allowlist of permitted characters, not a denylist of bad forms. The
+# previous version of this validator enumerated the bad forms it could
+# think of -- separators, "." and ".." -- and was breached by one it had
+# not: "C:evil.zip" carries no separator, so posixpath.basename left it
+# alone, but on Windows `job_dir / "C:evil.zip"` discards the job
+# directory entirely and resolves against C:'s current directory. A
+# denylist of path syntax cannot be finished; a list of what a ROM
+# filename may contain can be. `str.isalnum` is unicode-aware, so real
+# non-ASCII names still pass.
+_ALLOWED_PUNCTUATION = frozenset(" .-_()[]+,'!&~@#=")
+
+# Long enough for any real ROM name, short enough to stay clear of
+# NAME_MAX (255) and of Windows' 260-character full-path ceiling once the
+# job directory has been prepended.
+_MAX_FILENAME_CHARS = 200
 
 
 class SearchResult(BaseModel):
@@ -30,10 +56,51 @@ class FetchFile(BaseModel):
     def _bare_name_only(cls, v: str) -> str:
         # The host writes this to disk. A plugin must not be able to point
         # that write anywhere but the job's own download directory.
-        if v in {".", ".."}:
-            raise ValueError("filename must not be a path segment")
-        if "/" in v or "\\" in v or v != posixpath.basename(v):
-            raise ValueError("filename must be a bare name, not a path")
+        #
+        # Every rule below is applied on every platform. A name refused on
+        # Linux must be refused on Windows and vice versa: if this
+        # validator's answer depended on which OS the Hub happens to run
+        # on, a plugin could pick a name that is inert on the developer's
+        # machine and an escape on the operator's.
+        if len(v) > _MAX_FILENAME_CHARS:
+            raise ValueError(
+                f"filename must be at most {_MAX_FILENAME_CHARS} characters"
+            )
+
+        bad = sorted({c for c in v if not (c.isalnum() or c in _ALLOWED_PUNCTUATION)})
+        if bad:
+            raise ValueError(
+                f"filename contains characters that are not permitted in a "
+                f"ROM filename: {bad!r}"
+            )
+
+        # Redundant given the character allowlist -- ":", "/" and "\" are
+        # all excluded by it already -- but stated separately so that the
+        # invariant survives any future widening of that allowlist.
+        if PureWindowsPath(v).parts != (v,) or PurePosixPath(v).parts != (v,):
+            raise ValueError(
+                "filename must be a single bare name: no drive, anchor, "
+                "UNC prefix or path separator, under either Windows or "
+                "POSIX path rules"
+            )
+
+        # "." and ".." and anything else that is only dots and spaces:
+        # "..." resolves to a *directory*, which makes dest.exists() true
+        # and seeds the resume logic with a bogus offset.
+        if not v.strip(". "):
+            raise ValueError("filename must not be made only of dots and spaces")
+
+        # Windows silently strips a trailing dot or space, so "g.zip." and
+        # "g.zip " both open the same file as "g.zip" -- two plan entries
+        # that look distinct would collide on disk.
+        if v != v.rstrip(". "):
+            raise ValueError("filename must not end in a dot or a space")
+
+        if v.split(".")[0].upper() in _RESERVED_STEMS:
+            raise ValueError(
+                "filename must not be a Windows reserved device name "
+                f"(got {v!r})"
+            )
         return v
 
 
