@@ -72,6 +72,14 @@ _WINDOWS_ENV_VARS = (
     # tempfile has no usable default on Windows without one of these.
     "TEMP",
     "TMP",
+    # Windows resolves the PER-USER site-packages through APPDATA, and
+    # `pip install --user` is the default outside a venv. Without it the
+    # child cannot import romm_hub_sdk at all and every plugin dies at
+    # startup with a bare ModuleNotFoundError. POSIX gets the equivalent
+    # from HOME, which is why this only bites here. It is a path, not a
+    # secret. Verified: allowlist alone -> ModuleNotFoundError;
+    # + APPDATA -> imports fine; + LOCALAPPDATA -> still fails.
+    "APPDATA",
 )
 _POSIX_ENV_VARS = (
     "HOME",
