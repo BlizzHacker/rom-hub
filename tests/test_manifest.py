@@ -69,3 +69,13 @@ def test_missing_capabilities_rejected():
     bad = GOOD.replace('search = "archive_org.search:Search"', "")
     with pytest.raises(ManifestError, match="at least one capability"):
         parse_manifest(bad)
+
+
+def test_importer_entrypoint_parses():
+    with_importer = GOOD.replace(
+        'search = "archive_org.search:Search"',
+        'search = "archive_org.search:Search"\n'
+        'importer = "archive_org.importer:Importer"',
+    )
+    m = parse_manifest(with_importer)
+    assert m.capabilities["importer"] == "archive_org.importer:Importer"
