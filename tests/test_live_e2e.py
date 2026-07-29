@@ -1,5 +1,6 @@
 """End-to-end against the real Archive.org. Deselected unless -m live."""
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -15,17 +16,23 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1] / "plugins-dev" / "archive-org
 
 @pytest.fixture
 def installed_registry(tmp_path):
-    # The plugin dir must be a git repo for install() to clone it.
-    if not (PLUGIN_ROOT / ".git").exists():
-        subprocess.run(["git", "init", "-q"], cwd=PLUGIN_ROOT, check=True)
-        subprocess.run(["git", "add", "-A"], cwd=PLUGIN_ROOT, check=True)
-        subprocess.run(
-            ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "wip"],
-            cwd=PLUGIN_ROOT,
-            check=True,
-        )
+    # install() clones its source, so the source must be a git repo -- but a
+    # test must not `git init`/`add -A`/`commit` inside the developer's own
+    # working tree, which would sweep up whatever uncommitted edits happen to
+    # be sitting in plugins-dev at the time. Copy first, init the copy.
+    source = tmp_path / "archive-org"
+    shutil.copytree(
+        PLUGIN_ROOT, source, ignore=shutil.ignore_patterns(".git", "__pycache__")
+    )
+    subprocess.run(["git", "init", "-q"], cwd=source, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=source, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "wip"],
+        cwd=source,
+        check=True,
+    )
     reg = Registry(tmp_path / "hub")
-    reg.install(str(PLUGIN_ROOT))
+    reg.install(str(source))
     return reg
 
 
