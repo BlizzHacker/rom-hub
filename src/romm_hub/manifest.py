@@ -52,10 +52,14 @@ def parse_manifest(text: str) -> Manifest:
             f"invalid slug {slug!r}: must be lowercase alphanumeric with hyphens"
         )
 
-    rpp_version = str(plugin.get("rpp_version", ""))
-    if rpp_version != "1":
+    # Not str(): the spec says exactly the string "1", and coercing would
+    # accept a TOML integer 1. This file drives an allowlist, so "everything
+    # unknown is rejected" includes the wrong type for a known key.
+    rpp_version = plugin.get("rpp_version", "")
+    if not isinstance(rpp_version, str) or rpp_version != "1":
         raise ManifestError(
-            f"unsupported rpp_version {rpp_version!r}: this host implements RPP v1"
+            f"unsupported rpp_version {rpp_version!r}: this host implements "
+            f'RPP v1, declared as the string "1"'
         )
 
     for required in ("name", "version"):

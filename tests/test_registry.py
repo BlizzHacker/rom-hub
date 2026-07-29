@@ -200,3 +200,39 @@ def test_install_by_tag_records_the_commit_the_tag_pointed_at(tmp_path, source_r
     state = json.loads((root / "state.json").read_text(encoding="utf-8"))
     assert state["demo"]["ref"] == "v1.0"
     assert state["demo"]["commit"] == tagged
+
+
+def test_a_failed_reinstall_leaves_the_previous_install_intact(
+    tmp_path, source_repo, monkeypatch
+):
+    """install() was rmtree-then-copytree, so a failure between them left the
+    plugin listed in state.json with no files, and get() then reported a
+    confusing "cannot read manifest"."""
+    import shutil as _shutil
+
+    reg = Registry(tmp_path / "hub")
+    first = reg.install(str(source_repo))
+    assert (first.path / "demo.py").exists()
+
+    real_copytree = _shutil.copytree
+    monkeypatch.setattr(
+        _shutil,
+        "copytree",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")),
+    )
+    with pytest.raises(OSError):
+        reg.install(str(source_repo))
+    monkeypatch.setattr(_shutil, "copytree", real_copytree)
+
+    # Still installed, still complete, still readable.
+    again = reg.get("demo")
+    assert (again.path / "demo.py").exists()
+    assert again.manifest.name == "Demo"
+
+
+def test_a_reinstall_does_not_leave_staging_directories_behind(tmp_path, source_repo):
+    reg = Registry(tmp_path / "hub")
+    reg.install(str(source_repo))
+    reg.install(str(source_repo))
+    leftovers = [p.name for p in reg.plugins_dir.iterdir() if p.name != "demo"]
+    assert leftovers == [], leftovers
