@@ -24,6 +24,7 @@ romm_api = []
 
 PLUGIN_SRC = textwrap.dedent(
     '''
+    import sys
     import time
 
     from romm_hub_sdk import SearchProvider, SearchResult
@@ -36,6 +37,13 @@ PLUGIN_SRC = textwrap.dedent(
                 raise ValueError("plugin exploded")
             if mode == "hang":
                 time.sleep(600)
+            if mode == "chatty":
+                # An ordinary plugin with logging enabled, or a dependency
+                # emitting DeprecationWarnings. ~400 KB, far past any OS
+                # pipe buffer.
+                for i in range(4000):
+                    print("progress %d %s" % (i, "." * 80), file=sys.stderr)
+                return [SearchResult(source_id="chatty", title="survived")]
             if mode == "fetch":
                 resp = self.ctx.http.get("https://allowed.example/data")
                 return [SearchResult(source_id="fetched", title=resp.text)]
@@ -103,6 +111,39 @@ def test_disallowed_fetch_never_reaches_the_fetcher(plugin_dir):
 def test_plugin_exception_becomes_plugin_call_error(plugin_dir):
     with _proc(plugin_dir, RecordingFetcher(), {"mode": "boom"}) as proc:
         with pytest.raises(PluginCallError, match="plugin exploded"):
+            proc.search("q", None, 10)
+
+
+def test_a_plugin_that_logs_heavily_to_stderr_still_returns_its_results(plugin_dir):
+    """stderr must be drained continuously, not read on the failure path.
+
+    The host blocks reading stdout while nobody reads stderr, so once the
+    plugin fills the ~64 KB stderr pipe it can never answer, and the operator
+    is told "timed out" -- which points the investigation nowhere near the
+    cause. This hits well-behaved plugins, not attackers.
+    """
+    started = time.monotonic()
+    with _proc(plugin_dir, RecordingFetcher(), {"mode": "chatty"}, timeout=8.0) as proc:
+        results = proc.search("q", None, 10)
+    assert results[0].title == "survived"
+    assert time.monotonic() - started < 8
+
+
+def test_stderr_survives_for_the_diagnostic_when_a_plugin_dies(plugin_dir):
+    """Draining must not mean discarding: it is the only signal an author has."""
+    (plugin_dir / "fake_plugin.py").write_text(
+        textwrap.dedent(
+            """
+            import sys
+            print("a distinctive last gasp", file=sys.stderr)
+            sys.stderr.flush()
+            raise SystemExit(3)
+            """
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(PluginCallError, match="a distinctive last gasp"):
+        with _proc(plugin_dir, RecordingFetcher()) as proc:
             proc.search("q", None, 10)
 
 
