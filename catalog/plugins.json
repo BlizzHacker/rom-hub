@@ -138,6 +138,31 @@
       "comments": "The only plugin here exercising `cores`, which is what shows that capability is a real contract rather than a line in a spec. The build target is config and is never detected from the host OS: the Hub is routinely not running on the machine that will load these cores, and a Linux `.so` handed to a Windows frontend fails silently weeks later. An unknown target is refused by name. `system` is filled from a hand-kept table and is blank when unknown — libretro publishes that mapping only inside a zip, and `ctx.http` returns text, so a blank means \"not known\" rather than a guess. The crc32 the index prints is deliberately not verified: the plugin never sees the bytes, the host fetches them, and claiming a check that does not happen would be worse than silence."
     },
     {
+      "slug": "libretro-database",
+      "name": "libretro Database (DAT)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-libretro-database",
+      "install": "https://github.com/BlizzHacker/rom-hub-libretro-database",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-database/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "metadata"
+      ],
+      "network": [
+        "raw.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Resolves a ROM to its No-Intro or Redump catalogue entry by hash and proposes that entry's name.",
+      "terms": "About as clean as a metadata source gets. `libretro/libretro-database` is a public repository whose DAT files exist to be read by programs like this one — it is what RetroArch itself does to build playlists. A DAT is a list of names, sizes and checksums: there is no game content in it, so no copyright is being routed around. The catalogues underneath are No-Intro's and Redump's, published openly by those projects and republished by libretro. `raw.githubusercontent.com` serves no robots.txt at all (HTTP 404), so there is no crawl directive to observe; the plugin fetches at most one file per configured set per ROM regardless.",
+      "comments": "Writes the DAT's `game (name …)` and **never** its `rom (name …)`. Those differ in the real data — the Game Boy game titled `14 Juillet (World) (Fr)` has a rom file named `14 Juillet (World) (Fr) (Aftermarket) (Unl).gb` — and the parser keeps them in separate attributes so they cannot be confused, which is the mistake libretro-thumbnails documented rather than made. Matching is by CRC-32/MD5/SHA-1 first and by an exact filename second; a hash that misses does **not** fall back to the filename, because you named a specific dump. Sets no `libretro_id`: RomM's own handler defines that field as the SHA-1 of a libretro *thumbnail* filename, so a DAT-derived value there would collide with a field RomM maintains for something else. One DAT is fetched per lookup and no caching is possible, so note the headroom: `redump/Sony - PlayStation 2.dat` is 4,060,828 bytes against the Hub's 4,194,304-byte response ceiling — about 3% — and a size refusal is reported as exactly that rather than as a miss. Arcade, DOS and the 8-bit micros are absent: those catalogues live under different directories with different keys."
+    },
+    {
       "slug": "libretro-thumbnails",
       "name": "libretro Thumbnails",
       "author": "BlizzHacker",

@@ -1,0 +1,18 @@
+clrmamepro (
+	name "Sony - PlayStation"
+	description "Sony - PlayStation"
+	version "2026.05.02"
+	homepage "http://github.com/robloach/libretro-dats"
+)
+game (
+	name "Ridge Racer (Europe)"
+	region "Europe"
+	serial "SCES-00001"
+	rom ( name "Ridge Racer (Europe) (Track 01).bin" size 4085424 crc 014D98FC md5 06C8F85373532E1599F8CE5B9F09FDF9 sha1 E8B0A4553B2322B6F6E770401452274BF040435B serial "SCES-00001" )
+)
+game (
+	name "radicalgames@psygnosis v.2 (Europe)"
+	region "Europe"
+	serial "SLED-00990"
+	rom ( name "radicalgames@psygnosis v.2 (Europe) (Track 1).bin" size 184780176 crc A800E5BC md5 34A48D9A39814019F09A700EEEF9C266 sha1 F43D8CD4A4BD43B91853CF1237F1C4406383B0EB serial "SLED-00990" )
+)

@@ -1,0 +1,24 @@
+[plugin]
+slug        = "libretro-database"
+name        = "libretro Database (DAT)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+metadata = "libretro_database.metadata:Metadata"
+
+# One host, and only one. `raw.githubusercontent.com` serves a repository
+# file directly: verified 2026-07-29 with `curl -w %{num_redirects}`, which
+# reports 0 for a real DAT, so there is no CDN hop and no `github.com` to
+# declare. The GitHub *API* is deliberately not used -- it would answer with
+# base64 inside JSON, roughly a third larger, against a 4 MiB ceiling that
+# the biggest DATs are already close to.
+[permissions]
+network  = ["raw.githubusercontent.com"]
+romm_api = []
+
+[config]
+sets     = { type = "list[str]", default = ["no-intro", "redump"] }
+ref      = { type = "str", default = "master" }
+set_name = { type = "bool", default = true }
