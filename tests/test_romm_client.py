@@ -7,7 +7,7 @@ live RomM instance.
 import httpx
 import pytest
 
-from romm_hub.romm.client import RommClient, RommError
+from romm_hub.romm.client import REQUIRED_SCOPES, RommClient, RommError
 
 PLATFORMS = [
     {"id": 5, "slug": "dos", "name": "DOS"},
@@ -74,6 +74,81 @@ def test_authenticate_posts_form_encoded_and_stores_token():
     assert req.headers["content-type"] == "application/x-www-form-urlencoded"
     body = req.read().decode()
     assert "grant_type=password" in body
+
+
+def test_authenticate_requests_the_scopes_the_import_pipeline_needs():
+    """RomM issues a *valid* token with `"scopes":""` when the token request
+    omits `scope`, and then answers every API call with 403. Measured against
+    a real RomM 4.9.2: no scope -> GET /api/platforms 403; with these scopes
+    -> platforms/roms/collections 200 and upload/start reaches 400 (bad
+    platform id) rather than 403.
+
+    So the scope parameter is not optional garnish -- without it the client
+    authenticates successfully and then cannot do anything at all.
+    """
+    calls = []
+    client = _client(calls)
+    client.authenticate()
+
+    body = calls[0].read().decode()
+    from urllib.parse import parse_qs
+
+    fields = parse_qs(body)
+    assert "scope" in fields, f"token request sent no scope field: {body!r}"
+    sent = set(fields["scope"][0].split())
+    assert sent == {
+        "me.read",
+        "roms.read",
+        "roms.write",
+        "platforms.read",
+        "platforms.write",
+        "collections.read",
+        "collections.write",
+    }
+    # The constant is what the rest of the codebase and the docs refer to;
+    # it must be the thing actually sent, not a parallel literal.
+    assert sent == set(REQUIRED_SCOPES.split())
+
+
+def test_required_scopes_asks_for_nothing_the_import_does_not_need():
+    """Requesting users.* or tasks.run would hand the Hub's token authority
+    over other people's accounts and the server's task runner for no reason
+    -- import touches roms, platforms and collections only."""
+    granted = REQUIRED_SCOPES.split()
+    assert granted, "REQUIRED_SCOPES must not be empty"
+    assert not [s for s in granted if s.startswith("users.")]
+    assert "tasks.run" not in granted
+    assert not [
+        s
+        for s in granted
+        if s.split(".")[0] not in {"me", "roms", "platforms", "collections"}
+    ]
+
+
+def test_403_on_a_read_names_scopes_so_the_real_misconfiguration_is_legible():
+    """The failure a misconfigured deployment actually hits: a token that
+    authenticated fine but carries no (or too few) scopes. A bare "403" sends
+    an operator hunting for a credentials problem that isn't there, so the
+    message has to name scopes."""
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if request.url.path == "/api/token":
+            return httpx.Response(200, json={"access_token": "tok-123"})
+        return httpx.Response(403, json={"detail": "Forbidden"})
+
+    client = RommClient(
+        "https://romm.example", "user", "pw", transport=httpx.MockTransport(handler)
+    )
+
+    with pytest.raises(RommError) as exc_info:
+        client.list_platforms()
+
+    message = str(exc_info.value)
+    assert "403" in message
+    assert "scope" in message.lower()
+    assert not isinstance(exc_info.value, httpx.HTTPStatusError)
 
 
 def test_subsequent_calls_send_bearer_token():
