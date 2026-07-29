@@ -54,9 +54,15 @@ def upload_file(
     `chunk_size` pieces -- never read into memory whole -- which is the
     entire point of chunking for multi-GB ROMs.
 
-    Returns the JSON body of the `/complete` response. Raises `RommError`
-    (after calling `/cancel`, if an upload session was ever opened) on
-    any failure.
+    Returns the body of the `/complete` response, which against a real
+    RomM is `{}`: that endpoint answers a bare 201 with no body, so it
+    carries **no rom id**. A caller that needs the new rom's id must look
+    it up in the library by hash -- `romm_hub.importer` does exactly
+    that, and uses the same lookup as a post-condition check, since a 201
+    only proves the request was accepted, not that the ROM landed.
+
+    Raises `RommError` (after calling `/cancel`, if an upload session was
+    ever opened) on any failure.
     """
     path = Path(path)
     total_size = path.stat().st_size
