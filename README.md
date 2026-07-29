@@ -9,9 +9,19 @@ deferred federation and multiplayer work.
 
 ## Status
 
-**Phase 2** — plugin engine, broker, search, a seccomp-confined plugin
-subprocess, and **import**: plan, download, hash-dedup, chunked upload, and a
-job queue that survives a restart. No web UI yet.
+**Phase 3 — RPP v1 is fully implemented.** All five capabilities have a host
+implementation and a CLI command:
+
+| Capability | Command | What it does |
+|---|---|---|
+| `search` | `romm-hub search <query>` | fans out across every enabled plugin |
+| `importer` | `romm-hub import <plugin> <source_id>` | plan → download → hash-dedup → chunked upload → collection |
+| `metadata` | `romm-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to RomM |
+| `stream` | `romm-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
+| `cores` | `romm-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
+
+Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
+survives a restart. No web UI yet.
 
 ## Quick start
 
@@ -48,10 +58,66 @@ Job state lives in `$ROMM_HUB_HOME/var/jobs.db` and downloads land in
 `$ROMM_HUB_HOME/var/downloads/`, so an interrupted multi-GB import is resumed
 rather than restarted.
 
+## Enriching metadata
+
+`enrich` asks a plugin what it knows about a rom already in RomM, then writes
+it. The plugin describes; the Hub fetches the artwork and holds the token.
+
+    romm-hub enrich archive-org 1 --source-id rubik_202308
+
+**Only what the plugin actually set is written.** An unset field is absent from
+the request, not sent as an empty one — verified against a real RomM: a
+name-only update leaves an existing `igdb_id` alone. That distinction is the
+difference between a partial patch and erasing a curated library.
+
+`--source-id` is there because RomM does not record which plugin an import came
+from, so a plugin generally cannot tell which of its own items a rom is. A
+plugin that will not guess says so and names the flag. Archive.org will not
+guess: searching for the rom's name and taking the top hit would write another
+game's title and cover into your library with nothing to notice it by.
+
+Artwork can come from a URL (the Hub fetches it, and only from a host the
+plugin's manifest declares) or from bytes the plugin already has. It lands in
+`$ROMM_HUB_HOME/var/artwork/<rom_id>/` on its way to RomM.
+
+## Streaming
+
+    romm-hub stream archive-org msdos_Oregon_Trail_The_1990
+    url     https://archive.org/details/msdos_Oregon_Trail_The_1990
+    title   The Oregon Trail
+    type    text/html
+    emulator        dosbox
+    stream_only     true
+
+That is the whole command, on purpose. `romm-stream` is a separate service;
+the Hub resolves and validates a target and hands it over rather than building
+a second streaming transport of its own. Items Archive.org marks `stream_only`
+are exactly the ones `import` refuses, so this is where they go.
+
+## Emulator cores
+
+    romm-hub cores list <plugin>
+    romm-hub cores install <plugin> <core>
+
+Cores land in `$ROMM_HUB_HOME/var/cores/<plugin>/` by default. Point them
+somewhere else — `/opt/romm-stream/cores` on the deployment target — with
+
+    ROMM_HUB_CORES_DIR=/opt/romm-stream/cores romm-hub cores install ...
+
+A core download is gated by exactly the same code as a ROM import: the same
+allowlist check, the same filename validation, the same containment check. It
+is a binary from the internet landing on your disk, so it earns the same
+treatment.
+
+Archive.org does **not** offer cores. Its metadata names an emulator, not a
+downloadable artifact, so implementing the capability there would mean
+inventing a URL — and a plugin that fabricates a download target is one whose
+refusals cannot be believed either.
+
 ### RomM connection settings
 
-`import` needs a RomM account permitted to upload. It is read from the
-environment, never from a file in the repo:
+`import` and `enrich` need a RomM account permitted to upload. It is read from
+the environment, never from a file in the repo:
 
 | Variable | Meaning | Example |
 |---|---|---|
@@ -59,13 +125,15 @@ environment, never from a file in the repo:
 | `ROMM_USER` | RomM username | `admin` |
 | `ROMM_PASSWORD` | that user's password | |
 
-All three are required; `import` names whichever are missing and stops before
-opening any connection. `ROMM_HUB_HOME` (default `~/.romm-hub`) decides where
-plugins, the job database, and downloads live.
+All three are required; both commands name whichever are missing and stop
+before opening any connection. `ROMM_HUB_HOME` (default `~/.romm-hub`) decides
+where plugins, the job database, downloads, artwork and cores live;
+`ROMM_HUB_CORES_DIR` moves just the cores.
 
-**The plugin never sees any of this.** The token, the upload, and the
-collection call are all host-side; a plugin's whole involvement is returning a
-`FetchPlan`. See the security model below.
+**The plugin never sees any of this.** The token, the upload, the artwork
+fetch, the metadata write and the collection call are all host-side; a
+plugin's whole involvement is returning a description. See the security model
+below.
 
 ## Tests
 
@@ -91,6 +159,21 @@ adversarially tested. `tests/test_netpolicy.py` and
 `test_disallowed_fetch_never_reaches_the_fetcher` in
 `tests/test_broker_host.py` are the tests that hold it up; if either regresses,
 the allowlist stops meaning anything at all.
+
+**Every capability's return value gets the same check.** `ctx.http` is only the
+first way a plugin can make the Hub reach a host; a `FetchPlan` URL, a
+`MetadataPatch` artwork URL and a `StreamTarget` of kind `url` are the others,
+and each one passes `check_url` against the same allowlist before anything is
+fetched. Each is tested with an undeclared host, in `tests/test_broker_plan.py`,
+`tests/test_broker_enrich.py`, `tests/test_stream.py` and `tests/test_cores.py`.
+A `stream` target of kind `handle` may not itself be a URL, so the
+discriminator cannot be lied about to skip the check.
+
+Any filename a plugin supplies that the Hub writes to disk — a ROM, a cover, a
+core — goes through one validator (`types.bare_filename`) and one containment
+check (`paths.dest_in_job_dir`). They are shared functions, not three similar
+copies: a containment rule that exists in three places is a containment rule
+that is subtly different in one of them.
 
 ### What is confined, and what is not
 
@@ -150,14 +233,17 @@ With it set, a hostile plugin can open its own sockets to undeclared hosts,
 spawn processes, and read any file the Hub can. It is a development
 convenience, never a deployment setting.
 
-### Phase 2 holds a RomM token, and file reads are still unconfined
+### The Hub holds a RomM token, and file reads are still unconfined
 
 Phase 2 is the point at which the Hub first holds RomM credentials, and
 `docs/DESIGN.md` named filesystem confinement a prerequisite for reaching it.
 **That prerequisite has not been met** — a mount namespace is what confining
 reads needs, and default Docker denies the `unshare` it is built on (measured;
-see above). Phase 2 shipped anyway, so the honest statement of where that
-leaves things:
+see above). Phase 2 shipped anyway, and Phase 3 adds three capabilities on top
+of the *same* token — `metadata` writes through it, `stream` and `cores` never
+touch RomM at all, and none of them puts a new secret anywhere a plugin could
+read. The exposure is unchanged, which is not the same as fixed. The honest
+statement of where that leaves things:
 
 - The RomM token is **never given to a plugin**. It is created inside the host
   process, used only by host-side code, and never crosses the pipe. Nothing a

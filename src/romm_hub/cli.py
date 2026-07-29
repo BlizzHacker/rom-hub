@@ -17,12 +17,14 @@ from pathlib import Path
 from .broker.fetcher import HttpxFetcher
 from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
+from .cores import CoreError, find_core, install_core
 from .dispatcher import search_all
 from .importer import run_import
 from .jobs import JobQueue, JobState
 from .manifest import ManifestError
+from .metadata import EnrichError, rom_ref_from, run_enrich
 from .registry import Registry, RegistryError
-from .romm.client import RommClient
+from .romm.client import RommClient, RommError
 from .sandbox import probe
 from .types import SearchResult
 
@@ -53,6 +55,28 @@ def jobs_db_path(root: Path | None = None) -> Path:
 def downloads_dir(root: Path | None = None) -> Path:
     """Where in-flight downloads land. Same reasoning as jobs_db_path."""
     return Path(root or default_root()) / "var" / "downloads"
+
+
+def artwork_dir(root: Path | None = None) -> Path:
+    """Where a fetched cover lands on its way to RomM. Same reasoning again."""
+    return Path(root or default_root()) / "var" / "artwork"
+
+
+def cores_dir(root: Path | None = None) -> Path:
+    """Where installed emulator cores land.
+
+    Configuration, not a constant. On the deployment target this points at
+    the `romm-stream` core directory, but that path is the *operator's* to
+    choose -- hard-coding `/opt/romm-stream/cores` here would make the Hub
+    unusable anywhere else and would put a plugin-supplied download outside
+    `ROMM_HUB_HOME` on every host that did not happen to match.
+
+    Read at call time so a shell can flip it, like every other setting.
+    """
+    configured = os.environ.get("ROMM_HUB_CORES_DIR", "").strip()
+    if configured:
+        return Path(configured)
+    return Path(root or default_root()) / "var" / "cores"
 
 
 def romm_settings() -> tuple[str, str, str]:
@@ -253,20 +277,9 @@ class _PlanOverrides:
 
 def _cmd_import(args) -> int:
     plugin = Registry(default_root()).get(args.plugin)
-    if not plugin.enabled:
-        print(
-            f"error: plugin {plugin.slug!r} is disabled; enable it with "
-            f"'romm-hub plugin enable {plugin.slug}'",
-            file=sys.stderr,
-        )
-        return EXIT_ERROR
-    if "importer" not in plugin.manifest.capabilities:
-        declared = ", ".join(sorted(plugin.manifest.capabilities)) or "(none)"
-        print(
-            f"error: plugin {plugin.slug!r} does not provide the 'importer' "
-            f"capability (it declares: {declared})",
-            file=sys.stderr,
-        )
+    refusal = _require_capability(plugin, "importer")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
         return EXIT_ERROR
 
     # Read before anything is started, so an unconfigured Hub costs no
@@ -317,6 +330,170 @@ def _cmd_import(args) -> int:
     print(f"job {outcome.job_id}: {outcome.state.value} - {outcome.message}",
           file=stream)
     return EXIT_OK if outcome.state in _SUCCESS_STATES else EXIT_ERROR
+
+
+def _require_capability(plugin, capability: str) -> str | None:
+    """The two refusals every capability command makes first.
+
+    Returns an operator-fit message, or None if the plugin can do this.
+    Both checks are cheap and both happen before a subprocess is started
+    or a RomM connection is opened.
+    """
+    if not plugin.enabled:
+        return (
+            f"plugin {plugin.slug!r} is disabled; enable it with "
+            f"'romm-hub plugin enable {plugin.slug}'"
+        )
+    if capability not in plugin.manifest.capabilities:
+        declared = ", ".join(sorted(plugin.manifest.capabilities)) or "(none)"
+        return (
+            f"plugin {plugin.slug!r} does not provide the {capability!r} "
+            f"capability (it declares: {declared})"
+        )
+    return None
+
+
+def _cmd_enrich(args) -> int:
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "metadata")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    # Read before anything is started, so an unconfigured Hub costs no
+    # subprocess and no half-open connection.
+    try:
+        base_url, username, password = romm_settings()
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    root = default_root()
+    fetcher = HttpxFetcher()
+    try:
+        with (
+            RommClient(base_url, username, password) as romm,
+            PluginProcess(
+                plugin_dir=plugin.path,
+                manifest=plugin.manifest,
+                config=plugin.config,
+                fetcher=fetcher,
+                allow_unsandboxed=allow_unsandboxed(),
+            ) as proc,
+        ):
+            rom = romm.get_rom(args.rom_id)
+            result = run_enrich(
+                proc,
+                rom_ref_from(rom, args.rom_id, {"source_id": args.source_id or ""}),
+                romm=romm,
+                work_dir=artwork_dir(root) / str(args.rom_id),
+            )
+    finally:
+        fetcher.close()
+
+    print(result.message)
+    return EXIT_OK
+
+
+def _cmd_stream(args) -> int:
+    """Resolve one item to a stream target and print it.
+
+    Deliberately the whole command. `romm-stream` is a separate service and
+    integrating it is not this capability's job: the contract is "a plugin
+    resolves an item, the host validates the answer", and printing the
+    validated answer is exactly as far as the Hub goes.
+    """
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "stream")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    result = SearchResult(
+        source_id=args.source_id,
+        # The identifier is all the CLI knows; the plugin looks the rest up.
+        title=args.source_id,
+        plugin=plugin.slug,
+    )
+
+    fetcher = HttpxFetcher()
+    try:
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+        ) as proc:
+            target = proc.resolve_stream(result)
+    finally:
+        fetcher.close()
+
+    print(f"{target.kind}\t{target.target}")
+    if target.title:
+        print(f"title\t{target.title}")
+    if target.mime_type:
+        print(f"type\t{target.mime_type}")
+    for key in sorted(target.extra):
+        print(f"{key}\t{target.extra[key]}")
+    return EXIT_OK
+
+
+def _with_cores_plugin(args, action):
+    """Start `args.plugin` for a cores call, or return the refusal.
+
+    Both cores subcommands need the same three things -- an installed,
+    enabled plugin that declares `cores`, and a running subprocess -- and
+    neither needs RomM at all: a core never touches the library.
+    """
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "cores")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    fetcher = HttpxFetcher()
+    try:
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+        ) as proc:
+            return action(proc)
+    finally:
+        fetcher.close()
+
+
+def _cmd_cores_list(args) -> int:
+    def show(proc) -> int:
+        cores = proc.cores()
+        if not cores:
+            print("this plugin offers no cores")
+            return EXIT_OK
+        print(f"{'CORE':<24} {'VERSION':<12} {'SYSTEM':<14} NAME")
+        for core in cores:
+            print(
+                f"{core.core_id:<24} {core.version or '-':<12} "
+                f"{core.system or '-':<14} {core.name}"
+            )
+        print()
+        print(f"{len(cores)} core(s). Install with: romm-hub cores install "
+              f"{args.plugin} <core>")
+        return EXIT_OK
+
+    return _with_cores_plugin(args, show)
+
+
+def _cmd_cores_install(args) -> int:
+    def install(proc) -> int:
+        core = find_core(proc.cores(), args.core)
+        result = install_core(proc, core, cores_dir=cores_dir())
+        print(result.message)
+        return EXIT_OK
+
+    return _with_cores_plugin(args, install)
 
 
 def _cmd_jobs(args) -> int:
@@ -410,6 +587,46 @@ def build_parser() -> argparse.ArgumentParser:
     )
     importer.set_defaults(func=_cmd_import)
 
+    enrich = sub.add_parser(
+        "enrich",
+        help=(
+            "enrich one rom's metadata through a plugin "
+            "(needs ROMM_URL, ROMM_USER, ROMM_PASSWORD)"
+        ),
+    )
+    enrich.add_argument("plugin", help="slug of an installed metadata plugin")
+    enrich.add_argument("rom_id", type=int, help="RomM's id for the rom")
+    enrich.add_argument(
+        "--source-id",
+        default=None,
+        help=(
+            "the plugin's own id for this game, when RomM's record does not "
+            "identify it (a plugin that will not guess says so and names this)"
+        ),
+    )
+    enrich.set_defaults(func=_cmd_enrich)
+
+    stream = sub.add_parser(
+        "stream", help="resolve one item to a stream target and print it"
+    )
+    stream.add_argument("plugin", help="slug of an installed stream plugin")
+    stream.add_argument("source_id", help="the plugin's id for the item")
+    stream.set_defaults(func=_cmd_stream)
+
+    cores = sub.add_parser("cores", help="list and install emulator cores")
+    csub = cores.add_subparsers(dest="cores_command", required=True)
+
+    cores_list = csub.add_parser("list", help="list the cores a plugin offers")
+    cores_list.add_argument("plugin", help="slug of an installed cores plugin")
+    cores_list.set_defaults(func=_cmd_cores_list)
+
+    cores_install = csub.add_parser(
+        "install", help="download one core into the configured cores directory"
+    )
+    cores_install.add_argument("plugin", help="slug of an installed cores plugin")
+    cores_install.add_argument("core", help="the core id, from 'cores list'")
+    cores_install.set_defaults(func=_cmd_cores_install)
+
     jobs = sub.add_parser("jobs", help="list import jobs")
     jobs.add_argument(
         "--state",
@@ -430,6 +647,9 @@ def main(argv: list[str] | None = None) -> int:
         ManifestError,
         CatalogError,
         PluginCallError,
+        CoreError,
+        EnrichError,
+        RommError,
         OSError,
     ) as exc:
         # ManifestError escapes a bad manifest on an otherwise clean install,
@@ -438,7 +658,10 @@ def main(argv: list[str] | None = None) -> int:
         # which -- unlike `search`, where the dispatcher isolates each plugin
         # -- talks to one PluginProcess directly, so a SandboxRefused from
         # start() would otherwise reach the operator as a traceback with the
-        # opt-out buried in it. None of these deserve one.
+        # opt-out buried in it. EnrichError and RommError are `enrich`'s
+        # equivalents: unlike an import, an enrich has no job record to fail
+        # into, so its failures reach the operator only here. None of these
+        # deserve a traceback.
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
