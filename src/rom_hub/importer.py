@@ -116,9 +116,17 @@ class HttpDownloader:
         timeout: float = DOWNLOAD_TIMEOUT,
         transport: httpx.BaseTransport | None = None,
         max_redirects: int = MAX_REDIRECTS,
+        max_bytes: int | None = None,
     ):
         self.allowlist = list(allowlist)
         self.max_redirects = max_redirects
+        # `None` for a ROM or a core: those are multi-GB by nature and the
+        # operator asked for the specific file. A *data asset* is a
+        # different transaction -- the plugin named the URL, the size came
+        # from a manifest, and nobody typed either -- so `assets.py`
+        # constructs its downloader with a bound. Enforced on the declared
+        # length and again while streaming, because the header is a hint.
+        self.max_bytes = max_bytes
         self._client = httpx.Client(
             timeout=timeout,
             # httpx must never follow a redirect on its own: by the time it
@@ -169,6 +177,13 @@ class HttpDownloader:
             raise DownloadError(f"downloading {url!r} failed: {exc}") from exc
         return dest
 
+    def _check_budget(self, url: str, size: int) -> None:
+        if self.max_bytes is not None and size > self.max_bytes:
+            raise DownloadError(
+                f"downloading {url!r} would take {size} bytes, over the "
+                f"{self.max_bytes}-byte limit for this download"
+            )
+
     def _stream_to(self, url: str, dest: Path, offset: int) -> None:
         current = url
         hops = 0
@@ -211,8 +226,22 @@ class HttpDownloader:
                         f"{resp.status_code}"
                     )
 
+                # Believe Content-Length when it is offered: refusing before
+                # a body byte is pulled is strictly cheaper. `written`
+                # starts at `offset` because a resumed download's budget is
+                # the whole file, not the remainder of it.
+                written = offset if mode == "ab" else 0
+                declared = resp.headers.get("content-length", "")
+                if declared.isdigit():
+                    self._check_budget(current, written + int(declared))
+
                 with dest.open(mode) as fh:
                     for chunk in resp.iter_bytes(STREAM_CHUNK_BYTES):
+                        written += len(chunk)
+                        # Checked before the write, so a server that lied
+                        # about its length cannot land more on disk than
+                        # the budget allows.
+                        self._check_budget(current, written)
                         fh.write(chunk)
             return
 
