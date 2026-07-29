@@ -59,16 +59,21 @@ survives a restart. No web UI yet.
 
 ## Which library server
 
-`ROM_HUB_BACKEND` selects it; `romm` is the default and, today, the only one
-built. Its connection settings are `ROMM_URL`, `ROMM_USER` and `ROMM_PASSWORD`
-(`ROM_HUB_BACKEND_URL`/`_USER`/`_PASSWORD` also work, for a deployment that
-would rather not name a product in its unit file).
+`ROM_HUB_BACKEND` selects it; `romm` is the default.
+
+| Backend | Settings | Can | Cannot |
+|---|---|---|---|
+| `romm` | `ROMM_URL`, `ROMM_USER`, `ROMM_PASSWORD` | everything | — |
+| `retrom` | `RETROM_URL` | import, scan, metadata, artwork | collections |
+
+`ROM_HUB_BACKEND_URL`/`_USER`/`_PASSWORD` also work for either, for a
+deployment that would rather not name a product in its unit file.
 
     rom-hub backend info
 
     backend          romm
     selected by      default (romm)
-    available        romm
+    available        retrom, romm
     settings         ROMM_URL, ROMM_USER, ROMM_PASSWORD
     configured       no -- ROMM_PASSWORD not set
 
@@ -81,6 +86,46 @@ would rather not name a product in its unit file).
 
 **It opens no connection.** The person most likely to run it is the one whose
 connection is not working yet.
+
+### Retrom
+
+[Retrom](https://github.com/JMBeresford/retrom) works differently enough from
+RomM to be worth three lines before you point the Hub at one.
+
+**Its library is the filesystem.** Retrom has no upload API — no `CreateGame`,
+no `CreatePlatform`, no RPC that carries file content anywhere in its schema. A
+scan walks the configured content directories and creates a platform per
+directory and a game per entry. So the Hub files a ROM by *writing a file*,
+over Retrom's own WebDAV service at `/dav`, and then asking for a rescan.
+
+**That WebDAV service is rooted at Retrom's data directory**, so a content
+directory has to live inside `RETROM_DATA_DIR` (`/app/data` in the official
+image) for the Hub to be able to write into it. The stock compose file mounts
+libraries at `/lib1` and `/lib2` instead, which is *outside* it: move or
+bind-mount your content directory under the data directory, e.g.
+`/app/data/library`. If it is not reachable, the import stops before anything
+is downloaded and says so.
+
+**A platform must already exist.** Retrom derives one from a directory name, so
+create `<content dir>/<platform>` and scan once before importing. The name has
+to match what the plugin plans — the archive-org plugin plans `dos` for a
+DOSBox item, so the directory is `dos`, not `dosbox`.
+
+Retrom has **no accounts** — there is no auth layer on any of its three
+services and none of its RPCs take a credential — so `RETROM_URL` is the whole
+configuration. Put a reverse proxy in front of it if it needs protecting.
+
+It also has **no collections**, so `rom-hub import --collection` is refused up
+front — and so is a collection a *plugin's own plan* named, which is the case
+that bites. The archive-org plugin files everything under "Archive.org" and its
+`collection` config cannot be emptied (`config.get("collection") or
+"Archive.org"`), so `rom-hub import archive-org …` against Retrom currently
+stops at that check, before anything is downloaded, with a message naming the
+collection and the backend. Everything after it — download, hash, dedup, the
+WebDAV write, the scan and the confirmation — works; it is the one field in the
+plan that has nowhere to go. Closing that gap means either a plugin that can be
+told not to name a collection, or a host that treats a plugin-defaulted
+collection as optional; both are outside this backend.
 
 **A backend that cannot do something says so before it costs anything.** If the
 active backend has no collections, `rom-hub import --collection "Shooters"`
