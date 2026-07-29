@@ -34,6 +34,14 @@ _ALLOWED_PUNCTUATION = frozenset(" .-_()[]+,'!&~@#=")
 # job directory has been prepended.
 _MAX_FILENAME_CHARS = 200
 
+# The host downloads every entry in a plan, so an unbounded list is an
+# unbounded amount of work asked for by an untrusted process. The only
+# bound before this was indirect -- protocol.MAX_MESSAGE_CHARS caps the
+# reply frame at 8 MiB, or roughly 10^5 entries. Comfortably above any
+# real multi-disc set, and an explicit statement of the default-deny
+# posture the rest of this codebase takes.
+MAX_FILES_PER_PLAN = 256
+
 
 class SearchResult(BaseModel):
     source_id: str = Field(min_length=1)
@@ -105,7 +113,7 @@ class FetchFile(BaseModel):
 
 
 class FetchPlan(BaseModel):
-    files: list[FetchFile] = Field(min_length=1)
+    files: list[FetchFile] = Field(min_length=1, max_length=MAX_FILES_PER_PLAN)
     platform: str = Field(min_length=1)
     collection: str | None = None
 
