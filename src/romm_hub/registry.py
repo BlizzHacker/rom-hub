@@ -17,8 +17,10 @@ any git process is spawned, and every positional argument is passed after `--`.
 """
 
 import json
+import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -82,6 +84,25 @@ def _checked_ref(ref: str) -> str:
             f"not starting with '-')"
         )
     return ref
+
+
+def _rmtree(path: Path, ignore_errors: bool = False) -> None:
+    """rmtree that copes with the read-only files git leaves behind.
+
+    Every object under .git is marked read-only, and on Windows os.unlink
+    refuses a read-only file outright -- so a plain rmtree cannot delete a
+    cloned plugin, and reinstalling one raised PermissionError.
+    """
+
+    def _retry_writable(func, target, exc_info):
+        try:
+            os.chmod(target, stat.S_IWRITE)
+            func(target)
+        except OSError:
+            if not ignore_errors:
+                raise
+
+    shutil.rmtree(path, ignore_errors=ignore_errors, onexc=_retry_writable)
 
 
 def _git(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -196,10 +217,23 @@ class Registry:
             except ManifestError as exc:
                 raise RegistryError(f"{source}: {exc}") from exc
 
+            # Copy first, swap second. rmtree-then-copytree left a window the
+            # length of a whole tree copy in which the plugin was listed in
+            # state.json with no files on disk, and get() then reported a
+            # confusing "cannot read manifest". Now a failed copy leaves the
+            # previous install untouched, and the gap is one rename wide.
             target = self.plugins_dir / manifest.slug
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(staging, target)
+            incoming = target.with_name(target.name + ".incoming")
+            if incoming.exists():
+                _rmtree(incoming)
+            shutil.copytree(staging, incoming)
+            try:
+                if target.exists():
+                    _rmtree(target)
+                os.replace(incoming, target)
+            except OSError:
+                _rmtree(incoming, ignore_errors=True)
+                raise
 
         state = self._read_state()
         entry = state.get(manifest.slug, {})

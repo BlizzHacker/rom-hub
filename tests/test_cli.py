@@ -127,3 +127,33 @@ def test_disable_removes_plugin_from_search(tmp_path, source_repo, monkeypatch, 
     main(["plugin", "disable", "demo"])
     main(["search", "oregon"])
     assert "hit:" not in capsys.readouterr().out
+
+
+def test_a_bad_manifest_on_install_is_an_error_message_not_a_traceback(
+    tmp_path, monkeypatch, capsys
+):
+    """main() caught only RegistryError, so ManifestError and an OSError from
+    Registry.__init__'s mkdir produced a bare traceback."""
+    repo = tmp_path / "broken"
+    repo.mkdir()
+    (repo / "manifest.toml").write_text('[plugin]\nslug = "x"\n', encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "i"],
+        cwd=repo,
+        check=True,
+    )
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "hub"))
+    assert main(["plugin", "install", str(repo)]) == 1
+    assert "error:" in capsys.readouterr().err
+
+
+def test_an_unusable_home_is_an_error_message_not_a_traceback(
+    tmp_path, monkeypatch, capsys
+):
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("i am a file", encoding="utf-8")
+    monkeypatch.setenv("ROMM_HUB_HOME", str(blocker / "hub"))
+    assert main(["plugin", "list"]) == 1
+    assert "error:" in capsys.readouterr().err
