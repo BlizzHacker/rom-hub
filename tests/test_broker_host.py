@@ -69,6 +69,10 @@ def _proc(plugin_dir, fetcher, config=None, timeout=30.0):
         config=config or {},
         fetcher=fetcher,
         timeout=timeout,
+        # These tests exercise broker mechanics (call/response, timeouts,
+        # URL-allowlist enforcement), not sandbox policy, so opt out of the
+        # fail-closed default rather than requiring a real sandbox here.
+        allow_unsandboxed=True,
     )
 
 
