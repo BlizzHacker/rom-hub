@@ -5,6 +5,7 @@ only way out is an `http.get` call that lands in _serve_plugin_call(),
 where the manifest allowlist is enforced before any fetch happens.
 """
 
+import collections
 import subprocess
 import sys
 import threading
@@ -18,6 +19,11 @@ from romm_hub.protocol import ProtocolError, read_message, write_message
 from romm_hub.types import SearchResult
 
 from .fetcher import Fetcher
+
+# Enough stderr to diagnose a crash, bounded so a chatty plugin cannot make
+# the host's own memory its problem.
+STDERR_TAIL_LINES = 100
+STDERR_TAIL_CHARS = 4000
 
 
 class PluginCallError(Exception):
@@ -49,6 +55,10 @@ class PluginProcess:
         self._proc: subprocess.Popen | None = None
         self._counter = 0
         self._timed_out = False
+        self._stderr_tail: collections.deque[str] = collections.deque(
+            maxlen=STDERR_TAIL_LINES
+        )
+        self._stderr_thread: threading.Thread | None = None
 
     def __enter__(self) -> "PluginProcess":
         self.start()
@@ -72,6 +82,16 @@ class PluginProcess:
             bufsize=1,
             cwd=str(self.plugin_dir),
         )
+        # stderr must be drained for as long as the process lives. The host
+        # blocks reading stdout, so if nobody reads stderr the plugin's first
+        # ~64 KB of ordinary logging fills that pipe, its write blocks, it
+        # never answers, and the host reports a timeout that points nowhere
+        # near the cause. DEVNULL would also fix the deadlock, at the price of
+        # the only debugging signal a plugin author has.
+        self._stderr_thread = threading.Thread(
+            target=self._drain_stderr, args=(self._proc.stderr,), daemon=True
+        )
+        self._stderr_thread.start()
         reply = self._call(
             "init",
             {
@@ -90,6 +110,20 @@ class PluginProcess:
                 f"be enforced against a hostile plugin here. Set "
                 f"ROMM_HUB_ALLOW_UNSANDBOXED=1 to override for development."
             )
+
+    def _drain_stderr(self, stream) -> None:
+        """Consume stderr forever, keeping only the tail. Never raises."""
+        try:
+            for line in stream:
+                self._stderr_tail.append(line)
+        except (OSError, ValueError):
+            pass  # the pipe went away with the process; nothing left to drain
+
+    def _stderr_snapshot(self) -> str:
+        """The tail of stderr, after giving the drain a moment to catch up."""
+        if self._stderr_thread is not None:
+            self._stderr_thread.join(timeout=1.0)
+        return "".join(self._stderr_tail)[-STDERR_TAIL_CHARS:].strip()
 
     def _kill_for_timeout(self) -> None:
         """Watchdog. Killing the process unblocks the host's pending read."""
@@ -147,12 +181,9 @@ class PluginProcess:
                 f"plugin {self.manifest.slug} timed out after {self.timeout}s "
                 f"during {method!r} and was killed"
             )
-        stderr = ""
-        if self._proc is not None and self._proc.stderr:
-            stderr = self._proc.stderr.read()
         raise PluginCallError(
             f"plugin {self.manifest.slug} exited during {method!r}: "
-            f"{stderr.strip() or 'no stderr'}"
+            f"{self._stderr_snapshot() or 'no stderr'}"
         )
 
     def _serve_plugin_call(self, msg: dict) -> None:
@@ -217,6 +248,11 @@ class PluginProcess:
             # Already killed by the watchdog; the pipe is gone.
             pass
         finally:
+            # The drain sees EOF once the process is gone. Join before
+            # closing so the thread is not reading a closed pipe.
+            if self._stderr_thread is not None:
+                self._stderr_thread.join(timeout=5)
+                self._stderr_thread = None
             for stream in (self._proc.stdout, self._proc.stderr):
                 if stream:
                     stream.close()
