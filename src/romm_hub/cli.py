@@ -1,6 +1,12 @@
 """romm-hub command line.
 
-Phase 1 surface: install plugins, list them, and search across them.
+Install plugins, list them, search across them, import what a search
+found, and inspect the import job queue.
+
+`import` is the only command that writes anything anywhere. It refuses
+early and cheaply -- unknown plugin, disabled plugin, missing capability,
+unconfigured RomM -- so that by the time a RomM connection is opened the
+only things left to go wrong are real ones.
 """
 
 import argparse
@@ -9,17 +15,64 @@ import sys
 from pathlib import Path
 
 from .broker.fetcher import HttpxFetcher
+from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
 from .dispatcher import search_all
+from .importer import run_import
+from .jobs import JobQueue, JobState
 from .manifest import ManifestError
 from .registry import Registry, RegistryError
+from .romm.client import RommClient
 from .sandbox import probe
+from .types import SearchResult
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
+
+# Exit codes an operator (or a cron job) can branch on.
+EXIT_OK = 0
+EXIT_ERROR = 1
+
+# Job states an import can end in without anything being wrong.
+_SUCCESS_STATES = (JobState.DONE, JobState.SKIPPED_DUPLICATE)
 
 
 def default_root() -> Path:
     return Path(os.environ.get("ROMM_HUB_HOME", Path.home() / ".romm-hub"))
+
+
+def jobs_db_path(root: Path | None = None) -> Path:
+    """Where the import job queue lives.
+
+    Under `var/` beside the installed plugins, because it is runtime state
+    that grows: it must not land in the repo, and on a workstation it must
+    not land on the system drive by default either.
+    """
+    return Path(root or default_root()) / "var" / "jobs.db"
+
+
+def downloads_dir(root: Path | None = None) -> Path:
+    """Where in-flight downloads land. Same reasoning as jobs_db_path."""
+    return Path(root or default_root()) / "var" / "downloads"
+
+
+def romm_settings() -> tuple[str, str, str]:
+    """RomM connection settings from the environment.
+
+    Raises naming **every** missing variable at once rather than one per
+    run: an operator configuring this for the first time should need one
+    attempt, not three.
+    """
+    values = {name: os.environ.get(name, "") for name in
+              ("ROMM_URL", "ROMM_USER", "ROMM_PASSWORD")}
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise RuntimeError(
+            f"RomM is not configured: {', '.join(missing)} "
+            f"{'is' if len(missing) == 1 else 'are'} not set. Set ROMM_URL "
+            f"(e.g. http://romm.example:8080), ROMM_USER, and ROMM_PASSWORD "
+            f"to a RomM account permitted to upload."
+        )
+    return values["ROMM_URL"], values["ROMM_USER"], values["ROMM_PASSWORD"]
 
 
 def allow_unsandboxed() -> bool:
@@ -156,6 +209,155 @@ def _cmd_search(args) -> int:
     return 0
 
 
+class _PlanOverrides:
+    """A started PluginProcess with the operator's `--platform` /
+    `--collection` applied to whatever plan it returns.
+
+    The override lands on the host side, after `PluginProcess.plan()` has
+    validated the plan's shape and gated every URL against the allowlist,
+    so it cannot be used to widen anything -- it retargets where a ROM
+    files, never where the bytes come from.
+
+    It also cannot rescue a refusal. A plugin that raises "needs mapping"
+    never returns a plan for this to modify, which is deliberate: the fix
+    for a missing emulator mapping is to add the mapping, not to paper
+    over it once per invocation and leave the next operator to hit it.
+    """
+
+    def __init__(self, proc, platform: str | None, collection: str | None):
+        self._proc = proc
+        self._platform = platform
+        self._collection = collection
+
+    @property
+    def manifest(self):
+        return self._proc.manifest
+
+    def plan(self, result: SearchResult):
+        plan = self._proc.plan(result)
+        update = {}
+        if self._platform:
+            update["platform"] = self._platform
+        if self._collection:
+            update["collection"] = self._collection
+        # Reconstruct rather than model_copy(update=...), which skips
+        # validation entirely. Defence in depth, and honestly labelled as
+        # such: today no argparse value can actually fail this, because the
+        # `if` guards above drop the empty string and any non-empty string
+        # is a legal `platform`/`collection`. It is here so that widening
+        # either field's constraints, or adding a third override, cannot
+        # quietly land an unvalidated value in a FetchPlan. A mutation test
+        # confirms the suite does not currently notice its removal.
+        return type(plan)(**{**plan.model_dump(), **update}) if update else plan
+
+
+def _cmd_import(args) -> int:
+    plugin = Registry(default_root()).get(args.plugin)
+    if not plugin.enabled:
+        print(
+            f"error: plugin {plugin.slug!r} is disabled; enable it with "
+            f"'romm-hub plugin enable {plugin.slug}'",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+    if "importer" not in plugin.manifest.capabilities:
+        declared = ", ".join(sorted(plugin.manifest.capabilities)) or "(none)"
+        print(
+            f"error: plugin {plugin.slug!r} does not provide the 'importer' "
+            f"capability (it declares: {declared})",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+
+    # Read before anything is started, so an unconfigured Hub costs no
+    # subprocess and no half-open connection.
+    try:
+        base_url, username, password = romm_settings()
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    result = SearchResult(
+        source_id=args.source_id,
+        # The identifier is all the CLI knows. The plugin looks the real
+        # title up; this is only what a failed job will be labelled with.
+        title=args.source_id,
+        platform=args.platform,
+        plugin=plugin.slug,
+    )
+
+    root = default_root()
+    fetcher = HttpxFetcher()
+    try:
+        with (
+            JobQueue(jobs_db_path(root)) as queue,
+            RommClient(base_url, username, password) as romm,
+            PluginProcess(
+                plugin_dir=plugin.path,
+                manifest=plugin.manifest,
+                config=plugin.config,
+                fetcher=fetcher,
+                allow_unsandboxed=allow_unsandboxed(),
+            ) as proc,
+        ):
+            outcome = run_import(
+                _PlanOverrides(proc, args.platform, args.collection),
+                result,
+                romm=romm,
+                queue=queue,
+                download_dir=downloads_dir(root),
+            )
+    finally:
+        fetcher.close()
+
+    stream = sys.stdout if outcome.state in _SUCCESS_STATES else sys.stderr
+    # ASCII only: a Windows console defaults to cp1252, and this project has
+    # already been bitten once by a non-encodable character in CLI output
+    # (see catalog.symbol_for).
+    print(f"job {outcome.job_id}: {outcome.state.value} - {outcome.message}",
+          file=stream)
+    return EXIT_OK if outcome.state in _SUCCESS_STATES else EXIT_ERROR
+
+
+def _cmd_jobs(args) -> int:
+    state = None
+    if args.state:
+        try:
+            state = JobState(args.state.upper())
+        except ValueError:
+            legal = ", ".join(s.value for s in JobState)
+            print(
+                f"error: unknown job state {args.state!r}; expected one of "
+                f"{legal}",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+
+    with JobQueue(jobs_db_path()) as queue:
+        jobs = queue.list(state)
+
+    if not jobs:
+        scope = f" in state {state.value}" if state else ""
+        print(f"no import jobs{scope}")
+        return EXIT_OK
+
+    print(f"{'ID':>5}  {'STATE':<18} {'PLUGIN':<14} {'PLATFORM':<10} SOURCE")
+    for job in jobs:
+        print(
+            f"{job.id:>5}  {job.state.value:<18} {job.plugin:<14} "
+            f"{job.platform or '-':<10} {job.source_id}"
+        )
+        if job.title and job.title != job.source_id:
+            print(f"       {job.title}")
+        # The error is the whole reason anyone runs this command after a
+        # failure, so it is never truncated away.
+        if job.error:
+            print(f"       ! {job.error}")
+    print()
+    print(f"{len(jobs)} job(s)")
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="romm-hub", description="RomM plugin host")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -190,6 +392,32 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--limit", type=int, default=25)
     search.set_defaults(func=_cmd_search)
 
+    importer = sub.add_parser(
+        "import",
+        help="import one item into RomM (needs ROMM_URL, ROMM_USER, ROMM_PASSWORD)",
+    )
+    importer.add_argument("plugin", help="slug of an installed importer plugin")
+    importer.add_argument("source_id", help="the plugin's id for the item")
+    importer.add_argument(
+        "--platform",
+        default=None,
+        help="RomM platform slug to file this under, overriding the plugin's",
+    )
+    importer.add_argument(
+        "--collection",
+        default=None,
+        help="RomM collection to add it to, overriding the plugin's",
+    )
+    importer.set_defaults(func=_cmd_import)
+
+    jobs = sub.add_parser("jobs", help="list import jobs")
+    jobs.add_argument(
+        "--state",
+        default=None,
+        help="only jobs in this state (e.g. FAILED, DONE, PENDING)",
+    )
+    jobs.set_defaults(func=_cmd_jobs)
+
     return parser
 
 
@@ -197,12 +425,22 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (RegistryError, ManifestError, CatalogError, OSError) as exc:
+    except (
+        RegistryError,
+        ManifestError,
+        CatalogError,
+        PluginCallError,
+        OSError,
+    ) as exc:
         # ManifestError escapes a bad manifest on an otherwise clean install,
         # and OSError is what a read-only or nonexistent ROMM_HUB_HOME gives
-        # from Registry.__init__'s mkdir. Neither deserves a traceback.
+        # from Registry.__init__'s mkdir. PluginCallError covers `import`,
+        # which -- unlike `search`, where the dispatcher isolates each plugin
+        # -- talks to one PluginProcess directly, so a SandboxRefused from
+        # start() would otherwise reach the operator as a traceback with the
+        # opt-out buried in it. None of these deserve one.
         print(f"error: {exc}", file=sys.stderr)
-        return 1
+        return EXIT_ERROR
 
 
 if __name__ == "__main__":

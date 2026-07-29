@@ -9,8 +9,9 @@ deferred federation and multiplayer work.
 
 ## Status
 
-**Phase 1.5** — plugin engine, broker, search, and a seccomp-confined plugin
-subprocess. No import, no web UI yet.
+**Phase 2** — plugin engine, broker, search, a seccomp-confined plugin
+subprocess, and **import**: plan, download, hash-dedup, chunked upload, and a
+job queue that survives a restart. No web UI yet.
 
 ## Quick start
 
@@ -21,6 +22,50 @@ subprocess. No import, no web UI yet.
 On Linux that install also pulls `pyseccomp`, which is what lets the plugin
 subprocess confine itself. If it is missing, `romm-hub` refuses to run plugins
 rather than running them unconfined (see below).
+
+## Importing
+
+`import` takes a plugin's own id for an item and puts the ROM in RomM. The
+plugin only says *what* to fetch; the Hub downloads it, hashes it, checks it is
+not already in the library, and uploads it.
+
+    romm-hub import archive-org rubik_202308
+    romm-hub import archive-org rubik_202308 --platform dos --collection "Archive.org"
+
+`--platform` and `--collection` override what the plugin planned. They retarget
+where a ROM files; they cannot make the Hub fetch from anywhere the plugin's
+manifest does not already allow, and they cannot override a plugin's refusal —
+if a plugin says an emulator "needs mapping", the fix is to add the mapping,
+not to name a platform by hand and leave the gap open for the next person.
+
+An import that is already in RomM is reported as a duplicate and **not**
+uploaded. Matching is by file hash, not by name.
+
+    romm-hub jobs                # every import job and its state
+    romm-hub jobs --state FAILED # just the ones that went wrong, with reasons
+
+Job state lives in `$ROMM_HUB_HOME/var/jobs.db` and downloads land in
+`$ROMM_HUB_HOME/var/downloads/`, so an interrupted multi-GB import is resumed
+rather than restarted.
+
+### RomM connection settings
+
+`import` needs a RomM account permitted to upload. It is read from the
+environment, never from a file in the repo:
+
+| Variable | Meaning | Example |
+|---|---|---|
+| `ROMM_URL` | base URL of the RomM instance | `http://192.168.0.104:8080` |
+| `ROMM_USER` | RomM username | `admin` |
+| `ROMM_PASSWORD` | that user's password | |
+
+All three are required; `import` names whichever are missing and stops before
+opening any connection. `ROMM_HUB_HOME` (default `~/.romm-hub`) decides where
+plugins, the job database, and downloads live.
+
+**The plugin never sees any of this.** The token, the upload, and the
+collection call are all host-side; a plugin's whole involvement is returning a
+`FetchPlan`. See the security model below.
 
 ## Tests
 
@@ -105,6 +150,46 @@ With it set, a hostile plugin can open its own sockets to undeclared hosts,
 spawn processes, and read any file the Hub can. It is a development
 convenience, never a deployment setting.
 
-Filesystem confinement remains a blocking prerequisite for Phase 2, which is
-where the Hub first holds a RomM admin token. See
+### Phase 2 holds a RomM token, and file reads are still unconfined
+
+Phase 2 is the point at which the Hub first holds RomM credentials, and
+`docs/DESIGN.md` named filesystem confinement a prerequisite for reaching it.
+**That prerequisite has not been met** — a mount namespace is what confining
+reads needs, and default Docker denies the `unshare` it is built on (measured;
+see above). Phase 2 shipped anyway, so the honest statement of where that
+leaves things:
+
+- The RomM token is **never given to a plugin**. It is created inside the host
+  process, used only by host-side code, and never crosses the pipe. Nothing a
+  plugin can *call* returns it.
+- The plugin subprocess **inherits almost nothing from the environment**.
+  `subprocess.Popen` copies the parent's environment to the child by default,
+  which would hand a plugin every secret the operator's shell happens to hold —
+  needing no socket, no file, and no syscall the seccomp filter can see. So the
+  child's environment is built from `{}` upward and only these are added
+  (`broker/host.py`, `SAFE_ENV_VARS`):
+
+  | | |
+  |---|---|
+  | Everywhere | `PATH` |
+  | Windows | `SYSTEMROOT`, `COMSPEC`, `PATHEXT`, `TEMP`, `TMP` |
+  | POSIX | `HOME`, `TMPDIR` |
+  | Set by the host | `PYTHONIOENCODING=utf-8` |
+
+  Nothing else: no `PYTHONPATH`, no `PYTHONHOME`, no user-defined variables,
+  nothing secret-shaped. Measured on the development workstation, a plugin's
+  visible environment went from **92 variables to 7**. This is an **allowlist**
+  because a denylist cannot work here — the next secret is always the one
+  nobody listed. Should a plugin ever legitimately need a variable, that is a
+  manifest declaration to be designed, not a hole reopened here.
+  `test_the_plugin_environment_is_an_allowlist_not_an_inheritance` asserts both
+  that seeded secrets do not arrive *and* that the total count stays small, so
+  a regression that reinstates inheritance fails loudly.
+- **But a plugin can still read any file the Hub process can**, and on Linux
+  that includes `/proc/<hub-pid>/environ`, which is same-uid readable. A
+  hostile plugin cannot be *handed* the credentials and cannot pick them up by
+  accident — it is not prevented from going and looking for them.
+
+That last gap is why "install only plugins you trust" is stated as strongly as
+it is, and it is not closed by anything in Phase 2. See
 [docs/DESIGN.md](docs/DESIGN.md#security-the-broker-model).

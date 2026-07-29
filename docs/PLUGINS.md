@@ -60,7 +60,7 @@ new ref — so a plugin cannot quietly change under you.
 
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Network | Comments |
 |---|---|---|---|---|---|---|---|
-| ✔ [Archive.org](https://github.com/BlizzHacker/romm-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/romm-hub-archive-org)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/romm-hub-archive-org/archive/refs/tags/v0.1.0.tar.gz) | `search` | `archive.org`, `*.archive.org` | Public-domain and abandonware software library. Results carry extra.stream_only for items Archive.org only permits playing in-browser. |
+| ✔ [Archive.org](https://github.com/BlizzHacker/romm-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/romm-hub-archive-org)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/romm-hub-archive-org/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | `archive.org`, `*.archive.org` | Public-domain and abandonware software library. Results carry extra.stream_only for items Archive.org only permits playing in-browser; the importer refuses those outright and maps metadata.emulator to a RomM platform, failing visibly rather than guessing. |
 
 ## Adding your plugin
 

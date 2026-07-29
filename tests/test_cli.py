@@ -157,3 +157,165 @@ def test_an_unusable_home_is_an_error_message_not_a_traceback(
     monkeypatch.setenv("ROMM_HUB_HOME", str(blocker / "hub"))
     assert main(["plugin", "list"]) == 1
     assert "error:" in capsys.readouterr().err
+
+
+# --- import / jobs -------------------------------------------------------
+#
+# None of these may reach a live RomM. Each stops at a check that fires
+# before any RomM connection is attempted, which is also the order an
+# operator's mistakes actually arrive in.
+
+
+def test_import_from_an_unknown_plugin_exits_nonzero_with_a_clear_message(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["import", "no-such-plugin", "some_item"]) != 0
+    err = capsys.readouterr().err
+    assert "no-such-plugin" in err
+    assert "not installed" in err
+
+
+def test_import_from_a_plugin_without_the_capability_says_so(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """The demo plugin declares `search` only. Naming the missing capability
+    is the difference between a fixable message and a puzzle."""
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    assert main(["import", "demo", "some_item"]) != 0
+    err = capsys.readouterr().err
+    assert "importer" in err
+
+
+def test_import_from_a_disabled_plugin_is_refused(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    main(["plugin", "disable", "demo"])
+    assert main(["import", "demo", "some_item"]) != 0
+    assert "disabled" in capsys.readouterr().err
+
+
+def test_import_without_romm_settings_names_the_variables(
+    tmp_path, monkeypatch, capsys
+):
+    """An unconfigured Hub must not fail somewhere inside httpx."""
+    from romm_hub.cli import romm_settings
+
+    monkeypatch.delenv("ROMM_URL", raising=False)
+    monkeypatch.delenv("ROMM_USER", raising=False)
+    monkeypatch.delenv("ROMM_PASSWORD", raising=False)
+    with pytest.raises(RuntimeError) as exc:
+        romm_settings()
+    message = str(exc.value)
+    assert "ROMM_URL" in message
+    assert "ROMM_USER" in message
+    assert "ROMM_PASSWORD" in message
+
+
+def test_romm_settings_reads_the_environment(monkeypatch):
+    from romm_hub.cli import romm_settings
+
+    monkeypatch.setenv("ROMM_URL", "https://romm.example/")
+    monkeypatch.setenv("ROMM_USER", "admin")
+    monkeypatch.setenv("ROMM_PASSWORD", "hunter2")
+    assert romm_settings() == ("https://romm.example/", "admin", "hunter2")
+
+
+def test_jobs_with_an_empty_queue_is_not_an_error(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["jobs"]) == 0
+    assert "no import jobs" in capsys.readouterr().out.lower()
+
+
+def test_jobs_lists_what_the_queue_holds(tmp_path, monkeypatch, capsys):
+    from romm_hub.cli import jobs_db_path
+    from romm_hub.jobs import JobQueue, JobState
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("ROMM_HUB_HOME", str(home))
+    with JobQueue(jobs_db_path(home)) as queue:
+        done = queue.enqueue("archive-org", "rubik_202308", "Rubik", "dos")
+        queue.set_state(done.id, JobState.DONE)
+        queue.enqueue("archive-org", "other_item", "Other", "dos")
+
+    assert main(["jobs"]) == 0
+    out = capsys.readouterr().out
+    assert "rubik_202308" in out
+    assert "other_item" in out
+    assert "DONE" in out
+
+
+def test_jobs_can_be_filtered_by_state(tmp_path, monkeypatch, capsys):
+    from romm_hub.cli import jobs_db_path
+    from romm_hub.jobs import JobQueue, JobState
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("ROMM_HUB_HOME", str(home))
+    with JobQueue(jobs_db_path(home)) as queue:
+        done = queue.enqueue("archive-org", "rubik_202308", "Rubik", "dos")
+        queue.set_state(done.id, JobState.DONE)
+        queue.enqueue("archive-org", "other_item", "Other", "dos")
+
+    assert main(["jobs", "--state", "DONE"]) == 0
+    out = capsys.readouterr().out
+    assert "rubik_202308" in out
+    assert "other_item" not in out
+
+
+def test_an_unknown_job_state_is_an_error_message_not_a_traceback(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["jobs", "--state", "NONSENSE"]) != 0
+    err = capsys.readouterr().err
+    assert "NONSENSE" in err
+    # The message has to say what the legal values are, or it is a riddle.
+    assert "DONE" in err
+
+
+def test_import_reports_a_sandbox_refusal_clearly(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """`search` isolates each plugin in the dispatcher; `import` talks to one
+    PluginProcess directly, so SandboxRefused reaches main() unwrapped."""
+    from romm_hub.sandbox import probe
+
+    if probe()[0]:
+        pytest.skip("sandbox available; refusal path not reachable")
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("ROMM_HUB_ALLOW_UNSANDBOXED", raising=False)
+    # Point at a RomM that is not there: the refusal must come first, so the
+    # connection is never attempted.
+    monkeypatch.setenv("ROMM_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("ROMM_USER", "x")
+    monkeypatch.setenv("ROMM_PASSWORD", "y")
+    main(["plugin", "install", str(source_repo)])
+    # The demo plugin has no importer, so borrow a manifest that claims one.
+    home = tmp_path / "home" / "plugins" / "demo"
+    (home / "manifest.toml").write_text(
+        MANIFEST.replace(
+            '[capabilities]\nsearch = "demo:Search"',
+            '[capabilities]\nsearch = "demo:Search"\nimporter = "demo:Search"',
+        ),
+        encoding="utf-8",
+    )
+    assert main(["import", "demo", "anything"]) != 0
+    combined = capsys.readouterr()
+    assert "ROMM_HUB_ALLOW_UNSANDBOXED" in (combined.out + combined.err)
+
+
+def test_a_failed_job_shows_its_error(tmp_path, monkeypatch, capsys):
+    from romm_hub.cli import jobs_db_path
+    from romm_hub.jobs import JobQueue, JobState
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("ROMM_HUB_HOME", str(home))
+    with JobQueue(jobs_db_path(home)) as queue:
+        job = queue.enqueue("archive-org", "x", "X", "dos")
+        queue.set_state(job.id, JobState.FAILED, error="the item is stream-only")
+
+    main(["jobs"])
+    assert "stream-only" in capsys.readouterr().out
