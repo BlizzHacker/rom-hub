@@ -12,7 +12,13 @@ URL and a `cores` download URL are gated exactly like a `FetchPlan` URL.
 
 from abc import ABC, abstractmethod
 
-from romm_hub.types import FetchPlan, MetadataPatch, RomRef, SearchResult
+from romm_hub.types import (
+    FetchPlan,
+    MetadataPatch,
+    RomRef,
+    SearchResult,
+    StreamTarget,
+)
 
 from .context import PluginContext
 
@@ -52,4 +58,21 @@ class MetadataProvider(Capability):
         Raise for a hard failure. Returning an empty `MetadataPatch()` is
         the way to say "I know nothing about this rom"; the host then
         leaves RomM untouched.
+        """
+
+
+class StreamProvider(Capability):
+    @abstractmethod
+    def resolve(self, result: SearchResult) -> StreamTarget:
+        """Say where this item can be played.
+
+        Return `kind="url"` for something that will be fetched -- the host
+        checks it against this plugin's `network` allowlist -- or
+        `kind="handle"` for an identifier another service understands. A
+        handle may not itself be a URL; that would be a way around the
+        check.
+
+        Raise for an item that cannot be streamed. The host does not build
+        any streaming transport of its own: it validates this answer and
+        hands it on.
         """

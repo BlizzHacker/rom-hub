@@ -363,6 +363,55 @@ def test_enrich_from_a_disabled_plugin_is_refused(
     assert "disabled" in capsys.readouterr().err
 
 
+# --- stream ---------------------------------------------------------------
+
+
+def test_stream_from_a_plugin_without_the_capability_says_so(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    assert main(["stream", "demo", "some_item"]) != 0
+    assert "stream" in capsys.readouterr().err
+
+
+def test_stream_prints_the_resolved_target(tmp_path, source_repo, monkeypatch, capsys):
+    """The whole command: resolve, validate, print. The Hub builds no
+    streaming transport of its own -- romm-stream is a separate service."""
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    main(["plugin", "install", str(source_repo)])
+
+    installed = tmp_path / "home" / "plugins" / "demo"
+    (installed / "demo_stream.py").write_text(
+        "from romm_hub_sdk import StreamProvider, StreamTarget\n"
+        "\n"
+        "\n"
+        "class Stream(StreamProvider):\n"
+        "    def resolve(self, result):\n"
+        "        return StreamTarget(\n"
+        '            kind="url",\n'
+        '            target="https://demo.example/play/" + result.source_id,\n'
+        '            title="Demo Game",\n'
+        "        )\n",
+        encoding="utf-8",
+    )
+    (installed / "manifest.toml").write_text(
+        MANIFEST.replace(
+            '[capabilities]\nsearch = "demo:Search"',
+            '[capabilities]\nsearch = "demo:Search"\n'
+            'stream = "demo_stream:Stream"',
+        ),
+        encoding="utf-8",
+    )
+
+    assert main(["stream", "demo", "rubik_202308"]) == 0
+    out = capsys.readouterr().out
+    assert "https://demo.example/play/rubik_202308" in out
+    assert "url" in out
+    assert "Demo Game" in out
+
+
 def test_a_failed_job_shows_its_error(tmp_path, monkeypatch, capsys):
     from romm_hub.cli import jobs_db_path
     from romm_hub.jobs import JobQueue, JobState
