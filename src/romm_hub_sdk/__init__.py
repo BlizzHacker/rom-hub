@@ -1,4 +1,5 @@
 from romm_hub.types import (
+    CoreArtifact,
     FetchFile,
     FetchPlan,
     MetadataPatch,
@@ -8,6 +9,7 @@ from romm_hub.types import (
 )
 
 from .capabilities import (
+    CoreProvider,
     ImportProvider,
     MetadataProvider,
     SearchProvider,
@@ -19,6 +21,7 @@ __all__ = [
     "SearchResult",
     "SearchProvider",
     "ImportProvider",
+    "CoreProvider",
     "MetadataProvider",
     "StreamProvider",
     "FetchFile",
@@ -26,6 +29,7 @@ __all__ = [
     "MetadataPatch",
     "RomRef",
     "StreamTarget",
+    "CoreArtifact",
     "PluginContext",
     "HttpResponse",
 ]

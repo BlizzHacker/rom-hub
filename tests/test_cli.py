@@ -412,6 +412,121 @@ def test_stream_prints_the_resolved_target(tmp_path, source_repo, monkeypatch, c
     assert "Demo Game" in out
 
 
+# --- cores ----------------------------------------------------------------
+
+CORES_PLUGIN = '''
+from romm_hub_sdk import CoreArtifact, CoreProvider, FetchFile, FetchPlan
+
+
+class Cores(CoreProvider):
+    def list(self):
+        return [CoreArtifact(core_id="dosbox", name="DOSBox", system="dos")]
+
+    def plan(self, core):
+        return FetchPlan(
+            files=[
+                FetchFile(
+                    url="https://demo.example/" + core.core_id + ".wasm",
+                    filename=core.core_id + ".wasm",
+                )
+            ],
+            platform=core.system or "unknown",
+        )
+'''
+
+
+def _install_cores_plugin(tmp_path, source_repo):
+    """Install the demo plugin and give it a `cores` capability."""
+    main(["plugin", "install", str(source_repo)])
+    installed = tmp_path / "home" / "plugins" / "demo"
+    (installed / "demo_cores.py").write_text(CORES_PLUGIN, encoding="utf-8")
+    (installed / "manifest.toml").write_text(
+        MANIFEST.replace(
+            '[capabilities]\nsearch = "demo:Search"',
+            '[capabilities]\nsearch = "demo:Search"\ncores = "demo_cores:Cores"',
+        ),
+        encoding="utf-8",
+    )
+    return installed
+
+
+def test_cores_from_a_plugin_without_the_capability_says_so(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    assert main(["cores", "list", "demo"]) != 0
+    assert "cores" in capsys.readouterr().err
+
+
+def test_cores_list_prints_the_catalogue(tmp_path, source_repo, monkeypatch, capsys):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    _install_cores_plugin(tmp_path, source_repo)
+
+    assert main(["cores", "list", "demo"]) == 0
+    out = capsys.readouterr().out
+    assert "dosbox" in out
+    assert "DOSBox" in out
+    assert "1 core(s)" in out
+
+
+def test_cores_install_writes_into_the_configured_directory(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """The install path end to end, with the only socket replaced.
+
+    `--` the downloader is the one thing stubbed, because a test may not
+    reach the network; everything else is the real command.
+    """
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROMM_HUB_CORES_DIR", str(tmp_path / "cores"))
+    _install_cores_plugin(tmp_path, source_repo)
+
+    import romm_hub.cores as cores_module
+
+    real_install = cores_module.install_core
+
+    class FakeDownloader:
+        def download(self, url, dest, expected_size=None):
+            from pathlib import Path
+
+            dest = Path(dest)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(b"wasm")
+            return dest
+
+        def close(self):
+            pass
+
+    def install(plugin, core, *, cores_dir, downloader=None):
+        return real_install(
+            plugin, core, cores_dir=cores_dir, downloader=FakeDownloader()
+        )
+
+    monkeypatch.setattr("romm_hub.cli.install_core", install)
+
+    assert main(["cores", "install", "demo", "dosbox"]) == 0
+    assert (tmp_path / "cores" / "demo" / "dosbox.wasm").read_bytes() == b"wasm"
+    assert "dosbox" in capsys.readouterr().out
+
+
+def test_cores_install_of_an_unknown_core_is_an_error_not_a_traceback(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROMM_HUB_CORES_DIR", str(tmp_path / "cores"))
+    _install_cores_plugin(tmp_path, source_repo)
+
+    assert main(["cores", "install", "demo", "nonesuch"]) != 0
+    err = capsys.readouterr().err
+    assert "nonesuch" in err
+    # The message has to say what IS on offer, or it is a riddle.
+    assert "dosbox" in err
+
+
 def test_a_failed_job_shows_its_error(tmp_path, monkeypatch, capsys):
     from romm_hub.cli import jobs_db_path
     from romm_hub.jobs import JobQueue, JobState
