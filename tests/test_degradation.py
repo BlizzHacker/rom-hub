@@ -433,9 +433,12 @@ def test_backend_info_lists_what_a_backend_cannot_do(
 
 
 def test_backend_info_refuses_an_unknown_backend(tmp_path, monkeypatch, capsys):
+    # Deliberately a name no backend will ever have. This used to say
+    # "retrom", which stopped being unknown the moment Retrom shipped --
+    # a placeholder that names a real target dates the instant it lands.
     monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
-    assert main(["backend", "info", "--backend", "retrom"]) != 0
-    assert "retrom" in capsys.readouterr().err
+    assert main(["backend", "info", "--backend", "no-such-backend"]) != 0
+    assert "no-such-backend" in capsys.readouterr().err
 
 
 def test_capabilities_of_reads_the_declaration():
