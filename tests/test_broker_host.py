@@ -1,3 +1,4 @@
+import io
 import textwrap
 import time
 from pathlib import Path
@@ -154,3 +155,51 @@ def test_hung_plugin_times_out_and_is_killed(plugin_dir):
             proc.search("q", None, 10)
     # The watchdog must actually fire, not wait out the plugin's 600s sleep.
     assert time.monotonic() - started < 30
+
+
+class ScriptedProc:
+    """A stand-in for Popen that replays frames a hostile plugin could emit.
+
+    A real plugin's stdout is arbitrary code's stdout, so these are not
+    theoretical shapes -- they are one `print` away.
+    """
+
+    def __init__(self, script: str):
+        self.stdin = io.StringIO()
+        self.stdout = io.StringIO(script)
+        self.stderr = None
+        self.killed = False
+
+    def kill(self) -> None:
+        self.killed = True
+
+    def poll(self):
+        return 0
+
+    def wait(self, timeout=None):
+        return 0
+
+
+MALFORMED_FRAMES = [
+    ("call_without_id", '{"kind":"call","method":"http.get","params":{"url":"https://allowed.example/x"}}'),
+    ("error_not_an_object", '{"kind":"error","id":"h1","error":"boom"}'),
+    ("error_without_message", '{"kind":"error","id":"h1","error":{}}'),
+    ("result_without_result", '{"kind":"result","id":"h1"}'),
+]
+
+
+@pytest.mark.parametrize(
+    "name,frame", MALFORMED_FRAMES, ids=[n for n, _ in MALFORMED_FRAMES]
+)
+def test_a_malformed_plugin_frame_is_a_plugin_call_error(plugin_dir, name, frame):
+    """PluginCallError is the documented contract of every PluginProcess call.
+
+    The dispatcher's blanket `except Exception` masks a leak today, but it
+    reports it as `KeyError: 'result'`, which reads like a Hub bug and gets
+    triaged as one -- and any direct consumer catching PluginCallError per the
+    contract crashes outright.
+    """
+    proc = _proc(plugin_dir, RecordingFetcher())
+    proc._proc = ScriptedProc(frame + "\n")
+    with pytest.raises(PluginCallError):
+        proc._call("search", {})
