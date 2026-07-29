@@ -50,6 +50,13 @@ class Job:
     state: JobState
     error: str | None = None
     local_path: str | None = None
+    #: What the import did *not* do, on a job that otherwise succeeded --
+    #: an optional step the backend cannot perform, skipped rather than
+    #: fatal (see `rom_hub.backends.base.degrade`). Separate from `error`
+    #: on purpose: this job is DONE, and filing a note under a column
+    #: every other reader treats as a failure would make a successful
+    #: import look broken in `rom-hub jobs`.
+    notes: str | None = None
 
 
 _SCHEMA = """
@@ -61,9 +68,17 @@ CREATE TABLE IF NOT EXISTS jobs (
     platform TEXT NOT NULL,
     state TEXT NOT NULL,
     error TEXT,
-    local_path TEXT
+    local_path TEXT,
+    notes TEXT
 )
 """
+
+# Columns added after the first release. `CREATE TABLE IF NOT EXISTS` does
+# nothing to a table that already exists, so a jobs.db written by an
+# earlier Hub keeps its old shape and every read of the new column raises.
+# The db is long-lived by design -- it is the whole reason this is sqlite
+# and not a dict -- so migrating it is not optional.
+_ADDED_COLUMNS = {"notes": "TEXT"}
 
 
 def _row_to_job(row: sqlite3.Row) -> Job:
@@ -76,6 +91,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         state=JobState(row["state"]),
         error=row["error"],
         local_path=row["local_path"],
+        notes=row["notes"],
     )
 
 
@@ -89,6 +105,22 @@ class JobQueue:
         self._conn = sqlite3.connect(str(self._db_path), isolation_level=None)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute(_SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Add any column this version knows about that the file lacks.
+
+        Additive only, and only ever nullable: an older Hub opening the
+        migrated file still works, which matters when two Hub versions
+        share a `ROM_HUB_HOME` during an upgrade.
+        """
+        present = {
+            row["name"]
+            for row in self._conn.execute("PRAGMA table_info(jobs)").fetchall()
+        }
+        for column, kind in _ADDED_COLUMNS.items():
+            if column not in present:
+                self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {kind}")
 
     def close(self) -> None:
         self._conn.close()
@@ -159,6 +191,19 @@ class JobQueue:
                 "UPDATE jobs SET local_path = ? WHERE id = ?",
                 (local_path, job_id),
             )
+
+    def set_notes(self, job_id: int, notes: str) -> None:
+        """Record what the import skipped but still succeeded without.
+
+        Written when the decision is made -- before the download, not
+        after the upload -- so the note is on the row whichever way the
+        job ends. An operator reading `rom-hub jobs` after a DONE import
+        should not have to wonder why the collection they expected is
+        empty.
+        """
+        self._conn.execute(
+            "UPDATE jobs SET notes = ? WHERE id = ?", (notes, job_id)
+        )
 
     def set_platform(self, job_id: int, platform: str) -> None:
         """Record the platform an import actually resolved.
