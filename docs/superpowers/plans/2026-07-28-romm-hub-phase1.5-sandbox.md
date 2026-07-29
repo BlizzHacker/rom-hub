@@ -10,7 +10,7 @@
 
 ## Verified facts this plan rests on
 
-Measured on LXC 104 during design, not assumed:
+Measured on the deployment target during design, not assumed:
 
 - Inside **default Docker** (no `--security-opt`, no added caps): `prctl(PR_SET_NO_NEW_PRIVS)` succeeds, a `pyseccomp` filter loads, and `socket.socket()` then raises `PermissionError`. Output: `NNP_OK → FILTER_LOADED → BLOCKED: PermissionError`.
 - Namespace-based sandboxing (bubblewrap) is **not** viable in the planned deployment: `docker run debian unshare --user --net` → `unshare failed: Operation not permitted`. This is why the design is seccomp, not bwrap.
@@ -636,7 +636,7 @@ git commit -m "feat(sandbox): enforce policy end to end and re-assert the networ
 - [ ] Without `ROMM_HUB_ALLOW_UNSANDBOXED=1`, an unsandboxable host refuses to run plugins and says why.
 - [ ] `python -m pytest` is green on Windows (Linux-only tests skipped, not failed).
 - [ ] `docs/DESIGN.md` and `README.md` state exactly what is and is not confined — network and exec yes, file read no.
-- [ ] Deployment verification on LXC 104 in default Docker (no `--security-opt`), recorded with real output.
+- [ ] Deployment verification on the deployment target in default Docker (no `--security-opt`), recorded with real output.
 
 ## Explicitly Not in Phase 1.5
 

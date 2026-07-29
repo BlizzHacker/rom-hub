@@ -10,7 +10,7 @@
 
 ## Verified API contract
 
-Read from RomM 4.9.2's live `openapi.json` on LXC 104. Use these exactly.
+Read from RomM 4.9.2's live `openapi.json` on the deployment target. Use these exactly.
 
 **Auth** — `POST /api/token`, body `application/x-www-form-urlencoded` (OAuth2 password grant).
 
@@ -480,7 +480,7 @@ The Archive.org importer must use the routing the design pass established:
 Run `python -m pytest -q` on Windows, then the Linux transfer + run:
 
 ```
-cd /c/MoveWeight/romm-hub && git archive HEAD -o /tmp/hub.tar && scp /tmp/hub.tar root@your-server.example:/tmp/hub.tar && ssh root@your-server.example "pct push <ctid> /tmp/hub.tar /tmp/hub.tar && pct exec <ctid> -- bash -c 'rm -rf /tmp/hub && mkdir -p /tmp/hub && tar xf /tmp/hub.tar -C /tmp/hub'"
+cd <repo> && git archive HEAD -o /tmp/hub.tar && scp /tmp/hub.tar root@your-server.example:/tmp/hub.tar && ssh root@your-server.example "pct push <ctid> /tmp/hub.tar /tmp/hub.tar && pct exec <ctid> -- bash -c 'rm -rf /tmp/hub && mkdir -p /tmp/hub && tar xf /tmp/hub.tar -C /tmp/hub'"
 ```
 
 ```
@@ -489,7 +489,7 @@ ssh root@your-server.example "pct exec <ctid> -- bash -c 'docker run --rm --netw
 
 `tests/test_hostile_plugin.py` must still pass on Linux.
 
-**Then one real end-to-end import**, run manually and recorded in the report: pick a small, freely-downloadable, non-`stream_only` Archive.org item, import it into the live RomM on LXC 104, and confirm it appears in the library. **Ask the operator before writing to the live library** — this is the first write this project has ever made to real data. Report the item chosen and the resulting rom id.
+**Then one real end-to-end import**, run manually and recorded in the report: pick a small, freely-downloadable, non-`stream_only` Archive.org item, import it into the live RomM on the deployment target, and confirm it appears in the library. **Ask the operator before writing to the live library** — this is the first write this project has ever made to real data. Report the item chosen and the resulting rom id.
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(import): Archive.org importer, CLI import/jobs, docs"`
 

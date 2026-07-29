@@ -22,7 +22,7 @@ plus the first plugin (Archive.org) as the proof that the contract is real.
 
 ### Why a sidecar and not a fork
 
-The deployed RomM (LXC 104) is a `ghcr.io/rommapp/romm:latest` container that
+The deployed RomM is a `ghcr.io/rommapp/romm:latest` container that
 pulls updates. A fork means either abandoning updates or carrying a permanent
 merge burden. The sidecar keeps RomM byte-identical to upstream, which also
 keeps the door open to contributing the *protocol* upstream later without
@@ -105,7 +105,7 @@ module objects, via a meta-path alias rather than a second copy on the
 same `__path__`, because a duplicate `FetchPlan` class would pass a smoke
 test and then fail every `isinstance` check the host makes. It warns, and
 it is scheduled for removal. Same for `ROMM_HUB_*` in the environment,
-which is already written into shell profiles on LXC 104.
+which is already written into shell profiles on the deployment target.
 
 ---
 
@@ -240,12 +240,12 @@ from import paths and the two names the seam genuinely renamed.
 ## Architecture
 
 ```
-                      Traefik (LXC 107)
-                      ├── romm.moveweight.com ──→ RomM :8080   [UNMODIFIED]
-                      │      └─ injects <script src="hub…/nav.js">
-                      └── hub.moveweight.com  ──→ Hub  :8090
+                 reverse proxy (Traefik)
+                 ├── romm.your-server.example ──→ RomM :8080   [UNMODIFIED]
+                 │      └─ injects <script src="hub…/nav.js">
+                 └── hub.your-server.example  ──→ Hub  :8090
                                                    │
- LXC 104 ┌─────────────────────────────────────────┼────────────────┐
+ server  ┌─────────────────────────────────────────┼────────────────┐
          │  docker network: romm_default           │                │
          │                                         │                │
          │   RomM :8080  ◄──── RomM Adapter ◄── Hub Core            │
@@ -267,7 +267,7 @@ from import paths and the two names the seam genuinely renamed.
 
 ### Deployment
 
-A **separate Docker Compose stack on LXC 104**, alongside RomM. This is still a
+A **separate Docker Compose stack on the library host**, alongside RomM. This is still a
 "separate installation" — brought up, torn down and upgraded independently —
 but it shares the `romm_default` docker network, so API calls have no extra
 network hop, and it already has the `/mnt/usb1` mounts and `/opt/romm-stream`
@@ -285,7 +285,8 @@ is what keeps RomM upgrades from breaking the Hub and vice versa.
 As built: plugin registrations and pins are `$ROM_HUB_HOME/state.json`, the
 import job queue is `$ROM_HUB_HOME/var/jobs.db`, and in-flight downloads are
 `$ROM_HUB_HOME/var/downloads/<job-id>/`. `ROM_HUB_HOME` defaults to
-`~/.rom-hub` and is what points all of it at the estate rather than at `C:`.
+`~/.rom-hub` and is what points all of it at the deployment target's own
+storage rather than at a workstation system drive.
 The pre-rename `ROMM_HUB_HOME` is still read (deprecated), and an existing
 `~/.romm-hub` directory is preferred over a `~/.rom-hub` that does not
 exist yet — a rename must not relocate an operator's installed plugins
@@ -352,28 +353,28 @@ not by naming a platform once and leaving the gap for the next operator.
 
 ### Where things live
 
-Per the estate convention: source is small and lives in git; anything that
-grows lives on the estate or the USB4 array, never on `C:`.
+By convention: source is small and lives in git; anything that grows lives on
+the deployment target's own storage, never on a workstation system drive.
 
 | Thing | Location |
 |---|---|
 | Hub source, this doc | git repo (small — Python + Markdown) |
-| Plugin git clones | LXC 104 `/opt/rom-hub/plugins/` |
-| In-flight downloads | LXC 104 `/opt/rom-hub/var/downloads/` |
+| Plugin git clones | deployment target `/opt/rom-hub/plugins/` |
+| In-flight downloads | deployment target `/opt/rom-hub/var/downloads/` |
 | Fetched artwork, in transit | `$ROM_HUB_HOME/var/artwork/<rom_id>/` |
 | Imported ROMs | `/mnt/usb1/roms` (RomM's existing library) |
 | Harvested cores | `$ROM_HUB_HOME/var/cores/` by default; `ROM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
 
 The cores path is **configuration, not a constant**. Compiling
 `/opt/romm-stream/cores` into the Hub would put a plugin-supplied download
-outside `ROM_HUB_HOME` on every host that is not LXC 104 — including a
-developer workstation, where it would land on `C:`.
+outside `ROM_HUB_HOME` on every host that is not the deployment target —
+including a developer workstation, where it would land on the system drive.
 
 `.gitignore` enforces this.
 
 ### Operational risk: watchtower
 
-LXC 104 runs **watchtower**, which auto-updates containers — including RomM
+The deployment target runs **watchtower**, which auto-updates containers — including RomM
 (currently `rommapp/romm:4.9.2`). A sidecar depends on RomM's API shape, so an
 unattended major-version jump can break the Hub with no human in the loop.
 
@@ -491,7 +492,7 @@ carry no artwork part at all.
 **`stream` is deliberately shallow.** `romm-stream` is a separate service;
 integrating it is not this capability's job. The host validates the target and
 returns it, and the CLI prints it. Building a second streaming transport inside
-the Hub would be inventing infrastructure the estate already has.
+the Hub would be inventing infrastructure the deployment already has.
 
 ### `secret` config type
 
@@ -779,21 +780,22 @@ stub can never outrank the ROM.
 
 ## UI
 
-The Hub serves its own web UI at `hub.moveweight.com`. **RomM's UI is not
+The Hub serves its own web UI at its own hostname. **RomM's UI is not
 modified and no nav entry is injected into it.**
 
 An earlier draft specified injecting a `<script>` into RomM's `index.html` via
 Traefik. That was investigated and rejected on evidence:
 
-- Traefik has **no native response-body rewriting**. LXC 107 runs 3.6.13 with
-  no plugins configured and no plugin storage directory.
+- Traefik has **no native response-body rewriting**. The reverse proxy this was
+  measured against runs 3.6.13 with no plugins configured and no plugin storage
+  directory.
 - Enabling it means `experimental.plugins`, a third-party body-rewrite plugin,
-  and a Traefik restart — which interrupts **every service on the estate** and
+  and a Traefik restart — which interrupts **every service behind that proxy** and
   adds a boot-time remote-code fetch to the reverse proxy fronting all of it.
 - RomM has no custom-head/CSS hook either: its container exposes no
   `CUSTOM_*`/`HEAD`/`CSS` environment variable.
 
-Estate-wide proxy risk for a nav shortcut is a bad trade. The Hub is reached at
+Proxy-wide risk for a nav shortcut is a bad trade. The Hub is reached at
 its own hostname.
 
 ---
@@ -888,6 +890,6 @@ is unchanged — which is not the same as acceptable, and the mitigation in
    second plugin has not yet shown what should be shared.
 2. **Multi-file items** — some IA items contain several distinct games. v1
    imports the `emulator_ext` payload only; multi-game items are a v2 question.
-3. **Hub authentication** — reuse Authentik (as with other estate services), or
-   proxy RomM's own session? Authentik is the estate default and the likely
-   answer, but it is not yet decided.
+3. **Hub authentication** — reuse whatever SSO the deployment already runs, or
+   proxy RomM's own session? SSO is the likely answer, but it is not yet
+   decided.

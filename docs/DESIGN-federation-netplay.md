@@ -30,7 +30,7 @@ are already folded into [DESIGN.md](DESIGN.md).
 
 ## Ground truth (verified 2026-07-28)
 
-Assumptions were checked against the running estate rather than inferred.
+Assumptions were checked against a running deployment rather than inferred.
 
 ### RomM 4.9.2
 
@@ -45,7 +45,7 @@ Assumptions were checked against the running estate rather than inferred.
 - **`/api/client-tokens/{id}/pair`** + **`/pair/{code}/status`** — a real
   pairing-code flow, usable for authorising a peer.
 
-### `romm-stream` on LXC 104 — ~960 lines
+### `romm-stream` on the deployment target — ~960 lines
 
 Not a stub, and not the architecture assumed. It is **server-side emulation
 with pixel streaming**:
