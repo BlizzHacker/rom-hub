@@ -233,17 +233,33 @@ def test_import_from_a_disabled_plugin_is_refused(
     assert "disabled" in capsys.readouterr().err
 
 
+def _clear_romm_env(monkeypatch):
+    for name in (
+        "ROMM_URL",
+        "ROMM_USER",
+        "ROMM_PASSWORD",
+        "ROM_HUB_BACKEND_URL",
+        "ROM_HUB_BACKEND_USER",
+        "ROM_HUB_BACKEND_PASSWORD",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
 def test_import_without_romm_settings_names_the_variables(
     tmp_path, monkeypatch, capsys
 ):
-    """An unconfigured Hub must not fail somewhere inside httpx."""
-    from rom_hub.cli import romm_settings
+    """An unconfigured Hub must not fail somewhere inside httpx.
 
-    monkeypatch.delenv("ROMM_URL", raising=False)
-    monkeypatch.delenv("ROMM_USER", raising=False)
-    monkeypatch.delenv("ROMM_PASSWORD", raising=False)
-    with pytest.raises(RuntimeError) as exc:
-        romm_settings()
+    The settings moved into the RomM backend when the seam was extracted;
+    they are that backend's, not the CLI's. The message is unchanged, and
+    still names every missing variable at once.
+    """
+    from rom_hub.backends.base import BackendNotConfigured
+    from rom_hub.backends.romm import settings_from_env
+
+    _clear_romm_env(monkeypatch)
+    with pytest.raises(BackendNotConfigured) as exc:
+        settings_from_env()
     message = str(exc.value)
     assert "ROMM_URL" in message
     assert "ROMM_USER" in message
@@ -251,12 +267,25 @@ def test_import_without_romm_settings_names_the_variables(
 
 
 def test_romm_settings_reads_the_environment(monkeypatch):
-    from rom_hub.cli import romm_settings
+    from rom_hub.backends.romm import settings_from_env
 
+    _clear_romm_env(monkeypatch)
     monkeypatch.setenv("ROMM_URL", "https://romm.example/")
     monkeypatch.setenv("ROMM_USER", "admin")
     monkeypatch.setenv("ROMM_PASSWORD", "hunter2")
-    assert romm_settings() == ("https://romm.example/", "admin", "hunter2")
+    assert settings_from_env() == ("https://romm.example/", "admin", "hunter2")
+
+
+def test_the_backend_neutral_setting_names_also_work(monkeypatch):
+    """A deployment that switches backends should not have to learn a
+    different product's vocabulary for "the URL"."""
+    from rom_hub.backends.romm import settings_from_env
+
+    _clear_romm_env(monkeypatch)
+    monkeypatch.setenv("ROM_HUB_BACKEND_URL", "https://lib.example/")
+    monkeypatch.setenv("ROM_HUB_BACKEND_USER", "admin")
+    monkeypatch.setenv("ROM_HUB_BACKEND_PASSWORD", "hunter2")
+    assert settings_from_env() == ("https://lib.example/", "admin", "hunter2")
 
 
 def test_jobs_with_an_empty_queue_is_not_an_error(tmp_path, monkeypatch, capsys):
