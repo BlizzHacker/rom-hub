@@ -188,3 +188,56 @@ def test_claim_next_is_race_safe_across_two_queue_instances(tmp_path):
     claimed_jobs = [r for r in results if r is not None]
     assert len(claimed_jobs) == 1
     assert claimed_jobs[0].id == job.id
+
+
+def test_notes_survive_a_reopen_and_are_not_the_error_column(tmp_path):
+    """A skipped optional step is recorded on the row it happened to, and
+    it is not an error: a DONE import filed under `error` would read as a
+    broken one in `rom-hub jobs`."""
+    db_path = tmp_path / "jobs.sqlite3"
+    q = JobQueue(db_path)
+    job = q.enqueue("archive-org", "abc", "Game", "dos")
+    q.set_notes(job.id, "grouping was skipped: no collections")
+    q.set_state(job.id, JobState.DONE)
+    q.close()
+
+    reopened = JobQueue(db_path)
+    try:
+        reloaded = reopened.get(job.id)
+    finally:
+        reopened.close()
+    assert reloaded.state == JobState.DONE
+    assert reloaded.notes == "grouping was skipped: no collections"
+    assert reloaded.error is None
+
+
+def test_a_db_written_before_notes_existed_is_migrated_not_broken(tmp_path):
+    """`CREATE TABLE IF NOT EXISTS` does nothing to a table that already
+    exists, so every read of a new column against an existing jobs.db
+    would raise. The db is long-lived by design -- that is the whole
+    reason this is sqlite and not a dict."""
+    import sqlite3
+
+    db_path = tmp_path / "legacy.sqlite3"
+    legacy = sqlite3.connect(str(db_path))
+    legacy.execute(
+        "CREATE TABLE jobs ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, plugin TEXT NOT NULL, "
+        "source_id TEXT NOT NULL, title TEXT NOT NULL, platform TEXT NOT NULL, "
+        "state TEXT NOT NULL, error TEXT, local_path TEXT)"
+    )
+    legacy.execute(
+        "INSERT INTO jobs (plugin, source_id, title, platform, state) "
+        "VALUES ('archive-org', 'abc', 'Game', 'dos', 'DONE')"
+    )
+    legacy.commit()
+    legacy.close()
+
+    q = JobQueue(db_path)
+    try:
+        job = q.list()[0]
+        assert job.notes is None
+        q.set_notes(job.id, "grouping was skipped")
+        assert q.get(job.id).notes == "grouping was skipped"
+    finally:
+        q.close()

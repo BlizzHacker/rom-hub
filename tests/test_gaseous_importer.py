@@ -342,9 +342,16 @@ def test_operator_messages_name_the_backend_actually_in_use(tmp_path, queue):
     assert "RomM" not in second.message
 
 
-def test_a_collection_is_refused_before_anything_is_downloaded(tmp_path, queue):
-    """Gaseous has no collections, and the pipeline must say so before it
-    spends a download rather than after the upload."""
+def test_a_collection_is_skipped_and_the_import_still_completes(tmp_path, queue):
+    """Gaseous has no collections -- `CollectionsController.cs` has no
+    non-comment lines in it and the running server registers no
+    `/Collections` route -- and until this branch that refused the whole
+    import. It should not: the operator asked for a ROM in their library,
+    and the grouping is a nicety on top of that.
+
+    What the pipeline owes them instead is the ROM *and* a plain statement
+    that the collection did not happen.
+    """
     server = FakeGaseous()
     downloader = FakeDownloader()
     res = _run(
@@ -355,11 +362,13 @@ def test_a_collection_is_refused_before_anything_is_downloaded(tmp_path, queue):
         downloader=downloader,
     )
 
-    assert res.state is JobState.FAILED
+    assert res.state is JobState.DONE, res.message
+    assert server.uploads == ["rubik.img"]
+    assert downloader.downloads  # the ROM really was fetched
     assert "collections" in res.message
+    assert "Shooters" in res.message
     assert "gaseous" in res.message
-    assert downloader.downloads == []
-    assert server.uploads == []
+    assert queue.get(res.job_id).notes
 
 
 def _write(tmp_path, name):

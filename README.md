@@ -49,8 +49,8 @@ implementation and a CLI command:
 | Capability | Command | What it does |
 |---|---|---|
 | `search` | `rom-hub search <query>` | fans out across every enabled plugin |
-| `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → chunked upload → collection |
-| `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to RomM |
+| `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection |
+| `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to the library |
 | `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 
@@ -59,21 +59,26 @@ survives a restart. No web UI yet.
 
 ## Which library server
 
-`ROM_HUB_BACKEND` selects it; `romm` is the default.
+`ROM_HUB_BACKEND` selects it; `romm` is the default. Three ship:
+[RomM](https://github.com/rommapp/romm),
+[Gaseous](https://github.com/gaseous-project/gaseous-server) and
+[Retrom](https://github.com/JMBeresford/retrom).
 
 | Backend | Settings | Can | Cannot |
 |---|---|---|---|
-| `romm` | `ROMM_URL`, `ROMM_USER`, `ROMM_PASSWORD` | everything | — |
+| `romm` | `ROMM_URL`, `ROMM_USER`, `ROMM_PASSWORD` | import, scan, metadata, artwork, collections | — |
+| `gaseous` | `GASEOUS_URL`, `GASEOUS_USER`, `GASEOUS_PASSWORD` | import, scan | collections, metadata, artwork |
 | `retrom` | `RETROM_URL` | import, scan, metadata, artwork | collections |
 
-`ROM_HUB_BACKEND_URL`/`_USER`/`_PASSWORD` also work for either, for a
-deployment that would rather not name a product in its unit file.
+`ROM_HUB_BACKEND_URL`/`_USER`/`_PASSWORD` also work for any of them, for a
+deployment that would rather not name a product in its unit file. Retrom has no
+accounts, so it reads only the URL.
 
     rom-hub backend info
 
     backend          romm
     selected by      default (romm)
-    available        retrom, romm
+    available        gaseous, retrom, romm
     settings         ROMM_URL, ROMM_USER, ROMM_PASSWORD
     configured       no -- ROMM_PASSWORD not set
 
@@ -87,24 +92,95 @@ deployment that would rather not name a product in its unit file.
 **It opens no connection.** The person most likely to run it is the one whose
 connection is not working yet.
 
+### How the three differ
+
+A plugin never sees any of this — it returns a *description* and the host
+executes it against whichever backend is configured. The differences below are
+the host's problem, not the plugin's, and every row was established from the
+backend's source and a live run rather than assumed.
+
+| | RomM | Gaseous | Retrom |
+|---|---|---|---|
+| Transport | REST | REST | gRPC-Web over HTTP/1.1 + WebDAV |
+| Import | chunked upload API | `POST /api/v1.1/Roms` multipart | no upload API — files land via WebDAV, then `UpdateLibrary` indexes them |
+| Dedup | by hash (archives hashed as decompressed members concatenated) | filename (see platform-0 note) | filename only — Retrom stores no checksums |
+| Collections | yes | no — `CollectionsController` is empty | no — not in the schema |
+| Metadata write | yes | no — a rom exposes only GET/DELETE | yes, read-modify-write |
+| Post-import | socket.io `scan` event | `ImportQueueProcessor` | `UpdateLibrary` |
+
+### Cannot-do-the-job vs cannot-do-an-extra
+
+A backend that cannot do something says so — but *what it does about it*
+depends on whether the missing capability is essential to the operation or an
+optional extra layered on top. The split is deliberate and is decided per
+capability in `src/rom_hub/backends/base.py`:
+
+- **Essential — refuse before anything is downloaded.** `import` (there is
+  nowhere to put the ROM) and `metadata` (`rom-hub enrich` writes nothing
+  otherwise) refuse up front. A backend that cannot be imported to fails the
+  job before a single byte moves, with a message naming the backend — never a
+  four-gigabyte download followed by a 404 from an endpoint that does not exist.
+- **Optional — do the job, report the skip.** `collections` and `artwork` are
+  extras. A collection groups a ROM that is already in the library; artwork is a
+  cover on a record. If the backend cannot do one, the import (or enrich)
+  proceeds without it and the outcome plainly says what was skipped and why —
+  in the result the CLI prints *and* in the job record, shown by `rom-hub jobs`
+  as a `~` note (a skip, not the `!` a failure gets).
+
+This is why `rom-hub import archive-org rubik_202308` now completes against
+Gaseous and Retrom. The archive-org plugin files everything under an
+"Archive.org" collection and its `collection` config cannot be emptied
+(`config.get("collection") or "Archive.org"`), so against a backend with no
+collections the whole import used to stop at that check with nothing
+downloaded. A collection is a grouping nicety, not part of getting a ROM into a
+library; it is now skipped and noted, and the ROM lands.
+
+**A `--collection` you typed is different.** Dropping a plugin's default costs
+you nothing you asked for; silently not honouring a name you typed is how a
+library ends up unsorted with no error to explain it. So `rom-hub import
+--collection "Shooters"` against a collection-less backend still refuses, up
+front before the plugin subprocess starts, and the refusal names the way out
+(re-run without the flag).
+
+### Gaseous
+
+[Gaseous](https://github.com/gaseous-project/gaseous-server) imports and scans
+but does not write metadata or group into collections, and two upstream
+quirks are worth knowing before you point the Hub at one:
+
+- **A rom you import may land on platform 0.** `OverridePlatformId` is stored,
+  resolved and passed into `ImportGameFile`, but its body never reads the
+  argument — the platform is taken from the file signature instead. An
+  unrecognised ROM therefore lands on platform 0 regardless of what you asked
+  for (measured: asked for 13/DOS, got 0). The Hub cannot correct this from
+  outside; it is Gaseous's own import path.
+- **Listing without a `PlatformId` 404s.** The unfiltered rom listing joins a
+  `Game` table that is absent from schema 1042, so the Hub always lists per
+  platform. Not a limitation you will hit through `rom-hub`, but it explains
+  why the backend never issues a bare list.
+- **`ContentManagerController` is not a ROM route.** It handles attachments —
+  screenshots, video, manuals, 50 MB cap — not game files, which is why it is
+  not wired up as an artwork path. A Gaseous rom exposes only GET and DELETE, so
+  there is no metadata write to make.
+
 ### Retrom
 
 [Retrom](https://github.com/JMBeresford/retrom) works differently enough from
-RomM to be worth three lines before you point the Hub at one.
+RomM to be worth a few lines before you point the Hub at one.
 
 **Its library is the filesystem.** Retrom has no upload API — no `CreateGame`,
 no `CreatePlatform`, no RPC that carries file content anywhere in its schema. A
-scan walks the configured content directories and creates a platform per
-directory and a game per entry. So the Hub files a ROM by *writing a file*,
-over Retrom's own WebDAV service at `/dav`, and then asking for a rescan.
+scan (`UpdateLibrary`) walks the configured content directories and creates a
+platform per directory and a game per entry. So the Hub files a ROM by *writing
+a file*, over Retrom's own WebDAV service, and then asking for a rescan.
 
 **That WebDAV service is rooted at Retrom's data directory**, so a content
 directory has to live inside `RETROM_DATA_DIR` (`/app/data` in the official
 image) for the Hub to be able to write into it. The stock compose file mounts
 libraries at `/lib1` and `/lib2` instead, which is *outside* it: move or
 bind-mount your content directory under the data directory, e.g.
-`/app/data/library`. If it is not reachable, the import stops before anything
-is downloaded and says so.
+`/app/data/library`. If it is not reachable, the backend probes and **refuses
+with instructions before anything is downloaded**.
 
 **A platform must already exist.** Retrom derives one from a directory name, so
 create `<content dir>/<platform>` and scan once before importing. The name has
@@ -115,26 +191,21 @@ Retrom has **no accounts** — there is no auth layer on any of its three
 services and none of its RPCs take a credential — so `RETROM_URL` is the whole
 configuration. Put a reverse proxy in front of it if it needs protecting.
 
-It also has **no collections**, so `rom-hub import --collection` is refused up
-front — and so is a collection a *plugin's own plan* named, which is the case
-that bites. The archive-org plugin files everything under "Archive.org" and its
-`collection` config cannot be emptied (`config.get("collection") or
-"Archive.org"`), so `rom-hub import archive-org …` against Retrom currently
-stops at that check, before anything is downloaded, with a message naming the
-collection and the backend. Everything after it — download, hash, dedup, the
-WebDAV write, the scan and the confirmation — works; it is the one field in the
-plan that has nowhere to go. Closing that gap means either a plugin that can be
-told not to name a collection, or a host that treats a plugin-defaulted
-collection as optional; both are outside this backend.
+It has **no collections** and stores **no checksums**, so it dedups by filename
+only. A plugin-defaulted collection is skipped and reported (see above); an
+explicit `--collection` is refused up front.
 
-**A backend that cannot do something says so before it costs anything.** If the
-active backend has no collections, `rom-hub import --collection "Shooters"`
-refuses immediately — before a plugin subprocess is started, before a
-connection is opened, before a byte is downloaded — and names the backend and
-the capability. The alternative is a four-gigabyte download followed by a 404
-from an endpoint the operator has never heard of, with the ROM half-filed. The
-same refusal covers a collection the *plugin's* plan named, which is not the
-same path and would otherwise slip through.
+### RomM
+
+Two RomM quirks the Hub works around, recorded because they cost time to find:
+
+- **`/api/token` needs an explicit `scope`.** Without one, every subsequent
+  call 403s. The Hub requests the scopes it needs at auth time.
+- **`/complete` returns 201 with no body, and the ROM does not exist yet.** The
+  completion endpoint writes the file into the library directory and creates no
+  database row; RomM's own UI emits a socket.io `scan` after every upload, and
+  so does the Hub. The rom is identified afterwards by finding its digest in the
+  library, which doubles as proof it actually landed.
 
 ## Quick start
 
@@ -148,9 +219,9 @@ rather than running them unconfined (see below).
 
 ## Importing
 
-`import` takes a plugin's own id for an item and puts the ROM in RomM. The
-plugin only says *what* to fetch; the Hub downloads it, hashes it, checks it is
-not already in the library, and uploads it.
+`import` takes a plugin's own id for an item and puts the ROM in the library.
+The plugin only says *what* to fetch; the Hub downloads it, hashes it, checks it
+is not already in the library, and uploads it.
 
     rom-hub import archive-org rubik_202308
     rom-hub import archive-org rubik_202308 --platform dos --collection "Archive.org"
@@ -160,9 +231,14 @@ where a ROM files; they cannot make the Hub fetch from anywhere the plugin's
 manifest does not already allow, and they cannot override a plugin's refusal —
 if a plugin says an emulator "needs mapping", the fix is to add the mapping,
 not to name a platform by hand and leave the gap open for the next person.
+`--collection` against a backend with no collections is refused up front (a name
+you typed is not dropped silently); a collection a plugin *defaulted* is skipped
+and reported instead — see [Cannot-do-the-job vs
+cannot-do-an-extra](#cannot-do-the-job-vs-cannot-do-an-extra).
 
-An import that is already in RomM is reported as a duplicate and **not**
-uploaded. Matching is by file hash, not by name.
+An import already in the library is reported as a duplicate and **not**
+uploaded. Matching is by file hash where the backend records one, and by
+filename where it does not (Gaseous and Retrom).
 
     rom-hub jobs                # every import job and its state
     rom-hub jobs --state FAILED # just the ones that went wrong, with reasons
