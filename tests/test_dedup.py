@@ -142,3 +142,27 @@ def test_find_duplicate_on_empty_library_returns_none():
     hashes = FileHashes(crc32=KNOWN_CRC32, md5=KNOWN_MD5, sha1=KNOWN_SHA1)
 
     assert find_duplicate(hashes, []) is None
+
+
+def test_a_malformed_rom_entry_is_skipped_not_crashed_on():
+    """RomM's response is data from another service, not a guaranteed
+    shape. A non-string hash used to raise AttributeError, which
+    run_import's catch-all turned into a FAILED job blaming the Hub."""
+    hashes = FileHashes(crc32=KNOWN_CRC32, md5=KNOWN_MD5, sha1=KNOWN_SHA1)
+    existing = [
+        "not a dict at all",
+        None,
+        42,
+        {"id": 1, "sha1_hash": 12345},
+        {"id": 2, "crc_hash": ["a", "list"]},
+        {"id": 3, "md5_hash": {"nested": "object"}},
+    ]
+
+    assert find_duplicate(hashes, existing) is None
+
+
+def test_a_malformed_entry_does_not_hide_a_real_match_behind_it():
+    hashes = FileHashes(crc32=KNOWN_CRC32, md5=KNOWN_MD5, sha1=KNOWN_SHA1)
+    existing = [{"id": 1, "sha1_hash": 999}, {"id": 7, "sha1_hash": KNOWN_SHA1}]
+
+    assert find_duplicate(hashes, existing) == {"id": 7, "sha1_hash": KNOWN_SHA1}
