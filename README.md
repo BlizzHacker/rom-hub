@@ -1,7 +1,14 @@
 # ROM Hub
 
-qBittorrent-style plugins for [RomM](https://github.com/rommapp/romm), as a
-sidecar. RomM itself is never modified.
+qBittorrent-style plugins for a self-hosted ROM library, as a sidecar. The
+library server is never modified.
+
+[RomM](https://github.com/rommapp/romm) is the backend that ships, and the
+default. It is not the only one the plugins work with: a plugin returns a
+*description* of work — which files to fetch, which metadata to set — and the
+Hub executes it, so nothing in a plugin has ever known which server is on the
+other side. `ROM_HUB_BACKEND` picks; `rom-hub backend info` says what the
+chosen one can do.
 
 See [docs/DESIGN.md](docs/DESIGN.md) for the architecture and
 [docs/DESIGN-federation-netplay.md](docs/DESIGN-federation-netplay.md) for the
@@ -49,6 +56,40 @@ implementation and a CLI command:
 
 Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
 survives a restart. No web UI yet.
+
+## Which library server
+
+`ROM_HUB_BACKEND` selects it; `romm` is the default and, today, the only one
+built. Its connection settings are `ROMM_URL`, `ROMM_USER` and `ROMM_PASSWORD`
+(`ROM_HUB_BACKEND_URL`/`_USER`/`_PASSWORD` also work, for a deployment that
+would rather not name a product in its unit file).
+
+    rom-hub backend info
+
+    backend          romm
+    selected by      default (romm)
+    available        romm
+    settings         ROMM_URL, ROMM_USER, ROMM_PASSWORD
+    configured       no -- ROMM_PASSWORD not set
+
+    can:
+      artwork        attach cover art to a rom
+      collections    group roms into a named collection (rom-hub import --collection)
+      import         accept a ROM upload, and list the library so a duplicate is caught first
+      metadata       write a rom's metadata fields (rom-hub enrich)
+      scan           needs an explicit registration step after an upload
+
+**It opens no connection.** The person most likely to run it is the one whose
+connection is not working yet.
+
+**A backend that cannot do something says so before it costs anything.** If the
+active backend has no collections, `rom-hub import --collection "Shooters"`
+refuses immediately — before a plugin subprocess is started, before a
+connection is opened, before a byte is downloaded — and names the backend and
+the capability. The alternative is a four-gigabyte download followed by a 404
+from an endpoint the operator has never heard of, with the ROM half-filed. The
+same refusal covers a collection the *plugin's* plan named, which is not the
+same path and would otherwise slip through.
 
 ## Quick start
 

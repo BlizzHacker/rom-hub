@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from rom_hub.backends.base import ARTWORK, METADATA
+from rom_hub.backends.base import ARTWORK, METADATA, CapabilityUnsupported
 from rom_hub.metadata import EnrichError, rom_ref_from, run_enrich
 from rom_hub.types import MetadataPatch, RomRef
 
