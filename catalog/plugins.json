@@ -1,0 +1,22 @@
+{
+  "catalog_version": "1",
+  "updated": "2026-07-29",
+  "plugins": [
+    {
+      "slug": "archive-org",
+      "name": "Archive.org",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/romm-hub-archive-org",
+      "install": "https://github.com/BlizzHacker/romm-hub-archive-org",
+      "download": "https://github.com/BlizzHacker/romm-hub-archive-org/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": ["search"],
+      "network": ["archive.org", "*.archive.org"],
+      "status": "ok",
+      "comments": "Public-domain and abandonware software library. Results carry extra.stream_only for items Archive.org only permits playing in-browser."
+    }
+  ]
+}
