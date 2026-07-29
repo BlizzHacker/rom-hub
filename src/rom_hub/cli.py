@@ -569,11 +569,32 @@ def _cmd_cores_list(args) -> int:
         if not cores:
             print("this plugin offers no cores")
             return EXIT_OK
-        print(f"{'CORE':<24} {'VERSION':<12} {'SYSTEM':<14} NAME")
-        for core in cores:
+        # Widths from the data, not from constants. The fixed 14-column
+        # SYSTEM this used to print was set before any plugin implemented
+        # `cores`; libretro's own system names run to 45 characters
+        # ("Nintendo - Super Nintendo Entertainment System"), which pushed
+        # every following column out of line and made the listing unreadable
+        # for the first plugin that actually produced one. Capped because
+        # the widths come from an untrusted plugin -- CoreArtifact bounds
+        # each field, but 200 characters of name should not decide the
+        # layout of 218 rows.
+        rows = [
+            (core.core_id, core.version or "-", core.system or "-", core.name)
+            for core in cores
+        ]
+        headers = ("CORE", "VERSION", "SYSTEM", "NAME")
+        widths = [
+            min(max([len(h), *(len(row[i]) for row in rows)]), 48)
+            for i, h in enumerate(headers)
+        ]
+        print(
+            f"{headers[0]:<{widths[0]}} {headers[1]:<{widths[1]}} "
+            f"{headers[2]:<{widths[2]}} {headers[3]}"
+        )
+        for core_id, version, system, name in rows:
             print(
-                f"{core.core_id:<24} {core.version or '-':<12} "
-                f"{core.system or '-':<14} {core.name}"
+                f"{core_id:<{widths[0]}} {version:<{widths[1]}} "
+                f"{system:<{widths[2]}} {name}"
             )
         print()
         print(f"{len(cores)} core(s). Install with: rom-hub cores install "

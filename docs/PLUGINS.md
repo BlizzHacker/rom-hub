@@ -84,7 +84,7 @@ and it lives in `README.md` under *Cannot-do-the-job vs cannot-do-an-extra*.
 
 ## These plugins ship in-tree
 
-The six plugins below live in this repository's `plugins-dev/` directory and
+The seven plugins below live in this repository's `plugins-dev/` directory and
 **have no individual public repositories yet**. Rather than print URLs that do
 not resolve, their repository and download fields use the reserved
 `.invalid` TLD (RFC 2606, guaranteed never to resolve) — if you see
@@ -120,6 +120,7 @@ Installs from a URL are pinned to a tag. Updating is deliberate — re-run
 | ✔ Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/archive-org` (in-tree) | `search`, `importer`, `metadata`, `stream` | — | `archive.org`, `*.archive.org` |
 | ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer` | — | `hh3.gbdev.io` |
 | ❗ itch.io (free games) — SEARCH-ONLY | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer` | **search-only** | `itch.io`, `*.itch.io` |
+| ✔ libretro cores (buildbot) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-cores` (in-tree) | `cores` | — | `buildbot.libretro.com` |
 | ✔ libretro Thumbnails | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-thumbnails` (in-tree) | `metadata` | — | `thumbnails.libretro.com` |
 | ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.1 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | — | `archive.org`, `*.archive.org` |
 | ❗ RetroAchievements | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/retroachievements` (in-tree) | `metadata` | **API key required** (stored in clear text) | `retroachievements.org` |
@@ -155,6 +156,16 @@ Finds free games on itch.io. It cannot import them, and never will as built — 
 **Comments.** The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes.
 
 **Network requested.** `itch.io`, `*.itch.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ libretro cores (buildbot) — `libretro-cores`
+
+Lists and installs emulator cores from libretro's public buildbot, for a build target you choose.
+
+**Source terms.** A public distribution point used the way it is meant to be used. libretro's buildbot serves the cores libretro itself builds, unauthenticated, and its `.index-extended` catalogue exists so that software can read it — RetroArch's own core updater is the reference consumer. Nothing is circumvented; `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing. The cores themselves are other people's software under their own licences — mostly GPL/LGPL, some more restrictive — and each core's licence travels with the core, not with this plugin.
+
+**Comments.** The only plugin here exercising `cores`, which is what shows that capability is a real contract rather than a line in a spec. The build target is config and is never detected from the host OS: the Hub is routinely not running on the machine that will load these cores, and a Linux `.so` handed to a Windows frontend fails silently weeks later. An unknown target is refused by name. `system` is filled from a hand-kept table and is blank when unknown — libretro publishes that mapping only inside a zip, and `ctx.http` returns text, so a blank means "not known" rather than a guess. The crc32 the index prints is deliberately not verified: the plugin never sees the bytes, the host fetches them, and claiming a check that does not happen would be worse than silence.
+
+**Network requested.** `buildbot.libretro.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ libretro Thumbnails — `libretro-thumbnails`
 

@@ -566,6 +566,53 @@ def test_cores_list_prints_the_catalogue(tmp_path, source_repo, monkeypatch, cap
     assert "1 core(s)" in out
 
 
+LONG_SYSTEM = "Nintendo - Super Nintendo Entertainment System"
+
+WIDE_CORES_PLUGIN = f'''
+from rom_hub_sdk import CoreArtifact, CoreProvider, FetchFile, FetchPlan
+
+
+class Cores(CoreProvider):
+    def list(self):
+        return [
+            CoreArtifact(core_id="bsnes", name="bSNES", system="{LONG_SYSTEM}"),
+            CoreArtifact(core_id="2048", name="Twenty Forty Eight"),
+        ]
+
+    def plan(self, core):
+        return FetchPlan(
+            files=[FetchFile(url="https://demo.example/c", filename="c.zip")],
+            platform="x",
+        )
+'''
+
+
+def test_cores_list_columns_fit_the_widest_value(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """A system name longer than the column pushed every later column out of
+    line, which is what the listing looked like for the first plugin that
+    actually implemented `cores` -- libretro's own system names run to 45
+    characters. Every row must start its NAME column at the same offset."""
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    installed = _install_cores_plugin(tmp_path, source_repo)
+    (installed / "demo_cores.py").write_text(WIDE_CORES_PLUGIN, encoding="utf-8")
+    capsys.readouterr()  # discard the install chatter
+
+    assert main(["cores", "list", "demo"]) == 0
+    lines = [
+        line for line in capsys.readouterr().out.splitlines() if line.strip()
+    ]
+    header, *rows = lines[:3]
+    assert LONG_SYSTEM in rows[0]
+
+    # The NAME column starts at the same offset on every row, including the
+    # one whose SYSTEM is 45 characters wide.
+    name_at = header.index("NAME")
+    assert [row[name_at:] for row in rows] == ["bSNES", "Twenty Forty Eight"]
+
+
 def test_cores_install_writes_into_the_configured_directory(
     tmp_path, source_repo, monkeypatch, capsys
 ):

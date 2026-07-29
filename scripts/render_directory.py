@@ -105,7 +105,7 @@ and it lives in `README.md` under *Cannot-do-the-job vs cannot-do-an-extra*.
 
 ## These plugins ship in-tree
 
-The six plugins below live in this repository's `plugins-dev/` directory and
+The seven plugins below live in this repository's `plugins-dev/` directory and
 **have no individual public repositories yet**. Rather than print URLs that do
 not resolve, their repository and download fields use the reserved
 `.invalid` TLD (RFC 2606, guaranteed never to resolve) — if you see
