@@ -2512,8 +2512,9 @@ Create `README.md`:
 ```markdown
 # RomM Hub
 
-qBittorrent-style plugins for [RomM](https://github.com/rommapp/romm), as a
-sidecar. RomM itself is never modified.
+A plugin standard, and a host that runs it, for
+[RomM](https://github.com/rommapp/romm). It runs as a sidecar: RomM itself is
+never modified.
 
 See [docs/DESIGN.md](docs/DESIGN.md) for the architecture and
 [docs/DESIGN-federation-netplay.md](docs/DESIGN-federation-netplay.md) for the

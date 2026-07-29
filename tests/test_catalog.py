@@ -1,4 +1,4 @@
-"""The plugin catalog: a directory of known sources, in the qBittorrent mould.
+"""The plugin catalog: a community-kept directory of known sources.
 
 The catalog is a convenience for *finding* plugins. It is deliberately not a
 source of authority about what a plugin may do — see
@@ -195,7 +195,7 @@ def test_catalog_cannot_widen_permissions():
     assert "catalog" not in source.lower()
 
 
-def test_render_markdown_has_the_qbittorrent_columns():
+def test_render_markdown_carries_every_column_a_reader_compares_on():
     md = render_markdown(load_catalog(CATALOG_PATH))
     for column in ("Source", "Author (Repository)", "Version", "Last update",
                    "Install", "Comments"):
