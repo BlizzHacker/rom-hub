@@ -40,6 +40,7 @@ DEFAULT_BACKEND = "romm"
 _BACKENDS: dict[str, str] = {
     "romm": "rom_hub.backends.romm.backend:RommBackend",
     "gaseous": "rom_hub.backends.gaseous.backend:GaseousBackend",
+    "retrom": "rom_hub.backends.retrom.backend:RetromBackend",
 }
 
 
