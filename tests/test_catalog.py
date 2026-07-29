@@ -1,4 +1,4 @@
-"""The plugin catalog: a directory of known sources, in the qBittorrent mould.
+"""The plugin catalog: a community-kept directory of known sources.
 
 The catalog is a convenience for *finding* plugins. It is deliberately not a
 source of authority about what a plugin may do — see
@@ -150,7 +150,11 @@ def test_search_only_and_key_required_are_surfaced_in_the_page():
     assert ra.key_required
 
     md = render_markdown(entries)
-    assert "search-only" in md
+    # Rendered as the behaviour, not the category: itch-io implements
+    # `metadata` and still cannot import anything, so "search-only" would
+    # be wrong where "cannot import" is exactly right.
+    assert "cannot import" in md
+    assert "search-only" not in md
     # The clear-text storage is the part that must not be buried.
     assert "clear text" in md.lower()
 
@@ -195,7 +199,7 @@ def test_catalog_cannot_widen_permissions():
     assert "catalog" not in source.lower()
 
 
-def test_render_markdown_has_the_qbittorrent_columns():
+def test_render_markdown_carries_every_column_a_reader_compares_on():
     md = render_markdown(load_catalog(CATALOG_PATH))
     for column in ("Source", "Author (Repository)", "Version", "Last update",
                    "Install", "Comments"):
@@ -247,3 +251,126 @@ def test_directory_is_in_sync_with_the_catalog():
     assert render_markdown(load_catalog(CATALOG_PATH)) in page, (
         "docs/PLUGINS.md is out of date -- run python scripts/render_directory.py"
     )
+
+
+# ------------------------------------------- which backends a plugin suits
+
+
+def test_the_backend_table_matches_what_the_backends_declare():
+    """The whole point of deriving this is that it cannot disagree with the
+    backends themselves. If one gains a capability, this test is what says
+    the directory has to be regenerated."""
+    from rom_hub.backends import available, describe
+    from rom_hub.catalog import backend_capabilities
+
+    assert backend_capabilities() == {
+        name: describe(name).capabilities for name in available()
+    }
+
+
+def test_a_metadata_only_plugin_is_no_use_against_gaseous():
+    """The example the directory has to make obvious: Gaseous writes no
+    metadata, so libretro-thumbnails has nothing it can do there."""
+    from rom_hub.catalog import backend_fit
+
+    entries = load_catalog(CATALOG_PATH)
+    thumbs = next(e for e in entries if e.slug == "libretro-thumbnails")
+    fit = {f.backend: f for f in backend_fit(thumbs)}
+    assert fit["gaseous"].verdict == "none"
+    assert fit["gaseous"].blocked == ("metadata",)
+    assert fit["retrom"].verdict == "full"
+    assert fit["romm"].verdict == "full"
+
+
+def test_a_cores_plugin_works_against_every_backend_including_none():
+    """`cores` writes to the Hub's own directory, not to a library. There is
+    no backend capability it could need."""
+    from rom_hub.catalog import backend_fit
+
+    entries = load_catalog(CATALOG_PATH)
+    cores = next(e for e in entries if e.slug == "libretro-cores")
+    assert {f.verdict for f in backend_fit(cores)} == {"full"}
+    assert {f.verdict for f in backend_fit(cores, {"nothing": frozenset()})} == {
+        "full"
+    }
+
+
+def test_a_mixed_plugin_reports_the_blocked_and_the_merely_reduced_apart():
+    """archive-org against Gaseous loses `metadata` outright and loses only
+    the collection from `importer`. Those are different news and the page
+    must not flatten them together."""
+    from rom_hub.catalog import backend_fit
+
+    entries = load_catalog(CATALOG_PATH)
+    archive = next(e for e in entries if e.slug == "archive-org")
+    fit = {f.backend: f for f in backend_fit(archive)}
+
+    assert fit["gaseous"].verdict == "partial"
+    assert fit["gaseous"].blocked == ("metadata",)
+    assert fit["gaseous"].reduced == (("importer", "collections"),)
+    assert set(fit["gaseous"].unaffected) == {"search", "stream"}
+
+    # Retrom writes metadata but has no collections.
+    assert fit["retrom"].verdict == "reduced"
+    assert fit["retrom"].blocked == ()
+    assert fit["retrom"].reduced == (("importer", "collections"),)
+
+
+def test_the_page_carries_a_backend_column_and_says_how_to_read_it():
+    md = render_markdown(load_catalog(CATALOG_PATH))
+    assert "| Backends |" in md
+    # A metadata-only plugin against Gaseous is the case a reader must not
+    # have to work out for themselves.
+    assert "~~Gaseous~~" in md
+    assert "Backends." in md
+
+
+def test_every_capability_the_host_gates_on_is_classified_here():
+    """A capability added to RPP without a row in either table would render
+    as "works everywhere", which is the one wrong answer that looks fine."""
+    from rom_hub.catalog import CAPABILITY_EXTRAS, CAPABILITY_NEEDS
+    from rom_hub.manifest import KNOWN_CAPABILITIES
+
+    # Every capability that needs something also appears in the manifest's
+    # vocabulary, and nothing is claimed for a capability that does not exist.
+    assert set(CAPABILITY_NEEDS) <= KNOWN_CAPABILITIES
+    assert set(CAPABILITY_EXTRAS) <= set(CAPABILITY_NEEDS)
+
+    # And the ones deliberately needing nothing are named, so "absent" is a
+    # decision rather than an oversight.
+    assert KNOWN_CAPABILITIES - set(CAPABILITY_NEEDS) == {
+        "search",
+        "stream",
+        "cores",
+    }
+
+
+def test_the_needs_and_extras_are_real_backend_capabilities():
+    from rom_hub.backends import ALL_CAPABILITIES, OPTIONAL_CAPABILITIES
+    from rom_hub.catalog import CAPABILITY_EXTRAS, CAPABILITY_NEEDS
+
+    assert set(CAPABILITY_NEEDS.values()) <= ALL_CAPABILITIES
+    # An "extra" that the host would refuse to degrade is not an extra.
+    assert set(CAPABILITY_EXTRAS.values()) <= OPTIONAL_CAPABILITIES
+
+
+def test_the_display_name_comes_from_the_backend_not_from_this_module():
+    """`"romm".title()` is "Romm". The only place that is known to be wrong
+    is inside the package that implements it, so that is where the label
+    lives -- and this module keeps no table of product names."""
+    from rom_hub.backends import available, describe
+    from rom_hub.catalog import backend_labels
+
+    labels = backend_labels()
+    assert labels == {name: describe(name).label for name in available()}
+    assert labels["romm"] == "RomM"
+    assert all(label for label in labels.values())
+
+    source = (
+        Path(__file__).resolve().parents[1] / "src" / "rom_hub" / "catalog.py"
+    ).read_text(encoding="utf-8")
+    for product in ("RomM", "Gaseous", "Retrom"):
+        assert product not in source, (
+            f"catalog.py names {product!r}; backend-specific knowledge belongs "
+            f"in that backend's package"
+        )

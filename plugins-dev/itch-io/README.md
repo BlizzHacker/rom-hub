@@ -1,10 +1,11 @@
-# itch.io plugin for ROM Hub — **SEARCH-ONLY**
+# itch.io plugin for ROM Hub — **NO IMPORT**
 
 > ## ⚠ This plugin cannot import. It never will, as built.
 >
-> **It is a search plugin.** It finds free games on itch.io and shows you what
-> and where they are. **Every import attempt is refused, by design**, and no
-> file it names is ever placed in your RomM library.
+> **It finds and describes; it does not fetch.** It searches free games on
+> itch.io, and for a game you already have it proposes the developer's own
+> title and cover art. **Every import attempt is refused, by design**, and no
+> file it names is ever placed in your library.
 >
 > Why: itch.io hands out a download URL only in response to a **POST** carrying
 > the game page's `csrf_token`, `/game/download/` is **`Disallow`ed in itch.io's
@@ -15,18 +16,57 @@
 > the plugin is working. See
 > [This plugin cannot import](#this-plugin-cannot-import-that-is-the-correct-answer).
 
-Implements the RPP v1 `search` and `importer` capabilities against itch.io's
-**free** games.
+Implements the RPP v1 `search`, `metadata` and `importer` capabilities against
+itch.io's **free** games.
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `search` | `itch.io/games/free[/<facet>]?format=json` | free games matching a query — **this is what the plugin is for** |
-| `importer` | the game page on `<developer>.itch.io` | works out the file and platform, then **always refuses** — see below |
+| `search` | `itch.io/games/free[/<facet>]?format=json` | free games matching a query |
+| `metadata` | the game page on `<developer>.itch.io` | proposes the developer's title and cover; the **Hub** fetches the image |
+| `importer` | the same game page | works out the file and platform, then **always refuses** — see below |
 
 ## Install
 
     rom-hub plugin install ./plugins-dev/itch-io
     rom-hub search "game boy" --limit 5
+    rom-hub enrich itch-io 1 --source-id izma/deadeus
+
+## What `metadata` sets
+
+**`name`**, from the game page's `Product` JSON-LD (falling back to the
+`<h1 class="game_title">`), and **`artwork_url`**, from the page's `og:image`.
+Nothing else — `MetadataPatch` reads an absent field as "leave the library
+alone", and a page missing either one produces a patch without it rather than
+a filled-in guess. A page with neither is a refusal, not an empty patch that
+would report an enrich which changed nothing.
+
+This is the capability that makes the plugin worth installing. It cannot fetch
+the game, but the two things it can read off a game page — what the developer
+called it and the cover they chose — are exactly what a library is missing for
+a title it already has.
+
+**The JSON-LD is parsed, not pattern-matched.** itch.io emits the `Product`
+object's keys in a different order on every page: of the three captured in
+`tests/fixtures/itch_io/`, one leads with `name`, one with `aggregateRating`
+and one with `@type`. A regex for `"name":"…"` would work against whichever
+page it was written for and silently rot on the rest — and a whole-page one is
+worse still, because the first `"name"` in the document belongs to the
+breadcrumb block and reads `Games` on all three.
+
+**A game id is required, and there is no lookup by name.** That is not an
+omission. itch.io's robots.txt `Disallow`s `/search`, and the browse listings
+this plugin may read are a popularity-ordered slice of a catalogue with
+hundreds of thousands of titles — hunting one specific game through them would
+find the wrong one far more often than the right one, and attaching another
+developer's cover to your rom is exactly the failure this project refuses
+everywhere else. Run `rom-hub search itch-io "<name>"` to get the id, then
+pass it with `--source-id`. A full game-page URL is accepted too.
+
+**A cover that is not on `img.itch.zone` is dropped rather than proposed.**
+The broker checks every plugin-supplied URL against the allowlist before
+fetching, so an off-host cover would fail the enrich with a policy violation
+that reads like a Hub fault. A patch carrying a name and no cover is a true
+and more useful answer.
 
 ## Config
 
