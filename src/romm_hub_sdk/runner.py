@@ -12,6 +12,7 @@ from typing import Any
 
 from romm_hub.protocol import read_message, write_message
 from romm_hub.sandbox import SandboxUnavailable, install as install_sandbox
+from romm_hub.types import SearchResult
 
 from .context import HttpClient, PluginContext
 
@@ -92,6 +93,16 @@ def run_plugin(stdin, stdout) -> None:
                     params["query"], params.get("platform"), params.get("limit", 50)
                 )
                 result = [r.model_dump() for r in results]
+            elif method == "plan":
+                if ctx is None:
+                    raise RuntimeError("init must be called before plan")
+                if "importer" not in instances:
+                    instances["importer"] = _load(entrypoints["importer"], ctx)
+                plan = instances["importer"].plan(SearchResult(**params["result"]))
+                # Whatever shape this dump has, the host re-validates it and
+                # re-checks every URL against the allowlist. Nothing decided
+                # on this side of the pipe is load-bearing.
+                result = plan.model_dump()
             else:
                 raise RuntimeError(f"unknown method {method!r}")
 

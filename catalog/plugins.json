@@ -13,10 +13,10 @@
       "ref": "v0.1.0",
       "updated": "2026-07-29",
       "rpp_version": "1",
-      "capabilities": ["search"],
+      "capabilities": ["search", "importer"],
       "network": ["archive.org", "*.archive.org"],
       "status": "ok",
-      "comments": "Public-domain and abandonware software library. Results carry extra.stream_only for items Archive.org only permits playing in-browser."
+      "comments": "Public-domain and abandonware software library. Results carry extra.stream_only for items Archive.org only permits playing in-browser; the importer refuses those outright and maps metadata.emulator to a RomM platform, failing visibly rather than guessing."
     }
   ]
 }

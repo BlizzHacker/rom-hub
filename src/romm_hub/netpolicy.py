@@ -4,9 +4,19 @@ Every plugin request passes through check_url() before a socket is opened.
 If this module is wrong, the manifest's `network` declaration is decoration.
 """
 
+import re
 from urllib.parse import urlsplit
 
 ALLOWED_SCHEMES = frozenset({"https"})
+
+# urlsplit does not validate what it hands back as `.hostname`: it keeps a
+# backslash, a space or a tab inside it, and the wildcard suffix test then
+# matched happily, so this module answered "permitted" for
+# `evil.example\.archive.org`. Nothing was exploitable -- httpx carries the
+# backslash through and resolution fails -- but a policy layer must not be
+# the thing saying yes to a string that is not a hostname. Punycode
+# (`xn--...`) is plain ASCII and still passes.
+_DNS_NAME = re.compile(r"[A-Za-z0-9._-]+")
 
 
 class PolicyViolation(Exception):
@@ -42,6 +52,8 @@ def url_allowed(url: str, patterns: list[str]) -> bool:
     except ValueError:
         return False
     if not host:
+        return False
+    if not _DNS_NAME.fullmatch(host):
         return False
     return any(host_matches(host, p) for p in patterns)
 

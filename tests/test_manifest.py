@@ -71,6 +71,16 @@ def test_missing_capabilities_rejected():
         parse_manifest(bad)
 
 
+def test_importer_entrypoint_parses():
+    with_importer = GOOD.replace(
+        'search = "archive_org.search:Search"',
+        'search = "archive_org.search:Search"\n'
+        'importer = "archive_org.importer:Importer"',
+    )
+    m = parse_manifest(with_importer)
+    assert m.capabilities["importer"] == "archive_org.importer:Importer"
+
+
 def test_an_integer_rpp_version_is_rejected():
     """The spec says exactly the string "1"; str() coercion accepted a TOML int.
 
