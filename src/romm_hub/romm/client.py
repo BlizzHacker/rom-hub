@@ -1,7 +1,9 @@
 """HTTP client for RomM 4.9.2's REST API.
 
 Auth is OAuth2 password grant — the token endpoint takes a form-encoded
-body, not JSON. Every non-2xx response is converted to a `RommError`
+body, not JSON, and it must be given an explicit `scope` (see
+`REQUIRED_SCOPES`) or the token it returns can do nothing at all. Every
+non-2xx response is converted to a `RommError`
 carrying the status and a body excerpt before it reaches a caller; a raw
 `httpx.HTTPStatusError` (or any other httpx exception) must never escape
 this module.
@@ -16,6 +18,33 @@ from __future__ import annotations
 import httpx
 
 _EXCERPT_LIMIT = 300
+
+# The OAuth2 scopes the import pipeline needs, space-separated exactly as
+# `Body_token_api_token_post.scope` wants them.
+#
+# This is not optional. RomM's token endpoint defaults `scope` to "" and
+# happily issues a *valid* token carrying `"scopes":""` -- authentication
+# succeeds, and then every single API call answers 403. Measured against a
+# real RomM 4.9.2:
+#
+#   no scope   -> JWT has "scopes":"" -> GET /api/platforms -> 403
+#   these      -> JWT echoes them     -> /api/platforms, /api/roms,
+#                                        /api/collections all 200, and
+#                                        POST /api/roms/upload/start reaches
+#                                        400 (bad platform id) rather than
+#                                        403, proving upload is covered
+#
+# One scope per thing the pipeline actually does, and nothing else. RomM
+# also exposes assets.*, devices.*, firmware.*, roms.user.*, users.* and
+# tasks.run; asking for `users.*` would give the Hub's token authority over
+# other people's accounts and `tasks.run` would let it drive the server's
+# task runner, neither of which importing a ROM has any business doing.
+REQUIRED_SCOPES = (
+    "me.read "
+    "roms.read roms.write "
+    "platforms.read platforms.write "
+    "collections.read collections.write"
+)
 
 
 class RommError(Exception):
@@ -65,11 +94,9 @@ class RommClient:
         """POST /api/token (OAuth2 password grant, form-encoded) and cache
         the bearer token for subsequent requests.
 
-        `Body_token_api_token_post` also has a `scope` field defaulting to
-        "". We deliberately do not send one — a guessed scope string could
-        be silently wrong in a way that only bites at the first real write
-        (e.g. an upload), so this is left to the server default and flagged
-        for a live check in Task 8 rather than guessed here.
+        `scope` is required in practice even though the schema defaults it
+        to "": omitting it yields a valid token with no scopes, which then
+        403s on every call. See `REQUIRED_SCOPES`.
         """
         try:
             resp = self._client.post(
@@ -78,6 +105,7 @@ class RommClient:
                     "grant_type": "password",
                     "username": self._username,
                     "password": self._password,
+                    "scope": REQUIRED_SCOPES,
                 },
             )
         except httpx.HTTPError as exc:
@@ -113,9 +141,22 @@ class RommClient:
             # Distinct from the generic branch below: a write (or any call)
             # that gets bounced for auth reasons must say so plainly, not
             # just surface a bare status code.
+            #
+            # 403 especially. It is almost never a credentials problem -- the
+            # token was accepted, it just is not allowed to do this -- and the
+            # overwhelmingly likely cause is a token issued without the scopes
+            # the pipeline needs. An operator will not guess that from "403",
+            # and will go hunting for a password problem that does not exist.
+            hint = ""
+            if resp.status_code == 403:
+                hint = (
+                    " -- the token was accepted but is not authorized for this "
+                    "call, which usually means it was issued without the "
+                    f"required scopes ({REQUIRED_SCOPES})"
+                )
             raise RommError(
                 f"{method} {path} failed: authentication/authorization failed "
-                f"({resp.status_code}): {_excerpt(resp)}"
+                f"({resp.status_code}): {_excerpt(resp)}{hint}"
             )
         if not (200 <= resp.status_code < 300):
             raise RommError(
