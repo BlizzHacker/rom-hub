@@ -1,14 +1,16 @@
 """Supervises one plugin subprocess and brokers everything privileged.
 
-The plugin gets no RomM token, no filesystem mount, and no sockets. Two
-paths lead out, and both are gated by the same manifest allowlist before
-any socket is opened:
+The plugin gets no RomM token, no filesystem mount, and no sockets. Every
+path that leads out is gated by the same manifest allowlist before any
+socket is opened:
 
   * `http.get`, which the plugin calls, enforced in _serve_plugin_call()
   * the `FetchPlan` returned by plan(), whose URLs the *host* fetches later,
     enforced in plan()
+  * the `artwork_url` on the `MetadataPatch` returned by enrich(), which the
+    host fetches later, enforced in enrich()
 
-Adding a third path without a check_url() on it would make the manifest's
+Adding another path without a check_url() on it would make the manifest's
 `network` declaration decorative.
 
 There is also a path that leads *in*: the subprocess environment. Popen
@@ -29,7 +31,7 @@ from pydantic import ValidationError
 from romm_hub.manifest import Manifest
 from romm_hub.netpolicy import PolicyViolation, check_url
 from romm_hub.protocol import ProtocolError, read_message, write_message
-from romm_hub.types import FetchPlan, SearchResult
+from romm_hub.types import FetchPlan, MetadataPatch, RomRef, SearchResult
 
 from .fetcher import Fetcher
 
@@ -423,6 +425,39 @@ class PluginProcess:
                     f"(file {index}, {f.filename!r}): {exc}"
                 ) from exc
         return plan
+
+    def enrich(self, rom: RomRef) -> MetadataPatch:
+        """Ask the plugin what to change about a rom. The host changes it.
+
+        Third channel of the same kind as `plan()`: a MetadataPatch can
+        carry an `artwork_url` that the *host* will fetch, so it gets the
+        same allowlist gate. Everything else in the patch is re-validated
+        here too -- the runner only calls model_dump() on whatever the
+        plugin returned, so the field allowlists in MetadataPatch are only
+        real on this side of the pipe.
+        """
+        raw = self._call("enrich", {"rom": rom.model_dump()})
+        if not isinstance(raw, dict):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid MetadataPatch: "
+                f"expected an object, got {type(raw).__name__}"
+            )
+        try:
+            patch = MetadataPatch(**raw)
+        except (ValidationError, TypeError) as exc:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid MetadataPatch: "
+                f"{exc}"
+            ) from exc
+        if patch.artwork_url is not None:
+            try:
+                check_url(patch.artwork_url, self.manifest.network)
+            except PolicyViolation as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} MetadataPatch rejected "
+                    f"(artwork_url): {exc}"
+                ) from exc
+        return patch
 
     def close(self) -> None:
         if self._proc is None:

@@ -8,6 +8,7 @@ license     = "MIT"
 [capabilities]
 search   = "archive_org.search:Search"
 importer = "archive_org.importer:Importer"
+metadata = "archive_org.metadata:Metadata"
 
 [permissions]
 network  = ["archive.org", "*.archive.org"]

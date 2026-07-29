@@ -21,8 +21,9 @@ from .dispatcher import search_all
 from .importer import run_import
 from .jobs import JobQueue, JobState
 from .manifest import ManifestError
+from .metadata import EnrichError, rom_ref_from, run_enrich
 from .registry import Registry, RegistryError
-from .romm.client import RommClient
+from .romm.client import RommClient, RommError
 from .sandbox import probe
 from .types import SearchResult
 
@@ -53,6 +54,11 @@ def jobs_db_path(root: Path | None = None) -> Path:
 def downloads_dir(root: Path | None = None) -> Path:
     """Where in-flight downloads land. Same reasoning as jobs_db_path."""
     return Path(root or default_root()) / "var" / "downloads"
+
+
+def artwork_dir(root: Path | None = None) -> Path:
+    """Where a fetched cover lands on its way to RomM. Same reasoning again."""
+    return Path(root or default_root()) / "var" / "artwork"
 
 
 def romm_settings() -> tuple[str, str, str]:
@@ -253,20 +259,9 @@ class _PlanOverrides:
 
 def _cmd_import(args) -> int:
     plugin = Registry(default_root()).get(args.plugin)
-    if not plugin.enabled:
-        print(
-            f"error: plugin {plugin.slug!r} is disabled; enable it with "
-            f"'romm-hub plugin enable {plugin.slug}'",
-            file=sys.stderr,
-        )
-        return EXIT_ERROR
-    if "importer" not in plugin.manifest.capabilities:
-        declared = ", ".join(sorted(plugin.manifest.capabilities)) or "(none)"
-        print(
-            f"error: plugin {plugin.slug!r} does not provide the 'importer' "
-            f"capability (it declares: {declared})",
-            file=sys.stderr,
-        )
+    refusal = _require_capability(plugin, "importer")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
         return EXIT_ERROR
 
     # Read before anything is started, so an unconfigured Hub costs no
@@ -317,6 +312,69 @@ def _cmd_import(args) -> int:
     print(f"job {outcome.job_id}: {outcome.state.value} - {outcome.message}",
           file=stream)
     return EXIT_OK if outcome.state in _SUCCESS_STATES else EXIT_ERROR
+
+
+def _require_capability(plugin, capability: str) -> str | None:
+    """The two refusals every capability command makes first.
+
+    Returns an operator-fit message, or None if the plugin can do this.
+    Both checks are cheap and both happen before a subprocess is started
+    or a RomM connection is opened.
+    """
+    if not plugin.enabled:
+        return (
+            f"plugin {plugin.slug!r} is disabled; enable it with "
+            f"'romm-hub plugin enable {plugin.slug}'"
+        )
+    if capability not in plugin.manifest.capabilities:
+        declared = ", ".join(sorted(plugin.manifest.capabilities)) or "(none)"
+        return (
+            f"plugin {plugin.slug!r} does not provide the {capability!r} "
+            f"capability (it declares: {declared})"
+        )
+    return None
+
+
+def _cmd_enrich(args) -> int:
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "metadata")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    # Read before anything is started, so an unconfigured Hub costs no
+    # subprocess and no half-open connection.
+    try:
+        base_url, username, password = romm_settings()
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    root = default_root()
+    fetcher = HttpxFetcher()
+    try:
+        with (
+            RommClient(base_url, username, password) as romm,
+            PluginProcess(
+                plugin_dir=plugin.path,
+                manifest=plugin.manifest,
+                config=plugin.config,
+                fetcher=fetcher,
+                allow_unsandboxed=allow_unsandboxed(),
+            ) as proc,
+        ):
+            rom = romm.get_rom(args.rom_id)
+            result = run_enrich(
+                proc,
+                rom_ref_from(rom, args.rom_id, {"source_id": args.source_id or ""}),
+                romm=romm,
+                work_dir=artwork_dir(root) / str(args.rom_id),
+            )
+    finally:
+        fetcher.close()
+
+    print(result.message)
+    return EXIT_OK
 
 
 def _cmd_jobs(args) -> int:
@@ -410,6 +468,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     importer.set_defaults(func=_cmd_import)
 
+    enrich = sub.add_parser(
+        "enrich",
+        help=(
+            "enrich one rom's metadata through a plugin "
+            "(needs ROMM_URL, ROMM_USER, ROMM_PASSWORD)"
+        ),
+    )
+    enrich.add_argument("plugin", help="slug of an installed metadata plugin")
+    enrich.add_argument("rom_id", type=int, help="RomM's id for the rom")
+    enrich.add_argument(
+        "--source-id",
+        default=None,
+        help=(
+            "the plugin's own id for this game, when RomM's record does not "
+            "identify it (a plugin that will not guess says so and names this)"
+        ),
+    )
+    enrich.set_defaults(func=_cmd_enrich)
+
     jobs = sub.add_parser("jobs", help="list import jobs")
     jobs.add_argument(
         "--state",
@@ -430,6 +507,8 @@ def main(argv: list[str] | None = None) -> int:
         ManifestError,
         CatalogError,
         PluginCallError,
+        EnrichError,
+        RommError,
         OSError,
     ) as exc:
         # ManifestError escapes a bad manifest on an otherwise clean install,
@@ -438,7 +517,10 @@ def main(argv: list[str] | None = None) -> int:
         # which -- unlike `search`, where the dispatcher isolates each plugin
         # -- talks to one PluginProcess directly, so a SandboxRefused from
         # start() would otherwise reach the operator as a traceback with the
-        # opt-out buried in it. None of these deserve one.
+        # opt-out buried in it. EnrichError and RommError are `enrich`'s
+        # equivalents: unlike an import, an enrich has no job record to fail
+        # into, so its failures reach the operator only here. None of these
+        # deserve a traceback.
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
