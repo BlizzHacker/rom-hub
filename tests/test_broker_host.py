@@ -38,6 +38,19 @@ PLUGIN_SRC = textwrap.dedent(
                 raise ValueError("plugin exploded")
             if mode == "hang":
                 time.sleep(600)
+            if mode == "flood":
+                # Fire host-bound calls and never read the answers. The reply
+                # pipe fills, the host blocks writing into it, and this side
+                # then blocks on its own stdout. Neither moves.
+                import json
+                for i in range(500):
+                    sys.stdout.write(json.dumps({
+                        "kind": "call", "id": "p%d" % i, "method": "http.get",
+                        "params": {"url": "https://allowed.example/x",
+                                   "params": {}},
+                    }) + "\\n")
+                    sys.stdout.flush()
+                time.sleep(600)
             if mode == "chatty":
                 # An ordinary plugin with logging enabled, or a dependency
                 # emitting DeprecationWarnings. ~400 KB, far past any OS
@@ -155,6 +168,42 @@ def test_hung_plugin_times_out_and_is_killed(plugin_dir):
             proc.search("q", None, 10)
     # The watchdog must actually fire, not wait out the plugin's 600s sleep.
     assert time.monotonic() - started < 30
+
+
+class BigBodyFetcher(RecordingFetcher):
+    """Replies big enough to fill the plugin's stdin pipe within a call or two."""
+
+    def get(self, url: str, params: dict) -> tuple[int, str]:
+        self.calls.append(url)
+        return 200, "x" * 65536
+
+
+def test_a_plugin_that_never_reads_its_replies_fails_as_a_plugin_call_error(plugin_dir):
+    """The watchdog unblocking a wedged write must not surface as an OSError.
+
+    The kill is correct and does unblock the host, but BrokenPipeError is not
+    PluginCallError, so the documented contract breaks at exactly the moment
+    it matters most.
+    """
+    fetcher = BigBodyFetcher()
+    started = time.monotonic()
+    with _proc(plugin_dir, fetcher, {"mode": "flood"}, timeout=5.0) as proc:
+        with pytest.raises(PluginCallError, match="timed out"):
+            proc.search("q", None, 10)
+    assert time.monotonic() - started < 30
+
+
+class DeadStdin(io.StringIO):
+    def write(self, s):
+        raise BrokenPipeError(32, "Broken pipe")
+
+
+def test_a_broken_stdin_on_the_outbound_call_is_a_plugin_call_error(plugin_dir):
+    proc = _proc(plugin_dir, RecordingFetcher())
+    proc._proc = ScriptedProc("")
+    proc._proc.stdin = DeadStdin()
+    with pytest.raises(PluginCallError):
+        proc._call("search", {})
 
 
 class ScriptedProc:
