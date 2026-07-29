@@ -18,7 +18,12 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.broker.host import FORCED_ENV, SAFE_ENV_VARS, PluginProcess
+from romm_hub.broker.host import (
+    FORCED_ENV,
+    SAFE_ENV_VARS,
+    PluginProcess,
+    plugin_environment,
+)
 from romm_hub.manifest import parse_manifest
 
 linux_only = pytest.mark.skipif(
@@ -171,9 +176,53 @@ SECRETS_IN_THE_PARENT = {
     "ROMM_HUB_SECRET_CANARY": "if-a-plugin-can-read-this-the-allowlist-is-gone",
 }
 
-# What a Python subprocess is allowed to inherit, plus what the host sets
-# itself. Deliberately small -- see broker/host.py.
-_EXPECTED_VISIBLE = set(SAFE_ENV_VARS) | set(FORCED_ENV)
+# Names CPython sets on ITSELF at startup, which therefore appear in a
+# child's os.environ no matter how empty the environment handed to it was.
+#
+# LC_CTYPE is PEP 538 locale coercion: where the inherited locale is C or
+# POSIX -- as in the python:3.12-slim container this deploys to -- CPython
+# coerces to C.UTF-8 and writes LC_CTYPE into its own environment so its
+# own children inherit the coercion. Verified on the deployment target that
+# `Popen(..., env={"PATH": ...})` still yields LC_CTYPE in the child while
+# the parent has it unset, so it carries nothing from the parent and is not
+# a channel. Listed rather than tolerated generically: anything appearing
+# here that is NOT on this list is a real leak and must fail.
+_INTERPRETER_INJECTED = {"LC_CTYPE"}
+
+# What a plugin may legitimately end up seeing: the host's allowlist, what
+# the host sets itself, and whatever the interpreter sets on itself.
+_EXPECTED_VISIBLE = set(SAFE_ENV_VARS) | set(FORCED_ENV) | _INTERPRETER_INJECTED
+
+
+def test_plugin_environment_is_built_from_nothing():
+    """The builder itself, with no subprocess and no interpreter in the way.
+
+    `plugin_environment` is a pure function, so this can assert the exact
+    key set -- which the subprocess test cannot, because CPython adds to
+    its own environment at startup (see _INTERPRETER_INJECTED).
+    """
+    hostile_parent = {
+        "PATH": "/usr/bin",
+        "GITHUB_TOKEN": "ghp_secret",
+        "AWS_SECRET_ACCESS_KEY": "secret",
+        "ROMM_PASSWORD": "secret",
+        "PYTHONPATH": "/attacker/controlled",
+        "PYTHONHOME": "/attacker/controlled",
+        "LD_PRELOAD": "/attacker/controlled.so",
+        "ROMM_HUB_SECRET_CANARY": "secret",
+    }
+    env = plugin_environment(hostile_parent)
+
+    assert env == {"PATH": "/usr/bin", **FORCED_ENV}, (
+        "the child environment must be built from {} upward, so a parent "
+        "variable that is not on the allowlist can never appear"
+    )
+
+
+def test_plugin_environment_omits_what_the_parent_does_not_have():
+    """Adding, not removing: an absent variable stays absent rather than
+    arriving empty and shadowing a default."""
+    assert plugin_environment({}) == dict(FORCED_ENV)
 
 # A name-based check cannot catch a regression that leaks a name nobody
 # thought of, so the count is asserted too. The real parent environment on
