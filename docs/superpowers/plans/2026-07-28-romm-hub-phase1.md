@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A CLI that searches Archive.org through an installed, sandboxed plugin — proving the RPP contract and the broker security model before any UI or import work is built on top of them.
+**Goal:** A CLI that searches Archive.org through an installed plugin, over the brokered `ctx.http` path — proving the RPP contract and the broker security model before any UI or import work is built on top of them. Phase 1 does **not** sandbox the plugin subprocess; see Global Constraints.
 
-**Architecture:** A host process spawns each plugin as a subprocess and speaks newline-delimited JSON-RPC over stdin/stdout. Plugins get no RomM token, no library mount, and no network sockets — they call `ctx.http`, which is an RPC back to the host that enforces the plugin's declared allowlist before performing the request. Search fans out across plugins in parallel and returns partial results with per-plugin status.
+**Architecture:** A host process spawns each plugin as a subprocess and speaks newline-delimited JSON-RPC over stdin/stdout. Plugins are handed no RomM token and no library mount, and the plugin API offers no socket — they call `ctx.http`, which is an RPC back to the host that enforces the plugin's declared allowlist before performing the request. (The subprocess itself is unsandboxed in Phase 1, so that is the supported path, not the only one.) Search fans out across plugins in parallel and returns partial results with per-plugin status.
 
 **Tech Stack:** Python 3.12, pydantic v2 (validating untrusted plugin output), httpx (host-side fetching only), pytest, argparse, stdlib `tomllib`.
 
@@ -13,7 +13,7 @@
 - **Python 3.12+.** `tomllib` is used from the stdlib; do not add a TOML dependency.
 - **RomM core is never modified.** Phase 1 does not talk to RomM at all.
 - **`rpp_version` must be exactly `"1"`.** Reject any other value.
-- **Plugins never receive:** a RomM token, a filesystem mount, or network access. Enforced structurally, not by convention.
+- **Plugins are never *handed*:** a RomM token, a filesystem mount, or network access. The plugin API offers none of the three, and the `ctx.http` broker enforces the declared allowlist on every request it serves — `check_url` is unavoidable en route to the only socket in the process. **But Phase 1 does not sandbox the plugin subprocess**, so this is a constraint on the API surface, not a containment boundary: a hostile plugin can `import socket` and bypass the broker entirely. Only install plugins you trust. Real isolation (bubblewrap/nsjail `--unshare-net --ro-bind`, or the container boundary) is a blocking prerequisite for Phase 2, which is where a RomM admin token first exists to steal.
 - **Plugin HTTP is https-only** in Phase 1. Reject any other scheme.
 - **Heavy runtime data stays off `C:`** — `plugins/`, `var/` are gitignored. Phase 1 writes only small state.
 - **`secret` config type is reserved but NOT implemented in Phase 1.** It is specified in RPP v1 for sub-project C. A manifest declaring it must be rejected with a clear "not implemented in Phase 1" message rather than silently accepted.
@@ -807,9 +807,13 @@ Create `src/romm_hub_sdk/context.py`:
 ```python
 """The plugin's view of the world.
 
-A plugin cannot open a socket. It calls ctx.http, which is an RPC back to
+This API offers no socket. A plugin calls ctx.http, which is an RPC back to
 the host; the host checks the manifest allowlist before fetching anything.
 The shape deliberately mirrors `requests` so the idiom is familiar.
+
+Phase 1 does not sandbox the plugin subprocess, so this is the supported path
+rather than the only possible one — a hostile plugin can still `import socket`
+and skip the broker. See "Security: the broker model" in docs/DESIGN.md.
 """
 
 import json
@@ -2532,14 +2536,35 @@ deferred federation and multiplayer work.
 
 ## Security model
 
-Plugins are untrusted git repos run as subprocesses with **no RomM token, no
-filesystem mount, and no network sockets**. A plugin calls `ctx.http`, which is
-an RPC back to the host; the host checks the URL against the plugin's declared
-`network` allowlist before opening any connection.
+Plugins run as subprocesses and are given **no RomM token and no filesystem
+mount**, and the plugin API offers no way to open a socket. A plugin calls
+`ctx.http`, which is an RPC back to the host; the host checks the URL against
+the plugin's declared `network` allowlist before opening any connection.
 
-`tests/test_netpolicy.py` and `test_disallowed_fetch_never_reaches_the_fetcher`
-in `tests/test_broker_host.py` are the tests that hold this claim up. If either
-regresses, the permission model is decorative.
+That check is genuinely enforced **on the broker path**. `check_url` is
+unavoidable en route to the only code that opens a socket, and the matcher is
+adversarially tested. `tests/test_netpolicy.py` and
+`test_disallowed_fetch_never_reaches_the_fetcher` in
+`tests/test_broker_host.py` are the tests that hold it up; if either regresses,
+the allowlist stops meaning anything at all.
+
+> ### ⚠️ Phase 1 does not sandbox plugins
+>
+> The plugin subprocess is a plain `Popen` of the Python interpreter — no
+> namespace, no seccomp filter, no job object, no separate uid. Plugin code
+> inherits everything the host process can do, so a **hostile** plugin can
+> ignore `ctx.http`, open its own socket to an undeclared host, read files
+> outside its directory, and spawn processes. None of that crosses the broker,
+> so none of it is checked.
+>
+> In Phase 1 the allowlist therefore constrains *cooperative* plugins and
+> documents intent. It is not a containment boundary. **Only install plugins
+> you trust.**
+>
+> Real isolation (bubblewrap/nsjail `--unshare-net --ro-bind`, or the container
+> boundary) is a blocking prerequisite for Phase 2, which is where the Hub
+> first holds a RomM admin token. See
+> [docs/DESIGN.md](docs/DESIGN.md#security-the-broker-model).
 ```
 
 - [ ] **Step 5: Commit**

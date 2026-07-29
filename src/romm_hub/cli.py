@@ -23,7 +23,13 @@ def _cmd_plugin_install(args) -> int:
     caps = ", ".join(sorted(plugin.manifest.capabilities))
     print(f"installed {plugin.slug} {plugin.manifest.version} (capabilities: {caps})")
     print(f"  pinned commit: {plugin.commit or '(unknown)'}")
-    print(f"  network allowlist: {plugin.manifest.network or '(none)'}")
+    print(f"  declared network allowlist: {plugin.manifest.network or '(none)'}")
+    # An operator approving an install must not read the allowlist as a
+    # guarantee. It is enforced on the ctx.http broker, which is the supported
+    # path but not, in Phase 1, the only one.
+    print("  note: this allowlist is enforced on the ctx.http broker, but Phase 1")
+    print("        does not sandbox the plugin subprocess, so a hostile plugin can")
+    print("        bypass the broker entirely. Install only plugins you trust.")
     return 0
 
 

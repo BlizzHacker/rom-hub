@@ -24,11 +24,32 @@ deferred federation and multiplayer work.
 
 ## Security model
 
-Plugins are untrusted git repos run as subprocesses with **no RomM token, no
-filesystem mount, and no network sockets**. A plugin calls `ctx.http`, which is
-an RPC back to the host; the host checks the URL against the plugin's declared
-`network` allowlist before opening any connection.
+Plugins run as subprocesses and are given **no RomM token and no filesystem
+mount**, and the plugin API offers no way to open a socket. A plugin calls
+`ctx.http`, which is an RPC back to the host; the host checks the URL against
+the plugin's declared `network` allowlist before opening any connection.
 
-`tests/test_netpolicy.py` and `test_disallowed_fetch_never_reaches_the_fetcher`
-in `tests/test_broker_host.py` are the tests that hold this claim up. If either
-regresses, the permission model is decorative.
+That check is genuinely enforced **on the broker path**. `check_url` is
+unavoidable en route to the only code that opens a socket, and the matcher is
+adversarially tested. `tests/test_netpolicy.py` and
+`test_disallowed_fetch_never_reaches_the_fetcher` in
+`tests/test_broker_host.py` are the tests that hold it up; if either regresses,
+the allowlist stops meaning anything at all.
+
+> ### ⚠️ Phase 1 does not sandbox plugins
+>
+> The plugin subprocess is a plain `Popen` of the Python interpreter — no
+> namespace, no seccomp filter, no job object, no separate uid. Plugin code
+> inherits everything the host process can do, so a **hostile** plugin can
+> ignore `ctx.http`, open its own socket to an undeclared host, read files
+> outside its directory, and spawn processes. None of that crosses the broker,
+> so none of it is checked.
+>
+> In Phase 1 the allowlist therefore constrains *cooperative* plugins and
+> documents intent. It is not a containment boundary. **Only install plugins
+> you trust.**
+>
+> Real isolation (bubblewrap/nsjail `--unshare-net --ro-bind`, or the container
+> boundary) is a blocking prerequisite for Phase 2, which is where the Hub
+> first holds a RomM admin token. See
+> [docs/DESIGN.md](docs/DESIGN.md#security-the-broker-model).
