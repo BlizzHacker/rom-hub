@@ -1,0 +1,207 @@
+name: CI
+
+# A stranger reading a public repository has no way to know the suite is
+# green unless a machine says so on every push. That is all this is for.
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Belt and braces. `addopts = "-m 'not live'"` in pyproject.toml already
+  # deselects every network test, and the `no-live` gate below proves it,
+  # but nothing here should be able to reach a third-party service even if
+  # that default were lost: a suite whose colour depends on Archive.org
+  # being up is not evidence of anything.
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  # ---------------------------------------------------------------- Linux
+  #
+  # The load-bearing job. seccomp is a Linux facility, so Linux is the only
+  # platform where `tests/test_hostile_plugin.py` genuinely runs a hostile
+  # plugin inside the filter and watches it fail to open a socket. On
+  # Windows those same tests skip -- honestly, but proving nothing.
+  #
+  # So this job does not merely run them. It asserts afterwards, against
+  # the junit record, that each one *passed*. A skip here fails the build.
+  linux:
+    name: linux / py${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # pyseccomp builds against libseccomp's headers. Without this the
+      # install fails outright -- which is the correct failure, because a
+      # Linux run without pyseccomp would skip exactly the tests this job
+      # exists to run.
+      - name: Install libseccomp headers
+        run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Sandbox is actually available here
+        run: |
+          python - <<'PY'
+          import sys
+          from rom_hub.sandbox import probe
+          ok, why = probe()
+          print(f"seccomp probe: {ok} -- {why}")
+          if not ok:
+              sys.exit(
+                  "This job exists to exercise the seccomp filter. It is not "
+                  "available, so every confinement test would skip and the "
+                  "run would be green having proven nothing."
+              )
+          PY
+
+      - name: No test may reach the network
+        run: python scripts/ci_gate.py no-live
+
+      # --cov-fail-under is a floor, not the figure. It is set a point
+      # below the real number on purpose, because coverage.py compares the
+      # total *rounded to the report's precision* while pytest-cov's
+      # summary line compares the raw float: at `--cov-fail-under=87` a
+      # real 86.59% rounds to 87, passes the gate, and prints the word FAIL
+      # anyway. A floor that can print FAIL and exit 0 is worse than no
+      # floor. The honest per-platform figures are in docs/PROOF.md.
+      - name: Test suite
+        run: >
+          python -m pytest -q
+          --junitxml=junit-linux-${{ matrix.python }}.xml
+          --cov
+          --cov-report=term-missing:skip-covered
+          --cov-report=xml:coverage.xml
+          --cov-fail-under=86
+
+      # The point of the whole job.
+      #
+      # The two permitted skip reasons are the mirror image of the Windows
+      # job's: a test of the *off*-Linux path, and a test of the refusal
+      # a host without seccomp produces -- neither of which can run on a
+      # host where the sandbox works. Anything else skipping here is a
+      # test that quietly stopped running and fails the build.
+      - name: Confinement was proven, not skipped
+        run: >
+          python scripts/ci_gate.py junit junit-linux-${{ matrix.python }}.xml
+          --require-passed tests/test_sandbox.py::test_probe_reports_available_on_linux
+          --require-passed tests/test_sandbox.py::test_filter_blocks_socket_in_a_child_process
+          --require-passed tests/test_sandbox.py::test_filter_allows_file_reads_so_imports_still_work
+          --require-passed tests/test_runner_sandbox.py::test_sandbox_state_is_true_on_linux
+          --require-passed tests/test_hostile_plugin.py::test_hostile_plugin_cannot_escape_the_broker
+          --require-passed tests/test_hostile_plugin.py::test_the_plugin_environment_is_an_allowlist_not_an_inheritance
+          --allow-skip-reason "tests the non-Linux path"
+          --allow-skip-reason "refusal path not reachable"
+
+      - name: Coverage in the job summary
+        if: always() && matrix.python == '3.12'
+        run: |
+          {
+            echo "## Coverage (linux / py${{ matrix.python }})"
+            echo
+            echo '```'
+            python -m coverage report --skip-covered
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-linux-py${{ matrix.python }}
+          path: |
+            coverage.xml
+            junit-linux-${{ matrix.python }}.xml
+          if-no-files-found: warn
+
+  # -------------------------------------------------------------- Windows
+  #
+  # Windows cannot confine anything: `sandbox.probe()` reports unavailable,
+  # `sandbox.install()` raises, and a plugin therefore refuses to start
+  # unless ROM_HUB_ALLOW_UNSANDBOXED=1 says the operator accepts that. This
+  # job proves the *other* half of the contract -- that the refusal path and
+  # the escape hatch both behave -- and it is deliberately NOT given the
+  # confinement gate, because passing it here would be a lie.
+  #
+  # ROM_HUB_ALLOW_UNSANDBOXED is not set globally. The tests that need an
+  # unsandboxed plugin set it themselves (or pass `allow_unsandboxed=True`
+  # directly), and the tests that assert the refusal explicitly unset it;
+  # exporting it for the whole job would make the refusal tests
+  # unfalsifiable.
+  windows:
+    name: windows / py${{ matrix.python }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: No test may reach the network
+        run: python scripts/ci_gate.py no-live
+
+      - name: Test suite
+        run: >
+          python -m pytest -q
+          --junitxml=junit-windows-${{ matrix.python }}.xml
+
+      # No `--require-passed` for the seccomp tests: they cannot pass here.
+      # What is checked instead is that the ONLY thing skipped is seccomp.
+      # Any other skip on Windows is a test that quietly stopped running.
+      - name: The only Windows skips are seccomp ones
+        run: >
+          python scripts/ci_gate.py junit junit-windows-${{ matrix.python }}.xml
+          --require-passed tests/test_sandbox.py::test_install_raises_off_linux
+          --require-passed tests/test_runner_sandbox.py::test_sandbox_state_is_false_off_linux_with_a_reason
+          --require-passed tests/test_hostile_plugin.py::test_the_plugin_environment_is_an_allowlist_not_an_inheritance
+          --allow-skip-reason "seccomp"
+
+  # A single required-status name for branch protection, so adding a matrix
+  # entry later does not silently stop being enforced.
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    needs: [linux, windows]
+    if: always()
+    steps:
+      - name: Every job succeeded
+        run: |
+          echo "linux:   ${{ needs.linux.result }}"
+          echo "windows: ${{ needs.windows.result }}"
+          test "${{ needs.linux.result }}" = success
+          test "${{ needs.windows.result }}" = success

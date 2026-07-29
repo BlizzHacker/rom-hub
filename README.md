@@ -1,5 +1,18 @@
 # ROM Hub
 
+[![CI](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml)
+[![coverage 87%](https://img.shields.io/badge/coverage-87%25-brightgreen)](#coverage)
+[![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](pyproject.toml)
+[![licence MIT](https://img.shields.io/github/license/BlizzHacker/rom-hub)](LICENSE)
+
+The suite is 1461 tests and it runs on every push, on Linux and Windows, on
+Python 3.12 and 3.13. On Linux the seccomp confinement tests must *pass* — CI
+fails if they merely skip, because a skipped containment test looks exactly
+like a passing one. [docs/PROOF.md](docs/PROOF.md) is a generated matrix of
+what actually works against a live server of each of the three backends, cell
+by cell, with the evidence for each; [Coverage](#coverage) has the honest
+numbers and says which one of them is misleading and why.
+
 **A plugin host for self-hosted ROM library managers.** It runs beside
 [RomM](https://github.com/rommapp/romm),
 [Gaseous](https://github.com/gaseous-project/gaseous-server) or
@@ -379,6 +392,47 @@ need the opt-out, because the Hub otherwise refuses to run a plugin it cannot
 confine:
 
     ROM_HUB_ALLOW_UNSANDBOXED=1 python -m pytest -m live -q
+
+### What CI checks that a green exit code does not
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the suite on
+`ubuntu-latest` and `windows-latest`, on Python 3.12 and 3.13. Two of this
+project's guarantees are invisible to pytest's exit code, so
+[`scripts/ci_gate.py`](scripts/ci_gate.py) asserts them against the junit
+record instead:
+
+- **A skipped containment test looks exactly like a passing one.** The seccomp
+  tests carry `skipif(sys.platform != "linux")`. On Windows that skip is
+  honest; on Linux it would mean `pyseccomp` failed to build and the suite went
+  green having proven nothing about the claim in
+  [Security model](#security-model). So the Linux job requires each of them
+  **by name to have passed**, and the Windows job asserts that seccomp is the
+  only thing skipped there.
+- **`-m 'not live'` is a default, and defaults get overridden.** A gate proves
+  the four network-hitting tests still carry the marker and that none of them
+  is collected by default, so the suite's colour can never come to depend on a
+  third-party service being up.
+
+### Coverage
+
+`pytest --cov` reports **86.6 %** on Linux and **86.9 %** on Windows (branch
+coverage, `rom_hub` + `rom_hub_sdk`). CI enforces a floor and publishes the
+per-module table to the run summary. One number in that table is misleading and
+is explained rather than fixed: `rom_hub_sdk/runner.py` measures 12 % on Linux because
+it only ever executes inside the *plugin subprocess*, whose environment is
+built from `{}` upward — instrumenting it would mean punching a hole in the
+allowlist that `tests/test_hostile_plugin.py` exists to defend. It is covered
+by tests; it is not covered by `coverage`.
+
+### Proof against real backends
+
+[`scripts/proof_matrix.py`](scripts/proof_matrix.py) runs the real import and
+enrich pipelines against a live RomM, Gaseous and Retrom, and writes
+[docs/PROOF.md](docs/PROOF.md) — backend × capability, with the evidence for
+each cell and with **UNSUPPORTED** kept distinct from **FAIL**, so a backend
+that genuinely has no collections never looks like a broken one.
+[`scripts/proof-stack.compose.yml`](scripts/proof-stack.compose.yml) stands up
+the three disposable servers it needs.
 
 ## Security model
 
