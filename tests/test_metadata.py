@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from rom_hub.backends.base import ARTWORK, METADATA
 from rom_hub.metadata import EnrichError, rom_ref_from, run_enrich
 from rom_hub.types import MetadataPatch, RomRef
 
@@ -31,8 +32,22 @@ class FakePlugin:
 
 
 class FakeRomm:
-    def __init__(self):
+    """A `LibraryBackend` with only the two members an enrich reaches.
+
+    `capabilities()` is the one addition the seam demanded: `run_enrich`
+    now refuses up front when the active backend cannot write metadata or
+    cannot take a cover, and a stand-in that declared nothing would be
+    refused too.
+    """
+
+    name = "fake"
+
+    def __init__(self, capabilities=(METADATA, ARTWORK)):
         self.calls: list[tuple] = []
+        self._capabilities = frozenset(capabilities)
+
+    def capabilities(self):
+        return self._capabilities
 
     def update_rom(self, rom_id, fields, artwork=None):
         self.calls.append((rom_id, dict(fields), artwork))
@@ -59,7 +74,7 @@ def _run(tmp_path, plugin, romm=None, downloader=None):
     return run_enrich(
         plugin,
         REF,
-        romm=romm or FakeRomm(),
+        backend=romm or FakeRomm(),
         work_dir=tmp_path / "artwork",
         downloader=downloader or FakeDownloader(),
     )

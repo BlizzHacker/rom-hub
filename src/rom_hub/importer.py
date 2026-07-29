@@ -46,13 +46,11 @@ from urllib.parse import urljoin
 
 import httpx
 
+from rom_hub.backends.base import LibraryBackend, Scanner
 from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from rom_hub.jobs import Job, JobQueue, JobState
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.paths import UnsafeDestination, dest_in_job_dir
-from rom_hub.romm.client import RommClient
-from rom_hub.romm.scan import Scanner, SocketIOScanner
-from rom_hub.romm.upload import upload_file
 from rom_hub.types import FetchPlan, SearchResult
 
 USER_AGENT = "rom-hub/0.1 (+https://github.com/rommapp/romm)"
@@ -230,20 +228,22 @@ def run_import(
     plugin,
     result: SearchResult,
     *,
-    romm: RommClient,
+    backend: LibraryBackend,
     queue: JobQueue,
     download_dir: Path,
     downloader: Downloader | None = None,
     scanner: Scanner | None = None,
     job_id: int | None = None,
 ) -> ImportResult:
-    """Import one search result into RomM, recording progress in `queue`.
+    """Import one search result into the library, recording progress in `queue`.
 
     `plugin` is a started `PluginProcess` (anything with `.plan()` and a
-    `.manifest`). Pass `job_id` to re-run an existing job rather than
-    enqueueing a new one: that is what a retry is, and reusing the id is
-    what lets the partially downloaded bytes under
-    `download_dir/<job_id>/` be resumed instead of re-fetched.
+    `.manifest`). `backend` is a `LibraryBackend` -- RomM, or whatever
+    else `ROM_HUB_BACKEND` selected; nothing in this function knows which.
+    Pass `job_id` to re-run an existing job rather than enqueueing a new
+    one: that is what a retry is, and reusing the id is what lets the
+    partially downloaded bytes under `download_dir/<job_id>/` be resumed
+    instead of re-fetched.
 
     Never raises for an import that failed -- the failure is the return
     value and the job record. Only a caller error (an unknown `job_id`)
@@ -260,11 +260,13 @@ def run_import(
     if owns_downloader:
         downloader = HttpDownloader(allowlist=list(getattr(manifest, "network", [])))
 
-    # Constructing this opens nothing -- SocketIOScanner connects only when
-    # scan_platform() is called, which is after a successful upload and
-    # therefore never on an import that dedups or fails early.
+    # The backend registers its own uploads. This opens nothing here --
+    # RomM's scanner connects only when scan_platform() is called, which
+    # is after a successful upload and therefore never on an import that
+    # dedups or fails early. A backend that indexes on receipt implements
+    # scan_platform as a no-op; the pipeline does not branch on which.
     if scanner is None:
-        scanner = SocketIOScanner(romm)
+        scanner = backend
 
     try:
         if job_id is None:
@@ -286,7 +288,7 @@ def run_import(
             return _import(
                 plugin,
                 result,
-                romm=romm,
+                backend=backend,
                 queue=queue,
                 job=job,
                 download_dir=download_dir,
@@ -324,7 +326,7 @@ def _import(
     plugin,
     result: SearchResult,
     *,
-    romm: RommClient,
+    backend: LibraryBackend,
     queue: JobQueue,
     job: Job,
     download_dir: Path,
@@ -346,10 +348,11 @@ def _import(
     # 2. Slug -> integer platform id. Never guess: a wrong id files the ROM
     #    under the wrong system, which is worse than a visible failure.
     try:
-        platform_id = romm.platform_id(plan.platform)
+        platform_id = backend.platform_id(plan.platform)
     except Exception as exc:
         raise _ImportFailure(
-            f"could not resolve platform {plan.platform!r} in RomM: {exc}"
+            f"could not resolve platform {plan.platform!r} in the "
+            f"{getattr(backend, 'name', 'active')!r} library: {exc}"
         ) from exc
     queue.set_platform(job.id, plan.platform)
 
@@ -361,7 +364,7 @@ def _import(
     #    anyway would put a duplicate in the library on every transient 5xx
     #    from /api/roms.
     try:
-        existing_roms = romm.list_roms(platform_id)
+        existing_roms = backend.list_roms(platform_id)
     except Exception as exc:
         raise _ImportFailure(
             f"could not list existing roms for platform {plan.platform!r}, so "
@@ -443,7 +446,7 @@ def _import(
     queue.set_state(job.id, JobState.UPLOADING)
     for path in to_upload:
         try:
-            upload_file(romm, path, platform_id)
+            backend.upload_rom(path, platform_id)
         except Exception as exc:
             raise _ImportFailure(
                 f"upload of {path.name!r} to RomM failed: {exc}"
@@ -456,7 +459,7 @@ def _import(
     #     **no database row at all** -- `GET /api/roms` does not list it,
     #     and no REST endpoint exists that would. Its own web UI emits a
     #     socket.io `scan` after every upload; so does this. See
-    #     rom_hub.romm.scan for the upstream reading.
+    #     rom_hub.backends.romm.scan for the upstream reading.
     #
     #     A failure here is reported as precisely what it is: the bytes
     #     reached RomM and only the registration did not. An operator told
@@ -488,7 +491,7 @@ def _import(
     #     never one call per file, because real libraries hold thousands of
     #     roms and this runs on every import.
     try:
-        library = romm.list_roms(platform_id)
+        library = backend.list_roms(platform_id)
     except Exception as exc:
         raise _ImportFailure(
             f"the upload of {len(to_upload)} file(s) reported success, but "
@@ -533,8 +536,8 @@ def _import(
                 f"{plan.collection!r}; add them by hand"
             )
         try:
-            collection_id = romm.ensure_collection(plan.collection)
-            romm.add_to_collection(collection_id, rom_ids)
+            collection_id = backend.ensure_collection(plan.collection)
+            backend.add_to_collection(collection_id, rom_ids)
         except Exception as exc:
             raise _ImportFailure(
                 f"the upload succeeded, but adding it to collection "

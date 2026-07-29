@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from rom_hub.romm.scan import (
+from rom_hub.backends.romm.scan import (
     SCAN_DONE_EVENT,
     SCAN_DONE_KO_EVENT,
     SCAN_EVENT,

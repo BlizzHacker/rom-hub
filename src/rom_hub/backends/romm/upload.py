@@ -35,7 +35,7 @@ import math
 from pathlib import Path
 from typing import Callable
 
-from rom_hub.romm.client import RommClient, RommError
+from rom_hub.backends.romm.client import RommClient, RommError
 
 DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024
 

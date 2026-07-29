@@ -109,6 +109,78 @@ which is already written into shell profiles on LXC 104.
 
 ---
 
+## The library backend
+
+RomM is not the only self-hosted ROM library manager — [Gaseous][] and
+[Retrom][] exist, and an operator running one of those wants the plugin
+ecosystem just as much. Serving them costs far less than it looks, and the
+reason is the thing this project already got right:
+
+> **Plugins were always backend-agnostic.** A plugin returns a `FetchPlan`
+> or a `MetadataPatch` — *descriptions*, never actions — and the host
+> executes them. Nothing in a plugin has ever known RomM exists. The only
+> RomM-specific code was the executor.
+
+So the seam is one file: `src/rom_hub/backends/base.py` defines
+`LibraryBackend`, `src/rom_hub/backends/romm/` implements it, and
+`ROM_HUB_BACKEND` (default `romm`) chooses. `importer.py` and
+`metadata.py` name no product.
+
+[Gaseous]: https://github.com/gaseous-project/gaseous-server
+[Retrom]: https://github.com/JMBeresford/retrom
+
+### The interface was derived, not designed
+
+Every method on `LibraryBackend` is there because `importer.py` or
+`metadata.py` already called it on `RommClient`: authenticate, resolve a
+platform name to an id, list a platform's roms, upload a file, get and
+update a rom, ensure and populate a collection, trigger a post-upload
+scan. Nothing was added on the theory that a second backend might want it.
+
+That is deliberate, and it is the opposite of the usual instinct. An
+interface invented ahead of its second implementation is an interface
+shaped like its first one anyway — only with more surface to be wrong
+about, and with the guesses indistinguishable from the requirements. What
+Gaseous or Retrom turn out to need that is not here gets added when there
+is a caller for it, and the diff will say which backend asked.
+
+One thing is deliberately **absent**: there is no "create a platform"
+method. `platform_id()` resolves a name and raises when nothing matches,
+and that refusal is load-bearing — filing a ROM under a platform nobody
+chose is the kind of wrong that is not noticed for months.
+
+### `capabilities()` is what makes degradation honest
+
+A backend declares a `frozenset` of what it supports: `import`,
+`collections`, `metadata`, `artwork`, `scan`. RomM 4.9.2 has all five,
+verified rather than assumed, which is exactly why it is stated as data
+instead of taken for granted by every caller.
+
+Without the declaration, `rom-hub import --collection "Shooters"` against
+a backend with no collections downloads four gigabytes, uploads them, and
+*then* fails on a 404 from an endpoint that does not exist — with the ROM
+half-filed and the message about HTTP rather than about collections. With
+it, the command refuses before the first byte and says which backend and
+which capability.
+
+`scan` is the interesting one. RomM's `/complete` writes the file and
+creates **no database row**, so an explicit socket.io `scan` is what makes
+the ROM exist; a backend that indexes on receipt implements
+`scan_platform` as a no-op and simply does not declare `scan`. The
+pipeline never branches on which — it always calls, and the backend
+decides whether that means anything.
+
+### What did not move
+
+The RomM findings that were expensive to establish stay exactly where
+they were documented, in `backends/romm/`: the explicit `scope` on
+`/api/token`, the bodyless 201 from `/complete`, the server-derived chunk
+length, the empty-artwork-part 400, the paginated `GET /api/roms`. The
+extraction was a pure refactor — the whole suite passed unchanged apart
+from import paths and the two names the seam genuinely renamed.
+
+---
+
 ## Architecture
 
 ```

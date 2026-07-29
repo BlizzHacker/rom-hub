@@ -368,6 +368,14 @@ class MetadataPatch(BaseModel):
             )
         return self
 
+    def has_artwork(self) -> bool:
+        """True when this patch carries a cover, by either route.
+
+        Asked before the cover is fetched, so a backend that cannot take
+        one refuses without the host downloading it first.
+        """
+        return self.artwork_url is not None or self.artwork_base64 is not None
+
     def artwork_data(self) -> bytes | None:
         """The inline artwork bytes, if the plugin supplied any."""
         if self.artwork_base64 is None:
