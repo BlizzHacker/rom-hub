@@ -12,9 +12,9 @@ Adding a third path without a check_url() on it would make the manifest's
 `network` declaration decorative.
 
 There is also a path that leads *in*: the subprocess environment. Popen
-copies the parent's by default, so anything the Hub is configured with —
-including the RomM password — would arrive inside the plugin for free. See
-`SECRET_ENV_VARS`.
+copies the parent's by default, so every secret the operator's shell
+happens to hold would arrive inside the plugin for free. That one is
+default-deny too — see `SAFE_ENV_VARS`.
 """
 
 import collections
@@ -38,25 +38,80 @@ from .fetcher import Fetcher
 STDERR_TAIL_LINES = 100
 STDERR_TAIL_CHARS = 4000
 
-# Environment variables stripped from every plugin subprocess.
+# The environment a plugin subprocess is allowed to see. An ALLOWLIST: the
+# child's environment is built from `{}` upward, never from `os.environ`
+# downward.
 #
-# Popen hands the parent's whole environment to the child by default, and
-# Phase 2's `import` reads the RomM password from exactly there. Without
-# this, "the plugin never holds the RomM token" would be true of the API
-# and false of the process: `os.environ["ROMM_PASSWORD"]` needs no socket,
-# no file, and no syscall the seccomp filter can even see.
+# Why it has to be this shape. Popen hands the parent's whole environment to
+# the child by default, and Phase 2's `import` reads the RomM password from
+# exactly there -- so `os.environ["ROMM_PASSWORD"]` inside plugin code needed
+# no socket, no file, and no syscall the seccomp filter can even see. The
+# first fix was a denylist of the three ROMM_* names. It stopped those three
+# and passed through 92 other variables, including the operator's real GitHub
+# token and DeepSeek API key. The next secret is always the one nobody
+# listed, and unlike a socket or a path there is no second line of defence
+# behind the environment.
 #
-# This is a denylist of the names *this project* puts in the environment,
-# and it does not pretend to be more. A plugin can still read any file the
-# Hub can (see README), so this closes the trivial path, not the class.
-SECRET_ENV_VARS = ("ROMM_URL", "ROMM_USER", "ROMM_PASSWORD")
+# So this is default-deny, matching what the codebase already does twice:
+# `manifest.py` rejects every unknown key, `netpolicy` refuses every
+# undeclared host. This is the third instance of the same rule.
+#
+# Nothing here is user-defined or secret-shaped; each entry is something a
+# Python interpreter needs to start and import its own code:
+_COMMON_ENV_VARS = (
+    # Locating the interpreter's own helpers and anything it shells to.
+    "PATH",
+)
+_WINDOWS_ENV_VARS = (
+    # Windows needs these to load DLLs and resolve the system directory;
+    # without SYSTEMROOT the interpreter fails to import parts of the
+    # standard library at all.
+    "SYSTEMROOT",
+    "COMSPEC",
+    "PATHEXT",
+    # tempfile has no usable default on Windows without one of these.
+    "TEMP",
+    "TMP",
+)
+_POSIX_ENV_VARS = (
+    "HOME",
+    "TMPDIR",
+)
+
+# Deliberately NOT inherited, beyond the obvious secrets:
+#
+#   PYTHONPATH   -- a plugin's import path must come from the interpreter
+#                   the host chose, not from the shell that launched it.
+#   PYTHONHOME   -- same reasoning, more forcefully.
+#   LANG/LC_ALL  -- would only matter for stdio encoding, and FORCED_ENV
+#                   pins that directly, so there is nothing left for them
+#                   to decide.
+#
+# If a plugin ever legitimately needs a variable, that is a manifest
+# declaration to be designed -- an explicit, reviewable grant like
+# `permissions.network` -- not a hole reopened here.
+
+SAFE_ENV_VARS = _COMMON_ENV_VARS + (
+    _WINDOWS_ENV_VARS if sys.platform == "win32" else _POSIX_ENV_VARS
+)
+
+# Set by the host rather than inherited. The protocol is UTF-8 JSON over
+# pipes and the host opens them with encoding="utf-8", so the child's stdio
+# must agree regardless of the ambient locale -- which is also why LANG and
+# LC_ALL do not need to be inherited.
+FORCED_ENV = {"PYTHONIOENCODING": "utf-8"}
 
 
 def plugin_environment(base: dict | None = None) -> dict:
-    """The parent environment minus anything a plugin must not be handed."""
-    env = dict(os.environ if base is None else base)
-    for name in SECRET_ENV_VARS:
-        env.pop(name, None)
+    """Build a plugin subprocess's environment from nothing.
+
+    Starts empty and adds only `SAFE_ENV_VARS` that are actually present,
+    plus `FORCED_ENV`. A variable absent from the parent stays absent; a
+    variable the host has never heard of never arrives.
+    """
+    source = os.environ if base is None else base
+    env = {name: source[name] for name in SAFE_ENV_VARS if name in source}
+    env.update(FORCED_ENV)
     return env
 
 

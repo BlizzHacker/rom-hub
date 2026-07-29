@@ -162,13 +162,29 @@ leaves things:
 - The RomM token is **never given to a plugin**. It is created inside the host
   process, used only by host-side code, and never crosses the pipe. Nothing a
   plugin can *call* returns it.
-- The plugin subprocess also **does not inherit `ROMM_URL`, `ROMM_USER`, or
-  `ROMM_PASSWORD`** — `subprocess.Popen` copies the parent environment by
-  default, so the broker strips them explicitly before starting the child
-  (`broker/host.py`, `SECRET_ENV_VARS`;
-  `test_the_romm_credentials_are_not_in_the_plugins_environment` is what keeps
-  it true). Without that, reading the RomM password would have needed no
-  socket, no file, and no syscall the seccomp filter can see.
+- The plugin subprocess **inherits almost nothing from the environment**.
+  `subprocess.Popen` copies the parent's environment to the child by default,
+  which would hand a plugin every secret the operator's shell happens to hold —
+  needing no socket, no file, and no syscall the seccomp filter can see. So the
+  child's environment is built from `{}` upward and only these are added
+  (`broker/host.py`, `SAFE_ENV_VARS`):
+
+  | | |
+  |---|---|
+  | Everywhere | `PATH` |
+  | Windows | `SYSTEMROOT`, `COMSPEC`, `PATHEXT`, `TEMP`, `TMP` |
+  | POSIX | `HOME`, `TMPDIR` |
+  | Set by the host | `PYTHONIOENCODING=utf-8` |
+
+  Nothing else: no `PYTHONPATH`, no `PYTHONHOME`, no user-defined variables,
+  nothing secret-shaped. Measured on the development workstation, a plugin's
+  visible environment went from **92 variables to 7**. This is an **allowlist**
+  because a denylist cannot work here — the next secret is always the one
+  nobody listed. Should a plugin ever legitimately need a variable, that is a
+  manifest declaration to be designed, not a hole reopened here.
+  `test_the_plugin_environment_is_an_allowlist_not_an_inheritance` asserts both
+  that seeded secrets do not arrive *and* that the total count stays small, so
+  a regression that reinstates inheritance fails loudly.
 - **But a plugin can still read any file the Hub process can**, and on Linux
   that includes `/proc/<hub-pid>/environ`, which is same-uid readable. A
   hostile plugin cannot be *handed* the credentials and cannot pick them up by
