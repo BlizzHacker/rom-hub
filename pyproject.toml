@@ -23,6 +23,9 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.pytest.ini_options]
+# Resolve the package from THIS tree. Worktrees share site-packages, so a
+# `pip install -e` in one silently repointed imports for the other.
+pythonpath = ["src"]
 testpaths = ["tests"]
 markers = ["live: hits the real network; deselected by default"]
 addopts = "-m 'not live'"

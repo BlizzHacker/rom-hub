@@ -79,3 +79,14 @@ def test_importer_entrypoint_parses():
     )
     m = parse_manifest(with_importer)
     assert m.capabilities["importer"] == "archive_org.importer:Importer"
+
+
+def test_an_integer_rpp_version_is_rejected():
+    """The spec says exactly the string "1"; str() coercion accepted a TOML int.
+
+    This file drives an allowlist, so "everything unknown is rejected" has to
+    include the wrong type for a known key.
+    """
+    text = GOOD.replace('rpp_version = "1"', "rpp_version = 1")
+    with pytest.raises(ManifestError, match="rpp_version"):
+        parse_manifest(text)
