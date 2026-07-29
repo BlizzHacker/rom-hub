@@ -1,8 +1,15 @@
 """Supervises one plugin subprocess and brokers everything privileged.
 
-The plugin gets no RomM token, no filesystem mount, and no sockets. Its
-only way out is an `http.get` call that lands in _serve_plugin_call(),
-where the manifest allowlist is enforced before any fetch happens.
+The plugin gets no RomM token, no filesystem mount, and no sockets. Two
+paths lead out, and both are gated by the same manifest allowlist before
+any socket is opened:
+
+  * `http.get`, which the plugin calls, enforced in _serve_plugin_call()
+  * the `FetchPlan` returned by plan(), whose URLs the *host* fetches later,
+    enforced in plan()
+
+Adding a third path without a check_url() on it would make the manifest's
+`network` declaration decorative.
 """
 
 import collections
@@ -16,7 +23,7 @@ from pydantic import ValidationError
 from romm_hub.manifest import Manifest
 from romm_hub.netpolicy import PolicyViolation, check_url
 from romm_hub.protocol import ProtocolError, read_message, write_message
-from romm_hub.types import SearchResult
+from romm_hub.types import FetchPlan, SearchResult
 
 from .fetcher import Fetcher
 
@@ -288,6 +295,43 @@ class PluginProcess:
             result.plugin = self.manifest.slug
             results.append(result)
         return results
+
+    def plan(self, result: SearchResult) -> FetchPlan:
+        """Ask the plugin what to fetch. The host, not the plugin, fetches it.
+
+        A FetchPlan is the second channel by which a plugin can make the host
+        reach a host: ctx.http asks directly, this hands over URLs and asks
+        the host to go get them. Both are gated by the same allowlist, or the
+        manifest's `network` declaration means nothing for imports.
+        """
+        raw = self._call("plan", {"result": result.model_dump()})
+        # The plugin is under no obligation to have used FetchPlan to build
+        # this; the runner only calls model_dump() on whatever it returned.
+        # So the shape is re-established here, on the trusted side.
+        if not isinstance(raw, dict):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid FetchPlan: "
+                f"expected an object, got {type(raw).__name__}"
+            )
+        try:
+            plan = FetchPlan(**raw)
+        except (ValidationError, TypeError) as exc:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid FetchPlan: {exc}"
+            ) from exc
+        # Every file, not just the first: a plan whose opening entry is
+        # legitimate must not be able to carry an undeclared host in behind
+        # it. One violation refuses the whole plan, so no import can start on
+        # the valid half of a plan whose other half was rejected.
+        for index, f in enumerate(plan.files):
+            try:
+                check_url(f.url, self.manifest.network)
+            except PolicyViolation as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} FetchPlan rejected "
+                    f"(file {index}, {f.filename!r}): {exc}"
+                ) from exc
+        return plan
 
     def close(self) -> None:
         if self._proc is None:
