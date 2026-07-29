@@ -1,6 +1,6 @@
 # Homebrew plugin for ROM Hub — gbdev's Homebrew Hub
 
-Implements the RPP v1 `search` and `importer` capabilities against
+Implements the RPP v1 `search`, `importer` and `metadata` capabilities against
 [Homebrew Hub](https://hh.gbdev.io), the gbdev community's archive of Game Boy,
 Game Boy Color, Game Boy Advance and NES **homebrew**.
 
@@ -8,11 +8,13 @@ Game Boy Color, Game Boy Advance and NES **homebrew**.
 |---|---|---|
 | `search` | `hh3.gbdev.io/api/search` | server-side search across all entries |
 | `importer` | the same endpoint, then `/static/…` | plans the entry's default ROM file |
+| `metadata` | the same endpoint, then `/static/…` | proposes the submitter's title and cover; the **Hub** fetches the image |
 
 ## Install
 
     rom-hub plugin install ./plugins-dev/homebrew
     rom-hub search "snake" --limit 5
+    rom-hub enrich homebrew 1
 
 ## Config
 
@@ -21,6 +23,39 @@ Game Boy Color, Game Boy Advance and NES **homebrew**.
 | `typetag` | `str` | `""` | restrict to one kind of entry: `game`, `demo`, `music`, `tool`. Empty means no filter |
 | `max_pages` | `int` | `3` | how many 10-entry result pages one query may walk |
 | `collection` | `str` | `Homebrew` | RomM collection imported ROMs are grouped into |
+| `set_name` | `bool` | `true` | `metadata` only: write the Hub's title over the library's |
+
+## What `metadata` sets
+
+**`name`**, from the Hub's own title, and **`artwork_url`**, pointing at the
+entry's cover image. Nothing else — `MetadataPatch` reads an absent field as
+"leave the library alone", and that is used here rather than worked around.
+
+**Why this plugin may write a title when `libretro-thumbnails` may not.** That
+plugin refuses because what it has is a No-Intro DAT string: a filename from a
+different project, not a curated name. The Hub's title is the one the *author*
+submitted with the game. For homebrew there is no publisher of record other
+than the person who wrote it, so this is as close to authoritative as the
+material gets. It is still config, defaulting on, because an operator who has
+curated their library is entitled to keep their spelling.
+
+**Only a file actually named `cover.*` becomes artwork.** Roughly half the
+Hub's entries carry one; the rest have in-game screenshots. Promoting a
+screenshot to box art would fill a library with pictures of gameplay that
+somebody then has to undo one at a time, so no cover means no `artwork_url`.
+
+**Resolution is exact or it is a refusal.** Give it `--source-id <slug>` and it
+looks the entry up directly. Without one it searches on the rom's name — 
+narrowed by platform when the rom's platform is one of the four the Hub
+carries — and requires **exactly one** entry whose title matches once case and
+punctuation are ignored. It is an equality test, not a prefix one, so `Snake`
+cannot pick up `Snake GBDK`. Three live entries are titled exactly `Snake`; a
+query landing on those refuses and names all three rather than choosing.
+
+No description or release date is written. RPP v1 has nowhere to put them: its
+`raw_*_metadata` fields each belong to a named provider, and putting the Hub's
+payload in one belonging to IGDB or ScreenScraper would be a lie in the
+database.
 
 ## Legal position — why this source is legitimate
 

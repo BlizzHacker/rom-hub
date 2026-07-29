@@ -118,8 +118,8 @@ Installs from a URL are pinned to a tag. Updating is deliberate — re-run
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Flags | Network |
 |---|---|---|---|---|---|---|---|
 | ✔ Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/archive-org` (in-tree) | `search`, `importer`, `metadata`, `stream` | — | `archive.org`, `*.archive.org` |
-| ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer` | — | `hh3.gbdev.io` |
-| ❗ itch.io (free games) — SEARCH-ONLY | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer` | **search-only** | `itch.io`, `*.itch.io` |
+| ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer`, `metadata` | — | `hh3.gbdev.io` |
+| ❗ itch.io (free games) — NO IMPORT | BlizzHacker (in-tree, no public repo yet) | 0.3.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer`, `metadata` | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
 | ✔ libretro cores (buildbot) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-cores` (in-tree) | `cores` | — | `buildbot.libretro.com` |
 | ✔ libretro Thumbnails | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-thumbnails` (in-tree) | `metadata` | — | `thumbnails.libretro.com` |
 | ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.1 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | — | `archive.org`, `*.archive.org` |
@@ -137,25 +137,25 @@ Searches the Internet Archive's software collections by title and imports the it
 
 ### ✔ Homebrew Hub (gbdev) — `homebrew`
 
-Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew and imports the ROM directly.
+Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports the ROM directly, and proposes the submitter's own title and cover.
 
 **Source terms.** The cleanest source in this directory. Homebrew Hub indexes games written by their authors for the Game Boy, published by those authors for free distribution — the rights holder is the uploader, so there is no third-party copyright being routed around. Individual entries carry their own licences, which vary; the Hub's own catalogue metadata is community-maintained and openly published. Nothing here is a commercial ROM.
 
-**Comments.** The only plugin in this directory built from the start for material that is unambiguously free to redistribute. One host does both jobs — `/api/search` answers queries and `/static/` serves the ROMs with no redirect off it — so the allowlist is a single host. `hh.gbdev.io`, the human-facing site those results link to, is deliberately not declared, because the plugin shows that URL and never fetches it.
+**Comments.** The only plugin in this directory built from the start for material that is unambiguously free to redistribute. One host does both jobs — `/api/search` answers queries and `/static/` serves the ROMs with no redirect off it — so the allowlist is a single host. `hh.gbdev.io`, the human-facing site those results link to, is deliberately not declared, because the plugin shows that URL and never fetches it. `metadata` proposes the Hub's title and the entry's `cover.*` image, and nothing else. It may write a title where libretro-thumbnails may not, because for homebrew the submitter *is* the publisher of record — but only a file actually named `cover.*` becomes artwork, since roughly half the entries carry in-game screenshots instead and promoting one would fill a library with gameplay stills. Resolution is exact or it refuses: three live entries are titled exactly "Snake", and a query landing on those names all three rather than choosing.
 
 **Network requested.** `hh3.gbdev.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
-### ❗ itch.io (free games) — SEARCH-ONLY — `itch-io`
+### ❗ itch.io (free games) — NO IMPORT — `itch-io`
 
-> **search-only**
+> **cannot import** (every import is refused)
 
-Finds free games on itch.io. It cannot import them, and never will as built — every import is refused by design.
+Finds free games on itch.io and proposes the developer's own title and cover art. It cannot import them, and never will as built — every import is refused by design.
 
-**Source terms.** Consent by construction, within a boundary this plugin does not cross. itch.io is a storefront where the uploader is the rights holder, so anything listed free is offered free by the person entitled to offer it. But itch.io's robots.txt `Disallow`s `/search` and `/game/download/`, and its download URLs are issued only for a POST carrying the game page's csrf_token. This plugin reads only `/games/...` browse listings, which the same robots.txt permits, and it authenticates as nobody. Note that itch.io's "free" filter includes name-your-own-price titles; those are refused.
+**Source terms.** Consent by construction, within a boundary this plugin does not cross. itch.io is a storefront where the uploader is the rights holder, so anything listed free is offered free by the person entitled to offer it. But itch.io's robots.txt `Disallow`s `/search` and `/game/download/`, and its download URLs are issued only for a POST carrying the game page's csrf_token. This plugin reads only `/games/...` browse listings, which the same robots.txt permits, and it authenticates as nobody. Note that itch.io's "free" filter includes name-your-own-price titles; those are refused. The `metadata` capability reads only the public game page, which the same robots.txt permits, and the cover it names is the one itch.io itself serves as that page's og:image.
 
-**Comments.** The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes.
+**Comments.** The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes. `metadata` is what makes it worth installing: it cannot fetch the game, but it reads the developer's own title and cover off the game page, which is what a library is missing for a title it already has. `img.itch.zone` joins the allowlist for that alone — the host fetches the cover this plugin names, so an undeclared image host would fail every enrich as a policy violation. There is no lookup by name, deliberately: robots.txt disallows /search and the browse listings are a small popularity-ordered slice, so hunting one title through them would attach the wrong developer's cover more often than the right one. Pass --source-id.
 
-**Network requested.** `itch.io`, `*.itch.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+**Network requested.** `itch.io`, `*.itch.io`, `img.itch.zone` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ libretro cores (buildbot) — `libretro-cores`
 
@@ -216,7 +216,9 @@ Open a pull request adding an entry to
   licence, which is its `LICENSE` file. A directory that says where to get
   ROMs and stays quiet about whether they may lawfully be got is doing half
   the job;
-- set `search_only` if your importer cannot complete, and `key_required` if
+- set `search_only` if your importer cannot complete — it renders as "cannot
+  import", because a plugin can implement `metadata` and still never fetch a
+  file — and `key_required` if
   the plugin is useless without a credential. Both are things a reader needs
   before installing, not after filing a bug;
 - set `in_tree` only if the plugin ships inside this repository.

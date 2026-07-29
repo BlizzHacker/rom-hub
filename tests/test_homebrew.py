@@ -22,11 +22,17 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 from homebrew.filenames import safe_filename  # noqa: E402
 from homebrew.hub import HubError, parse_entry, parse_page  # noqa: E402
 from homebrew.importer import ImportRefused, Importer  # noqa: E402
+from homebrew.metadata import (  # noqa: E402
+    Ambiguous,
+    ApiFailed,
+    Metadata,
+    NoMatch,
+)
 from homebrew.platforms import hub_platform_for, platform_for  # noqa: E402
 from homebrew.search import Search  # noqa: E402
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from rom_hub.types import FetchFile, SearchResult  # noqa: E402
+from rom_hub.types import FetchFile, RomRef, SearchResult  # noqa: E402
 
 
 def fixture(name: str) -> dict:
@@ -365,3 +371,190 @@ def test_every_filename_in_the_captured_pages_survives_sanitising():
                 )
                 seen += 1
     assert seen > 20
+
+
+# ------------------------------------------------------------------ metadata
+
+
+class ParamHttp:
+    """Serves one payload and remembers the params it was asked with.
+
+    The metadata provider narrows by platform when it can, and that
+    narrowing is the difference between one candidate and three in the
+    captured data -- so the params have to be observable, not just the
+    result.
+    """
+
+    def __init__(self, payload, status=200):
+        self.payload = payload
+        self.status = status
+        self.calls = []
+
+    def get(self, url, params=None):
+        self.calls.append((url, dict(params or {})))
+        return HttpResponse(status_code=self.status, text=json.dumps(self.payload))
+
+
+def make_metadata(payload=None, config=None, status=200):
+    http = ParamHttp(payload if payload is not None else BY_SLUG, status)
+    return Metadata(PluginContext(config=config or {}, http=http)), http
+
+
+def rom(**kwargs):
+    base = {"rom_id": 1, "name": "", "filename": "", "platform": None, "extra": {}}
+    return RomRef(**{**base, **kwargs})
+
+
+def test_a_source_id_resolves_straight_to_the_entry():
+    meta, http = make_metadata()
+    patch = meta.enrich(rom(extra={"source_id": "johnybot_super-snake-off"}))
+    assert patch.name == "Super Snake Off"
+    assert patch.artwork_url == (
+        "https://hh3.gbdev.io/static/database-nes/entries/"
+        "johnybot_super-snake-off/cover.png"
+    )
+    assert patch.artwork_filename == "cover.png"
+    assert len(http.calls) == 1
+
+
+def test_a_source_id_the_hub_does_not_have_is_a_refusal_not_a_near_miss():
+    """`?q=` is a text search, so it answers with something. Taking it would
+    attach another game's title and cover."""
+    meta, _ = make_metadata()
+    with pytest.raises(NoMatch, match="near misses"):
+        meta.enrich(rom(extra={"source_id": "not-a-real-slug"}))
+
+
+def test_a_title_resolves_when_exactly_one_entry_carries_it():
+    meta, http = make_metadata(SNAKE)
+    patch = meta.enrich(rom(name="Sneaky Snakes"))
+    assert patch.name == "Sneaky Snakes"
+    assert http.calls[0][1]["q"] == "Sneaky Snakes"
+
+
+def test_matching_ignores_case_and_punctuation_but_stays_an_equality_test():
+    meta, _ = make_metadata(SNAKE)
+    assert meta.enrich(rom(name="sneaky  snakes!")).name == "Sneaky Snakes"
+    # "Snake" must not pick up "Sneaky Snakes" or "Snake GBDK".
+    with pytest.raises(Ambiguous):
+        meta.enrich(rom(name="Snake"))
+
+
+def test_several_entries_with_one_title_refuse_and_name_them():
+    """Live data: three Game Boy entries are titled exactly "Snake"."""
+    meta, _ = make_metadata(SNAKE)
+    with pytest.raises(Ambiguous, match="--source-id") as caught:
+        meta.enrich(rom(name="Snake"))
+    assert "snake-sanky" in str(caught.value)
+    assert "gb-snake-reini1305" in str(caught.value)
+
+
+def test_the_platform_narrows_the_query_before_it_narrows_the_answer():
+    meta, http = make_metadata(SNAKE)
+    with pytest.raises(Ambiguous):
+        meta.enrich(rom(name="Snake", platform="gb"))
+    assert http.calls[0][1]["platform"] == "GB"
+
+
+def test_a_platform_the_hub_does_not_carry_simply_does_not_filter():
+    """The Hub covers four systems. A rom on a fifth is a miss, not a
+    fault, and the query still goes out unfiltered rather than raising."""
+    meta, http = make_metadata(SNAKE)
+    with pytest.raises(NoMatch):
+        meta.enrich(rom(name="Sonic", platform="dreamcast"))
+    assert "platform" not in http.calls[0][1]
+
+
+def test_an_entry_without_a_cover_proposes_no_artwork():
+    """Absent means leave RomM alone. Half the Hub's entries have no cover
+    and promoting a screenshot would fill a library with gameplay stills."""
+    meta, _ = make_metadata(SNAKE)
+    patch = meta.enrich(rom(name="Sneaky Snakes"))
+    assert patch.artwork_url is None
+    assert patch.has_artwork() is False
+    assert patch.form_fields() == {"name": "Sneaky Snakes"}
+
+
+def test_set_name_off_leaves_the_libraries_own_spelling():
+    meta, _ = make_metadata(config={"set_name": False})
+    patch = meta.enrich(rom(extra={"source_id": "johnybot_super-snake-off"}))
+    assert patch.name is None
+    assert patch.artwork_url is not None
+
+
+def test_nothing_to_propose_is_a_refusal_rather_than_an_empty_patch():
+    """An empty patch would have the host report an enrich that changed
+    nothing, which reads as "the source had nothing" instead of "this
+    plugin was configured not to offer the only thing it had"."""
+    meta, _ = make_metadata(SNAKE, {"set_name": False})
+    with pytest.raises(NoMatch, match="set_name"):
+        meta.enrich(rom(name="Sneaky Snakes"))
+
+
+def test_a_rom_with_no_name_falls_back_to_its_filename():
+    meta, http = make_metadata(SNAKE)
+    with pytest.raises(NoMatch):
+        meta.enrich(rom(filename="Sonic_The_Hedgehog.gb"))
+    assert http.calls[0][1]["q"] == "Sonic The Hedgehog"
+
+
+def test_a_rom_with_neither_a_name_nor_a_filename_asks_for_a_source_id():
+    meta, http = make_metadata(SNAKE)
+    with pytest.raises(NoMatch, match="--source-id"):
+        meta.enrich(rom())
+    assert http.calls == []
+
+
+def test_a_non_200_names_the_status():
+    meta, _ = make_metadata(status=503)
+    with pytest.raises(ApiFailed, match="503"):
+        meta.enrich(rom(extra={"source_id": "johnybot_super-snake-off"}))
+
+
+def test_the_artwork_url_is_on_the_declared_host():
+    """The manifest allows exactly one host; the broker checks this URL
+    against it before fetching. A cover elsewhere would be a policy
+    violation at enrich time rather than a bug here."""
+    meta, _ = make_metadata()
+    patch = meta.enrich(rom(extra={"source_id": "johnybot_super-snake-off"}))
+    assert patch.artwork_url.startswith("https://hh3.gbdev.io/static/")
+
+
+def test_a_cover_stored_under_a_path_still_yields_a_bare_filename():
+    payload = {
+        "entries": [
+            {
+                "slug": "x",
+                "title": "X",
+                "basepath": "database-gb",
+                "platform": "GB",
+                "screenshots": ["screenshots/../../cover.png"],
+                "files": [],
+            }
+        ],
+        "page_total": 1,
+    }
+    meta, _ = make_metadata(payload)
+    patch = meta.enrich(rom(extra={"source_id": "x"}))
+    assert patch.artwork_filename == "cover.png"
+
+
+def test_only_a_file_named_cover_counts_as_one():
+    entry = parse_entry(
+        {
+            "slug": "x",
+            "title": "X",
+            "basepath": "database-gb",
+            "screenshots": ["screenshot.png", "title.png"],
+        }
+    )
+    assert entry.cover() is None
+    entry = parse_entry(
+        {
+            "slug": "x",
+            "title": "X",
+            "basepath": "database-gb",
+            "screenshots": ["screenshot.png", "cover.jpg"],
+        }
+    )
+    assert entry.cover() == "cover.jpg"
