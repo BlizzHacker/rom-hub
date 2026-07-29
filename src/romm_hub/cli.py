@@ -11,6 +11,7 @@ from pathlib import Path
 from .broker.fetcher import HttpxFetcher
 from .catalog import CatalogError, load_catalog, symbol_for
 from .dispatcher import search_all
+from .manifest import ManifestError
 from .registry import Registry, RegistryError
 from .sandbox import probe
 
@@ -196,7 +197,10 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except RegistryError as exc:
+    except (RegistryError, ManifestError, CatalogError, OSError) as exc:
+        # ManifestError escapes a bad manifest on an otherwise clean install,
+        # and OSError is what a read-only or nonexistent ROMM_HUB_HOME gives
+        # from Registry.__init__'s mkdir. Neither deserves a traceback.
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
