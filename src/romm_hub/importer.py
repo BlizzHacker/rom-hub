@@ -288,44 +288,53 @@ def run_import(
     manifest = getattr(plugin, "manifest", None)
     slug = _slug_of(plugin)
 
-    if downloader is None:
+    # Close only what this call opened. A caller-supplied downloader may be
+    # reused across imports and is not ours to shut. The CLI supplies none,
+    # so it always takes the branch that builds -- and therefore owns -- one.
+    owns_downloader = downloader is None
+    if owns_downloader:
         downloader = HttpDownloader(allowlist=list(getattr(manifest, "network", [])))
 
-    if job_id is None:
-        job = queue.enqueue(
-            plugin=slug,
-            source_id=result.source_id,
-            title=result.title,
-            platform=result.platform or "",
-        )
-    else:
-        job = queue.get(job_id)
-        if job is None:
-            raise ValueError(f"no such job: {job_id}")
-
-    # This attempt owns the error column from here on. See _ERROR_CLEARED.
-    queue.set_state(job.id, JobState.DOWNLOADING, error=_ERROR_CLEARED)
-
     try:
-        return _import(
-            plugin,
-            result,
-            romm=romm,
-            queue=queue,
-            job=job,
-            download_dir=download_dir,
-            downloader=downloader,
-        )
-    except _ImportFailure as exc:
-        return _fail(queue, job.id, str(exc))
-    except Exception as exc:  # noqa: BLE001
-        # A step nobody anticipated still failed an import, and the operator
-        # needs it in the job record rather than on a console they are not
-        # watching. The type name is kept because an unexpected failure's
-        # class is usually the most informative thing about it.
-        return _fail(
-            queue, job.id, f"unexpected {type(exc).__name__} during import: {exc}"
-        )
+        if job_id is None:
+            job = queue.enqueue(
+                plugin=slug,
+                source_id=result.source_id,
+                title=result.title,
+                platform=result.platform or "",
+            )
+        else:
+            job = queue.get(job_id)
+            if job is None:
+                raise ValueError(f"no such job: {job_id}")
+
+        # This attempt owns the error column from here on. See _ERROR_CLEARED.
+        queue.set_state(job.id, JobState.DOWNLOADING, error=_ERROR_CLEARED)
+
+        try:
+            return _import(
+                plugin,
+                result,
+                romm=romm,
+                queue=queue,
+                job=job,
+                download_dir=download_dir,
+                downloader=downloader,
+            )
+        except _ImportFailure as exc:
+            return _fail(queue, job.id, str(exc))
+        except Exception as exc:  # noqa: BLE001
+            # A step nobody anticipated still failed an import, and the
+            # operator needs it in the job record rather than on a console
+            # they are not watching. The type name is kept because an
+            # unexpected failure's class is usually the most informative
+            # thing about it.
+            return _fail(
+                queue, job.id, f"unexpected {type(exc).__name__} during import: {exc}"
+            )
+    finally:
+        if owns_downloader:
+            downloader.close()
 
 
 def _slug_of(plugin) -> str:

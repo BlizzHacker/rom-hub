@@ -432,6 +432,99 @@ def test_every_file_in_a_multi_file_plan_is_downloaded_and_uploaded(
     assert [c[0].name for c in upload.calls] == ["a.zip", "b.zip"]
 
 
+def test_run_import_closes_the_downloader_it_built_itself(tmp_path, queue, upload):
+    """The CLI path passes no downloader, so run_import constructs one --
+    and an httpx.Client it opened is one it has to close. Harmless for a
+    one-shot CLI that exits; a leak for anything calling this in a loop."""
+    built = []
+
+    class TrackingDownloader(HttpDownloader):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self.closed = False
+            built.append(self)
+
+        def download(self, url, dest, expected_size=None):
+            dest = Path(dest)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(ROM_BYTES)
+            return dest
+
+        def close(self):
+            self.closed = True
+            super().close()
+
+    monkey = pytest.MonkeyPatch()
+    monkey.setattr("romm_hub.importer.HttpDownloader", TrackingDownloader)
+    try:
+        res = run_import(
+            FakePlugin(_plan()),
+            RESULT,
+            romm=FakeRomm(),
+            queue=queue,
+            download_dir=tmp_path / "downloads",
+        )
+    finally:
+        monkey.undo()
+
+    assert res.state is JobState.DONE
+    assert len(built) == 1
+    assert built[0].closed is True
+    assert built[0]._client.is_closed is True
+
+
+def test_run_import_does_not_close_a_downloader_it_was_handed(
+    tmp_path, queue, upload
+):
+    """Only close what this function owns: a caller-supplied downloader may
+    be reused across imports."""
+
+    class ClosableFake(FakeDownloader):
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    downloader = ClosableFake()
+    _run(tmp_path, FakePlugin(_plan()), FakeRomm(), queue, downloader)
+    assert downloader.closed is False
+
+
+def test_the_downloader_is_closed_even_when_the_import_fails(
+    tmp_path, queue, upload
+):
+    built = []
+
+    class TrackingDownloader(HttpDownloader):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self.closed = False
+            built.append(self)
+
+        def download(self, url, dest, expected_size=None):
+            raise DownloadError("the network went away")
+
+        def close(self):
+            self.closed = True
+            super().close()
+
+    monkey = pytest.MonkeyPatch()
+    monkey.setattr("romm_hub.importer.HttpDownloader", TrackingDownloader)
+    try:
+        res = run_import(
+            FakePlugin(_plan()),
+            RESULT,
+            romm=FakeRomm(),
+            queue=queue,
+            download_dir=tmp_path / "downloads",
+        )
+    finally:
+        monkey.undo()
+
+    assert res.state is JobState.FAILED
+    assert built[0].closed is True
+
+
 # -- the job-directory containment guard -----------------------------------
 #
 # FetchFile's validator is the first layer. These tests pin the second one:
