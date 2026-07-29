@@ -2,7 +2,7 @@ import io
 
 import pytest
 
-from romm_hub.protocol import (
+from rom_hub.protocol import (
     MAX_MESSAGE_CHARS,
     ProtocolError,
     read_message,

@@ -18,10 +18,10 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from romm_hub.broker.host import PluginCallError, PluginProcess
-from romm_hub.cores import CoreError, find_core, install_core
-from romm_hub.manifest import parse_manifest
-from romm_hub.types import CoreArtifact
+from rom_hub.broker.host import PluginCallError, PluginProcess
+from rom_hub.cores import CoreError, find_core, install_core
+from rom_hub.manifest import parse_manifest
+from rom_hub.types import CoreArtifact
 
 # --- the type -----------------------------------------------------------
 
@@ -68,7 +68,7 @@ romm_api = []
 
 PLUGIN = textwrap.dedent(
     '''
-    from romm_hub_sdk import CoreArtifact, CoreProvider, FetchFile, FetchPlan
+    from rom_hub_sdk import CoreArtifact, CoreProvider, FetchFile, FetchPlan
 
 
     class Raw:
@@ -207,7 +207,7 @@ def test_a_catalogue_that_is_not_a_list_is_a_plugin_error(plugin_dir):
 
 def test_an_enormous_catalogue_is_refused(plugin_dir):
     """The host walks whatever it is given, so the walk is bounded."""
-    from romm_hub.types import MAX_CORES_PER_PLUGIN
+    from rom_hub.types import MAX_CORES_PER_PLUGIN
 
     proc = _proc(plugin_dir)
     proc._call = lambda method, params: [
@@ -341,12 +341,12 @@ def test_a_download_failure_is_reported_not_propagated_raw(plugin_dir, tmp_path)
 def test_the_cores_directory_is_configuration_not_a_constant(tmp_path, monkeypatch):
     """`/opt/romm-stream/cores` is the deployment target's path, not the
     Hub's: hard-coding it would put a plugin-supplied download outside
-    ROMM_HUB_HOME on every other host."""
-    from romm_hub.cli import cores_dir
+    ROM_HUB_HOME on every other host."""
+    from rom_hub.cli import cores_dir
 
-    monkeypatch.delenv("ROMM_HUB_CORES_DIR", raising=False)
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("ROM_HUB_CORES_DIR", raising=False)
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     assert cores_dir() == tmp_path / "home" / "var" / "cores"
 
-    monkeypatch.setenv("ROMM_HUB_CORES_DIR", str(tmp_path / "elsewhere"))
+    monkeypatch.setenv("ROM_HUB_CORES_DIR", str(tmp_path / "elsewhere"))
     assert cores_dir() == tmp_path / "elsewhere"

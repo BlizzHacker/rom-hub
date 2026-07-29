@@ -19,9 +19,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from romm_hub.broker.host import PluginCallError, PluginProcess
-from romm_hub.manifest import parse_manifest
-from romm_hub.types import SearchResult, StreamTarget
+from rom_hub.broker.host import PluginCallError, PluginProcess
+from rom_hub.manifest import parse_manifest
+from rom_hub.types import SearchResult, StreamTarget
 
 # --- the type -----------------------------------------------------------
 
@@ -91,7 +91,7 @@ romm_api = []
 
 PLUGIN = textwrap.dedent(
     '''
-    from romm_hub_sdk import StreamProvider, StreamTarget
+    from rom_hub_sdk import StreamProvider, StreamTarget
 
 
     class Raw:
@@ -249,7 +249,7 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 from archive_org.stream import Stream as ArchiveStream  # noqa: E402
 from archive_org.stream import StreamRefused  # noqa: E402
 
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 
 # https://archive.org/metadata/msdos_Oregon_Trail_The_1990 -- the item the
 # importer refuses. `stream_only` is what makes it un-importable and what
@@ -326,7 +326,7 @@ def test_an_unknown_identifier_is_refused():
 
 
 def test_the_archive_org_target_is_inside_its_declared_allowlist():
-    from romm_hub.netpolicy import check_url
+    from rom_hub.netpolicy import check_url
 
     provider, _ = _archive()
     target = provider.resolve(SearchResult(source_id="msdos_x", title="x"))

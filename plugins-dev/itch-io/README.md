@@ -1,4 +1,4 @@
-# itch.io plugin for RomM Hub — **SEARCH-ONLY**
+# itch.io plugin for ROM Hub — **SEARCH-ONLY**
 
 > ## ⚠ This plugin cannot import. It never will, as built.
 >
@@ -25,8 +25,8 @@ Implements the RPP v1 `search` and `importer` capabilities against itch.io's
 
 ## Install
 
-    romm-hub plugin install ./plugins-dev/itch-io
-    romm-hub search "game boy" --limit 5
+    rom-hub plugin install ./plugins-dev/itch-io
+    rom-hub search "game boy" --limit 5
 
 ## Config
 
@@ -79,7 +79,7 @@ site:
 | `GET itch.io/game/download/<upload_id>` | `404`, and `/game/download/` is `Disallow`ed in robots.txt |
 | `GET api.itch.io/uploads/<id>/download` | `401 authentication required` |
 
-RomM Hub's broker offers `http.get` and nothing else — a plugin has no
+ROM Hub's broker offers `http.get` and nothing else — a plugin has no
 sockets — and the host fetches `FetchPlan` URLs with GET too. So the importer
 does every piece of real routing work and then refuses. **All five outcomes
 are refusals; there is no sixth branch that succeeds:**
@@ -149,7 +149,7 @@ It does **not**:
   download key — all three are refused, by design, rather than worked around;
 - authenticate as anybody, or use an API key.
 
-The Hub sends a `romm-hub/0.1` User-Agent and one request at a time. There is
+The Hub sends a `rom-hub/0.1` User-Agent and one request at a time. There is
 no scraping of the storefront at large: a query walks at most `max_pages`
 browse pages.
 

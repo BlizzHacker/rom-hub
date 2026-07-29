@@ -1,4 +1,4 @@
-# RomM Hub — Design
+# ROM Hub — Design
 
 **Status:** Phases 1–3 built; **RPP v1 fully implemented**
 **Date:** 2026-07-29
@@ -82,9 +82,102 @@ NAT traversal) larger than A and B combined, and is not built in this pass.
 Keeping these separate is deliberate — it is what makes a future upstream
 contribution a clean proposal rather than "please merge my application."
 
-- **RomM Provider Protocol (RPP)** — the versioned *contract* between a host
+- **ROM Provider Protocol (RPP)** — the versioned *contract* between a host
   and a plugin. Portable; potentially upstreamable.
-- **RomM Hub** — *our* implementation of an RPP host. Stays ours.
+- **ROM Hub** — *our* implementation of an RPP host. Stays ours.
+
+Both were "RomM …" until the host learned to serve more than RomM. The
+rename is worth one paragraph because of what it deliberately did **not**
+touch.
+
+**`RPP` is unchanged, and `rpp_version` stays `"1"`.** The acronym was
+already the portable half of the name; expanding it differently is a
+naming change, not a contract change. Nothing about the wire format, the
+capability names, the validation rules or the manifest schema moved, so
+bumping the version would tell every plugin author that something they
+must react to had happened, when nothing had. A version number that cries
+wolf once is a version number nobody reads again.
+
+**The package rename is a real break for third-party plugins**, since
+`from romm_hub_sdk import ...` is the one line of Hub-specific code a
+plugin has. `romm_hub_sdk` therefore keeps resolving — to the *same*
+module objects, via a meta-path alias rather than a second copy on the
+same `__path__`, because a duplicate `FetchPlan` class would pass a smoke
+test and then fail every `isinstance` check the host makes. It warns, and
+it is scheduled for removal. Same for `ROMM_HUB_*` in the environment,
+which is already written into shell profiles on an LXC container.
+
+---
+
+## The library backend
+
+RomM is not the only self-hosted ROM library manager — [Gaseous][] and
+[Retrom][] exist, and an operator running one of those wants the plugin
+ecosystem just as much. Serving them costs far less than it looks, and the
+reason is the thing this project already got right:
+
+> **Plugins were always backend-agnostic.** A plugin returns a `FetchPlan`
+> or a `MetadataPatch` — *descriptions*, never actions — and the host
+> executes them. Nothing in a plugin has ever known RomM exists. The only
+> RomM-specific code was the executor.
+
+So the seam is one file: `src/rom_hub/backends/base.py` defines
+`LibraryBackend`, `src/rom_hub/backends/romm/` implements it, and
+`ROM_HUB_BACKEND` (default `romm`) chooses. `importer.py` and
+`metadata.py` name no product.
+
+[Gaseous]: https://github.com/gaseous-project/gaseous-server
+[Retrom]: https://github.com/JMBeresford/retrom
+
+### The interface was derived, not designed
+
+Every method on `LibraryBackend` is there because `importer.py` or
+`metadata.py` already called it on `RommClient`: authenticate, resolve a
+platform name to an id, list a platform's roms, upload a file, get and
+update a rom, ensure and populate a collection, trigger a post-upload
+scan. Nothing was added on the theory that a second backend might want it.
+
+That is deliberate, and it is the opposite of the usual instinct. An
+interface invented ahead of its second implementation is an interface
+shaped like its first one anyway — only with more surface to be wrong
+about, and with the guesses indistinguishable from the requirements. What
+Gaseous or Retrom turn out to need that is not here gets added when there
+is a caller for it, and the diff will say which backend asked.
+
+One thing is deliberately **absent**: there is no "create a platform"
+method. `platform_id()` resolves a name and raises when nothing matches,
+and that refusal is load-bearing — filing a ROM under a platform nobody
+chose is the kind of wrong that is not noticed for months.
+
+### `capabilities()` is what makes degradation honest
+
+A backend declares a `frozenset` of what it supports: `import`,
+`collections`, `metadata`, `artwork`, `scan`. RomM 4.9.2 has all five,
+verified rather than assumed, which is exactly why it is stated as data
+instead of taken for granted by every caller.
+
+Without the declaration, `rom-hub import --collection "Shooters"` against
+a backend with no collections downloads four gigabytes, uploads them, and
+*then* fails on a 404 from an endpoint that does not exist — with the ROM
+half-filed and the message about HTTP rather than about collections. With
+it, the command refuses before the first byte and says which backend and
+which capability.
+
+`scan` is the interesting one. RomM's `/complete` writes the file and
+creates **no database row**, so an explicit socket.io `scan` is what makes
+the ROM exist; a backend that indexes on receipt implements
+`scan_platform` as a no-op and simply does not declare `scan`. The
+pipeline never branches on which — it always calls, and the backend
+decides whether that means anything.
+
+### What did not move
+
+The RomM findings that were expensive to establish stay exactly where
+they were documented, in `backends/romm/`: the explicit `scope` on
+`/api/token`, the bodyless 201 from `/complete`, the server-derived chunk
+length, the empty-artwork-part 400, the paginated `GET /api/roms`. The
+extraction was a pure refactor — the whole suite passed unchanged apart
+from import paths and the two names the seam genuinely renamed.
 
 ---
 
@@ -133,16 +226,20 @@ The Hub owns a **SQLite database** for plugin registrations, per-plugin config,
 install/pin records and job history. **RomM's MariaDB is never touched.** This
 is what keeps RomM upgrades from breaking the Hub and vice versa.
 
-As built: plugin registrations and pins are `$ROMM_HUB_HOME/state.json`, the
-import job queue is `$ROMM_HUB_HOME/var/jobs.db`, and in-flight downloads are
-`$ROMM_HUB_HOME/var/downloads/<job-id>/`. `ROMM_HUB_HOME` defaults to
-`~/.romm-hub` and is what points all of it at the estate rather than at `C:`.
+As built: plugin registrations and pins are `$ROM_HUB_HOME/state.json`, the
+import job queue is `$ROM_HUB_HOME/var/jobs.db`, and in-flight downloads are
+`$ROM_HUB_HOME/var/downloads/<job-id>/`. `ROM_HUB_HOME` defaults to
+`~/.rom-hub` and is what points all of it at the estate rather than at `C:`.
+The pre-rename `ROMM_HUB_HOME` is still read (deprecated), and an existing
+`~/.romm-hub` directory is preferred over a `~/.rom-hub` that does not
+exist yet — a rename must not relocate an operator's installed plugins
+and job history without saying anything.
 
 ### RomM connection settings
 
 The Hub reads its RomM credentials from the environment — `ROMM_URL`,
 `ROMM_USER`, `ROMM_PASSWORD` — never from a file in the repo. All three are
-required by `romm-hub import`, which names whichever are missing and stops
+required by `rom-hub import`, which names whichever are missing and stops
 before opening a connection.
 
 Because `subprocess.Popen` copies the parent environment into every child,
@@ -178,13 +275,13 @@ inherited leak.
 
 | Command | Does |
 |---|---|
-| `romm-hub plugin browse\|install\|list\|enable\|disable` | plugin lifecycle |
-| `romm-hub search <query> [--platform] [--limit]` | fan out across enabled `search` plugins |
-| `romm-hub import <plugin> <source_id> [--platform] [--collection]` | plan → download → dedup → upload → collection |
-| `romm-hub enrich <plugin> <rom_id> [--source-id]` | enrich → fetch artwork → `PUT /api/roms/{id}` |
-| `romm-hub stream <plugin> <source_id>` | resolve one item to a validated stream target and print it |
-| `romm-hub cores list\|install <plugin> [<core>]` | list a plugin's cores, or download one into the configured cores directory |
-| `romm-hub jobs [--state]` | the persisted import queue, with failure reasons |
+| `rom-hub plugin browse\|install\|list\|enable\|disable` | plugin lifecycle |
+| `rom-hub search <query> [--platform] [--limit]` | fan out across enabled `search` plugins |
+| `rom-hub import <plugin> <source_id> [--platform] [--collection]` | plan → download → dedup → upload → collection |
+| `rom-hub enrich <plugin> <rom_id> [--source-id]` | enrich → fetch artwork → `PUT /api/roms/{id}` |
+| `rom-hub stream <plugin> <source_id>` | resolve one item to a validated stream target and print it |
+| `rom-hub cores list\|install <plugin> [<core>]` | list a plugin's cores, or download one into the configured cores directory |
+| `rom-hub jobs [--state]` | the persisted import queue, with failure reasons |
 
 `--source-id` exists because RomM does not record which plugin an import came
 from, so a `metadata` plugin cannot in general work out which of its own items
@@ -205,15 +302,15 @@ grows lives on the estate or the USB4 array, never on `C:`.
 | Thing | Location |
 |---|---|
 | Hub source, this doc | git repo (small — Python + Markdown) |
-| Plugin git clones | an LXC container `/opt/romm-hub/plugins/` |
-| In-flight downloads | an LXC container `/opt/romm-hub/var/downloads/` |
-| Fetched artwork, in transit | `$ROMM_HUB_HOME/var/artwork/<rom_id>/` |
+| Plugin git clones | an LXC container `/opt/rom-hub/plugins/` |
+| In-flight downloads | an LXC container `/opt/rom-hub/var/downloads/` |
+| Fetched artwork, in transit | `$ROM_HUB_HOME/var/artwork/<rom_id>/` |
 | Imported ROMs | `/mnt/library/roms` (RomM's existing library) |
-| Harvested cores | `$ROMM_HUB_HOME/var/cores/` by default; `ROMM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
+| Harvested cores | `$ROM_HUB_HOME/var/cores/` by default; `ROM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
 
 The cores path is **configuration, not a constant**. Compiling
 `/opt/romm-stream/cores` into the Hub would put a plugin-supplied download
-outside `ROMM_HUB_HOME` on every host that is not an LXC container — including a
+outside `ROM_HUB_HOME` on every host that is not an LXC container — including a
 developer workstation, where it would land on `C:`.
 
 `.gitignore` enforces this.
@@ -434,7 +531,7 @@ availability; the filter is Linux-only and additionally needs `pyseccomp`.
 Where it is unavailable — Windows and macOS development hosts, most obviously —
 the Hub **fails closed**: `PluginProcess` raises `SandboxRefused`, the plugin
 does not run, and the message names the override. Setting
-`ROMM_HUB_ALLOW_UNSANDBOXED=1` lifts the refusal and means exactly what it
+`ROM_HUB_ALLOW_UNSANDBOXED=1` lifts the refusal and means exactly what it
 says: **no confinement at all**. With it set, a hostile plugin can open its own
 sockets to undeclared hosts, spawn processes, and read any file the Hub can. It
 is a development convenience, never a deployment setting.
@@ -480,7 +577,7 @@ realistic routes:
 
 Windows and macOS have no equivalent of the seccomp path and fall back to the
 container; until then they refuse to run plugins unless
-`ROMM_HUB_ALLOW_UNSANDBOXED=1` is set.
+`ROM_HUB_ALLOW_UNSANDBOXED=1` is set.
 
 When filesystem confinement lands, the file-read caveat in this section, in
 `README.md`, and in the `plugin install` output can be dropped. The network and
@@ -584,7 +681,7 @@ host supplies carries RomM's name and filename, and neither is an Archive.org
 identifier (`rubik.zip` is not `rubik_202308`). Searching for the rom's name
 and taking the top hit would write *a* game's title and cover into the
 library rather than *this* game's, and the operator would have no way to
-notice. So the identifier is passed explicitly — `romm-hub enrich archive-org
+notice. So the identifier is passed explicitly — `rom-hub enrich archive-org
 <rom_id> --source-id <identifier>` — and its absence is a refusal that names
 the flag. The same reasoning as the platform table's "needs mapping": silent
 misfiling is worse than a visible gap.

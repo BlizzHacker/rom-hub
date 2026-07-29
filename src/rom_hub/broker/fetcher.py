@@ -14,7 +14,7 @@ from typing import Protocol
 
 import httpx
 
-USER_AGENT = "romm-hub/0.1 (+https://github.com/rommapp/romm)"
+USER_AGENT = "rom-hub/0.1 (+https://github.com/rommapp/romm)"
 
 # Under protocol.MAX_MESSAGE_CHARS (8 MiB): the body is JSON-escaped into a
 # reply frame, which only ever grows it.

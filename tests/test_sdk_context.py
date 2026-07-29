@@ -1,4 +1,4 @@
-from romm_hub_sdk.context import HttpClient, PluginContext
+from rom_hub_sdk.context import HttpClient, PluginContext
 
 
 class FakeChannel:

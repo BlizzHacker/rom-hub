@@ -31,8 +31,8 @@ from nointro_archive.index import INDEXES, IndexCache, IndexError_, parse_index,
 from nointro_archive.platforms import platform_for  # noqa: E402
 from nointro_archive.search import ConfigError, Search, base_url, index_url  # noqa: E402
 
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from romm_hub.types import FetchFile, SearchResult  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import FetchFile, SearchResult  # noqa: E402
 
 ARCHIVE_ORG = (FIXTURES / "archive_org_nointro_gg.html").read_text(encoding="utf-8")
 MYRIENT = (FIXTURES / "myrient_no_intro_game_boy.html").read_text(encoding="utf-8")
@@ -116,6 +116,52 @@ def test_percent_encoding_is_decoded_for_the_name_and_kept_for_the_href():
     )
     assert entry.name == "10-Pin Bowling (USA) (Proto).zip"
     assert entry.href == "10-Pin%20Bowling%20%28USA%29%20%28Proto%29.zip"
+
+
+ENTITY_INDEX = """
+<table>
+<tr><td><a href="Sonic%20%26amp%3B%20Knuckles%20(USA).zip">x</a></td><td>1.0M</td></tr>
+<tr><td><a href="Ren%20%26amp%3B%20Stimpy%20%26lt%3BProto%26gt%3B.gb">x</a></td><td>512K</td></tr>
+<tr><td><a href="Sonic%20&amp;%20Tails%20(Japan).zip">x</a></td><td>2.0M</td></tr>
+<tr><td><a href="Plain%20Name%20(USA).zip">x</a></td><td>1.0M</td></tr>
+</table>
+"""
+
+
+def test_html_entities_are_decoded_out_of_titles():
+    """`Sonic &amp; Tails` is not a title; `Sonic & Tails` is.
+
+    The entity survives percent-encoding (`%26amp%3B` holds no `&` for an
+    unescape of the raw href to find), so it has to be unescaped again
+    after `unquote` or it reaches the operator verbatim -- in the search
+    listing, in the source id, and in the file written to disk.
+
+    Every form is asserted together on purpose. The two that already
+    worked are the ones Archive.org emits today, so without them here a
+    later "simplification" back to a single unescape would pass.
+    """
+    names = [e.name for e in parse_index(ENTITY_INDEX)]
+    assert "Sonic & Knuckles (USA).zip" in names
+    assert "Ren & Stimpy <Proto>.gb" in names
+    # The other encoding order -- escaped href, percent-encoded space --
+    # already worked, and must keep working.
+    assert "Sonic & Tails (Japan).zip" in names
+    assert not any("&amp;" in n or "&lt;" in n for n in names)
+
+
+def test_the_href_still_fetches_the_file_after_the_entity_fix():
+    """Only the display name is unescaped. The href is what the server
+    said, and it is what actually retrieves the bytes."""
+    entry = next(e for e in parse_index(ENTITY_INDEX) if e.name.startswith("Sonic &"))
+    assert entry.href == "Sonic%20%26amp%3B%20Knuckles%20(USA).zip"
+
+
+def test_an_entity_title_sanitises_to_a_sensible_filename():
+    """What the ROM lands on disk as. Before the fix this was
+    `Sonic &amp_ Knuckles (USA).zip` -- `&` survives the allowlist and
+    `;` does not."""
+    entry = next(e for e in parse_index(ENTITY_INDEX) if e.name.startswith("Sonic &"))
+    assert safe_filename(entry.name) == "Sonic & Knuckles (USA).zip"
 
 
 @pytest.mark.parametrize(
@@ -320,6 +366,24 @@ def test_a_plan_points_at_the_hrefs_the_server_printed():
         "5%20in%20One%20FunPak%20%28USA%29.7z"
     )
     assert plan.files[0].size_bytes == int(70.2 * 1024)
+
+
+def test_an_entity_title_round_trips_from_search_to_a_plan():
+    """The source id carries the *decoded* name, so the importer has to
+    find the same entry the search offered -- and the URL it plans must
+    still be the server's own href, not a re-encode of the pretty name."""
+    search, _ = make_search(ENTITY_INDEX)
+    result = next(r for r in search.search("sonic knuckles", None, 10))
+    assert result.title == "Sonic & Knuckles (USA).zip"
+    assert result.source_id == "nointro.gg/Sonic & Knuckles (USA).zip"
+
+    importer, _ = make_importer(ENTITY_INDEX)
+    plan = importer.plan(SearchResult(source_id=result.source_id, title="x"))
+    assert plan.files[0].url == (
+        "https://archive.org/download/nointro.gg/"
+        "Sonic%20%26amp%3B%20Knuckles%20(USA).zip"
+    )
+    assert plan.files[0].filename == "Sonic & Knuckles (USA).zip"
 
 
 def test_a_file_missing_from_the_index_is_refused_rather_than_fetched():

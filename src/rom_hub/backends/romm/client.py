@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import httpx
 
-from romm_hub.types import PROVIDER_ID_FIELDS, RAW_METADATA_FIELDS
+from rom_hub.backends.base import BackendError
+from rom_hub.types import PROVIDER_ID_FIELDS, RAW_METADATA_FIELDS
 
 _EXCERPT_LIMIT = 300
 
@@ -60,8 +61,14 @@ REQUIRED_SCOPES = (
 )
 
 
-class RommError(Exception):
-    """Any RomM API failure: non-2xx responses, auth failures, transport errors."""
+class RommError(BackendError):
+    """Any RomM API failure: non-2xx responses, auth failures, transport errors.
+
+    A `BackendError` so that a caller which is deliberately backend-
+    agnostic -- `rom_hub.cli.main`, for one -- can catch every backend's
+    failures with one name, without importing the RomM package to learn
+    what its exception is called.
+    """
 
 
 def _excerpt(resp: httpx.Response) -> str:
@@ -108,7 +115,7 @@ class RommClient:
         """The server root, without a trailing slash.
 
         Needed because registering an upload is not a REST operation --
-        `romm_hub.romm.scan` has to open a socket.io connection to the
+        `rom_hub.backends.romm.scan` has to open a socket.io connection to the
         same server this client talks to, and must not be handed a second,
         independently-configured URL that could drift from this one.
         """
@@ -412,7 +419,7 @@ class RommClient:
 
     # -- chunked upload ---------------------------------------------------
     #
-    # Three calls, orchestrated by romm_hub.romm.upload.upload_file:
+    # Three calls, orchestrated by rom_hub.backends.romm.upload.upload_file:
     #   start -> N x upload_chunk -> complete, with cancel on any failure.
     # Kept here (not just in upload.py) so every RomM HTTP call funnels
     # through the same _authorized_request auth/error handling as the rest
@@ -468,7 +475,7 @@ class RommClient:
         `{}`. A body that is present but unparseable also becomes `{}`:
         the endpoint promises nothing, no caller reads the value, and the
         upload genuinely did succeed. Callers that need the new rom's id
-        look it up in the library by hash -- see `romm_hub.importer`.
+        look it up in the library by hash -- see `rom_hub.importer`.
         """
         resp = self._authorized_request(
             "POST", f"/api/roms/upload/{upload_id}/complete"

@@ -15,8 +15,8 @@ import os
 import httpx
 import pytest
 
-from romm_hub.romm.client import RommClient, RommError
-from romm_hub.romm.upload import DEFAULT_CHUNK_SIZE, upload_file
+from rom_hub.backends.romm.client import RommClient, RommError
+from rom_hub.backends.romm.upload import DEFAULT_CHUNK_SIZE, upload_file
 
 
 def _expected_chunk_size(total_size: int, total_chunks: int, chunk_index: int) -> int:

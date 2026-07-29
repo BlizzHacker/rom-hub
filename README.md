@@ -1,11 +1,45 @@
-# RomM Hub
+# ROM Hub
 
-qBittorrent-style plugins for [RomM](https://github.com/rommapp/romm), as a
-sidecar. RomM itself is never modified.
+qBittorrent-style plugins for a self-hosted ROM library, as a sidecar. The
+library server is never modified.
+
+[RomM](https://github.com/rommapp/romm) is the backend that ships, and the
+default. It is not the only one the plugins work with: a plugin returns a
+*description* of work — which files to fetch, which metadata to set — and the
+Hub executes it, so nothing in a plugin has ever known which server is on the
+other side. `ROM_HUB_BACKEND` picks; `rom-hub backend info` says what the
+chosen one can do.
 
 See [docs/DESIGN.md](docs/DESIGN.md) for the architecture and
 [docs/DESIGN-federation-netplay.md](docs/DESIGN-federation-netplay.md) for the
 deferred federation and multiplayer work.
+
+## Renamed from `romm-hub`
+
+The project, its packages and its `ROMM_HUB_*` environment variables lost a
+letter, because the host is no longer about one library server. Nothing in the
+plugin contract changed with it.
+
+| Was | Is | Old name still works? |
+|---|---|---|
+| `romm-hub` (CLI, project) | `rom-hub` | no — reinstall |
+| `romm_hub`, `romm_hub_sdk` | `rom_hub`, `rom_hub_sdk` | **yes**, deprecated |
+| `ROMM_HUB_HOME` | `ROM_HUB_HOME` | **yes**, deprecated |
+| `ROMM_HUB_ALLOW_UNSANDBOXED` | `ROM_HUB_ALLOW_UNSANDBOXED` | **yes**, deprecated |
+| `ROMM_HUB_CORES_DIR` | `ROM_HUB_CORES_DIR` | **yes**, deprecated |
+| "RomM Provider Protocol" | "**ROM** Provider Protocol" | acronym unchanged |
+
+**`rpp_version = "1"` is still correct and must not be bumped.** The protocol
+was renamed, not revised: the acronym, the capability names, the wire format
+and every validation rule are byte-for-byte what they were. A manifest written
+last week needs no edit.
+
+**For plugin authors, one line changes:** `from romm_hub_sdk import ...` becomes
+`from rom_hub_sdk import ...`. The old import still resolves — to the *same*
+objects, so `isinstance` still holds — and warns. It will be removed.
+
+`ROMM_URL`, `ROMM_USER` and `ROMM_PASSWORD` were **not** renamed. They are
+RomM's name, not the Hub's, and they configure one backend among several.
 
 ## Status
 
@@ -14,23 +48,57 @@ implementation and a CLI command:
 
 | Capability | Command | What it does |
 |---|---|---|
-| `search` | `romm-hub search <query>` | fans out across every enabled plugin |
-| `importer` | `romm-hub import <plugin> <source_id>` | plan → download → hash-dedup → chunked upload → collection |
-| `metadata` | `romm-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to RomM |
-| `stream` | `romm-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
-| `cores` | `romm-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
+| `search` | `rom-hub search <query>` | fans out across every enabled plugin |
+| `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → chunked upload → collection |
+| `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to RomM |
+| `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
+| `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 
 Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
 survives a restart. No web UI yet.
 
+## Which library server
+
+`ROM_HUB_BACKEND` selects it; `romm` is the default and, today, the only one
+built. Its connection settings are `ROMM_URL`, `ROMM_USER` and `ROMM_PASSWORD`
+(`ROM_HUB_BACKEND_URL`/`_USER`/`_PASSWORD` also work, for a deployment that
+would rather not name a product in its unit file).
+
+    rom-hub backend info
+
+    backend          romm
+    selected by      default (romm)
+    available        romm
+    settings         ROMM_URL, ROMM_USER, ROMM_PASSWORD
+    configured       no -- ROMM_PASSWORD not set
+
+    can:
+      artwork        attach cover art to a rom
+      collections    group roms into a named collection (rom-hub import --collection)
+      import         accept a ROM upload, and list the library so a duplicate is caught first
+      metadata       write a rom's metadata fields (rom-hub enrich)
+      scan           needs an explicit registration step after an upload
+
+**It opens no connection.** The person most likely to run it is the one whose
+connection is not working yet.
+
+**A backend that cannot do something says so before it costs anything.** If the
+active backend has no collections, `rom-hub import --collection "Shooters"`
+refuses immediately — before a plugin subprocess is started, before a
+connection is opened, before a byte is downloaded — and names the backend and
+the capability. The alternative is a four-gigabyte download followed by a 404
+from an endpoint the operator has never heard of, with the ROM half-filed. The
+same refusal covers a collection the *plugin's* plan named, which is not the
+same path and would otherwise slip through.
+
 ## Quick start
 
     python -m pip install -e ".[dev]"
-    python -m romm_hub.cli plugin install ./plugins-dev/archive-org
-    python -m romm_hub.cli search "oregon trail" --limit 5
+    python -m rom_hub.cli plugin install ./plugins-dev/archive-org
+    python -m rom_hub.cli search "oregon trail" --limit 5
 
 On Linux that install also pulls `pyseccomp`, which is what lets the plugin
-subprocess confine itself. If it is missing, `romm-hub` refuses to run plugins
+subprocess confine itself. If it is missing, `rom-hub` refuses to run plugins
 rather than running them unconfined (see below).
 
 ## Importing
@@ -39,8 +107,8 @@ rather than running them unconfined (see below).
 plugin only says *what* to fetch; the Hub downloads it, hashes it, checks it is
 not already in the library, and uploads it.
 
-    romm-hub import archive-org rubik_202308
-    romm-hub import archive-org rubik_202308 --platform dos --collection "Archive.org"
+    rom-hub import archive-org rubik_202308
+    rom-hub import archive-org rubik_202308 --platform dos --collection "Archive.org"
 
 `--platform` and `--collection` override what the plugin planned. They retarget
 where a ROM files; they cannot make the Hub fetch from anywhere the plugin's
@@ -51,11 +119,11 @@ not to name a platform by hand and leave the gap open for the next person.
 An import that is already in RomM is reported as a duplicate and **not**
 uploaded. Matching is by file hash, not by name.
 
-    romm-hub jobs                # every import job and its state
-    romm-hub jobs --state FAILED # just the ones that went wrong, with reasons
+    rom-hub jobs                # every import job and its state
+    rom-hub jobs --state FAILED # just the ones that went wrong, with reasons
 
-Job state lives in `$ROMM_HUB_HOME/var/jobs.db` and downloads land in
-`$ROMM_HUB_HOME/var/downloads/`, so an interrupted multi-GB import is resumed
+Job state lives in `$ROM_HUB_HOME/var/jobs.db` and downloads land in
+`$ROM_HUB_HOME/var/downloads/`, so an interrupted multi-GB import is resumed
 rather than restarted.
 
 ## Enriching metadata
@@ -63,7 +131,7 @@ rather than restarted.
 `enrich` asks a plugin what it knows about a rom already in RomM, then writes
 it. The plugin describes; the Hub fetches the artwork and holds the token.
 
-    romm-hub enrich archive-org 1 --source-id rubik_202308
+    rom-hub enrich archive-org 1 --source-id rubik_202308
 
 **Only what the plugin actually set is written.** An unset field is absent from
 the request, not sent as an empty one — verified against a real RomM: a
@@ -78,11 +146,11 @@ game's title and cover into your library with nothing to notice it by.
 
 Artwork can come from a URL (the Hub fetches it, and only from a host the
 plugin's manifest declares) or from bytes the plugin already has. It lands in
-`$ROMM_HUB_HOME/var/artwork/<rom_id>/` on its way to RomM.
+`$ROM_HUB_HOME/var/artwork/<rom_id>/` on its way to RomM.
 
 ## Streaming
 
-    romm-hub stream archive-org msdos_Oregon_Trail_The_1990
+    rom-hub stream archive-org msdos_Oregon_Trail_The_1990
     url     https://archive.org/details/msdos_Oregon_Trail_The_1990
     title   The Oregon Trail
     type    text/html
@@ -96,13 +164,13 @@ are exactly the ones `import` refuses, so this is where they go.
 
 ## Emulator cores
 
-    romm-hub cores list <plugin>
-    romm-hub cores install <plugin> <core>
+    rom-hub cores list <plugin>
+    rom-hub cores install <plugin> <core>
 
-Cores land in `$ROMM_HUB_HOME/var/cores/<plugin>/` by default. Point them
+Cores land in `$ROM_HUB_HOME/var/cores/<plugin>/` by default. Point them
 somewhere else — `/opt/romm-stream/cores` on the deployment target — with
 
-    ROMM_HUB_CORES_DIR=/opt/romm-stream/cores romm-hub cores install ...
+    ROM_HUB_CORES_DIR=/opt/romm-stream/cores rom-hub cores install ...
 
 A core download is gated by exactly the same code as a ROM import: the same
 allowlist check, the same filename validation, the same containment check. It
@@ -126,9 +194,9 @@ the environment, never from a file in the repo:
 | `ROMM_PASSWORD` | that user's password | |
 
 All three are required; both commands name whichever are missing and stop
-before opening any connection. `ROMM_HUB_HOME` (default `~/.romm-hub`) decides
+before opening any connection. `ROM_HUB_HOME` (default `~/.rom-hub`) decides
 where plugins, the job database, downloads, artwork and cores live;
-`ROMM_HUB_CORES_DIR` moves just the cores.
+`ROM_HUB_CORES_DIR` moves just the cores.
 
 **The plugin never sees any of this.** The token, the upload, the artwork
 fetch, the metadata write and the collection call are all host-side; a
@@ -144,7 +212,7 @@ On a host with no seccomp — Windows and macOS — the live test and the CLI bo
 need the opt-out, because the Hub otherwise refuses to run a plugin it cannot
 confine:
 
-    ROMM_HUB_ALLOW_UNSANDBOXED=1 python -m pytest -m live -q
+    ROM_HUB_ALLOW_UNSANDBOXED=1 python -m pytest -m live -q
 
 ## Security model
 
@@ -222,11 +290,11 @@ one being closed. Recorded here so it does not get re-litigated.
 ### Hosts that cannot install the filter
 
 The filter is Linux-only and additionally needs `pyseccomp`. Where
-`romm_hub.sandbox.probe()` reports it unavailable — Windows and macOS, most
+`rom_hub.sandbox.probe()` reports it unavailable — Windows and macOS, most
 obviously — the Hub **fails closed**: plugins refuse to run, and the error
 names the override. Setting
 
-    ROMM_HUB_ALLOW_UNSANDBOXED=1
+    ROM_HUB_ALLOW_UNSANDBOXED=1
 
 lifts the refusal and means exactly what it says: **no confinement at all**.
 With it set, a hostile plugin can open its own sockets to undeclared hosts,

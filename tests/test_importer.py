@@ -1,8 +1,8 @@
 """End-to-end import pipeline tests.
 
 No test here may require a live RomM: `FakeRomm` stands in for the
-client, `FakeDownloader` for the network, and `upload_file` is replaced
-by a recording fake. The `HttpDownloader` tests are the exception -- they
+`LibraryBackend`, `FakeDownloader` for the network, and the backend's
+`upload_rom` is replaced by a recording fake. The `HttpDownloader` tests are the exception -- they
 exercise the real class, but over `httpx.MockTransport`, so still no
 socket is opened.
 """
@@ -13,18 +13,19 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from romm_hub.dedup import hash_file
-from romm_hub.importer import (
+from rom_hub.backends.base import COLLECTIONS, IMPORT, SCAN
+from rom_hub.dedup import hash_file
+from rom_hub.importer import (
     DownloadError,
     HttpDownloader,
     ImportResult,
     dest_in_job_dir,
     run_import,
 )
-from romm_hub.jobs import JobQueue, JobState
-from romm_hub.romm.client import RommError
-from romm_hub.romm.scan import ScanError
-from romm_hub.types import FetchFile, FetchPlan, SearchResult
+from rom_hub.jobs import JobQueue, JobState
+from rom_hub.backends.romm.client import RommError
+from rom_hub.backends.romm.scan import ScanError
+from rom_hub.types import FetchFile, FetchPlan, SearchResult
 
 ROM_BYTES = b"MZ\x90\x00rom payload" * 64
 RESULT = SearchResult(source_id="item-1", title="Some Game")
@@ -59,10 +60,30 @@ class FakePlugin:
 
 
 class FakeRomm:
-    def __init__(self, platforms=None, roms=None, list_roms_error=None):
+    """A `LibraryBackend` with only the members an import reaches.
+
+    Two members are new since the RomM client sat here directly, and both
+    are the seam showing through rather than test scaffolding:
+    `upload_rom` (the backend now owns the upload, so `upload_file` is no
+    longer a module-level function the pipeline calls) and
+    `capabilities` (the pipeline refuses a collection up front rather
+    than at an HTTP call). Pass `capabilities=` to model a backend that
+    cannot do something.
+    """
+
+    name = "fake"
+
+    def __init__(
+        self,
+        platforms=None,
+        roms=None,
+        list_roms_error=None,
+        capabilities=(IMPORT, COLLECTIONS, SCAN),
+    ):
         self.platforms = {"dos": 7} if platforms is None else platforms
         self.roms = roms or []
         self.list_roms_error = list_roms_error
+        self._capabilities = frozenset(capabilities)
         self.list_roms_calls = 0
         self.collections: dict[str, int] = {}
         self.ensure_collection_calls: list[str] = []
@@ -70,10 +91,21 @@ class FakeRomm:
         self.pending: list[Path] = []
         self._next_rom_id = 999
 
+    def capabilities(self):
+        return self._capabilities
+
     def platform_id(self, slug):
         if slug not in self.platforms:
             raise RommError(f"no RomM platform matches slug {slug!r}")
         return self.platforms[slug]
+
+    def upload_rom(self, path, platform_id):
+        """The default: bytes accepted, no row created. See receive_upload.
+
+        The `upload` fixture replaces this with a recording FakeUpload for
+        the tests that care how it was called.
+        """
+        self.receive_upload(Path(path))
 
     def list_roms(self, platform_id):
         self.list_roms_calls += 1
@@ -139,13 +171,14 @@ class FakeDownloader:
 
 
 class FakeUpload:
-    """Replaces `upload_file`. The point of the duplicate test is that
-    this is never called at all, so it counts its calls.
+    """Replaces the backend's `upload_rom`. The point of the duplicate
+    test is that this is never called at all, so it counts its calls.
 
-    The default return value is `{}`, because that is what the real
-    `upload_file` returns: RomM's /complete answers 201 with no body, so
-    there is no rom id in it. `lands=False` simulates the nastier case --
-    the server reports success but the ROM never appears in the library.
+    The return value is `{}` and nobody reads it: `LibraryBackend.
+    upload_rom` returns nothing, because RomM's /complete answers 201
+    with no body and there is no rom id in it to hand back.
+    `lands=False` simulates the nastier case -- the server reports
+    success but the ROM never appears in the library.
     """
 
     def __init__(self, error=None, lands=True):
@@ -195,8 +228,19 @@ class FakeScanner:
 
 @pytest.fixture
 def upload(monkeypatch):
+    """Record every upload the pipeline asks the backend to perform.
+
+    Patched onto the class rather than onto a module function, because
+    uploading is the backend's job now: `run_import` calls
+    `backend.upload_rom(path, platform_id)` and there is no module-level
+    `upload_file` in the pipeline to intercept.
+    """
     fake = FakeUpload()
-    monkeypatch.setattr("romm_hub.importer.upload_file", fake)
+    monkeypatch.setattr(
+        FakeRomm,
+        "upload_rom",
+        lambda self, path, platform_id: fake(self, path, platform_id),
+    )
     return fake
 
 
@@ -210,7 +254,7 @@ def _run(tmp_path, plugin, romm, queue, downloader=None, scanner=None, **kwargs)
     return run_import(
         plugin,
         RESULT,
-        romm=romm,
+        backend=romm,
         queue=queue,
         download_dir=tmp_path / "downloads",
         downloader=downloader if downloader is not None else FakeDownloader(),
@@ -267,7 +311,11 @@ def test_an_upload_that_never_appears_in_the_library_lands_failed(
     is in the library. Reporting DONE on the strength of a status code
     alone is exactly the bug this check exists to catch."""
     fake = FakeUpload(lands=False)
-    monkeypatch.setattr("romm_hub.importer.upload_file", fake)
+    monkeypatch.setattr(
+        FakeRomm,
+        "upload_rom",
+        lambda self, path, platform_id: fake(self, path, platform_id),
+    )
     romm = FakeRomm()
 
     res = _run(tmp_path, FakePlugin(_plan()), romm, queue)
@@ -638,7 +686,11 @@ def test_a_plugin_whose_plan_raises_lands_failed_not_an_exception(
 
 def test_an_upload_failure_lands_failed_with_the_reason(tmp_path, queue, monkeypatch):
     fake = FakeUpload(error=RommError("chunk 2 rejected (400)"))
-    monkeypatch.setattr("romm_hub.importer.upload_file", fake)
+    monkeypatch.setattr(
+        FakeRomm,
+        "upload_rom",
+        lambda self, path, platform_id: fake(self, path, platform_id),
+    )
 
     res = _run(tmp_path, FakePlugin(_plan()), FakeRomm(), queue)
     assert res.state is JobState.FAILED
@@ -717,12 +769,12 @@ def test_run_import_closes_the_downloader_it_built_itself(tmp_path, queue, uploa
 
     romm = FakeRomm()
     monkey = pytest.MonkeyPatch()
-    monkey.setattr("romm_hub.importer.HttpDownloader", TrackingDownloader)
+    monkey.setattr("rom_hub.importer.HttpDownloader", TrackingDownloader)
     try:
         res = run_import(
             FakePlugin(_plan()),
             RESULT,
-            romm=romm,
+            backend=romm,
             queue=queue,
             download_dir=tmp_path / "downloads",
             # Supplied explicitly: this test is about the downloader run_import
@@ -775,12 +827,12 @@ def test_the_downloader_is_closed_even_when_the_import_fails(
             super().close()
 
     monkey = pytest.MonkeyPatch()
-    monkey.setattr("romm_hub.importer.HttpDownloader", TrackingDownloader)
+    monkey.setattr("rom_hub.importer.HttpDownloader", TrackingDownloader)
     try:
         res = run_import(
             FakePlugin(_plan()),
             RESULT,
-            romm=FakeRomm(),
+            backend=FakeRomm(),
             queue=queue,
             download_dir=tmp_path / "downloads",
         )
