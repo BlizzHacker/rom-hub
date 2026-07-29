@@ -24,15 +24,46 @@ finds out by watching `rom-hub import --collection "Shooters"` download
 four gigabytes, upload them, and then fail on a 404 from an endpoint that
 does not exist -- with the ROM half-filed and the message useless.
 
-So the host asks first and says so plainly, before any work:
+So the host asks first and says so plainly, before any work.
 
-    collections are not supported by the 'example' backend, so
-    --collection "Shooters" cannot be honoured
+## Knowing early is not the same as refusing
 
-That is the whole point of the frozenset. It is checked at the top of the
-command *and* again in the pipeline, because a `--collection` flag is not
-the only way a collection gets named -- a plugin's own `FetchPlan` can
-carry one, and that path must fail just as legibly.
+The mechanism above answers *when* to check. It does not answer *what to
+do about the answer*, and for a while this file only had one answer:
+refuse. That was wrong often enough to be a bug. `rom-hub import
+archive-org rubik_202308` against Gaseous or Retrom stopped dead with
+nothing downloaded, because the archive-org plugin names a collection by
+default (`... or "Archive.org"`) and neither backend has collections --
+Gaseous's `CollectionsController.cs` has no non-comment lines in it, and
+Retrom has no collection concept in its schema at all. The operator asked
+for a ROM and got a lecture about grouping.
+
+A collection is a *grouping nicety*. Refusing to put a ROM in a library
+because the library cannot also file it under a label is refusing the job
+over the garnish. So capabilities are split in two, and the split is the
+policy:
+
+* **Essential** -- without it the operation cannot happen at all. Refuse,
+  before a single byte moves. `require()`.
+* **Optional** -- an extra layered on top of an operation that succeeds
+  without it. Do the operation, skip the extra, and *say* that it was
+  skipped in the outcome the operator reads. `degrade()`.
+
+The classification of every capability is `ESSENTIAL_CAPABILITIES` /
+`OPTIONAL_CAPABILITIES` below, with the reasoning per name. It is not a
+special case for collections: every capability the host gates on is
+listed, `degrade()` refuses to be handed an essential one, and a test
+asserts the two sets plus the ungated ones cover `ALL_CAPABILITIES`, so a
+capability added later cannot be left unclassified.
+
+**Degradation is for a default, not for a request.** A plugin naming
+"Archive.org" is boilerplate the operator never typed; dropping it costs
+them nothing they asked for. An operator who typed `--collection
+"Shooters"` did ask, and silently not doing it is how a library ends up
+quietly unsorted. So the CLI still *refuses* an explicit `--collection`
+against a backend without collections -- up front, before the plugin
+process starts -- and the refusal says what to re-run. The pipeline, which
+cannot tell the two apart by the time it sees a `FetchPlan`, degrades.
 
 ## What is deliberately absent
 
@@ -45,6 +76,7 @@ months.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -97,6 +129,57 @@ ARTWORK = "artwork"
 SCAN = "scan"
 
 ALL_CAPABILITIES = frozenset({IMPORT, COLLECTIONS, METADATA, ARTWORK, SCAN})
+
+
+# -- essential or optional -------------------------------------------------
+#
+# Every capability the host gates on, classified. See "Knowing early is not
+# the same as refusing" in the module docstring for why this split exists;
+# what follows is why each name landed where it did.
+
+#: Without these the operation is not diminished, it is impossible.
+#:
+#: **IMPORT** is upload *and* listing, which between them are the entire
+#: import: a backend that cannot be uploaded to has nowhere to put the
+#: ROM, and one that cannot be listed cannot be deduped against -- and a
+#: dedup that could not run is not a dedup that passed. There is no
+#: reduced import left over when this is missing.
+#:
+#: **METADATA** is the whole of `rom-hub enrich`. Writing a rom's fields
+#: is not a step in enriching, it is the thing itself; "enriched, except
+#: nothing was written" is not a degraded success, it is a lie.
+ESSENTIAL_CAPABILITIES = frozenset({IMPORT, METADATA})
+
+#: Extras. The operation is complete and correct without them, so the host
+#: does them when it can, skips them when it cannot, and reports the skip.
+#:
+#: **COLLECTIONS** groups roms that are already in the library. It happens
+#: *after* the upload, it changes nothing about the ROM, and the operator
+#: can make the collection by hand later if they want one. Costing them
+#: the import over it -- which is what this code did until the archive-org
+#: plugin's default collection blocked every Gaseous and Retrom import --
+#: is refusing the job over the garnish.
+#:
+#: **ARTWORK** is a cover image attached to a rom record. A patch that
+#: carries a name, a release date and an igdb_id *and* a cover should not
+#: lose all four to a backend that stores no images; the three it can
+#: store are worth writing. The cover is fetched over the network, so the
+#: skip is decided before `_artwork` runs and costs no download either.
+#: (If a patch proposes nothing *but* a cover, there is no remainder to
+#: write and `run_enrich` says so rather than reporting a change it did
+#: not make.)
+OPTIONAL_CAPABILITIES = frozenset({COLLECTIONS, ARTWORK})
+
+#: Declared, never gated on.
+#:
+#: **SCAN** describes a backend rather than authorising a step: the
+#: pipeline calls `scan_platform()` unconditionally after every upload,
+#: and a backend that indexes on receipt implements it as a no-op. There
+#: is nothing to check, because there is no branch. It is not optional
+#: either -- when a backend *does* need the registration and it fails, the
+#: ROM is not in the library and the import has genuinely failed, which is
+#: why that failure is raised rather than noted.
+UNGATED_CAPABILITIES = frozenset({SCAN})
 
 #: One line each, for `rom-hub backend info`. A capability list is only
 #: useful to an operator who can tell which command each name governs.
@@ -215,13 +298,24 @@ class LibraryBackend(Protocol):
         ...
 
 
-def require(backend: LibraryBackend, capability: str, what: str) -> None:
+def require(
+    backend: LibraryBackend, capability: str, what: str, hint: str = ""
+) -> None:
     """Refuse `what` up front if `backend` cannot do it.
 
     The message names the backend, because "collections are not
     supported" invites the reply "but I have collections" from an
     operator looking at a different server than the one the Hub is
     pointed at.
+
+    `hint` is the way out, when there is one. A refusal an operator
+    cannot act on is a dead end; `--collection` against a collection-less
+    backend has an obvious next move (run it without the flag) and saying
+    so is cheaper than making them find it.
+
+    Still reachable for an *optional* capability, deliberately: the CLI
+    refuses an explicitly typed `--collection` rather than degrading it.
+    What must not happen is the reverse -- see `degrade()`.
     """
     supported = capabilities_of(backend)
     if capability in supported:
@@ -230,6 +324,59 @@ def require(backend: LibraryBackend, capability: str, what: str) -> None:
         f"{what} needs the {capability!r} capability, which the "
         f"{getattr(backend, 'name', 'active')!r} backend does not have "
         f"(it supports: {', '.join(sorted(supported)) or 'nothing'})"
+        + (f". {hint}" if hint else "")
+    )
+
+
+@dataclass(frozen=True)
+class SkippedStep:
+    """One optional step that did not happen, and why.
+
+    Carried out of the pipeline in its result and written to the job
+    record, because a degradation nobody is told about is
+    indistinguishable from a bug. The operator asked for an import and
+    got one; they are entitled to know it is not filed under the label
+    the plugin named.
+    """
+
+    capability: str
+    what: str
+    backend: str
+
+    def __str__(self) -> str:
+        return (
+            f"{self.what} was skipped: the {self.backend!r} backend does not "
+            f"support {self.capability}"
+        )
+
+
+def degrade(
+    backend: LibraryBackend, capability: str, what: str
+) -> SkippedStep | None:
+    """None if `backend` can do `capability`; otherwise what will be skipped.
+
+    The optional-capability counterpart to `require()`. Callers do the
+    rest of the operation either way and report the returned skip.
+
+    Raises `ValueError` -- not a degradation -- if handed a capability
+    classified as essential. That is the guard rail on this whole policy:
+    the failure mode being designed against is a future caller quietly
+    turning "cannot do the job" into a note in the output, so an essential
+    capability reaching this function is a programming error, and it is
+    louder than the thing it prevents.
+    """
+    if capability in ESSENTIAL_CAPABILITIES:
+        raise ValueError(
+            f"{capability!r} is an essential capability and cannot be "
+            f"degraded; use require() so the operation refuses before it "
+            f"does any work"
+        )
+    if capability in capabilities_of(backend):
+        return None
+    return SkippedStep(
+        capability=capability,
+        what=what,
+        backend=str(getattr(backend, "name", "") or "active"),
     )
 
 
