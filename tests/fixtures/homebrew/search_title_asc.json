@@ -1,0 +1,306 @@
+{
+ "results": 1571,
+ "page_total": 158,
+ "page_current": 1,
+ "page_elements": 10,
+ "sort": "title",
+ "order": "asc",
+ "entries": [
+  {
+   "screenshots": [
+    "cover.png",
+    "4tS1sK.png",
+    "IKbO2Bg.png",
+    "fh2B0N5.png",
+    "WwhT7g.png",
+    "ok7BNB.png",
+    "ANTCkM.png",
+    "VJoKya.png"
+   ],
+   "typetag": "game",
+   "tags": [
+    "Platform",
+    "gb-showdown-22"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "Super_Jacked_Up_Tomato_Face_Johnson_v2.3.gbc",
+     "playable": true
+    }
+   ],
+   "developer": [
+    "GumpyFunction",
+    "Vault Kid"
+   ],
+   "date": "2022-06-28T22:22:00",
+   "website": "https://gumpyfunction.itch.io/super-jacked-up-tomato-face-johnson",
+   "slug": "super-jacked-up-tomato-face-johnson",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2022-06-12T21:17:51Z",
+   "devtoolinfo": ""
+  },
+  {
+   "slug": "star-fortress",
+   "screenshots": [
+    "starfortress.png"
+   ],
+   "tags": [
+    "2004Mbit"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "star-fortress.gba",
+     "playable": true
+    }
+   ],
+   "title": " Star Fortress Dendron",
+   "platform": "GBA",
+   "typetag": "game",
+   "developer": "ScottLininger",
+   "basepath": "database-gba",
+   "baserepo": "https://github.com/gbadev-org/games",
+   "firstadded_date": "2023-02-10T20:57:58Z",
+   "devtoolinfo": ""
+  },
+  {
+   "screenshots": [
+    "cover.png",
+    "jvwNnn.png"
+   ],
+   "typetag": "game",
+   "tags": [
+    "gbcompo21"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "The_Great_Strategy_(2005).gb",
+     "playable": true
+    }
+   ],
+   "developer": "jbshelton",
+   "website": "https://jbshelton.itch.io/badliz-the-great-strategy-roblox-theme-2006",
+   "slug": "badliz-the-great-strategy-roblox-theme-2006",
+   "title": "(GB PCM Demo) Badliz: The Great Strategy- Roblox Theme 2006",
+   "description": "An audio demo of my soon to be released GBAudioPlayerV3, targeting the original DMG Gameboy.",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2022-07-04T19:36:23Z",
+   "devtoolinfo": ""
+  },
+  {
+   "$schema": "https://raw.githubusercontent.com/gbdev/database/refs/heads/master/schemas/game-schema-d5.json",
+   "slug": "voxel_game-boy-advance-quokka-wokka",
+   "title": "(Game Boy Advance) Quokka Wokka",
+   "screenshots": [
+    "cover.png",
+    "screenshots/6TNPzA.png",
+    "screenshots/izFdkJ.png",
+    "screenshots/IV2piP.png",
+    "screenshots/45okmb.png",
+    "screenshots/T%2F0EGG.png"
+   ],
+   "typetag": "game",
+   "platform": "GBA",
+   "tags": [
+    "Simple",
+    "Cute",
+    "Arcade",
+    "Retro",
+    "Platformer",
+    "event:gbajam24"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "files/quokka-wokka_jam.gba",
+     "playable": true
+    }
+   ],
+   "developer": "voxel",
+   "website": "https://voxel.itch.io/game-boy-advance-quokka-wokka",
+   "basepath": "database-gba",
+   "baserepo": "https://github.com/gbadev-org/games",
+   "firstadded_date": "2025-05-30T14:51:18Z",
+   "devtoolinfo": ""
+  },
+  {
+   "title": "144p Test Suite",
+   "slug": "144p-test-suite",
+   "gameLicense": "GPL-2.0-or-later",
+   "developer": "Damian Yerrick",
+   "repository": "https://github.com/pinobatch/240p-test-mini",
+   "platform": "GB",
+   "typetag": "tool",
+   "date": "2018-04-17",
+   "tags": [
+    "Open Source"
+   ],
+   "play": {
+    "enable": true
+   },
+   "screenshots": [
+    "gb240p-linearity.png",
+    "gb240p-megaton.png",
+    "gb240p-audiosync.png",
+    "gb240p-shadowsprite.png",
+    "gb240p-stopwatch.png",
+    "gb240p-smpte.png",
+    "gb240p-bleed.png"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "gb240p.gb",
+     "playable": true
+    }
+   ],
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2021-03-04T21:45:57Z",
+   "devtoolinfo": ""
+  },
+  {
+   "date": "2000-01-01",
+   "developer": "One Man Band",
+   "files": [
+    {
+     "description": "release",
+     "filename": "OMB-STAR.ZIP"
+    },
+    {
+     "default": true,
+     "filename": "Stars.gb",
+     "playable": true
+    }
+   ],
+   "platform": "GBC",
+   "screenshots": [
+    "718.png"
+   ],
+   "slug": "parallax-starfield",
+   "title": "175-sprite Parallax Starfield",
+   "typetag": "demo",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-01-17T16:33:33Z",
+   "devtoolinfo": ""
+  },
+  {
+   "screenshots": [
+    "cover.png",
+    "a2FuH3m.png",
+    "Svnn1L.png"
+   ],
+   "typetag": "game",
+   "tags": [
+    "gbcompo21"
+   ],
+   "developer": "Game portal....",
+   "website": "https://zartan917.itch.io/1844-pinball-demo-gameboy-color",
+   "slug": "1844-pinball-demo-gameboy-color",
+   "title": "1844 PINBALL DEMO GAMEBOY COLOR",
+   "files": [
+    {
+     "default": true,
+     "filename": "game.gb",
+     "playable": true
+    }
+   ],
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2022-07-04T19:36:23Z",
+   "devtoolinfo": ""
+  },
+  {
+   "screenshots": [
+    "cover.png",
+    "DneWwt.png",
+    "nhJh5a.png",
+    "9jV7PK.png",
+    "p9ICny.png"
+   ],
+   "typetag": "game",
+   "tags": [
+    "gbcompo21"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "1D_Marathon.gb",
+     "playable": true
+    }
+   ],
+   "developer": "VL2M STUDIO",
+   "website": "https://vl2m-studio.itch.io/1d-marathon",
+   "slug": "1d-marathon",
+   "title": "1D Marathon",
+   "description": "A pseudo-1D infinite runner game",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2022-07-04T19:36:23Z",
+   "devtoolinfo": ""
+  },
+  {
+   "screenshots": [
+    "cover.png",
+    "Kx2SDv.png",
+    "9stq6q.png",
+    "TBaUxt.png",
+    "tJ1zzV.png",
+    "aZx2Ry.png"
+   ],
+   "typetag": "game",
+   "tags": [
+    "Puzzle",
+    "event:gbshowdown23"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "2friendly.gb",
+     "playable": true
+    }
+   ],
+   "developer": "isacben",
+   "date": "2023-05-20T20:17:00",
+   "website": "https://isacben.itch.io/2friendly",
+   "slug": "2friendly",
+   "title": "2 Friendly",
+   "platform": "GB",
+   "description": "Two cats. One of them is too friendly.",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2023-06-18T11:22:28Z",
+   "devtoolinfo": ""
+  },
+  {
+   "slug": "2004mbit-competition",
+   "screenshots": [
+    "screen.png"
+   ],
+   "tags": [
+    "2004Mbit"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "2004mbit-competition.gba",
+     "playable": true
+    }
+   ],
+   "title": "2004Mbit Compo Game",
+   "platform": "GBA",
+   "typetag": "game",
+   "developer": "",
+   "description": "Includes Bengt - Swinger of Longarm, GunKid, Space Gems, Swish-It, Naval Battle, SnackMan, Simonchu 2, YuckFu, GASP, PanzerPanik.",
+   "basepath": "database-gba",
+   "baserepo": "https://github.com/gbadev-org/games",
+   "firstadded_date": "2023-02-10T20:56:30Z",
+   "devtoolinfo": ""
+  }
+ ]
+}
