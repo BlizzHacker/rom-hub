@@ -14,3 +14,6 @@ var/
 # as content of this repo.
 plugins-dev/*/.git/
 .venv/
+
+# Subagent reports, not project content
+.git-report-*.md
