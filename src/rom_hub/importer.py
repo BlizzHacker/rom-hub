@@ -320,6 +320,17 @@ def _slug_of(plugin) -> str:
     return getattr(getattr(plugin, "manifest", None), "slug", "") or "unknown"
 
 
+def _backend_name(backend: LibraryBackend) -> str:
+    """What to call the library server in an operator-facing message.
+
+    Falls back to "the library" rather than to a product name: a backend
+    without a `name` is a broken backend, and guessing "RomM" for it is
+    how these messages came to say the wrong thing in the first place.
+    """
+    name = getattr(backend, "name", "") or ""
+    return name if isinstance(name, str) and name else "the library"
+
+
 def _fail(queue: JobQueue, job_id: int, message: str) -> ImportResult:
     queue.set_state(job_id, JobState.FAILED, error=message)
     return ImportResult(
@@ -339,6 +350,13 @@ def _import(
     scanner: Scanner,
 ) -> ImportResult:
     slug = _slug_of(plugin)
+    # What to call the library server in anything an operator will read.
+    # These messages used to say "RomM" outright, which was true when RomM
+    # was the only backend and became a lie the moment it was not: an
+    # operator running Gaseous was told a duplicate was "already in RomM",
+    # and -- worse -- that a failed registration could be fixed by
+    # triggering a scan in a product they do not run.
+    library_name = _backend_name(backend)
 
     # 1. Ask the plugin what to fetch. PluginProcess.plan() has already
     #    validated the shape and gated every URL against the allowlist.
@@ -458,7 +476,7 @@ def _import(
         names = ", ".join(name for name, _ in duplicates)
         existing_id = _rom_id_of(duplicates[0][1]) if duplicates else None
         message = (
-            f"already in RomM ({names}); nothing was uploaded"
+            f"already in {library_name} ({names}); nothing was uploaded"
             + (f" -- matches rom id {existing_id}" if existing_id is not None else "")
         )
         queue.set_state(job.id, JobState.SKIPPED_DUPLICATE)
@@ -478,7 +496,7 @@ def _import(
             backend.upload_rom(path, platform_id)
         except Exception as exc:
             raise _ImportFailure(
-                f"upload of {path.name!r} to RomM failed: {exc}"
+                f"upload of {path.name!r} to {library_name} failed: {exc}"
             ) from exc
 
     # 5a. Register the uploaded bytes with the library.
@@ -499,11 +517,11 @@ def _import(
         scanner.scan_platform(platform_id)
     except Exception as exc:
         raise _ImportFailure(
-            f"{names} uploaded to RomM successfully, but registering it in "
-            f"the library failed, so the ROM is not importable yet: {exc}. "
-            f"The file is already in RomM's library directory for platform "
-            f"{plan.platform!r} -- do not re-upload it; trigger a scan of "
-            f"that platform in RomM instead."
+            f"{names} uploaded to {library_name} successfully, but registering it "
+            f"in the library failed, so the ROM is not importable yet: {exc}. "
+            f"The file already reached {library_name} for platform "
+            f"{plan.platform!r} -- do not re-upload it; re-run the "
+            f"registration from {library_name} itself."
         ) from exc
 
     # 5b. Find what was just uploaded, by the digests already computed in
@@ -549,10 +567,11 @@ def _import(
 
     if missing:
         raise _ImportFailure(
-            f"RomM reported the upload of {', '.join(missing)} succeeded, but "
-            f"the file did not appear in the library for platform "
-            f"{plan.platform!r} afterwards -- the ROM did not land, so the "
-            f"import is not done. Check RomM's own logs for the upload."
+            f"{library_name} reported the upload of {', '.join(missing)} "
+            f"succeeded, but the file did not appear in the library for "
+            f"platform {plan.platform!r} afterwards -- the ROM did not land, "
+            f"so the import is not done. Check {library_name}'s own logs for "
+            f"the upload."
         )
 
     # 6. Collection, only if the plan asked for one. After 5b, because the
@@ -560,9 +579,9 @@ def _import(
     if plan.collection:
         if not rom_ids:
             raise _ImportFailure(
-                f"uploaded {len(to_upload)} file(s), but RomM's upload response "
-                f"carried no rom id, so they could not be added to collection "
-                f"{plan.collection!r}; add them by hand"
+                f"uploaded {len(to_upload)} file(s), but {library_name}'s "
+                f"upload response carried no rom id, so they could not be "
+                f"added to collection {plan.collection!r}; add them by hand"
             )
         try:
             collection_id = backend.ensure_collection(plan.collection)
