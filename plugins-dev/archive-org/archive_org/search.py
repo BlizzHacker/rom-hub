@@ -6,6 +6,8 @@ putting them in the `stream_only` collection, and that flag is what decides
 whether a later phase offers import or streaming.
 """
 
+from pydantic import ValidationError
+
 from romm_hub_sdk import SearchProvider, SearchResult
 
 ENDPOINT = "https://archive.org/advancedsearch.php"
@@ -45,17 +47,26 @@ class Search(SearchProvider):
             collection = doc.get("collection") or []
             if isinstance(collection, str):
                 collection = [collection]
-            results.append(
-                SearchResult(
-                    source_id=identifier,
-                    title=title if isinstance(title, str) else str(title),
-                    platform=doc.get("emulator"),
-                    size_bytes=doc.get("item_size"),
-                    url=f"{DETAILS}{identifier}",
-                    extra={
-                        "stream_only": "true" if "stream_only" in collection else "false",
-                        "collections": ",".join(collection),
-                    },
+            try:
+                results.append(
+                    SearchResult(
+                        source_id=identifier,
+                        title=title if isinstance(title, str) else str(title),
+                        platform=doc.get("emulator"),
+                        size_bytes=doc.get("item_size"),
+                        url=f"{DETAILS}{identifier}",
+                        extra={
+                            "stream_only": (
+                                "true" if "stream_only" in collection else "false"
+                            ),
+                            "collections": ",".join(collection),
+                        },
+                    )
                 )
-            )
+            except (ValidationError, TypeError, ValueError):
+                # item_size and emulator are whatever upstream put there, and
+                # size_bytes is a ge=0 field. One malformed doc used to raise
+                # out of search() and cost the plugin every other result in
+                # the response -- skip it, like the untitled docs above.
+                continue
         return results
