@@ -50,9 +50,16 @@ def test_romm_is_the_default_backend():
 
 
 def test_an_unknown_backend_names_the_ones_that_exist():
+    # Deliberately not the name of a backend that might get implemented:
+    # this assertion is about the error message, and it used to name
+    # `gaseous`, which then became real and made the test pass for the
+    # wrong reason -- it would have caught a typo in the registry, not a
+    # missing entry.
     with pytest.raises(UnknownBackend) as exc:
-        backends.backend_class("gaseous")
-    assert "romm" in str(exc.value)
+        backends.backend_class("not-a-real-backend")
+    message = str(exc.value)
+    assert "romm" in message
+    assert "gaseous" in message
 
 
 def test_describe_needs_no_connection(monkeypatch):
