@@ -325,6 +325,23 @@ def test_an_archive_dedups_by_filename_when_the_hashes_cannot_match(tmp_path, qu
     assert len(server.roms) == 1
 
 
+def test_operator_messages_name_the_backend_actually_in_use(tmp_path, queue):
+    """These messages said "RomM" outright until there was a second
+    backend, at which point an operator running Gaseous was told their
+    duplicate was "already in RomM". The scan-failure text was worse: it
+    advised triggering a scan in a product they do not run.
+    """
+    server = FakeGaseous()
+    backend = server.backend()
+
+    _run(tmp_path, backend, queue)
+    second = _run(tmp_path, backend, queue)
+
+    assert second.state is JobState.SKIPPED_DUPLICATE
+    assert "already in gaseous" in second.message
+    assert "RomM" not in second.message
+
+
 def test_a_collection_is_refused_before_anything_is_downloaded(tmp_path, queue):
     """Gaseous has no collections, and the pipeline must say so before it
     spends a download rather than after the upload."""
