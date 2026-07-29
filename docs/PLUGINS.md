@@ -104,7 +104,7 @@ Installs from a URL are pinned to a tag. Updating is deliberate — re-run
 | ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer` | — | `hh3.gbdev.io` |
 | ❗ itch.io (free games) — SEARCH-ONLY | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer` | **search-only** | `itch.io`, `*.itch.io` |
 | ✔ libretro Thumbnails | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-thumbnails` (in-tree) | `metadata` | — | `thumbnails.libretro.com` |
-| ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | — | `archive.org`, `*.archive.org` |
+| ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.1 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | — | `archive.org`, `*.archive.org` |
 | ❗ RetroAchievements | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/retroachievements` (in-tree) | `metadata` | **API key required** (stored in clear text) | `retroachievements.org` |
 
 ### ✔ Archive.org — `archive-org`
