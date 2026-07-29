@@ -38,7 +38,7 @@ plugin can do and still work.
 import json
 import re
 
-from romm_hub_sdk import MetadataPatch, MetadataProvider, RomRef
+from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
 
 from .consoles import (  # noqa: F401  (NeedsMapping re-exported)
     NeedsMapping,

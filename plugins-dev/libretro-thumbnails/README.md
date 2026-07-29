@@ -1,4 +1,4 @@
-# libretro Thumbnails plugin for RomM Hub
+# libretro Thumbnails plugin for ROM Hub
 
 Implements the RPP v1 `metadata` capability: box art for a ROM that is already
 in your RomM library, from libretro's public thumbnail repositories.
@@ -9,8 +9,8 @@ in your RomM library, from libretro's public thumbnail repositories.
 
 ## Install
 
-    romm-hub plugin install ./plugins-dev/libretro-thumbnails
-    romm-hub enrich libretro-thumbnails 1
+    rom-hub plugin install ./plugins-dev/libretro-thumbnails
+    rom-hub enrich libretro-thumbnails 1
 
 ## Config
 
@@ -103,7 +103,7 @@ the file yourself with `--source-id`.
 
 ## Naming a file yourself
 
-    romm-hub enrich libretro-thumbnails 42 --source-id "Star Fox (USA)"
+    rom-hub enrich libretro-thumbnails 42 --source-id "Star Fox (USA)"
 
 `--source-id` is the exact libretro filename, with or without `.png`. It is
 still probed, so a typo comes back as a message about the typo rather than as

@@ -1,6 +1,6 @@
 import pytest
 
-from romm_hub.netpolicy import PolicyViolation, check_url, host_matches, url_allowed
+from rom_hub.netpolicy import PolicyViolation, check_url, host_matches, url_allowed
 
 PATTERNS = ["archive.org", "*.archive.org"]
 

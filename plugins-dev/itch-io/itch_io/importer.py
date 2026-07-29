@@ -11,7 +11,7 @@ it per title:
 
 itch.io hands out download URLs only in response to a **POST** to
 `/<game>/file/<upload_id>` carrying the game page's `csrf_token`. The reply
-is a short-lived pre-signed object-store URL. RomM Hub's broker offers
+is a short-lived pre-signed object-store URL. ROM Hub's broker offers
 `http.get` and nothing else -- deliberately, since a plugin has no sockets
 -- and the host fetches `FetchPlan` URLs with GET too. Checked against the
 live site: a GET to that endpoint answers `302` back to the game page,
@@ -33,7 +33,7 @@ the wrong bytes; that is the same rule `archive_org` applies to
 import html
 import re
 
-from romm_hub_sdk import FetchPlan, ImportProvider, SearchResult
+from rom_hub_sdk import FetchPlan, ImportProvider, SearchResult
 
 from .filenames import safe_filename
 from .platforms import platform_for

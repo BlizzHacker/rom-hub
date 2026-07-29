@@ -1,6 +1,6 @@
 import pytest
 
-from romm_hub.manifest import ManifestError, parse_manifest
+from rom_hub.manifest import ManifestError, parse_manifest
 
 GOOD = """
 [plugin]

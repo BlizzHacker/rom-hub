@@ -20,7 +20,7 @@ target is a plugin whose refusals cannot be believed either.
 import json
 from urllib.parse import quote
 
-from romm_hub_sdk import SearchResult, StreamProvider, StreamTarget
+from rom_hub_sdk import SearchResult, StreamProvider, StreamTarget
 
 METADATA = "https://archive.org/metadata/"
 DETAILS = "https://archive.org/details/"

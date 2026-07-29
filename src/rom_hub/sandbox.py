@@ -59,7 +59,7 @@ def install() -> None:
 
     Loading the filter is irreversible and process-wide: once installed,
     there is no way to remove it or scope it to part of the process. Tests
-    must never call this (directly or via `romm_hub_sdk.runner._sandbox_state`)
+    must never call this (directly or via `rom_hub_sdk.runner._sandbox_state`)
     in the pytest process itself -- do it in a dedicated `subprocess.run(...)`
     child instead, or every later test in the same session that spawns a
     subprocess will fail with `PermissionError` once `execve` is blocked.

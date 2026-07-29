@@ -1,4 +1,4 @@
-# nointro-archive: No-Intro sets on Archive.org, for RomM Hub
+# nointro-archive: No-Intro sets on Archive.org, for ROM Hub
 
 Implements the RPP v1 `search` and `importer` capabilities against a plain
 HTTP **directory index** — no API, just the listing a web server renders for a
@@ -66,8 +66,8 @@ table, so MiNERVA is not a `base_url` default and is not in the allowlist.
 
 ## Install
 
-    romm-hub plugin install ./plugins-dev/nointro-archive
-    romm-hub search "streets of rage" --platform genesis --limit 5
+    rom-hub plugin install ./plugins-dev/nointro-archive
+    rom-hub search "streets of rage" --platform genesis --limit 5
 
 ## Config
 
@@ -187,7 +187,7 @@ not extend to downloading a copy of something you do not own.
 What this plugin does and does not do:
 
 - It fetches only from hosts named in `manifest.toml`, over HTTPS, one request
-  at a time, with the Hub's `romm-hub/0.1` User-Agent.
+  at a time, with the Hub's `rom-hub/0.1` User-Agent.
 - It does not circumvent any access control, paywall, login or robots
   directive. `https://archive.org/download/` is a public, unauthenticated
   directory listing; the Internet Archive's robots.txt does not disallow it.

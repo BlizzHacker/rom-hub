@@ -23,8 +23,8 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 
 from archive_org.importer import ImportRefused, Importer  # noqa: E402
 
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from romm_hub.types import SearchResult  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import SearchResult  # noqa: E402
 
 # --- fixtures captured from the real API -------------------------------
 
@@ -340,8 +340,8 @@ def test_a_file_in_a_subdirectory_keeps_its_path_in_the_url_only():
 def test_every_planned_url_is_inside_the_manifest_allowlist():
     """The host re-checks this, but a plugin that routinely planned URLs
     its own manifest forbids would be broken, not merely refused."""
-    from romm_hub.manifest import load_manifest
-    from romm_hub.netpolicy import check_url
+    from rom_hub.manifest import load_manifest
+    from rom_hub.netpolicy import check_url
 
     manifest = load_manifest(PLUGIN_ROOT / "manifest.toml")
     importer, _ = make_importer()
@@ -387,7 +387,7 @@ def test_the_mapping_covers_the_emulators_archive_org_actually_uses():
 
 
 def test_the_manifest_declares_the_importer_capability():
-    from romm_hub.manifest import load_manifest
+    from rom_hub.manifest import load_manifest
 
     manifest = load_manifest(PLUGIN_ROOT / "manifest.toml")
     assert manifest.capabilities.get("importer") == "archive_org.importer:Importer"

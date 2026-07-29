@@ -18,7 +18,7 @@ Archive.org identifier (`rubik.zip` is not `rubik_202308`). Searching
 Archive.org for the rom's name and taking the top hit would produce a
 patch for *a* game rather than *this* game, and the operator would have no
 way to notice: the wrong cover and the wrong title would simply appear in
-their library. So the identifier has to be supplied -- `romm-hub enrich
+their library. So the identifier has to be supplied -- `rom-hub enrich
 <plugin> <rom_id> --source-id <identifier>` -- and its absence is a
 refusal with that sentence in it.
 
@@ -34,7 +34,7 @@ import json
 import posixpath
 from urllib.parse import quote
 
-from romm_hub_sdk import MetadataPatch, MetadataProvider, RomRef
+from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
 
 METADATA = "https://archive.org/metadata/"
 DOWNLOAD = "https://archive.org/download/"

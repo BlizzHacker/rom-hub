@@ -12,7 +12,7 @@ URL and a `cores` download URL are gated exactly like a `FetchPlan` URL.
 
 from abc import ABC, abstractmethod
 
-from romm_hub.types import (
+from rom_hub.types import (
     CoreArtifact,
     FetchPlan,
     MetadataPatch,

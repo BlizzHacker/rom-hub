@@ -22,8 +22,8 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 
 from archive_org.metadata import EnrichRefused, Metadata  # noqa: E402
 
-from romm_hub.types import RomRef  # noqa: E402
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import RomRef  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 
 # https://archive.org/metadata/rubik_202308, as captured for the importer
 # tests. Note what it does NOT have: a `00_coverscreenshot.jpg`. Most
@@ -180,7 +180,7 @@ def test_an_http_error_is_refused():
 def test_every_url_it_produces_is_inside_its_declared_allowlist():
     """The manifest declares archive.org; a patch that named anything else
     would be refused by the host, so it must not produce one."""
-    from romm_hub.netpolicy import check_url
+    from rom_hub.netpolicy import check_url
 
     provider, _ = _provider()
     patch = provider.enrich(_ref())

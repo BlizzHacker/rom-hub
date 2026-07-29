@@ -25,7 +25,7 @@ Everything else is one decision each:
 
 import json
 
-from romm_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
+from rom_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
 
 from .filenames import safe_filename
 from .hub import API, parse_page

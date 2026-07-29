@@ -30,7 +30,7 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.dedup import (
+from rom_hub.dedup import (
     ARCHIVE_EXTENSIONS,
     ROMM_EXCLUDED_EXTENSIONS,
     ROMM_EXCLUDED_FILES,
@@ -47,7 +47,7 @@ MEMBER_C = b"CCCC-third-member" * 40
 
 def _digest_of(payload: bytes) -> FileHashes:
     """The oracle: the three digests of a byte string, computed without
-    using anything from romm_hub.dedup."""
+    using anything from rom_hub.dedup."""
     return FileHashes(
         crc32=format(zlib.crc32(payload) & 0xFFFFFFFF, "08x"),
         md5=hashlib.md5(payload).hexdigest(),

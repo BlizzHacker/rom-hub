@@ -368,6 +368,14 @@ class MetadataPatch(BaseModel):
             )
         return self
 
+    def has_artwork(self) -> bool:
+        """True when this patch carries a cover, by either route.
+
+        Asked before the cover is fetched, so a backend that cannot take
+        one refuses without the host downloading it first.
+        """
+        return self.artwork_url is not None or self.artwork_base64 is not None
+
     def artwork_data(self) -> bytes | None:
         """The inline artwork bytes, if the plugin supplied any."""
         if self.artwork_base64 is None:
@@ -475,7 +483,7 @@ class StreamTarget(BaseModel):
 # -- cores ---------------------------------------------------------------
 
 # A core id is chosen by the plugin and typed by an operator
-# (`romm-hub cores install <plugin> <core_id>`). It is compared, printed
+# (`rom-hub cores install <plugin> <core_id>`). It is compared, printed
 # and logged; it is never a path component -- the files a core installs
 # are named by the FetchPlan, which validates them as filenames already.
 _CORE_ID_CHARS = frozenset(
