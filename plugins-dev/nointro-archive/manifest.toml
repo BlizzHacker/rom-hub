@@ -1,7 +1,7 @@
 [plugin]
 slug        = "nointro-archive"
 name        = "No-Intro sets on Archive.org"
-version     = "0.2.0"
+version     = "0.2.1"
 rpp_version = "1"
 license     = "MIT"
 

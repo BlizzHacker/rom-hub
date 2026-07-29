@@ -1,4 +1,4 @@
-# Archive.org plugin for RomM Hub
+# Archive.org plugin for ROM Hub
 
 Implements the RPP v1 `search` and `importer` capabilities:
 
@@ -40,8 +40,8 @@ verified live.
 
 ## Install
 
-    romm-hub plugin install https://github.com/<you>/romm-hub-archive-org --ref v0.1.0
-    romm-hub import archive-org rubik_202308
+    rom-hub plugin install https://github.com/<you>/rom-hub-archive-org --ref v0.1.0
+    rom-hub import archive-org rubik_202308
 
 ## Config
 

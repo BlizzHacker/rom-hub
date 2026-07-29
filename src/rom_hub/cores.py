@@ -11,8 +11,8 @@ resemblance. `PluginProcess.core_plan()` runs the identical allowlist gate
 is the backstop that keeps every write inside the directory chosen for it.
 
 Where the bytes go is configuration, never a plugin's decision and never a
-constant compiled into this file. The default is `$ROMM_HUB_HOME/var/cores`
-and `ROMM_HUB_CORES_DIR` overrides it; a plugin has no way to influence
+constant compiled into this file. The default is `$ROM_HUB_HOME/var/cores`
+and `ROM_HUB_CORES_DIR` overrides it; a plugin has no way to influence
 either, and no way to write outside whichever one is in force.
 """
 
@@ -21,8 +21,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from romm_hub.paths import UnsafeDestination, dest_in_job_dir
-from romm_hub.types import CoreArtifact
+from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.types import CoreArtifact
 
 
 class CoreError(Exception):
@@ -102,7 +102,7 @@ def install_core(
         # Imported here rather than at module scope: importer pulls in the
         # job queue, the dedup hasher and the socket.io scanner, none of
         # which installing a core needs.
-        from romm_hub.importer import HttpDownloader
+        from rom_hub.importer import HttpDownloader
 
         downloader = HttpDownloader(allowlist=allowlist)
 

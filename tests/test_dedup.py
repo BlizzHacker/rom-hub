@@ -1,7 +1,7 @@
 """Hash-based dedup against RomM's existing library.
 
 `GET /api/roms` has no hash filter (see docs/superpowers/plans/
-2026-07-28-romm-hub-phase2-import.md), so dedup means: hash the
+2026-07-28-rom-hub-phase2-import.md), so dedup means: hash the
 downloaded file locally, then compare against SimpleRomSchema's
 `crc_hash` / `md5_hash` / `sha1_hash` fields client-side.
 
@@ -20,7 +20,7 @@ import os
 import zlib
 from pathlib import Path
 
-from romm_hub.dedup import FileHashes, find_duplicate, hash_file
+from rom_hub.dedup import FileHashes, find_duplicate, hash_file
 
 KNOWN_CONTENT = b"hello world"
 KNOWN_CRC32 = "0d4a1185"

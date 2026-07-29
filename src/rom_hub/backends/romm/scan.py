@@ -58,7 +58,13 @@ server the REST client is already authenticated against costs nothing.
 from __future__ import annotations
 
 import threading
-from typing import Any, Callable, Protocol
+from typing import Any, Callable
+
+# The `Scanner` protocol is backend-agnostic and lives with the rest of
+# the seam; it is re-exported here because this module is where the only
+# real implementation is, and because the importer used to import it from
+# exactly this name.
+from rom_hub.backends.base import BackendError, Scanner
 
 # RomM mounts its socket.io ASGI app here (SocketHandler(path="/ws/socket.io")).
 # A client left on the "/socket.io" default 404s forever.
@@ -78,19 +84,25 @@ DEFAULT_SCAN_TIMEOUT = 600.0
 DEFAULT_CONNECT_TIMEOUT = 30.0
 
 
-class ScanError(Exception):
+class ScanError(BackendError):
     """The library scan could not be triggered, or did not finish cleanly."""
 
 
-class Scanner(Protocol):
-    """What `romm_hub.importer` needs from a scanner. Kept narrow so a test
-    can satisfy it without a socket."""
-
-    def scan_platform(self, platform_id: int) -> Any: ...
+__all__ = [
+    "DEFAULT_CONNECT_TIMEOUT",
+    "DEFAULT_SCAN_TIMEOUT",
+    "SCAN_DONE_EVENT",
+    "SCAN_DONE_KO_EVENT",
+    "SCAN_EVENT",
+    "SOCKETIO_PATH",
+    "ScanError",
+    "Scanner",
+    "SocketIOScanner",
+]
 
 
 def _default_client_factory():
-    # Imported lazily so that `import romm_hub.importer` does not drag in
+    # Imported lazily so that `import rom_hub.importer` does not drag in
     # socket.io for the many code paths that never scan -- and so the
     # dependency's absence is reported as a ScanError naming the package
     # rather than an ImportError from an unrelated module.
@@ -100,7 +112,7 @@ def _default_client_factory():
         raise ScanError(
             "the python-socketio package is required to register an upload "
             "with RomM's library (RomM has no REST endpoint for it); install "
-            f"romm-hub's dependencies: {exc}"
+            f"rom-hub's dependencies: {exc}"
         ) from exc
     return socketio.Client()
 

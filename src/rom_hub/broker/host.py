@@ -32,10 +32,10 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from romm_hub.manifest import Manifest
-from romm_hub.netpolicy import PolicyViolation, check_url
-from romm_hub.protocol import ProtocolError, read_message, write_message
-from romm_hub.types import (
+from rom_hub.manifest import Manifest
+from rom_hub.netpolicy import PolicyViolation, check_url
+from rom_hub.protocol import ProtocolError, read_message, write_message
+from rom_hub.types import (
     MAX_CORES_PER_PLUGIN,
     CoreArtifact,
     FetchPlan,
@@ -88,7 +88,7 @@ _WINDOWS_ENV_VARS = (
     "TMP",
     # Windows resolves the PER-USER site-packages through APPDATA, and
     # `pip install --user` is the default outside a venv. Without it the
-    # child cannot import romm_hub_sdk at all and every plugin dies at
+    # child cannot import rom_hub_sdk at all and every plugin dies at
     # startup with a bare ModuleNotFoundError. POSIX gets the equivalent
     # from HOME, which is why this only bites here. It is a path, not a
     # secret. Verified: allowlist alone -> ModuleNotFoundError;
@@ -185,7 +185,7 @@ class PluginProcess:
 
     def start(self) -> None:
         self._proc = subprocess.Popen(
-            [sys.executable, "-m", "romm_hub_sdk.runner"],
+            [sys.executable, "-m", "rom_hub_sdk.runner"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -221,7 +221,7 @@ class PluginProcess:
                 f"refusing to run plugin {self.manifest.slug} unsandboxed: "
                 f"{self.sandbox_reason}. Its declared network allowlist cannot "
                 f"be enforced against a hostile plugin here. Set "
-                f"ROMM_HUB_ALLOW_UNSANDBOXED=1 to override for development."
+                f"ROM_HUB_ALLOW_UNSANDBOXED=1 to override for development."
             )
 
     def _drain_stderr(self, stream) -> None:

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.catalog import CatalogError, CatalogEntry, load_catalog, render_markdown
+from rom_hub.catalog import CatalogError, CatalogEntry, load_catalog, render_markdown
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "catalog" / "plugins.json"
 
@@ -162,7 +162,7 @@ def test_the_api_key_really_is_stored_in_clear_text():
     `api_key` has to be a plain `str` on disk. If that ever changes, the
     catalog's wording becomes a lie and this test is where it surfaces.
     """
-    from romm_hub.manifest import RESERVED_CONFIG_TYPES, ManifestError, parse_manifest
+    from rom_hub.manifest import RESERVED_CONFIG_TYPES, ManifestError, parse_manifest
 
     assert "secret" in RESERVED_CONFIG_TYPES
     with pytest.raises(ManifestError, match="reserved in RPP v1"):
@@ -187,7 +187,7 @@ def test_catalog_cannot_widen_permissions():
     the catalog could silently widen every plugin's reach — which is exactly
     the authority a directory must not have.
     """
-    from romm_hub.broker.host import PluginProcess
+    from rom_hub.broker.host import PluginProcess
     import inspect
 
     source = inspect.getsource(PluginProcess._serve_plugin_call)
@@ -222,7 +222,7 @@ def test_status_symbol_degrades_on_a_terminal_that_cannot_encode_it():
     Printing one raises UnicodeEncodeError and takes the command down, so the
     status column would break `browse` on the platform this was built on.
     """
-    from romm_hub.catalog import symbol_for
+    from rom_hub.catalog import symbol_for
 
     assert symbol_for("ok", "utf-8") == "✔"
     assert symbol_for("ok", "cp1252") == "ok"
@@ -239,7 +239,7 @@ def test_directory_is_in_sync_with_the_catalog():
     is worse than no directory, so drift fails here rather than misleading
     somebody choosing what to trust.
     """
-    from romm_hub.catalog import render_markdown
+    from rom_hub.catalog import render_markdown
 
     page = (Path(__file__).resolve().parents[1] / "docs" / "PLUGINS.md").read_text(
         encoding="utf-8"

@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.broker.host import PluginProcess, SandboxRefused
-from romm_hub.manifest import parse_manifest
+from rom_hub.broker.host import PluginProcess, SandboxRefused
+from rom_hub.manifest import parse_manifest
 
 MANIFEST = """
 [plugin]
@@ -23,7 +23,7 @@ romm_api = []
 
 PLUGIN = textwrap.dedent(
     """
-    from romm_hub_sdk import SearchProvider, SearchResult
+    from rom_hub_sdk import SearchProvider, SearchResult
 
 
     class Search(SearchProvider):
@@ -65,7 +65,7 @@ def test_opt_out_allows_an_unsandboxed_plugin_to_run(plugin_dir):
 def test_default_is_fail_closed(plugin_dir):
     """Without the opt-out, an unsandboxable platform must refuse to run."""
     proc = _proc(plugin_dir, allow_unsandboxed=False)
-    from romm_hub.sandbox import probe
+    from rom_hub.sandbox import probe
 
     if probe()[0]:
         # Sandbox works here: start() must succeed and report sandboxed.
@@ -78,11 +78,11 @@ def test_default_is_fail_closed(plugin_dir):
 
 
 def test_refusal_message_names_the_opt_out(plugin_dir):
-    from romm_hub.sandbox import probe
+    from rom_hub.sandbox import probe
 
     if probe()[0]:
         pytest.skip("sandbox available; refusal path not reachable")
     proc = _proc(plugin_dir, allow_unsandboxed=False)
-    with pytest.raises(SandboxRefused, match="ROMM_HUB_ALLOW_UNSANDBOXED"):
+    with pytest.raises(SandboxRefused, match="ROM_HUB_ALLOW_UNSANDBOXED"):
         proc.start()
     proc.close()

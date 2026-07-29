@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.broker.fetcher import HttpxFetcher
-from romm_hub.broker.host import PluginProcess
-from romm_hub.cli import allow_unsandboxed
-from romm_hub.dispatcher import search_all
-from romm_hub.netpolicy import check_url
-from romm_hub.registry import Registry
-from romm_hub.types import SearchResult
+from rom_hub.broker.fetcher import HttpxFetcher
+from rom_hub.broker.host import PluginProcess
+from rom_hub.cli import allow_unsandboxed
+from rom_hub.dispatcher import search_all
+from rom_hub.netpolicy import check_url
+from rom_hub.registry import Registry
+from rom_hub.types import SearchResult
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1] / "plugins-dev" / "archive-org"
 
@@ -42,8 +42,8 @@ def installed_registry(tmp_path):
 @pytest.mark.live
 def test_real_search_returns_results(installed_registry):
     # Same policy switch the CLI reads. On a host without seccomp (Windows,
-    # macOS) this test needs ROMM_HUB_ALLOW_UNSANDBOXED=1 in the environment,
-    # exactly as a real `romm-hub search` would — see the README.
+    # macOS) this test needs ROM_HUB_ALLOW_UNSANDBOXED=1 in the environment,
+    # exactly as a real `rom-hub search` would — see the README.
     fetcher = HttpxFetcher()
     try:
         outcome = search_all(
@@ -101,7 +101,7 @@ def test_real_plan_for_a_downloadable_item(installed_registry):
 @pytest.mark.live
 def test_real_stream_only_item_is_refused(installed_registry):
     """Archive.org's own flag, read live -- not a fixture asserting itself."""
-    from romm_hub.broker.host import PluginCallError
+    from rom_hub.broker.host import PluginCallError
 
     with pytest.raises(PluginCallError) as exc:
         _planned(installed_registry, "msdos_Oregon_Trail_The_1990")

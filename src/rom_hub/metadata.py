@@ -25,9 +25,10 @@ import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
 
-from romm_hub.netpolicy import PolicyViolation, check_url
-from romm_hub.paths import UnsafeDestination, dest_in_job_dir
-from romm_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
+from rom_hub.backends.base import ARTWORK, METADATA, LibraryBackend, require
+from rom_hub.netpolicy import PolicyViolation, check_url
+from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
 
 # Artwork is a cover image, not a ROM. It is fetched into memory to be
 # posted straight back out, so the ceiling is the same one MetadataPatch
@@ -87,16 +88,18 @@ def run_enrich(
     plugin,
     rom: RomRef,
     *,
-    romm,
+    backend: LibraryBackend,
     work_dir: Path,
     downloader=None,
 ) -> EnrichResult:
-    """Enrich one rom through `plugin`, writing the result to RomM.
+    """Enrich one rom through `plugin`, writing the result to the library.
 
     `plugin` is a started `PluginProcess` (anything with `.enrich()` and a
-    `.manifest`). `work_dir` is where a fetched cover lands on its way to
-    RomM; nothing is ever written outside it.
+    `.manifest`). `backend` is a `LibraryBackend`; nothing here knows
+    which one. `work_dir` is where a fetched cover lands on its way to it;
+    nothing is ever written outside it.
     """
+    require(backend, METADATA, "enriching a rom's metadata")
     work_dir = Path(work_dir)
     manifest = getattr(plugin, "manifest", None)
     slug = getattr(manifest, "slug", "") or "unknown"
@@ -122,13 +125,19 @@ def run_enrich(
         )
 
     fields = patch.form_fields()
+    if patch.has_artwork():
+        # Before `_artwork`, which is where the cover would be fetched
+        # over the network. A backend that cannot take a cover should
+        # cost no download at all, and should say why rather than
+        # rejecting a multipart part with a status code.
+        require(backend, ARTWORK, f"the artwork plugin {slug!r} proposed")
     artwork = _artwork(patch, slug, allowlist, work_dir, downloader)
 
     try:
-        romm.update_rom(rom.rom_id, fields, artwork=artwork)
+        backend.update_rom(rom.rom_id, fields, artwork=artwork)
     except Exception as exc:  # noqa: BLE001
         raise EnrichError(
-            f"updating rom {rom.rom_id} in RomM failed: {exc}"
+            f"updating rom {rom.rom_id} in the library failed: {exc}"
         ) from exc
 
     described = ", ".join(sorted(fields)) or "no fields"
@@ -186,7 +195,7 @@ def _artwork(
         # Imported here rather than at module scope: importer pulls in the
         # job queue, the dedup hasher and the socket.io scanner, none of
         # which an enrich needs.
-        from romm_hub.importer import HttpDownloader
+        from rom_hub.importer import HttpDownloader
 
         downloader = HttpDownloader(allowlist=allowlist, timeout=ARTWORK_TIMEOUT)
     try:

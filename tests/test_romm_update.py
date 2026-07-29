@@ -25,7 +25,7 @@ live RomM instance.
 import httpx
 import pytest
 
-from romm_hub.romm.client import RommClient, RommError
+from rom_hub.backends.romm.client import RommClient, RommError
 
 ROM = {
     "id": 42,

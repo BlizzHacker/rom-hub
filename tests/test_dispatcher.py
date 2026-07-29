@@ -1,5 +1,5 @@
-from romm_hub.dispatcher import search_all
-from romm_hub.types import SearchResult
+from rom_hub.dispatcher import search_all
+from rom_hub.types import SearchResult
 
 
 class FakePlugin:
