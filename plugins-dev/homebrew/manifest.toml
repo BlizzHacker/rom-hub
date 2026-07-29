@@ -1,0 +1,26 @@
+[plugin]
+slug        = "homebrew"
+name        = "Homebrew Hub (gbdev)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "homebrew.search:Search"
+importer = "homebrew.importer:Importer"
+
+# One host does both jobs: /api/search answers the queries and /static/
+# serves the ROMs, with no redirect off it. hh.gbdev.io -- the human site
+# whose /g/<slug> pages results link to -- is deliberately NOT declared,
+# because nothing here ever fetches it; SearchResult.url is shown, never
+# retrieved.
+[permissions]
+network  = ["hh3.gbdev.io"]
+romm_api = []
+
+[config]
+# Restrict to one kind of entry. The Hub sees "game", "demo", "music" and
+# "tool"; empty means no filter.
+typetag    = { type = "str", default = "" }
+max_pages  = { type = "int", default = 3 }
+collection = { type = "str", default = "Homebrew" }
