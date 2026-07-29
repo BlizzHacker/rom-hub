@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from romm_hub.types import FetchFile, FetchPlan
+from romm_hub.types import MAX_FILES_PER_PLAN, FetchFile, FetchPlan
 
 
 def test_minimal_plan():
@@ -144,3 +144,17 @@ def test_distinct_filenames_are_fine():
 def test_negative_size_rejected():
     with pytest.raises(ValidationError):
         FetchFile(url="https://archive.org/x", filename="g.zip", size_bytes=-1)
+
+
+def test_a_plan_may_not_carry_an_unbounded_number_of_files():
+    """Default-deny everywhere else in this codebase; the only bound on
+    this list was an indirect one -- protocol.MAX_MESSAGE_CHARS caps the
+    reply frame at 8 MiB, so roughly 10^5 entries."""
+    files = [_file(f"g{i}.zip") for i in range(MAX_FILES_PER_PLAN + 1)]
+    with pytest.raises(ValidationError):
+        FetchPlan(files=files, platform="dos")
+
+
+def test_a_plan_at_the_limit_is_still_accepted():
+    files = [_file(f"g{i}.zip") for i in range(MAX_FILES_PER_PLAN)]
+    assert len(FetchPlan(files=files, platform="dos").files) == MAX_FILES_PER_PLAN
