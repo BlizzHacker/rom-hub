@@ -1,0 +1,25 @@
+[plugin]
+slug        = "itch-io"
+name        = "itch.io (free games)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "itch_io.search:Search"
+importer = "itch_io.importer:Importer"
+
+# itch.io serves browse listings from the apex and every game page from a
+# per-developer subdomain (`csbrannan.itch.io`), so both are needed. Nothing
+# else is: this plugin never reaches a CDN, because it never gets far enough
+# to be handed a download URL -- see README, "Why nothing imports yet".
+[permissions]
+network  = ["itch.io", "*.itch.io"]
+romm_api = []
+
+[config]
+# Extra path segments appended to /games/free. Each must be a bare browse
+# facet ("tag-gameboy", "genre-puzzle"); anything else is refused rather
+# than pasted into a URL.
+filters   = { type = "list[str]", default = [] }
+max_pages = { type = "int", default = 4 }
