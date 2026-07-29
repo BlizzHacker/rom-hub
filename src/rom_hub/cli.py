@@ -20,7 +20,15 @@ import sys
 from pathlib import Path
 
 from . import backends, env
-from .backends import BackendError, LibraryBackend
+from .backends import (
+    COLLECTIONS,
+    IMPORT,
+    METADATA,
+    BackendError,
+    LibraryBackend,
+    capabilities_of,
+    require,
+)
 from .broker.fetcher import HttpxFetcher
 from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
@@ -360,6 +368,14 @@ def _cmd_import(args) -> int:
     # subprocess and no half-open connection.
     backend = open_backend()
 
+    # And refused before either, if the backend cannot do this at all.
+    # `--collection` against a backend without collections is a mistake
+    # about the flag, and it should read like one -- not like a 404 from
+    # an endpoint the operator has never heard of, four gigabytes later.
+    require(backend, IMPORT, "importing a ROM")
+    if args.collection:
+        require(backend, COLLECTIONS, f"--collection {args.collection!r}")
+
     result = SearchResult(
         source_id=args.source_id,
         # The identifier is all the CLI knows. The plugin looks the real
@@ -433,6 +449,7 @@ def _cmd_enrich(args) -> int:
     # Read before anything is started, so an unconfigured Hub costs no
     # subprocess and no half-open connection.
     backend = open_backend()
+    require(backend, METADATA, "enriching a rom's metadata")
 
     root = default_root()
     fetcher = HttpxFetcher()
@@ -558,6 +575,56 @@ def _cmd_cores_install(args) -> int:
         return EXIT_OK
 
     return _with_cores_plugin(args, install)
+
+
+def _cmd_backend_info(args) -> int:
+    """Which library server the Hub is pointed at, and what it can do.
+
+    **Deliberately connectionless.** The operator most likely to run this
+    is the one whose connection is not working yet, or who is about to
+    find out that `--collection` will not be honoured. A command that had
+    to authenticate first would be useless to both of them, so nothing
+    here opens a socket: the capability set is a declaration the backend
+    class makes, and whether the settings are present is a question about
+    the environment.
+
+    The unsupported list is printed as well as the supported one. A
+    capability that is simply absent from a list is easy to read as an
+    oversight; one printed under "cannot" is an answer.
+    """
+    name = args.backend or backend_name()
+    info = backends.describe(name)
+
+    print(f"{'backend':<16} {info.name}")
+    source = (
+        f"ROM_HUB_BACKEND={env.get('ROM_HUB_BACKEND').strip()}"
+        if env.get("ROM_HUB_BACKEND").strip()
+        else f"default ({backends.DEFAULT_BACKEND})"
+    )
+    print(f"{'selected by':<16} {source}")
+    if info.summary:
+        print(f"{'summary':<16} {info.summary}")
+    print(f"{'available':<16} {', '.join(backends.available())}")
+
+    missing = [n for n in info.settings if not env.get(n)]
+    configured = "yes" if not missing else f"no -- {', '.join(missing)} not set"
+    print(f"{'settings':<16} {', '.join(info.settings) or '(none)'}")
+    print(f"{'configured':<16} {configured}")
+
+    print()
+    print("can:")
+    for capability in sorted(info.capabilities):
+        help_text = backends.CAPABILITY_HELP.get(capability, "")
+        print(f"  {capability:<14} {help_text}")
+    cannot = sorted(backends.ALL_CAPABILITIES - info.capabilities)
+    if cannot:
+        print("cannot:")
+        for capability in cannot:
+            help_text = backends.CAPABILITY_HELP.get(capability, "")
+            print(f"  {capability:<14} {help_text}")
+    else:
+        print("cannot: (nothing -- this backend supports every capability)")
+    return EXIT_OK
 
 
 def _cmd_jobs(args) -> int:
@@ -698,6 +765,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="only jobs in this state (e.g. FAILED, DONE, PENDING)",
     )
     jobs.set_defaults(func=_cmd_jobs)
+
+    backend = sub.add_parser("backend", help="inspect the library backend")
+    bsub = backend.add_subparsers(dest="backend_command", required=True)
+    backend_info = bsub.add_parser(
+        "info", help="show the active backend and what it can do"
+    )
+    backend_info.add_argument(
+        "--backend",
+        default=None,
+        help=(
+            "inspect this backend instead of the active one "
+            f"(default: $ROM_HUB_BACKEND, or {backends.DEFAULT_BACKEND})"
+        ),
+    )
+    backend_info.set_defaults(func=_cmd_backend_info)
 
     return parser
 
