@@ -130,6 +130,49 @@ def _usable(href: str) -> bool:
     )
 
 
+def _display_name(href: str) -> str:
+    """The real file name behind an href, entities and all.
+
+    Unescaping happens **twice**, on either side of the percent-decode,
+    because mirrors disagree about the order they encode in and only one
+    of the two orders was handled:
+
+        Sonic%20%26%20Tails.zip        percent-encoded `&`
+        Sonic%20&amp;%20Tails.zip      HTML-escaped `&`, space encoded
+        Sonic%20%26amp%3B%20Tails.zip  HTML-escaped FIRST, then encoded
+
+    The first two are handled by the unescape in `parse_index`, which
+    runs on the raw href before it is used as a URL. The third is not:
+    `%26amp%3B` contains no `&` for that pass to see, so the entity only
+    exists once `unquote` has run, and the title then comes out as
+    `Sonic &amp; Tails` verbatim -- in search results, in the source id an
+    operator pastes into `rom-hub import`, and in the file written to
+    disk (`&` survives `safe_filename`, `;` becomes `_`, so the ROM lands
+    as `Sonic &amp_ Tails.zip`).
+
+    **Measured, so the scope is not overstated:** as of 2026-07-29 every
+    directory this plugin ships pointed at -- all twelve `nointro.*`
+    items on Archive.org -- emits the *first* form, which already worked.
+    None currently emits the third. So this closes a gap rather than
+    fixing a title that is wrong today, and it closes it in the direction
+    that matters: `base_url` is configuration, the whole point of the
+    generic parser is that it survives being repointed at another
+    mirror, and an encoding order that is one server away should not
+    reach an operator as `&amp;` in a filename.
+
+    The href is deliberately *not* re-derived from this. It stays exactly
+    what the server said, because that is the string that fetches the
+    file; this is the name a human reads and the id the importer matches.
+
+    The cost, stated: a file genuinely named `Sonic &amp; Tails.zip` --
+    with those five characters in it on purpose -- would be titled
+    `Sonic & Tails.zip`. That is the wrong answer to a case nobody has
+    ever seen, in exchange for the right answer to one that is one mirror
+    away.
+    """
+    return html.unescape(unquote(href))
+
+
 def parse_index(document: str) -> list[Entry]:
     """Every same-directory entry in a directory index, in listing order."""
     entries: list[Entry] = []
@@ -143,7 +186,7 @@ def parse_index(document: str) -> list[Entry]:
             # Archive.org's "(View Contents)" twin. See module docstring.
             continue
         seen.add(key)
-        name = unquote(key)
+        name = _display_name(key)
         if "/" in name or "\\" in name:
             # A nested path is not an entry of *this* directory. Walking
             # into subdirectories is a deliberate non-feature: see README.
