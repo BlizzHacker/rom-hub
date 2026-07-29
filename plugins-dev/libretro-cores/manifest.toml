@@ -1,0 +1,29 @@
+[plugin]
+slug        = "libretro-cores"
+name        = "libretro cores (buildbot)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+cores = "libretro_cores.cores:Cores"
+
+# One host, and only one. The `.index-extended` catalogue and the core
+# archives it lists are both served from buildbot.libretro.com, and a core
+# download makes no CDN hop -- verified 2026-07-29 with
+# `curl -w %{num_redirects}` against a real core file, which reports 0. So
+# there is no redirect target to declare, and nothing else belongs here.
+[permissions]
+network  = ["buildbot.libretro.com"]
+romm_api = []
+
+[config]
+# Which build target's cores to offer. NOT detected from the host OS: the
+# Hub may well be running somewhere other than the machine that will load
+# these cores. An unrecognised value is refused by name rather than
+# defaulted -- see libretro_cores/targets.py for the table and the reason.
+target = { type = "str", default = "linux/x86_64" }
+# Narrow the catalogue to these core ids. Empty means all of them, which
+# is what you want unless the target ever exceeds the 256 cores a plugin
+# may return in one list.
+only   = { type = "list[str]", default = [] }
