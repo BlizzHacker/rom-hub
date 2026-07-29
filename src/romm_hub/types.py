@@ -108,3 +108,27 @@ class FetchPlan(BaseModel):
     files: list[FetchFile] = Field(min_length=1)
     platform: str = Field(min_length=1)
     collection: str | None = None
+
+    @field_validator("files")
+    @classmethod
+    def _filenames_must_be_distinct(cls, v: list[FetchFile]) -> list[FetchFile]:
+        # Two entries writing to one path do not merely overwrite. The
+        # second download finds the first file already on disk, takes its
+        # size as a resume offset, sends `Range: bytes=<n>-`, and a server
+        # that honours Range (Archive.org does) answers 206 -- so the
+        # second file's tail is *appended* to the first file's body. The
+        # result hashes cleanly, uploads once per entry, and reports DONE.
+        #
+        # Refuse the plan rather than renaming one of them: a plugin that
+        # names two files identically has a bug, and quietly fixing it up
+        # hides the bug while still importing something nobody asked for.
+        # Compared case-insensitively because Windows opens "g.zip" and
+        # "G.zip" as the same file, and this must not depend on the OS.
+        names = [f.filename.casefold() for f in v]
+        duplicated = sorted({n for n in names if names.count(n) > 1})
+        if duplicated:
+            raise ValueError(
+                f"every file in a FetchPlan needs a distinct filename; "
+                f"these are repeated: {duplicated!r}"
+            )
+        return v
