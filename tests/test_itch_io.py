@@ -21,8 +21,8 @@ from itch_io.importer import ImportRefused, Importer, parse_size  # noqa: E402
 from itch_io.platforms import platform_for  # noqa: E402
 from itch_io.search import Search  # noqa: E402
 
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from romm_hub.types import FetchFile, SearchResult  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import FetchFile, SearchResult  # noqa: E402
 
 
 def fixture(name: str) -> str:

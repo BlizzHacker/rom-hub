@@ -31,8 +31,8 @@ from nointro_archive.index import INDEXES, IndexCache, IndexError_, parse_index,
 from nointro_archive.platforms import platform_for  # noqa: E402
 from nointro_archive.search import ConfigError, Search, base_url, index_url  # noqa: E402
 
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from romm_hub.types import FetchFile, SearchResult  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import FetchFile, SearchResult  # noqa: E402
 
 ARCHIVE_ORG = (FIXTURES / "archive_org_nointro_gg.html").read_text(encoding="utf-8")
 MYRIENT = (FIXTURES / "myrient_no_intro_game_boy.html").read_text(encoding="utf-8")

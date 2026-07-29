@@ -1,4 +1,4 @@
-"""romm-hub command line.
+"""rom-hub command line.
 
 Install plugins, list them, search across them, import what a search
 found, and inspect the import job queue.
@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 
+from . import env
 from .broker.fetcher import HttpxFetcher
 from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
@@ -63,7 +64,7 @@ def configure_output_encoding() -> None:
     - a cp1252 stdout degrades only the individual characters it genuinely
       cannot represent, and keeps printing;
     - a redirect or a pipe keeps whatever encoding it was given, so
-      `romm-hub search x > out.txt` behaves like the console it replaced.
+      `rom-hub search x > out.txt` behaves like the console it replaced.
 
     Note this does *not* replace `catalog.symbol_for`, which picks a
     deliberately readable ASCII fallback (`ok`, `!`, `x`) for the status
@@ -90,7 +91,24 @@ _SUCCESS_STATES = (JobState.DONE, JobState.SKIPPED_DUPLICATE)
 
 
 def default_root() -> Path:
-    return Path(os.environ.get("ROMM_HUB_HOME", Path.home() / ".romm-hub"))
+    """Where installed plugins and runtime state live.
+
+    `ROM_HUB_HOME` first (its pre-rename `ROMM_HUB_HOME` spelling still
+    works -- see `rom_hub.env`). Failing that, `~/.rom-hub` -- unless the
+    pre-rename `~/.romm-hub` is the one that actually exists, in which
+    case that is where this install's plugins and job queue already are
+    and moving them silently would be the worst possible reading of a
+    rename.
+    """
+    configured = env.get("ROM_HUB_HOME")
+    if configured:
+        return Path(configured)
+    root = Path.home() / ".rom-hub"
+    if not root.exists():
+        legacy = Path.home() / ".romm-hub"
+        if legacy.is_dir():
+            return legacy
+    return root
 
 
 def jobs_db_path(root: Path | None = None) -> Path:
@@ -120,11 +138,11 @@ def cores_dir(root: Path | None = None) -> Path:
     the `romm-stream` core directory, but that path is the *operator's* to
     choose -- hard-coding `/opt/romm-stream/cores` here would make the Hub
     unusable anywhere else and would put a plugin-supplied download outside
-    `ROMM_HUB_HOME` on every host that did not happen to match.
+    `ROM_HUB_HOME` on every host that did not happen to match.
 
     Read at call time so a shell can flip it, like every other setting.
     """
-    configured = os.environ.get("ROMM_HUB_CORES_DIR", "").strip()
+    configured = env.get("ROM_HUB_CORES_DIR").strip()
     if configured:
         return Path(configured)
     return Path(root or default_root()) / "var" / "cores"
@@ -155,7 +173,7 @@ def allow_unsandboxed() -> bool:
 
     Read at call time, not import time, so tests and shells can flip it.
     """
-    return os.environ.get("ROMM_HUB_ALLOW_UNSANDBOXED", "") == "1"
+    return env.get("ROM_HUB_ALLOW_UNSANDBOXED") == "1"
 
 
 def _catalog_entry(slug: str):
@@ -189,7 +207,7 @@ def _cmd_plugin_browse(args) -> int:
         # surprise discovered afterwards.
         print(f"   requests network: {', '.join(e.network) or '(none)'}")
     print()
-    print(f"{len(entries)} plugin(s). Install with: romm-hub plugin install <slug>")
+    print(f"{len(entries)} plugin(s). Install with: rom-hub plugin install <slug>")
     return 0
 
 
@@ -218,7 +236,7 @@ def _cmd_plugin_install(args) -> int:
         print("        this process can. Install only plugins you trust.")
     else:
         print("  note: this host cannot confine plugins, so plugins will refuse to")
-        print("        run unless ROMM_HUB_ALLOW_UNSANDBOXED=1 is set. With it set")
+        print("        run unless ROM_HUB_ALLOW_UNSANDBOXED=1 is set. With it set")
         print("        there is no confinement at all: a hostile plugin can ignore")
         print("        the allowlist above, open its own sockets, read any file this")
         print("        process can, and spawn processes. Install only plugins you")
@@ -255,7 +273,7 @@ def _cmd_search(args) -> int:
     plugins = Registry(default_root()).installed()
     searchable = [p for p in plugins if p.enabled and "search" in p.manifest.capabilities]
     if not searchable:
-        print("no plugins available for search — install one with 'romm-hub plugin install'")
+        print("no plugins available for search — install one with 'rom-hub plugin install'")
         return 0
 
     fetcher = HttpxFetcher()
@@ -393,7 +411,7 @@ def _require_capability(plugin, capability: str) -> str | None:
     if not plugin.enabled:
         return (
             f"plugin {plugin.slug!r} is disabled; enable it with "
-            f"'romm-hub plugin enable {plugin.slug}'"
+            f"'rom-hub plugin enable {plugin.slug}'"
         )
     if capability not in plugin.manifest.capabilities:
         declared = ", ".join(sorted(plugin.manifest.capabilities)) or "(none)"
@@ -530,7 +548,7 @@ def _cmd_cores_list(args) -> int:
                 f"{core.system or '-':<14} {core.name}"
             )
         print()
-        print(f"{len(cores)} core(s). Install with: romm-hub cores install "
+        print(f"{len(cores)} core(s). Install with: rom-hub cores install "
               f"{args.plugin} <core>")
         return EXIT_OK
 
@@ -587,7 +605,7 @@ def _cmd_jobs(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="romm-hub", description="RomM plugin host")
+    parser = argparse.ArgumentParser(prog="rom-hub", description="RomM plugin host")
     sub = parser.add_subparsers(dest="command", required=True)
 
     plugin = sub.add_parser("plugin", help="manage plugins")
@@ -707,7 +725,7 @@ def main(argv: list[str] | None = None) -> int:
         OSError,
     ) as exc:
         # ManifestError escapes a bad manifest on an otherwise clean install,
-        # and OSError is what a read-only or nonexistent ROMM_HUB_HOME gives
+        # and OSError is what a read-only or nonexistent ROM_HUB_HOME gives
         # from Registry.__init__'s mkdir. PluginCallError covers `import`,
         # which -- unlike `search`, where the dispatcher isolates each plugin
         # -- talks to one PluginProcess directly, so a SandboxRefused from

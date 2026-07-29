@@ -46,16 +46,16 @@ from urllib.parse import urljoin
 
 import httpx
 
-from romm_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
-from romm_hub.jobs import Job, JobQueue, JobState
-from romm_hub.netpolicy import PolicyViolation, check_url
-from romm_hub.paths import UnsafeDestination, dest_in_job_dir
-from romm_hub.romm.client import RommClient
-from romm_hub.romm.scan import Scanner, SocketIOScanner
-from romm_hub.romm.upload import upload_file
-from romm_hub.types import FetchPlan, SearchResult
+from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
+from rom_hub.jobs import Job, JobQueue, JobState
+from rom_hub.netpolicy import PolicyViolation, check_url
+from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.romm.client import RommClient
+from rom_hub.romm.scan import Scanner, SocketIOScanner
+from rom_hub.romm.upload import upload_file
+from rom_hub.types import FetchPlan, SearchResult
 
-USER_AGENT = "romm-hub/0.1 (+https://github.com/rommapp/romm)"
+USER_AGENT = "rom-hub/0.1 (+https://github.com/rommapp/romm)"
 
 # Redirect chains inside one allowlist are legitimate; unbounded ones are a
 # loop or a tarpit, and either way the download is not going to happen.
@@ -219,7 +219,7 @@ class _ImportFailure(Exception):
     """Internal: a step failed with a message already fit for an operator."""
 
 
-# `dest_in_job_dir` lives in romm_hub.paths now -- `metadata` and `cores`
+# `dest_in_job_dir` lives in rom_hub.paths now -- `metadata` and `cores`
 # hand the host plugin-chosen filenames too, and they must be checked by
 # the same code, not by a second copy of it. Re-exported here because it
 # is imported from this module by name in several places.
@@ -456,7 +456,7 @@ def _import(
     #     **no database row at all** -- `GET /api/roms` does not list it,
     #     and no REST endpoint exists that would. Its own web UI emits a
     #     socket.io `scan` after every upload; so does this. See
-    #     romm_hub.romm.scan for the upstream reading.
+    #     rom_hub.romm.scan for the upstream reading.
     #
     #     A failure here is reported as precisely what it is: the bytes
     #     reached RomM and only the registration did not. An operator told

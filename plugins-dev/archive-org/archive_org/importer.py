@@ -39,7 +39,7 @@ import json
 import posixpath
 from urllib.parse import quote
 
-from romm_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
+from rom_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
 
 from .platforms import platform_for
 

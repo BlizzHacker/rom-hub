@@ -10,7 +10,7 @@ host RAM before anything is written to a pipe.
 import httpx
 import pytest
 
-from romm_hub.broker.fetcher import HttpxFetcher, ResponseTooLarge
+from rom_hub.broker.fetcher import HttpxFetcher, ResponseTooLarge
 
 ONE_MIB = 1024 * 1024
 CAP = 2 * ONE_MIB

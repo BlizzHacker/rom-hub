@@ -35,7 +35,7 @@ import math
 from pathlib import Path
 from typing import Callable
 
-from romm_hub.romm.client import RommClient, RommError
+from rom_hub.romm.client import RommClient, RommError
 
 DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024
 
@@ -57,7 +57,7 @@ def upload_file(
     Returns the body of the `/complete` response, which against a real
     RomM is `{}`: that endpoint answers a bare 201 with no body, so it
     carries **no rom id**. A caller that needs the new rom's id must look
-    it up in the library by hash -- `romm_hub.importer` does exactly
+    it up in the library by hash -- `rom_hub.importer` does exactly
     that, and uses the same lookup as a post-condition check, since a 201
     only proves the request was accepted, not that the ROM landed.
 

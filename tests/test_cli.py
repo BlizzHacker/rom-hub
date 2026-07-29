@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.cli import configure_output_encoding, main
+from rom_hub.cli import configure_output_encoding, main
 
 MANIFEST = """
 [plugin]
@@ -23,7 +23,7 @@ romm_api = []
 """
 
 PLUGIN = """
-from romm_hub_sdk import SearchProvider, SearchResult
+from rom_hub_sdk import SearchProvider, SearchResult
 
 
 class Search(SearchProvider):
@@ -36,7 +36,7 @@ class Search(SearchProvider):
 # the shape of real Archive.org listings: CJK, Cyrillic, and an accented
 # Latin character that people assume is "basically ASCII" and is not.
 UNICODE_PLUGIN = """
-from romm_hub_sdk import SearchProvider, SearchResult
+from rom_hub_sdk import SearchProvider, SearchResult
 
 TITLES = [
     "Plain ASCII Title",
@@ -82,7 +82,7 @@ def unicode_source_repo(tmp_path: Path) -> Path:
 
 
 def test_install_then_list(tmp_path, source_repo, monkeypatch, capsys):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     assert main(["plugin", "install", str(source_repo)]) == 0
     assert main(["plugin", "list"]) == 0
     out = capsys.readouterr().out
@@ -91,12 +91,12 @@ def test_install_then_list(tmp_path, source_repo, monkeypatch, capsys):
 
 
 def test_search_end_to_end(tmp_path, source_repo, monkeypatch, capsys):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     # The host fails closed when a plugin cannot be confined. On a host with
     # no seccomp (Windows, macOS) the opt-out is what lets this run at all;
     # on Linux it is a no-op because the filter loads and the plugin is
     # confined either way. Setting it unconditionally keeps one code path.
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
     main(["plugin", "install", str(source_repo)])
     assert main(["search", "oregon trail"]) == 0
     out = capsys.readouterr().out
@@ -105,11 +105,11 @@ def test_search_end_to_end(tmp_path, source_repo, monkeypatch, capsys):
 
 
 def test_allow_unsandboxed_reads_the_environment(monkeypatch):
-    from romm_hub.cli import allow_unsandboxed
+    from rom_hub.cli import allow_unsandboxed
 
-    monkeypatch.delenv("ROMM_HUB_ALLOW_UNSANDBOXED", raising=False)
+    monkeypatch.delenv("ROM_HUB_ALLOW_UNSANDBOXED", raising=False)
     assert allow_unsandboxed() is False
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
     assert allow_unsandboxed() is True
 
 
@@ -117,25 +117,25 @@ def test_search_reports_sandbox_refusal_clearly(
     tmp_path, source_repo, monkeypatch, capsys
 ):
     """A refusal must explain itself, not surface as a bare traceback."""
-    from romm_hub.sandbox import probe
+    from rom_hub.sandbox import probe
 
     if probe()[0]:
         pytest.skip("sandbox available; refusal path not reachable")
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.delenv("ROMM_HUB_ALLOW_UNSANDBOXED", raising=False)
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("ROM_HUB_ALLOW_UNSANDBOXED", raising=False)
     main(["plugin", "install", str(source_repo)])
     main(["search", "anything"])
     combined = capsys.readouterr()
-    assert "ROMM_HUB_ALLOW_UNSANDBOXED" in (combined.out + combined.err)
+    assert "ROM_HUB_ALLOW_UNSANDBOXED" in (combined.out + combined.err)
 
 
 def test_install_note_states_confinement_accurately(
     tmp_path, source_repo, monkeypatch, capsys
 ):
     """The install note is the only security claim most operators will read."""
-    from romm_hub.sandbox import probe
+    from rom_hub.sandbox import probe
 
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     # The note is hard-wrapped for the terminal; assert on the prose, not on
     # where the line breaks happen to fall.
@@ -147,17 +147,17 @@ def test_install_note_states_confinement_accurately(
     if probe()[0]:
         assert "seccomp" in out
     else:
-        assert "ROMM_HUB_ALLOW_UNSANDBOXED" in out
+        assert "ROM_HUB_ALLOW_UNSANDBOXED" in out
 
 
 def test_search_with_no_plugins_is_not_an_error(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     assert main(["search", "anything"]) == 0
     assert "no plugins" in capsys.readouterr().out.lower()
 
 
 def test_disable_removes_plugin_from_search(tmp_path, source_repo, monkeypatch, capsys):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     main(["plugin", "disable", "demo"])
     main(["search", "oregon"])
@@ -179,7 +179,7 @@ def test_a_bad_manifest_on_install_is_an_error_message_not_a_traceback(
         cwd=repo,
         check=True,
     )
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "hub"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "hub"))
     assert main(["plugin", "install", str(repo)]) == 1
     assert "error:" in capsys.readouterr().err
 
@@ -189,7 +189,7 @@ def test_an_unusable_home_is_an_error_message_not_a_traceback(
 ):
     blocker = tmp_path / "not-a-dir"
     blocker.write_text("i am a file", encoding="utf-8")
-    monkeypatch.setenv("ROMM_HUB_HOME", str(blocker / "hub"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(blocker / "hub"))
     assert main(["plugin", "list"]) == 1
     assert "error:" in capsys.readouterr().err
 
@@ -204,7 +204,7 @@ def test_an_unusable_home_is_an_error_message_not_a_traceback(
 def test_import_from_an_unknown_plugin_exits_nonzero_with_a_clear_message(
     tmp_path, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     assert main(["import", "no-such-plugin", "some_item"]) != 0
     err = capsys.readouterr().err
     assert "no-such-plugin" in err
@@ -216,7 +216,7 @@ def test_import_from_a_plugin_without_the_capability_says_so(
 ):
     """The demo plugin declares `search` only. Naming the missing capability
     is the difference between a fixable message and a puzzle."""
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     assert main(["import", "demo", "some_item"]) != 0
     err = capsys.readouterr().err
@@ -226,7 +226,7 @@ def test_import_from_a_plugin_without_the_capability_says_so(
 def test_import_from_a_disabled_plugin_is_refused(
     tmp_path, source_repo, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     main(["plugin", "disable", "demo"])
     assert main(["import", "demo", "some_item"]) != 0
@@ -237,7 +237,7 @@ def test_import_without_romm_settings_names_the_variables(
     tmp_path, monkeypatch, capsys
 ):
     """An unconfigured Hub must not fail somewhere inside httpx."""
-    from romm_hub.cli import romm_settings
+    from rom_hub.cli import romm_settings
 
     monkeypatch.delenv("ROMM_URL", raising=False)
     monkeypatch.delenv("ROMM_USER", raising=False)
@@ -251,7 +251,7 @@ def test_import_without_romm_settings_names_the_variables(
 
 
 def test_romm_settings_reads_the_environment(monkeypatch):
-    from romm_hub.cli import romm_settings
+    from rom_hub.cli import romm_settings
 
     monkeypatch.setenv("ROMM_URL", "https://romm.example/")
     monkeypatch.setenv("ROMM_USER", "admin")
@@ -260,17 +260,17 @@ def test_romm_settings_reads_the_environment(monkeypatch):
 
 
 def test_jobs_with_an_empty_queue_is_not_an_error(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     assert main(["jobs"]) == 0
     assert "no import jobs" in capsys.readouterr().out.lower()
 
 
 def test_jobs_lists_what_the_queue_holds(tmp_path, monkeypatch, capsys):
-    from romm_hub.cli import jobs_db_path
-    from romm_hub.jobs import JobQueue, JobState
+    from rom_hub.cli import jobs_db_path
+    from rom_hub.jobs import JobQueue, JobState
 
     home = tmp_path / "home"
-    monkeypatch.setenv("ROMM_HUB_HOME", str(home))
+    monkeypatch.setenv("ROM_HUB_HOME", str(home))
     with JobQueue(jobs_db_path(home)) as queue:
         done = queue.enqueue("archive-org", "rubik_202308", "Rubik", "dos")
         queue.set_state(done.id, JobState.DONE)
@@ -284,11 +284,11 @@ def test_jobs_lists_what_the_queue_holds(tmp_path, monkeypatch, capsys):
 
 
 def test_jobs_can_be_filtered_by_state(tmp_path, monkeypatch, capsys):
-    from romm_hub.cli import jobs_db_path
-    from romm_hub.jobs import JobQueue, JobState
+    from rom_hub.cli import jobs_db_path
+    from rom_hub.jobs import JobQueue, JobState
 
     home = tmp_path / "home"
-    monkeypatch.setenv("ROMM_HUB_HOME", str(home))
+    monkeypatch.setenv("ROM_HUB_HOME", str(home))
     with JobQueue(jobs_db_path(home)) as queue:
         done = queue.enqueue("archive-org", "rubik_202308", "Rubik", "dos")
         queue.set_state(done.id, JobState.DONE)
@@ -303,7 +303,7 @@ def test_jobs_can_be_filtered_by_state(tmp_path, monkeypatch, capsys):
 def test_an_unknown_job_state_is_an_error_message_not_a_traceback(
     tmp_path, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     assert main(["jobs", "--state", "NONSENSE"]) != 0
     err = capsys.readouterr().err
     assert "NONSENSE" in err
@@ -316,12 +316,12 @@ def test_import_reports_a_sandbox_refusal_clearly(
 ):
     """`search` isolates each plugin in the dispatcher; `import` talks to one
     PluginProcess directly, so SandboxRefused reaches main() unwrapped."""
-    from romm_hub.sandbox import probe
+    from rom_hub.sandbox import probe
 
     if probe()[0]:
         pytest.skip("sandbox available; refusal path not reachable")
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.delenv("ROMM_HUB_ALLOW_UNSANDBOXED", raising=False)
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("ROM_HUB_ALLOW_UNSANDBOXED", raising=False)
     # Point at a RomM that is not there: the refusal must come first, so the
     # connection is never attempted.
     monkeypatch.setenv("ROMM_URL", "http://127.0.0.1:9")
@@ -339,7 +339,7 @@ def test_import_reports_a_sandbox_refusal_clearly(
     )
     assert main(["import", "demo", "anything"]) != 0
     combined = capsys.readouterr()
-    assert "ROMM_HUB_ALLOW_UNSANDBOXED" in (combined.out + combined.err)
+    assert "ROM_HUB_ALLOW_UNSANDBOXED" in (combined.out + combined.err)
 
 
 # --- enrich --------------------------------------------------------------
@@ -351,7 +351,7 @@ def test_import_reports_a_sandbox_refusal_clearly(
 def test_enrich_from_an_unknown_plugin_exits_nonzero_with_a_clear_message(
     tmp_path, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     assert main(["enrich", "no-such-plugin", "1"]) != 0
     err = capsys.readouterr().err
     assert "no-such-plugin" in err
@@ -361,7 +361,7 @@ def test_enrich_from_an_unknown_plugin_exits_nonzero_with_a_clear_message(
 def test_enrich_from_a_plugin_without_the_capability_says_so(
     tmp_path, source_repo, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     assert main(["enrich", "demo", "1"]) != 0
     assert "metadata" in capsys.readouterr().err
@@ -372,7 +372,7 @@ def test_enrich_without_romm_settings_names_the_variables(
 ):
     """The capability check passes, so the next thing that must stop it is
     the unconfigured RomM -- not a connection attempt."""
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     for name in ("ROMM_URL", "ROMM_USER", "ROMM_PASSWORD"):
         monkeypatch.delenv(name, raising=False)
     main(["plugin", "install", str(source_repo)])
@@ -391,7 +391,7 @@ def test_enrich_without_romm_settings_names_the_variables(
 def test_enrich_from_a_disabled_plugin_is_refused(
     tmp_path, source_repo, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     main(["plugin", "disable", "demo"])
     assert main(["enrich", "demo", "1"]) != 0
@@ -404,7 +404,7 @@ def test_enrich_from_a_disabled_plugin_is_refused(
 def test_stream_from_a_plugin_without_the_capability_says_so(
     tmp_path, source_repo, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     assert main(["stream", "demo", "some_item"]) != 0
     assert "stream" in capsys.readouterr().err
@@ -413,13 +413,13 @@ def test_stream_from_a_plugin_without_the_capability_says_so(
 def test_stream_prints_the_resolved_target(tmp_path, source_repo, monkeypatch, capsys):
     """The whole command: resolve, validate, print. The Hub builds no
     streaming transport of its own -- romm-stream is a separate service."""
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
     main(["plugin", "install", str(source_repo)])
 
     installed = tmp_path / "home" / "plugins" / "demo"
     (installed / "demo_stream.py").write_text(
-        "from romm_hub_sdk import StreamProvider, StreamTarget\n"
+        "from rom_hub_sdk import StreamProvider, StreamTarget\n"
         "\n"
         "\n"
         "class Stream(StreamProvider):\n"
@@ -450,7 +450,7 @@ def test_stream_prints_the_resolved_target(tmp_path, source_repo, monkeypatch, c
 # --- cores ----------------------------------------------------------------
 
 CORES_PLUGIN = '''
-from romm_hub_sdk import CoreArtifact, CoreProvider, FetchFile, FetchPlan
+from rom_hub_sdk import CoreArtifact, CoreProvider, FetchFile, FetchPlan
 
 
 class Cores(CoreProvider):
@@ -488,15 +488,15 @@ def _install_cores_plugin(tmp_path, source_repo):
 def test_cores_from_a_plugin_without_the_capability_says_so(
     tmp_path, source_repo, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
     assert main(["cores", "list", "demo"]) != 0
     assert "cores" in capsys.readouterr().err
 
 
 def test_cores_list_prints_the_catalogue(tmp_path, source_repo, monkeypatch, capsys):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
     _install_cores_plugin(tmp_path, source_repo)
 
     assert main(["cores", "list", "demo"]) == 0
@@ -514,12 +514,12 @@ def test_cores_install_writes_into_the_configured_directory(
     `--` the downloader is the one thing stubbed, because a test may not
     reach the network; everything else is the real command.
     """
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
-    monkeypatch.setenv("ROMM_HUB_CORES_DIR", str(tmp_path / "cores"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_CORES_DIR", str(tmp_path / "cores"))
     _install_cores_plugin(tmp_path, source_repo)
 
-    import romm_hub.cores as cores_module
+    import rom_hub.cores as cores_module
 
     real_install = cores_module.install_core
 
@@ -540,7 +540,7 @@ def test_cores_install_writes_into_the_configured_directory(
             plugin, core, cores_dir=cores_dir, downloader=FakeDownloader()
         )
 
-    monkeypatch.setattr("romm_hub.cli.install_core", install)
+    monkeypatch.setattr("rom_hub.cli.install_core", install)
 
     assert main(["cores", "install", "demo", "dosbox"]) == 0
     assert (tmp_path / "cores" / "demo" / "dosbox.wasm").read_bytes() == b"wasm"
@@ -550,9 +550,9 @@ def test_cores_install_writes_into_the_configured_directory(
 def test_cores_install_of_an_unknown_core_is_an_error_not_a_traceback(
     tmp_path, source_repo, monkeypatch, capsys
 ):
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
-    monkeypatch.setenv("ROMM_HUB_CORES_DIR", str(tmp_path / "cores"))
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_CORES_DIR", str(tmp_path / "cores"))
     _install_cores_plugin(tmp_path, source_repo)
 
     assert main(["cores", "install", "demo", "nonesuch"]) != 0
@@ -563,11 +563,11 @@ def test_cores_install_of_an_unknown_core_is_an_error_not_a_traceback(
 
 
 def test_a_failed_job_shows_its_error(tmp_path, monkeypatch, capsys):
-    from romm_hub.cli import jobs_db_path
-    from romm_hub.jobs import JobQueue, JobState
+    from rom_hub.cli import jobs_db_path
+    from rom_hub.jobs import JobQueue, JobState
 
     home = tmp_path / "home"
-    monkeypatch.setenv("ROMM_HUB_HOME", str(home))
+    monkeypatch.setenv("ROM_HUB_HOME", str(home))
     with JobQueue(jobs_db_path(home)) as queue:
         job = queue.enqueue("archive-org", "x", "X", "dos")
         queue.set_state(job.id, JobState.FAILED, error="the item is stream-only")
@@ -606,8 +606,8 @@ def test_a_title_outside_cp1252_does_not_kill_the_command(
     the unprintable ones still arrive. The old failure lost every line from
     the first bad title onwards.
     """
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
     main(["plugin", "install", str(unicode_source_repo)])
 
     stream, raw = cp1252_stdout(monkeypatch)
@@ -642,8 +642,8 @@ def test_utf8_output_is_not_mangled(tmp_path, unicode_source_repo, monkeypatch):
     A UTF-8 stdout can represent all of these, so it must receive them
     intact -- the fix must not "sanitise" output that was never in danger.
     """
-    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
     main(["plugin", "install", str(unicode_source_repo)])
 
     raw = io.BytesIO()

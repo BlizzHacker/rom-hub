@@ -11,7 +11,7 @@ relevance bug, not a preference.
 
 from pydantic import ValidationError
 
-from romm_hub_sdk import SearchProvider, SearchResult
+from rom_hub_sdk import SearchProvider, SearchResult
 
 ENDPOINT = "https://archive.org/advancedsearch.php"
 DETAILS = "https://archive.org/details/"

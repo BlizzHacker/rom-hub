@@ -13,18 +13,18 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from romm_hub.dedup import hash_file
-from romm_hub.importer import (
+from rom_hub.dedup import hash_file
+from rom_hub.importer import (
     DownloadError,
     HttpDownloader,
     ImportResult,
     dest_in_job_dir,
     run_import,
 )
-from romm_hub.jobs import JobQueue, JobState
-from romm_hub.romm.client import RommError
-from romm_hub.romm.scan import ScanError
-from romm_hub.types import FetchFile, FetchPlan, SearchResult
+from rom_hub.jobs import JobQueue, JobState
+from rom_hub.romm.client import RommError
+from rom_hub.romm.scan import ScanError
+from rom_hub.types import FetchFile, FetchPlan, SearchResult
 
 ROM_BYTES = b"MZ\x90\x00rom payload" * 64
 RESULT = SearchResult(source_id="item-1", title="Some Game")
@@ -196,7 +196,7 @@ class FakeScanner:
 @pytest.fixture
 def upload(monkeypatch):
     fake = FakeUpload()
-    monkeypatch.setattr("romm_hub.importer.upload_file", fake)
+    monkeypatch.setattr("rom_hub.importer.upload_file", fake)
     return fake
 
 
@@ -267,7 +267,7 @@ def test_an_upload_that_never_appears_in_the_library_lands_failed(
     is in the library. Reporting DONE on the strength of a status code
     alone is exactly the bug this check exists to catch."""
     fake = FakeUpload(lands=False)
-    monkeypatch.setattr("romm_hub.importer.upload_file", fake)
+    monkeypatch.setattr("rom_hub.importer.upload_file", fake)
     romm = FakeRomm()
 
     res = _run(tmp_path, FakePlugin(_plan()), romm, queue)
@@ -638,7 +638,7 @@ def test_a_plugin_whose_plan_raises_lands_failed_not_an_exception(
 
 def test_an_upload_failure_lands_failed_with_the_reason(tmp_path, queue, monkeypatch):
     fake = FakeUpload(error=RommError("chunk 2 rejected (400)"))
-    monkeypatch.setattr("romm_hub.importer.upload_file", fake)
+    monkeypatch.setattr("rom_hub.importer.upload_file", fake)
 
     res = _run(tmp_path, FakePlugin(_plan()), FakeRomm(), queue)
     assert res.state is JobState.FAILED
@@ -717,7 +717,7 @@ def test_run_import_closes_the_downloader_it_built_itself(tmp_path, queue, uploa
 
     romm = FakeRomm()
     monkey = pytest.MonkeyPatch()
-    monkey.setattr("romm_hub.importer.HttpDownloader", TrackingDownloader)
+    monkey.setattr("rom_hub.importer.HttpDownloader", TrackingDownloader)
     try:
         res = run_import(
             FakePlugin(_plan()),
@@ -775,7 +775,7 @@ def test_the_downloader_is_closed_even_when_the_import_fails(
             super().close()
 
     monkey = pytest.MonkeyPatch()
-    monkey.setattr("romm_hub.importer.HttpDownloader", TrackingDownloader)
+    monkey.setattr("rom_hub.importer.HttpDownloader", TrackingDownloader)
     try:
         res = run_import(
             FakePlugin(_plan()),

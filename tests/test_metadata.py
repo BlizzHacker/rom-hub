@@ -13,8 +13,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from romm_hub.metadata import EnrichError, rom_ref_from, run_enrich
-from romm_hub.types import MetadataPatch, RomRef
+from rom_hub.metadata import EnrichError, rom_ref_from, run_enrich
+from rom_hub.types import MetadataPatch, RomRef
 
 REF = RomRef(rom_id=42, name="doom", filename="doom.zip", platform="dos")
 
@@ -162,7 +162,7 @@ def test_an_escaping_artwork_filename_is_refused_before_any_write(tmp_path):
 
 
 def test_oversized_downloaded_artwork_is_refused(tmp_path):
-    from romm_hub.types import MAX_ARTWORK_BYTES
+    from rom_hub.types import MAX_ARTWORK_BYTES
 
     romm = FakeRomm()
     downloader = FakeDownloader(payload=b"\0" * (MAX_ARTWORK_BYTES + 1))

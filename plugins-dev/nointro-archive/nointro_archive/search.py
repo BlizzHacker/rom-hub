@@ -30,7 +30,7 @@ from urllib.parse import quote
 
 from pydantic import ValidationError
 
-from romm_hub_sdk import SearchProvider, SearchResult
+from rom_hub_sdk import SearchProvider, SearchResult
 
 from .index import INDEXES, IndexError_
 from .platforms import platform_for
