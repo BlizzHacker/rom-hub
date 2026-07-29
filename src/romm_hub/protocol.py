@@ -1,8 +1,14 @@
 """Newline-delimited JSON framing for host <-> plugin RPC.
 
 One JSON object per line. json.dumps escapes embedded newlines, so the
-framing holds for arbitrary payloads. The size cap stops a misbehaving
-plugin from exhausting host memory with a single line.
+framing holds for arbitrary payloads.
+
+The size cap stops a misbehaving plugin from exhausting host memory with a
+single line, which requires bounding the *read* rather than measuring what
+came back: `readline()` with no argument scans to the next newline however
+far away it is, so a cap checked afterwards has already lost. Exceeding the
+cap therefore leaves the stream mid-line and permanently desynchronised —
+callers must kill the peer, never try to resync.
 """
 
 import json
@@ -24,12 +30,15 @@ def write_message(stream: IO[str], msg: dict) -> None:
 
 def read_message(stream: IO[str]) -> dict | None:
     while True:
-        line = stream.readline()
+        # Bounded: at most one character beyond the cap is ever resident, and
+        # that character is only there to prove the cap was exceeded.
+        line = stream.readline(MAX_MESSAGE_BYTES + 1)
         if line == "":
             return None  # clean EOF
         if len(line) > MAX_MESSAGE_BYTES:
             raise ProtocolError(
-                f"message too large: {len(line)} bytes exceeds {MAX_MESSAGE_BYTES}"
+                f"message too large: exceeds {MAX_MESSAGE_BYTES}; the stream is "
+                "now desynchronised and the peer must be killed"
             )
         line = line.strip()
         if not line:
