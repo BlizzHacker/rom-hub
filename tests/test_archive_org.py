@@ -100,3 +100,24 @@ def test_limit_is_passed_as_rows():
 def test_empty_response_returns_no_results():
     search, _ = make_search(payload={"response": {"numFound": 0, "docs": []}})
     assert search.search("nothing", None, 25) == []
+
+
+def test_one_malformed_doc_does_not_cost_every_other_result():
+    """size_bytes is a ge=0 pydantic field fed straight from upstream JSON.
+
+    A single bad item_size used to raise ValidationError out of search() and
+    lose the whole response for that plugin.
+    """
+    payload = json.loads(json.dumps(FIXTURE))
+    payload["response"]["docs"].insert(
+        0, {"identifier": "bad_size", "title": "Bad Size", "item_size": -5}
+    )
+    payload["response"]["docs"].insert(
+        1, {"identifier": "junk_size", "title": "Junk Size", "item_size": "enormous"}
+    )
+    search, _ = make_search(payload)
+    results = search.search("oregon", None, 25)
+    assert [r.source_id for r in results] == [
+        "msdos_Oregon_Trail_The_1990",
+        "msdos_Old_Gold_1995",
+    ]
