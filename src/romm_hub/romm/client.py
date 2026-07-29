@@ -17,7 +17,15 @@ from __future__ import annotations
 
 import httpx
 
+from romm_hub.types import PROVIDER_ID_FIELDS, RAW_METADATA_FIELDS
+
 _EXCERPT_LIMIT = 300
+
+# What `update_rom` may write. RomM's update body also accepts `fs_name`,
+# `summary`, `url_cover` and `url_manual`; `fs_name` renames the file on
+# disk, which is not a metadata edit and is not something a plugin gets to
+# ask for in RPP v1. Narrow by construction, widened only deliberately.
+UPDATABLE_ROM_FIELDS = frozenset({"name"}) | PROVIDER_ID_FIELDS | RAW_METADATA_FIELDS
 
 # How many roms to ask for per `GET /api/roms` page. The server defaults
 # `limit` to 50; asking for more just means fewer round trips over the
@@ -295,6 +303,77 @@ class RommClient:
             total = payload.get("total")
             if isinstance(total, int) and offset >= total:
                 return roms
+
+    def get_rom(self, rom_id: int) -> dict:
+        """`GET /api/roms/{id}` -> the full rom record.
+
+        Used to build the `RomRef` handed to a `metadata` plugin, and to
+        show an operator what an enrich actually changed.
+        """
+        return self._authorized_request("GET", f"/api/roms/{rom_id}").json()
+
+    def update_rom(
+        self,
+        rom_id: int,
+        fields: dict[str, str],
+        artwork: tuple[str, bytes, str] | None = None,
+    ) -> dict:
+        """`PUT /api/roms/{id}` -- apply a metadata patch to one rom.
+
+        **Only the keys in `fields` are sent.** RomM applies what it is
+        given and leaves everything else alone (measured, below), so a
+        partial patch is safe exactly as long as the absent field is
+        genuinely absent from the request. Forwarding an unset field as an
+        empty part is how a plugin that only knew the name would erase a
+        user's curated ids.
+
+        The encoding was measured against a real RomM 4.9.2 rather than
+        inferred, because the schema declares `multipart/form-data` only
+        and the truth is more forgiving in one direction and much less in
+        another:
+
+            multipart, name + igdb_id, no artwork part   -> 200, applied
+            multipart, name only, afterwards             -> 200, igdb_id kept
+            urlencoded (no multipart at all), name only  -> 200, igdb_id kept
+            multipart with an EMPTY artwork part         -> **400**
+            multipart with an unknown extra part         -> 200, ignored
+
+        So this deliberately does **not** copy `ensure_collection`'s
+        empty-`files=` trick. There it is the only way to make httpx
+        multipart-encode a bodyless create; here the same empty part is a
+        400 that fails every artwork-less update. RomM reads the body with
+        `request.form()`, which parses urlencoded too, so an update with no
+        artwork simply goes as urlencoded and only a real cover promotes
+        the request to multipart.
+
+        `artwork` is `(filename, bytes, content_type)`. To *remove* a cover
+        RomM takes `?remove_cover=true`; an empty artwork part is not it.
+        """
+        unknown = sorted(set(fields) - UPDATABLE_ROM_FIELDS)
+        if unknown:
+            # These keys originate in a plugin's MetadataPatch. That model
+            # already refuses anything unknown; this is the layer that has
+            # to hold if it ever stops doing so, because some of RomM's
+            # other form fields are not metadata at all -- `fs_name`
+            # renames the file on disk.
+            raise RommError(
+                f"refusing to update rom {rom_id}: {unknown} are not metadata "
+                f"fields this client may write (permitted: "
+                f"{sorted(UPDATABLE_ROM_FIELDS)})"
+            )
+
+        kwargs: dict = {"data": dict(fields)}
+        if artwork is not None:
+            filename, data, content_type = artwork
+            kwargs["files"] = {"artwork": (filename, data, content_type)}
+
+        resp = self._authorized_request("PUT", f"/api/roms/{rom_id}", **kwargs)
+        if not resp.content:
+            return {}
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
 
     # -- collections ----------------------------------------------------------
 
