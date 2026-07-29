@@ -246,13 +246,103 @@ def test_artwork_false_makes_no_request_at_all(db):
     assert http.calls == []
 
 
-def test_cover_hosts_matches_the_manifest_allowlist():
+def _manifest() -> dict:
     import tomllib
 
-    manifest = tomllib.loads(
-        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    return tomllib.loads((PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8"))
+
+
+def test_the_allowlist_is_exactly_the_covers_plus_the_database():
+    """The allowlist used to *be* COVER_HOSTS. It is now a superset, and
+    the extra entries have to be accounted for one by one -- otherwise
+    "the download needed a host" becomes the excuse for any host at all.
+
+    Two for the database, not one, because the release asset answers 302
+    and the Hub re-checks every hop rather than following it blindly.
+    """
+    manifest = _manifest()
+    declared = set(manifest["permissions"]["network"])
+    assert COVER_HOSTS <= declared
+    assert declared - COVER_HOSTS == {
+        "github.com",
+        "release-assets.githubusercontent.com",
+    }
+
+
+def test_the_declared_asset_is_the_one_the_plugin_asks_for():
+    """A name that drifts between the two is a plugin that refuses at
+    runtime with the host having fetched 9 MB for nothing."""
+    from openvgdb.metadata import DATA_ASSET
+
+    (asset,) = _manifest()["data_assets"]
+    assert asset["name"] == DATA_ASSET
+    assert asset["member"] == DATA_ASSET
+    assert asset["archive"] == "zip"
+    # The size and digest of OpenVGDB v29.0, the project's only artefact:
+    # `openvgdb.zip` as published, and `openvgdb.sqlite` as unpacked.
+    assert asset["size_bytes"] == 9118645
+    assert asset["url"].endswith("/releases/download/v29.0/openvgdb.zip")
+    assert len(asset["sha256"]) == 64
+
+
+def test_the_manifest_parses_under_the_hosts_own_rules():
+    """tomllib says it is well-formed TOML; the Hub says whether it is a
+    manifest it will install, and the asset URL passes the same allowlist
+    gate a FetchPlan URL does."""
+    from rom_hub.manifest import load_manifest
+
+    manifest = load_manifest(PLUGIN_ROOT / "manifest.toml")
+    (asset,) = manifest.data_assets
+    assert asset.host == "github.com"
+    assert asset.size_bytes == 9118645
+
+
+# -- where the database comes from ---------------------------------------
+
+
+def test_the_host_resolved_data_asset_is_used_when_db_path_is_unset(db, tmp_path):
+    """The gap this closes: no manual setup, no `db_path`, it just works."""
+    provider = Metadata(
+        PluginContext(
+            config={"artwork": False},
+            http=FakeCovers(),
+            data_assets={"openvgdb.sqlite": str(tmp_path / "openvgdb.sqlite")},
+        )
     )
-    assert set(manifest["permissions"]["network"]) == COVER_HOSTS
+    assert provider.enrich(_ref()).name == "Tetris"
+
+
+def test_db_path_overrides_the_data_asset_rather_than_the_other_way_round(db):
+    """An operator who pinned a copy has said something more specific than
+    the manifest's default, and must not be quietly overruled by it."""
+    seen: list[str] = []
+
+    def _record(path):
+        seen.append(path)
+        return db(path)
+
+    provider = Metadata(
+        PluginContext(
+            config={"db_path": "/operators/own/openvgdb.sqlite", "artwork": False},
+            http=FakeCovers(),
+            data_assets={"openvgdb.sqlite": "/hub/cache/openvgdb.sqlite"},
+        )
+    )
+    import openvgdb.metadata as metadata_module
+
+    original = metadata_module.open_database
+    metadata_module.open_database = _record
+    try:
+        provider.enrich(_ref())
+    finally:
+        metadata_module.open_database = original
+    assert seen == ["/operators/own/openvgdb.sqlite"]
+
+
+def test_neither_route_available_says_how_to_get_the_file():
+    provider = Metadata(PluginContext(config={}, http=FakeCovers()))
+    with pytest.raises(DatabaseUnavailable, match="plugin assets openvgdb --fetch"):
+        provider.enrich(_ref())
 
 
 # -- refusals ------------------------------------------------------------
