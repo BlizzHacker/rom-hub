@@ -22,6 +22,7 @@ def _cmd_plugin_install(args) -> int:
     plugin = reg.install(args.source, args.ref)
     caps = ", ".join(sorted(plugin.manifest.capabilities))
     print(f"installed {plugin.slug} {plugin.manifest.version} (capabilities: {caps})")
+    print(f"  pinned commit: {plugin.commit or '(unknown)'}")
     print(f"  network allowlist: {plugin.manifest.network or '(none)'}")
     return 0
 
@@ -91,7 +92,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     install = psub.add_parser("install", help="install a plugin from a git repo or path")
     install.add_argument("source")
-    install.add_argument("--ref", default=None, help="tag or branch to pin")
+    install.add_argument(
+        "--ref", default=None, help="branch, tag, or commit SHA to install"
+    )
     install.set_defaults(func=_cmd_plugin_install)
 
     listing = psub.add_parser("list", help="list installed plugins")
