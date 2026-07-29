@@ -46,7 +46,12 @@ from urllib.parse import urljoin
 
 import httpx
 
-from rom_hub.backends.base import LibraryBackend, Scanner
+from rom_hub.backends.base import (
+    COLLECTIONS,
+    LibraryBackend,
+    Scanner,
+    capabilities_of,
+)
 from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from rom_hub.jobs import Job, JobQueue, JobState
 from rom_hub.netpolicy import PolicyViolation, check_url
@@ -344,6 +349,30 @@ def _import(
             f"plugin {slug!r} could not plan an import for "
             f"{result.source_id!r}: {exc}"
         ) from exc
+
+    # 1a. Can this backend do what the plan asks for at all?
+    #
+    #     Asked here, before a single byte is fetched, because the
+    #     alternative is discovering it at step 6: the ROM downloaded,
+    #     hashed, uploaded and registered, and then a 404 from an endpoint
+    #     the backend never had. The operator would be left with a
+    #     half-filed import and a message about HTTP rather than about
+    #     collections.
+    #
+    #     `--collection` is checked in the CLI too, and this is not that
+    #     check repeated: a plan can name a collection the operator never
+    #     typed, since a plugin sets one by default (Archive.org files
+    #     under "Archive.org"). Both routes have to refuse legibly.
+    supported = capabilities_of(backend)
+    if plan.collection and COLLECTIONS not in supported:
+        raise _ImportFailure(
+            f"the {getattr(backend, 'name', 'active')!r} backend does not "
+            f"support collections, so the import was stopped before anything "
+            f"was downloaded: {plan.collection!r} could not be created or "
+            f"added to. The collection was named by --collection or by "
+            f"plugin {slug!r}'s own plan; this backend can only import "
+            f"without one."
+        )
 
     # 2. Slug -> integer platform id. Never guess: a wrong id files the ROM
     #    under the wrong system, which is worse than a visible failure.

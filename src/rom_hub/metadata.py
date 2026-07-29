@@ -25,7 +25,7 @@ import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
 
-from rom_hub.backends.base import LibraryBackend
+from rom_hub.backends.base import ARTWORK, METADATA, LibraryBackend, require
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.paths import UnsafeDestination, dest_in_job_dir
 from rom_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
@@ -99,6 +99,7 @@ def run_enrich(
     which one. `work_dir` is where a fetched cover lands on its way to it;
     nothing is ever written outside it.
     """
+    require(backend, METADATA, "enriching a rom's metadata")
     work_dir = Path(work_dir)
     manifest = getattr(plugin, "manifest", None)
     slug = getattr(manifest, "slug", "") or "unknown"
@@ -124,6 +125,12 @@ def run_enrich(
         )
 
     fields = patch.form_fields()
+    if patch.has_artwork():
+        # Before `_artwork`, which is where the cover would be fetched
+        # over the network. A backend that cannot take a cover should
+        # cost no download at all, and should say why rather than
+        # rejecting a multipart part with a status code.
+        require(backend, ARTWORK, f"the artwork plugin {slug!r} proposed")
     artwork = _artwork(patch, slug, allowlist, work_dir, downloader)
 
     try:
