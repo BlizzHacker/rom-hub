@@ -1,0 +1,37 @@
+{
+ "results": 11,
+ "page_total": 2,
+ "page_current": 2,
+ "page_elements": 1,
+ "sort": "firstadded_date",
+ "order": "desc",
+ "entries": [
+  {
+   "developer": "Yvar de Goffau",
+   "files": [
+    {
+     "default": true,
+     "filename": "snake.gb",
+     "playable": true
+    }
+   ],
+   "gameWebsite": "http://forums.nesdev.com/viewtopic.php?f=20&t=16787&sid=86fe28e1d07a7d0a7cf9775104d6a4a9",
+   "license": "WTFPL-2.0",
+   "platform": "GB",
+   "repository": "https://github.com/Yvar-deGoffau/GBSnake",
+   "screenshots": [
+    "screenshot.png"
+   ],
+   "slug": "snake",
+   "tags": [
+    "Open Source"
+   ],
+   "title": "Snake",
+   "typetag": "game",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-01-14T17:35:54Z",
+   "devtoolinfo": ""
+  }
+ ]
+}
