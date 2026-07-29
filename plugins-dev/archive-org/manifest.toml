@@ -6,7 +6,8 @@ rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
-search = "archive_org.search:Search"
+search   = "archive_org.search:Search"
+importer = "archive_org.importer:Importer"
 
 [permissions]
 network  = ["archive.org", "*.archive.org"]
@@ -14,3 +15,4 @@ romm_api = []
 
 [config]
 collections = { type = "list[str]", default = ["softwarelibrary"] }
+collection  = { type = "str", default = "Archive.org" }
