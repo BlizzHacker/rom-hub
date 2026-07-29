@@ -13,3 +13,4 @@ var/
 # The plugin is its own git repo (the live fixture inits it); do not treat it
 # as content of this repo.
 plugins-dev/*/.git/
+.venv/
