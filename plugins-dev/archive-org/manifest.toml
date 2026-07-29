@@ -1,7 +1,7 @@
 [plugin]
 slug        = "archive-org"
 name        = "Archive.org"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
