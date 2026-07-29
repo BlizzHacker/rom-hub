@@ -136,10 +136,15 @@ class PluginProcess:
             raise PluginCallError("plugin process is not running")
 
         call_id = self._next_id()
-        write_message(
-            self._proc.stdin,
-            {"kind": "call", "id": call_id, "method": method, "params": params},
-        )
+        try:
+            write_message(
+                self._proc.stdin,
+                {"kind": "call", "id": call_id, "method": method, "params": params},
+            )
+        except (BrokenPipeError, OSError, ValueError) as exc:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug}: cannot send {method!r}: {exc}"
+            ) from exc
 
         # A blocking read on a subprocess pipe cannot be given a deadline
         # portably, so the deadline is enforced by killing the peer: the
@@ -162,7 +167,12 @@ class PluginProcess:
                     break
 
                 if msg["kind"] == "call":
-                    self._serve_plugin_call(msg)
+                    if not self._serve_plugin_call(msg):
+                        # The reply pipe is gone. Leaving the loop lands on
+                        # the timeout/exited reporting below, which is the
+                        # accurate diagnosis; re-raising the OSError here
+                        # would not be.
+                        break
                     continue
 
                 if msg.get("id") != call_id:
@@ -186,7 +196,16 @@ class PluginProcess:
             f"{self._stderr_snapshot() or 'no stderr'}"
         )
 
-    def _serve_plugin_call(self, msg: dict) -> None:
+    def _serve_plugin_call(self, msg: dict) -> bool:
+        """Answer one plugin-initiated call. False if the reply could not be sent.
+
+        This runs synchronously inside _call's read loop, so a plugin that
+        issues host-bound calls without consuming the replies fills the reply
+        pipe, blocks the host here, and then blocks itself on its own stdout.
+        The watchdog's kill is what unblocks this write -- correctly -- but it
+        unblocks it by breaking the pipe, and the resulting OSError is not the
+        PluginCallError the caller was promised.
+        """
         assert self._proc is not None and self._proc.stdin is not None
         # read_message has already guaranteed id/method/params, but this whole
         # block indexes peer-controlled data, so it stays inside the try:
@@ -213,7 +232,11 @@ class PluginProcess:
                 "id": call_id,
                 "error": {"message": f"{type(exc).__name__}: {exc}"},
             }
-        write_message(self._proc.stdin, reply)
+        try:
+            write_message(self._proc.stdin, reply)
+        except (BrokenPipeError, OSError, ValueError):
+            return False
+        return True
 
     def search(
         self, query: str, platform: str | None, limit: int
