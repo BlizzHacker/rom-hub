@@ -56,8 +56,16 @@ def test_install_then_list(tmp_path, source_repo, monkeypatch, capsys):
 
 
 def test_search_end_to_end(tmp_path, source_repo, monkeypatch, capsys):
+    from romm_hub.sandbox import probe
+
     monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
     main(["plugin", "install", str(source_repo)])
+    if not probe()[0]:
+        # The host now fails closed when a plugin can't be confined, and
+        # the CLI has no ROMM_HUB_ALLOW_UNSANDBOXED opt-out wired through
+        # search_all yet (that plumbing lands separately). On a platform
+        # without a sandbox this path currently refuses by design.
+        pytest.skip("sandbox unavailable; CLI opt-out wiring not yet in place")
     assert main(["search", "oregon trail"]) == 0
     out = capsys.readouterr().out
     assert "hit: oregon trail" in out
