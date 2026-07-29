@@ -1,8 +1,12 @@
 """The plugin's view of the world.
 
-A plugin cannot open a socket. It calls ctx.http, which is an RPC back to
+This API offers no socket. A plugin calls ctx.http, which is an RPC back to
 the host; the host checks the manifest allowlist before fetching anything.
 The shape deliberately mirrors `requests` so the idiom is familiar.
+
+Phase 1 does not sandbox the plugin subprocess, so this is the supported path
+rather than the only possible one — a hostile plugin can still `import socket`
+and skip the broker. See "Security: the broker model" in docs/DESIGN.md.
 """
 
 import json
