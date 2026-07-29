@@ -1,0 +1,27 @@
+[plugin]
+slug        = "retroachievements"
+name        = "RetroAchievements"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+metadata = "retroachievements.metadata:Metadata"
+
+# One host. The plugin calls retroachievements.org/API/ and proposes no
+# artwork, so RA's media host is deliberately not declared -- an allowlist
+# entry for a host nothing fetches is an allowlist entry for nothing.
+[permissions]
+network  = ["retroachievements.org"]
+romm_api = []
+
+# `api_key` is a `str`, not a `secret`. RPP v1 reserves the `secret` type
+# and THIS HOST REJECTS IT: manifest.py raises "reserved in RPP v1 but not
+# implemented in Phase 1" for any field declaring it. So the key is stored
+# in the Hub's plugin config in the clear, and the README says so in those
+# words rather than implying otherwise.
+[config]
+api_key                = { type = "str", default = "" }
+username               = { type = "str", default = "" }
+set_name               = { type = "bool", default = true }
+only_with_achievements = { type = "bool", default = true }
