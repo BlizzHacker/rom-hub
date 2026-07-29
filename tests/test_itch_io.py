@@ -1,11 +1,13 @@
 """itch.io plugin, replayed against fixtures captured from the live site.
 
 Nothing here opens a socket. `tests/fixtures/itch_io/` holds verbatim
-slices of real responses -- one browse listing (`?format=json`) and four
-game pages, one per routing outcome the importer has to tell apart.
+slices of real responses: one browse listing (`?format=json`), four game
+pages trimmed to what the importer routes on, and three trimmed to
+`<head>` plus the title heading for what `metadata` reads.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -19,10 +21,24 @@ from itch_io.browse import BrowseError, browse_url, parse_cells  # noqa: E402
 from itch_io.filenames import safe_filename  # noqa: E402
 from itch_io.importer import ImportRefused, Importer, parse_size  # noqa: E402
 from itch_io.platforms import platform_for  # noqa: E402
+from itch_io.metadata import (  # noqa: E402
+    Metadata,
+    NotIdentified,
+    NothingToPropose,
+    PageUnusable,
+    cover_url,
+    heading_title,
+    product_name,
+)
 from itch_io.search import Search  # noqa: E402
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from rom_hub.types import FetchFile, SearchResult  # noqa: E402
+from rom_hub.types import (  # noqa: E402
+    FetchFile,
+    RomRef,
+    SearchResult,
+    bare_filename,
+)
 
 
 def fixture(name: str) -> str:
@@ -357,3 +373,184 @@ def test_a_very_long_name_is_truncated_but_keeps_its_extension():
 def test_sanitising_is_deterministic():
     raw = "Wild/Name: *bad* (v1.0).gb"
     assert safe_filename(raw) == safe_filename(raw)
+
+
+# ------------------------------------------------------------------ metadata
+
+
+def page_fixture(name: str) -> str:
+    return (FIXTURES / name).read_text(encoding="utf-8")
+
+
+# Real game pages, trimmed to `<head>` plus the `<h1 class="game_title">`
+# block -- verbatim excerpts, captured 2026-07-29. The three between them
+# cover what varies: FUN VIDEO STORE's Product JSON-LD leads with `name`,
+# Disco Elysium's leads with `aggregateRating` (which is why the block is
+# parsed as JSON rather than pattern-matched), and Opossum Country's cover
+# is a `.gif` where the others are `.png`.
+DISCO = page_fixture("page_disco_elysium_gb.html")
+FUN_VIDEO_STORE = page_fixture("page_fun_video_store.html")
+DEADEUS = page_fixture("page_deadeus.html")
+
+
+class PageHttp:
+    """Serves one page body, and records the URLs it was asked for."""
+
+    def __init__(self, body=DISCO, status=200):
+        self.body = body
+        self.status = status
+        self.calls = []
+
+    def get(self, url, params=None):
+        self.calls.append(url)
+        return HttpResponse(status_code=self.status, text=self.body)
+
+
+def make_metadata(body=DISCO, config=None, status=200):
+    http = PageHttp(body, status)
+    return Metadata(PluginContext(config=config or {}, http=http)), http
+
+
+def a_rom(**kwargs):
+    base = {"rom_id": 7, "name": "", "filename": "", "platform": None, "extra": {}}
+    return RomRef(**{**base, **kwargs})
+
+
+def test_a_game_page_yields_the_developers_title_and_cover():
+    meta, http = make_metadata()
+    patch = meta.enrich(
+        a_rom(extra={"source_id": "csbrannan/disco-elysium-game-boy-edition"})
+    )
+    assert patch.name == "Disco Elysium: Game Boy Edition"
+    assert patch.artwork_url == (
+        "https://img.itch.zone/aW1nLzQ0MTgzNTcucG5n/original/7GT5BM.png"
+    )
+    assert patch.artwork_filename == "7GT5BM.png"
+    assert http.calls == [
+        "https://csbrannan.itch.io/disco-elysium-game-boy-edition"
+    ]
+
+
+def test_the_json_ld_is_parsed_not_pattern_matched():
+    """itch.io emits the Product object's keys in different orders on
+    different pages. A regex for `"name":"..."` works against whichever
+    page it was written for and silently fails on the rest."""
+    assert product_name(DISCO) == "Disco Elysium: Game Boy Edition"
+    assert product_name(FUN_VIDEO_STORE) == "FUN VIDEO STORE"
+
+    def product_block(page):
+        blocks = re.findall(
+            r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
+            page,
+            re.DOTALL,
+        )
+        return next(b for b in blocks if '"Product"' in b)
+
+    # Same object, three different key orders across three real pages.
+    # This is the whole reason the block is parsed rather than matched.
+    orders = [
+        re.findall(r'"(@?\w+)":', product_block(page))[0]
+        for page in (DISCO, FUN_VIDEO_STORE, DEADEUS)
+    ]
+    assert orders == ["name", "aggregateRating", "@type"]
+
+    # And the naive whole-page version -- the first `"name":"..."` anywhere
+    # in the document -- lands in the breadcrumb block on every one of them.
+    for page in (DISCO, FUN_VIDEO_STORE, DEADEUS):
+        assert re.search(r'"name":"([^"]*)"', page).group(1) == "Games"
+
+
+def test_the_breadcrumb_json_ld_is_not_mistaken_for_the_product():
+    """Every game page carries a BreadcrumbList block too, and it comes
+    first. Taking the first block would name the game "Games"."""
+    assert '"BreadcrumbList"' in DISCO
+    assert product_name(DISCO) != "Games"
+
+
+def test_the_heading_is_the_fallback_when_there_is_no_product_block():
+    page = DISCO.replace("application/ld+json", "application/x-nothing")
+    assert product_name(page) == ""
+    assert heading_title(page) == "Disco Elysium: Game Boy Edition"
+    meta, _ = make_metadata(page)
+    patch = meta.enrich(a_rom(extra={"source_id": "csbrannan/disco-elysium"}))
+    assert patch.name == "Disco Elysium: Game Boy Edition"
+
+
+def test_a_percent_encoded_cover_url_yields_a_bare_filename():
+    """Live URL: `/original/Z66%2BLw.png`. RomM routes on the extension, so
+    it is preserved."""
+    meta, _ = make_metadata(FUN_VIDEO_STORE)
+    patch = meta.enrich(a_rom(extra={"source_id": "elrosso/fun-video-store"}))
+    assert "%2B" in patch.artwork_url
+    assert patch.artwork_filename == "Z66+Lw.png"
+    bare_filename(patch.artwork_filename)
+
+
+def test_every_captured_page_produces_a_cover_on_the_declared_host():
+    for page in (DISCO, FUN_VIDEO_STORE, DEADEUS):
+        url = cover_url(page)
+        assert url.startswith("https://img.itch.zone/")
+
+
+def test_a_cover_off_the_image_host_is_dropped_rather_than_proposed():
+    """The broker would refuse it at enrich time as a policy violation,
+    which reads as a Hub fault. A patch with a name and no cover is a true
+    and useful answer instead."""
+    page = DISCO.replace("https://img.itch.zone/", "https://evil.example/")
+    assert cover_url(page) == ""
+    meta, _ = make_metadata(page)
+    patch = meta.enrich(a_rom(extra={"source_id": "csbrannan/disco"}))
+    assert patch.artwork_url is None
+    assert patch.name
+
+
+def test_a_page_with_neither_title_nor_cover_refuses():
+    meta, _ = make_metadata("<html><head></head><body>nothing here</body></html>")
+    with pytest.raises(NothingToPropose, match="left alone"):
+        meta.enrich(a_rom(extra={"source_id": "someone/something"}))
+
+
+def test_a_rom_with_no_game_id_is_told_how_to_get_one():
+    """There is no lookup by name on purpose: /search is disallowed and the
+    browse listings are a small slice of the catalogue."""
+    meta, http = make_metadata()
+    with pytest.raises(NotIdentified, match="--source-id"):
+        meta.enrich(a_rom(name="Deadeus"))
+    assert http.calls == []
+
+
+def test_a_game_page_url_is_accepted_as_an_id():
+    meta, http = make_metadata()
+    meta.enrich(a_rom(extra={"source_id": "https://izma.itch.io/deadeus"}))
+    assert http.calls == ["https://izma.itch.io/deadeus"]
+
+
+@pytest.mark.parametrize(
+    "evil",
+    [
+        "../../etc/passwd",
+        "izma.itch.io/deadeus",
+        "https://evil.example/x",
+        "izma/deadeus/extra",
+        "https://izma.itch.io.evil.example/deadeus",
+    ],
+)
+def test_a_source_id_that_is_not_a_game_id_is_refused(evil):
+    meta, http = make_metadata()
+    with pytest.raises(NotIdentified):
+        meta.enrich(a_rom(extra={"source_id": evil}))
+    assert http.calls == []
+
+
+def test_a_non_200_names_the_status():
+    meta, _ = make_metadata(status=404)
+    with pytest.raises(PageUnusable, match="404"):
+        meta.enrich(a_rom(extra={"source_id": "izma/deadeus"}))
+
+
+def test_the_patch_only_carries_what_resolved():
+    meta, _ = make_metadata(DEADEUS)
+    patch = meta.enrich(a_rom(extra={"source_id": "izma/deadeus"}))
+    assert patch.provider_ids == {}
+    assert patch.raw_metadata == {}
+    assert set(patch.form_fields()) == {"name"}

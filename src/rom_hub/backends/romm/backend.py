@@ -96,6 +96,11 @@ class RommBackend:
     # the class alone, without a second convention for finding a module's
     # constants. (A class body's name lookup falls through to globals, so
     # each right-hand side is the module constant above.)
+    #: How this backend's own project spells its name. Read by
+    #: `describe()` so nothing outside this package has to keep a
+    #: table of product names -- `romm`.title() is "Romm", which is
+    #: wrong, and the fix belongs where the product is known.
+    LABEL = "RomM"
     SETTING_NAMES = SETTING_NAMES
     CAPABILITIES = CAPABILITIES
 

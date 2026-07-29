@@ -1,26 +1,39 @@
 [plugin]
 slug        = "itch-io"
-name        = "itch.io (free games) — SEARCH-ONLY"
-version     = "0.2.0"
+name        = "itch.io (free games) — NO IMPORT"
+version     = "0.3.0"
 rpp_version = "1"
 license     = "MIT"
 
-# SEARCH-ONLY. `importer` is declared and implemented, and it always refuses:
-# itch.io issues a download URL only for a POST carrying the game page's
-# csrf_token, `/game/download/` is Disallowed in itch.io's robots.txt, and this
-# Hub's broker performs GET only. The importer exists to do the routing work and
+# `importer` is declared and implemented, and it always refuses: itch.io
+# issues a download URL only for a POST carrying the game page's csrf_token,
+# `/game/download/` is Disallowed in itch.io's robots.txt, and this Hub's
+# broker performs GET only. The importer exists to do the routing work and
 # then say so by name -- see README, "This plugin cannot import. That is the
 # correct answer." Nothing here will ever place a file in your library.
+#
+# `metadata` is what makes the plugin worth installing anyway: it cannot
+# fetch the game, but it can read what the developer called it and the cover
+# they chose, and those are what a library is missing for a title it already
+# has.
 [capabilities]
 search   = "itch_io.search:Search"
 importer = "itch_io.importer:Importer"
+metadata = "itch_io.metadata:Metadata"
 
 # itch.io serves browse listings from the apex and every game page from a
-# per-developer subdomain (`csbrannan.itch.io`), so both are needed. Nothing
-# else is: this plugin never reaches a CDN, because it never gets far enough
-# to be handed a download URL -- see README, "Why nothing imports yet".
+# per-developer subdomain (`csbrannan.itch.io`), so both are needed.
+#
+# `img.itch.zone` is here for `metadata` alone. It is the single host every
+# uploaded image is served from, it answers with zero redirects (verified
+# 2026-07-29 -- `curl -w %{num_redirects}` reports 0 for a real cover), and
+# the HOST fetches the cover this plugin names. Without it declared, every
+# artwork URL would fail the broker's allowlist at enrich time.
+#
+# No download CDN is declared, because this plugin never gets far enough to
+# be handed a download URL -- see README, "Why nothing imports yet".
 [permissions]
-network  = ["itch.io", "*.itch.io"]
+network  = ["itch.io", "*.itch.io", "img.itch.zone"]
 romm_api = []
 
 [config]
