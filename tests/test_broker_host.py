@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.broker.host import PluginCallError, PluginProcess
-from romm_hub.manifest import parse_manifest
+from rom_hub.broker.host import PluginCallError, PluginProcess
+from rom_hub.manifest import parse_manifest
 
 MANIFEST = """
 [plugin]
@@ -28,7 +28,7 @@ PLUGIN_SRC = textwrap.dedent(
     import sys
     import time
 
-    from romm_hub_sdk import SearchProvider, SearchResult
+    from rom_hub_sdk import SearchProvider, SearchResult
 
 
     class Search(SearchProvider):

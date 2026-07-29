@@ -16,9 +16,9 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.broker.host import PluginCallError, PluginProcess
-from romm_hub.manifest import parse_manifest
-from romm_hub.types import SearchResult
+from rom_hub.broker.host import PluginCallError, PluginProcess
+from rom_hub.manifest import parse_manifest
+from rom_hub.types import SearchResult
 
 MANIFEST = """
 [plugin]
@@ -38,7 +38,7 @@ romm_api = []
 
 PLUGIN = textwrap.dedent(
     '''
-    from romm_hub_sdk import (
+    from rom_hub_sdk import (
         FetchFile, FetchPlan, ImportProvider, SearchProvider, SearchResult,
     )
 

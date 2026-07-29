@@ -13,7 +13,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from romm_hub.types import (
+from rom_hub.types import (
     MAX_ARTWORK_BYTES,
     MAX_RAW_METADATA_CHARS,
     MetadataPatch,

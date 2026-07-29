@@ -1,6 +1,6 @@
 """Turning an upstream file name into one `FetchFile.filename` accepts.
 
-The host writes this string to disk, so `romm_hub.types.FetchFile` refuses
+The host writes this string to disk, so `rom_hub.types.FetchFile` refuses
 anything that is not a bare name: no separators, no `..`, no drive-relative
 `C:evil.zip`, no Windows device name, nothing ending in a dot or a space,
 nothing longer than 200 characters, and only characters from an allowlist.
@@ -23,7 +23,7 @@ and a `.gb` that became `.g` is a worse outcome than a shortened title.
 import posixpath
 import re
 
-# Mirrors romm_hub.types._ALLOWED_PUNCTUATION. Everything outside it --
+# Mirrors rom_hub.types._ALLOWED_PUNCTUATION. Everything outside it --
 # including the separators and the colon that make a path -- becomes "_".
 _ALLOWED = re.compile(r"[^\w .\-()\[\]+,'!&~@#=]", re.UNICODE)
 _RUNS = re.compile(r"_{2,}")

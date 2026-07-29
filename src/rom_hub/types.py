@@ -475,7 +475,7 @@ class StreamTarget(BaseModel):
 # -- cores ---------------------------------------------------------------
 
 # A core id is chosen by the plugin and typed by an operator
-# (`romm-hub cores install <plugin> <core_id>`). It is compared, printed
+# (`rom-hub cores install <plugin> <core_id>`). It is compared, printed
 # and logged; it is never a path component -- the files a core installs
 # are named by the FetchPlan, which validates them as filenames already.
 _CORE_ID_CHARS = frozenset(

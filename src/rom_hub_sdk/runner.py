@@ -1,6 +1,6 @@
 """Plugin subprocess entrypoint.
 
-Started by the host as `python -m romm_hub_sdk.runner`. Reads the plugin
+Started by the host as `python -m rom_hub_sdk.runner`. Reads the plugin
 directory and entrypoints from the handshake, then serves capability calls
 until stdin closes.
 """
@@ -10,9 +10,9 @@ import sys
 import traceback
 from typing import Any
 
-from romm_hub.protocol import read_message, write_message
-from romm_hub.sandbox import SandboxUnavailable, install as install_sandbox
-from romm_hub.types import CoreArtifact, RomRef, SearchResult
+from rom_hub.protocol import read_message, write_message
+from rom_hub.sandbox import SandboxUnavailable, install as install_sandbox
+from rom_hub.types import CoreArtifact, RomRef, SearchResult
 
 from .context import HttpClient, PluginContext
 

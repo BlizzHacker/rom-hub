@@ -1,4 +1,4 @@
-# Homebrew plugin for RomM Hub — gbdev's Homebrew Hub
+# Homebrew plugin for ROM Hub — gbdev's Homebrew Hub
 
 Implements the RPP v1 `search` and `importer` capabilities against
 [Homebrew Hub](https://hh.gbdev.io), the gbdev community's archive of Game Boy,
@@ -11,8 +11,8 @@ Game Boy Color, Game Boy Advance and NES **homebrew**.
 
 ## Install
 
-    romm-hub plugin install ./plugins-dev/homebrew
-    romm-hub search "snake" --limit 5
+    rom-hub plugin install ./plugins-dev/homebrew
+    rom-hub search "snake" --limit 5
 
 ## Config
 
@@ -58,7 +58,7 @@ What this plugin does not do:
 
 - No authentication, no API key, nothing behind a login.
 - No robots violation. `hh3.gbdev.io/robots.txt` is `User-agent: *` /
-  `Allow: /`; the plugin identifies itself with the Hub's `romm-hub/0.1`
+  `Allow: /`; the plugin identifies itself with the Hub's `rom-hub/0.1`
   User-Agent and makes at most `max_pages` requests per query, one at a time.
 - No bulk mirroring. A query reads result pages; an import fetches exactly the
   one file you asked for.

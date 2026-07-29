@@ -11,7 +11,7 @@ across a fresh `JobQueue` instance.
 import threading
 from pathlib import Path
 
-from romm_hub.jobs import Job, JobQueue, JobState
+from rom_hub.jobs import Job, JobQueue, JobState
 
 
 def test_enqueue_then_claim_next_returns_it_and_marks_it_non_pending(tmp_path):

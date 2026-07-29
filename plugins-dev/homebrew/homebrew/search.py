@@ -22,7 +22,7 @@ import json
 
 from pydantic import ValidationError
 
-from romm_hub_sdk import SearchProvider, SearchResult
+from rom_hub_sdk import SearchProvider, SearchResult
 
 from .hub import API, HubError, parse_page
 from .platforms import hub_platform_for, platform_for

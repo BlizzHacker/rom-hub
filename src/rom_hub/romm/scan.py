@@ -83,14 +83,14 @@ class ScanError(Exception):
 
 
 class Scanner(Protocol):
-    """What `romm_hub.importer` needs from a scanner. Kept narrow so a test
+    """What `rom_hub.importer` needs from a scanner. Kept narrow so a test
     can satisfy it without a socket."""
 
     def scan_platform(self, platform_id: int) -> Any: ...
 
 
 def _default_client_factory():
-    # Imported lazily so that `import romm_hub.importer` does not drag in
+    # Imported lazily so that `import rom_hub.importer` does not drag in
     # socket.io for the many code paths that never scan -- and so the
     # dependency's absence is reported as a ScanError naming the package
     # rather than an ImportError from an unrelated module.
@@ -100,7 +100,7 @@ def _default_client_factory():
         raise ScanError(
             "the python-socketio package is required to register an upload "
             "with RomM's library (RomM has no REST endpoint for it); install "
-            f"romm-hub's dependencies: {exc}"
+            f"rom-hub's dependencies: {exc}"
         ) from exc
     return socketio.Client()
 

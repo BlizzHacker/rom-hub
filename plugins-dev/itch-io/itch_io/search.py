@@ -23,7 +23,7 @@ import json
 
 from pydantic import ValidationError
 
-from romm_hub_sdk import SearchProvider, SearchResult
+from rom_hub_sdk import SearchProvider, SearchResult
 
 from .browse import BrowseError, browse_url, parse_cells
 from .platforms import platform_for
