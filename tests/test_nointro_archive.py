@@ -1,11 +1,14 @@
 """Directory-index plugin, replayed against captured indexes.
 
-`tests/fixtures/myrient/` holds three verbatim captures:
+`tests/fixtures/nointro_archive/` holds three verbatim captures:
 
 * `archive_org_nointro_gg.html` — the head of a live Archive.org No-Intro
   item listing, which is what the plugin ships pointed at;
 * `myrient_no_intro_game_boy.html` — a real Myrient index, taken from the
-  Wayback Machine, because myrient.erista.me itself no longer serves one;
+  Wayback Machine, because myrient.erista.me itself no longer serves one.
+  The plugin no longer *goes* to Myrient (hence the `nointro-archive` name),
+  but the parser that reads that layout is retained for the day a mirror
+  reproduces it, and this fixture is what keeps it honest;
 * `myrient_shutdown.html` — what myrient.erista.me answers *today* for
   every path: 200 OK and a static notice. That one is a test, not a
   curiosity — it is the failure mode a status-code check cannot see.
@@ -18,15 +21,15 @@ from pathlib import Path
 
 import pytest
 
-PLUGIN_ROOT = Path(__file__).resolve().parents[1] / "plugins-dev" / "myrient"
-FIXTURES = Path(__file__).resolve().parent / "fixtures" / "myrient"
+PLUGIN_ROOT = Path(__file__).resolve().parents[1] / "plugins-dev" / "nointro-archive"
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "nointro_archive"
 sys.path.insert(0, str(PLUGIN_ROOT))
 
-from myrient.filenames import safe_filename  # noqa: E402
-from myrient.importer import ImportRefused, Importer  # noqa: E402
-from myrient.index import INDEXES, IndexCache, IndexError_, parse_index, parse_size  # noqa: E402
-from myrient.platforms import platform_for  # noqa: E402
-from myrient.search import ConfigError, Search, base_url, index_url  # noqa: E402
+from nointro_archive.filenames import safe_filename  # noqa: E402
+from nointro_archive.importer import ImportRefused, Importer  # noqa: E402
+from nointro_archive.index import INDEXES, IndexCache, IndexError_, parse_index, parse_size  # noqa: E402
+from nointro_archive.platforms import platform_for  # noqa: E402
+from nointro_archive.search import ConfigError, Search, base_url, index_url  # noqa: E402
 
 from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 from romm_hub.types import FetchFile, SearchResult  # noqa: E402
@@ -38,7 +41,7 @@ SHUTDOWN = (FIXTURES / "myrient_shutdown.html").read_text(encoding="utf-8")
 CONFIG = {
     "base_url": "https://archive.org/download/",
     "collections": ["nointro.gg"],
-    "collection": "Myrient",
+    "collection": "No-Intro",
 }
 
 
@@ -311,7 +314,7 @@ def test_a_plan_points_at_the_hrefs_the_server_printed():
         SearchResult(source_id="nointro.gg/5 in One FunPak (USA).7z", title="x")
     )
     assert plan.platform == "gamegear"
-    assert plan.collection == "Myrient"
+    assert plan.collection == "No-Intro"
     assert plan.files[0].url == (
         "https://archive.org/download/nointro.gg/"
         "5%20in%20One%20FunPak%20%28USA%29.7z"
