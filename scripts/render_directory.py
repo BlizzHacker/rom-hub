@@ -87,21 +87,35 @@ Worth being exact, because "sandboxed" is doing less work than it sounds:
 
 ## Which backends a plugin works against
 
-Every plugin here works against **all three** supported library servers —
-RomM, Gaseous and Retrom — because a plugin never talks to one. It returns a
-*description* (a `FetchPlan`, a `MetadataPatch`) and the host executes it
-against whichever backend `ROM_HUB_BACKEND` selects. So this directory carries
-no per-plugin backend column: the plugin is not what decides.
+**Every plugin here is portable, and that is not the same as every plugin
+being useful everywhere.** A plugin never talks to a library server. It
+returns a *description* — a `FetchPlan`, a `MetadataPatch` — and the host
+executes it against whichever backend `ROM_HUB_BACKEND` selects. Nothing in a
+plugin has ever known which server is on the other side.
 
-What the *backend* decides is whether an optional step in that description can
-be honoured. A `metadata` plugin (libretro-thumbnails, retroachievements)
-writes fields, which Gaseous cannot do — so an enrich against Gaseous is
-refused up front, because writing nothing is not a degraded write. An `importer`
-plugin that files its results under a collection (archive-org defaults to
-"Archive.org") still imports against a backend with no collections — Gaseous and
-Retrom — with the grouping skipped and reported, because the ROM is the job and
-the collection is a nicety on top. The rule is per capability, not per plugin,
-and it lives in `README.md` under *Cannot-do-the-job vs cannot-do-an-extra*.
+What the *backend* decides is whether that description can be carried out.
+The three supported servers do not do the same things:
+
+| | RomM | Gaseous | Retrom |
+|---|---|---|---|
+| `import` (upload + list) | yes | yes | yes |
+| `scan` (post-upload registration) | yes | yes | yes |
+| `metadata` (write a rom's fields) | yes | **no** | yes |
+| `artwork` (store a cover) | yes | **no** | yes |
+| `collections` (group roms) | yes | **no** | **no** |
+
+So a `metadata` plugin does nothing useful against Gaseous, and the Hub says
+so up front rather than fetching a cover it cannot store: writing nothing is
+not a degraded write. An `importer` plugin that files its results under a
+collection (archive-org defaults to "Archive.org") *does* still import against
+a backend with no collections, with the grouping skipped and reported —
+because the ROM is the job and the collection is a nicety on top. The rule is
+per capability, not per plugin, and it lives in `README.md` under
+*Cannot-do-the-job vs cannot-do-an-extra*.
+
+The **Backends** column below applies that rule to each plugin's declared
+capabilities. It is generated from the two declarations — the plugin's and the
+backend's — so it cannot drift out of step with either.
 
 ## These plugins ship in-tree
 
