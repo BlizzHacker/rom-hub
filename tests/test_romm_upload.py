@@ -244,6 +244,38 @@ def test_upload_file_returns_the_complete_response(tmp_path):
     assert result == {"id": 999, "rom_id": 999}
 
 
+def test_a_bare_201_with_no_body_is_the_real_success_shape(tmp_path):
+    """RomM's complete_chunked_upload ends `return Response(status_code=
+    status.HTTP_201_CREATED)` -- a 201 with an empty body. Calling .json()
+    on that raises JSONDecodeError, which upload_file's except-and-cancel
+    would have turned into "upload failed" on every single real upload.
+    """
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        path = request.url.path
+        if path == "/api/token":
+            return httpx.Response(200, json={"access_token": "tok-123"})
+        if path == "/api/roms/upload/start":
+            return httpx.Response(201, json={"upload_id": "up-1"})
+        if path == "/api/roms/upload/up-1" and request.method == "PUT":
+            return httpx.Response(200, json={"received": 1, "total": 1})
+        if path == "/api/roms/upload/up-1/complete":
+            return httpx.Response(201)  # no body, exactly as RomM answers
+        return httpx.Response(404, json={"detail": path})
+
+    client = RommClient(
+        "https://romm.example", "u", "p", transport=httpx.MockTransport(handler)
+    )
+    f = tmp_path / "g.rom"
+    f.write_bytes(os.urandom(10))
+
+    assert upload_file(client, f, platform_id=5) == {}
+    # Success, so nothing may have been cancelled.
+    assert not any("cancel" in c.url.path for c in calls)
+
+
 def test_missing_upload_id_in_start_response_raises_clear_error(tmp_path):
     """If a /start response ever lacks upload_id (e.g. a future RomM field
     rename), fail with a message naming the keys actually present rather

@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+from romm_hub.dedup import hash_file
 from romm_hub.importer import (
     DownloadError,
     HttpDownloader,
@@ -60,9 +61,11 @@ class FakeRomm:
         self.platforms = {"dos": 7} if platforms is None else platforms
         self.roms = roms or []
         self.list_roms_error = list_roms_error
+        self.list_roms_calls = 0
         self.collections: dict[str, int] = {}
         self.ensure_collection_calls: list[str] = []
         self.add_to_collection_calls: list[tuple[int, list[int]]] = []
+        self._next_rom_id = 999
 
     def platform_id(self, slug):
         if slug not in self.platforms:
@@ -70,9 +73,27 @@ class FakeRomm:
         return self.platforms[slug]
 
     def list_roms(self, platform_id):
+        self.list_roms_calls += 1
         if self.list_roms_error is not None:
             raise self.list_roms_error
         return list(self.roms)
+
+    def receive_upload(self, path):
+        """What a real RomM does with an accepted upload: the file becomes
+        visible in the next /api/roms listing, hashed. Note that nothing
+        about it comes back in the /complete response -- that is a bare
+        201 with no body."""
+        hashes = hash_file(path)
+        rom = {
+            "id": self._next_rom_id,
+            "name": path.name,
+            "crc_hash": hashes.crc32,
+            "md5_hash": hashes.md5,
+            "sha1_hash": hashes.sha1,
+        }
+        self._next_rom_id += 1
+        self.roms.append(rom)
+        return rom
 
     def ensure_collection(self, name):
         self.ensure_collection_calls.append(name)
@@ -100,18 +121,27 @@ class FakeDownloader:
 
 class FakeUpload:
     """Replaces `upload_file`. The point of the duplicate test is that
-    this is never called at all, so it counts its calls."""
+    this is never called at all, so it counts its calls.
 
-    def __init__(self, response=None, error=None):
-        self.response = response if response is not None else {"id": 999}
+    The default return value is `{}`, because that is what the real
+    `upload_file` returns: RomM's /complete answers 201 with no body, so
+    there is no rom id in it. `lands=False` simulates the nastier case --
+    the server reports success but the ROM never appears in the library.
+    """
+
+    def __init__(self, error=None, lands=True):
         self.error = error
+        self.lands = lands
         self.calls: list[tuple[Path, int]] = []
 
     def __call__(self, client, path, platform_id, **kwargs):
-        self.calls.append((Path(path), platform_id))
+        path = Path(path)
+        self.calls.append((path, platform_id))
         if self.error is not None:
             raise self.error
-        return self.response
+        if self.lands:
+            client.receive_upload(path)
+        return {}
 
 
 @pytest.fixture
@@ -166,13 +196,85 @@ def test_the_downloaded_file_lands_under_the_job_id_directory(tmp_path, queue, u
     assert queue.get(res.job_id).local_path == str(expected.parent)
 
 
+def test_the_rom_id_is_looked_up_by_hash_not_read_from_the_complete_response(
+    tmp_path, queue, upload
+):
+    """RomM's /complete is a bare 201 with no body, so there is no id to
+    read. The id has to be found by locating our own hash in the library."""
+    romm = FakeRomm()
+    res = _run(tmp_path, FakePlugin(_plan()), romm, queue)
+
+    assert upload.calls != []
+    assert res.rom_id == 999
+    # One listing for dedup, one after the upload to confirm and identify.
+    assert romm.list_roms_calls == 2
+
+
+def test_an_upload_that_never_appears_in_the_library_lands_failed(
+    tmp_path, queue, monkeypatch
+):
+    """A 201 says the server accepted the request. It does not say the ROM
+    is in the library. Reporting DONE on the strength of a status code
+    alone is exactly the bug this check exists to catch."""
+    fake = FakeUpload(lands=False)
+    monkeypatch.setattr("romm_hub.importer.upload_file", fake)
+    romm = FakeRomm()
+
+    res = _run(tmp_path, FakePlugin(_plan()), romm, queue)
+
+    assert fake.calls != [], "the upload must have been attempted"
+    assert res.state is JobState.FAILED
+    assert res.rom_id is None
+    assert "g.zip" in res.message
+    assert "did not appear" in res.message
+    assert "did not appear" in queue.get(res.job_id).error
+
+
+def test_a_collection_is_populated_with_the_looked_up_id(tmp_path, queue, upload):
+    """The collection step depends on the id, so it must run after the
+    lookup -- not off a value scraped from the upload response."""
+    romm = FakeRomm()
+    res = _run(tmp_path, FakePlugin(_plan(collection="Shareware")), romm, queue)
+
+    assert res.state is JobState.DONE
+    assert romm.add_to_collection_calls == [(100, [999])]
+
+
+def test_a_multi_file_plan_costs_one_extra_listing_not_one_per_file(
+    tmp_path, queue, upload
+):
+    """A library can hold thousands of roms; the lookup must not be
+    per-file."""
+    plan = _plan(
+        files=[
+            FetchFile(url="https://allowed.example/a.zip", filename="a.zip"),
+            FetchFile(url="https://allowed.example/b.zip", filename="b.zip"),
+            FetchFile(url="https://allowed.example/c.zip", filename="c.zip"),
+        ]
+    )
+    downloader = FakeDownloader()
+
+    def distinct(url, dest, expected_size=None):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(ROM_BYTES + dest.name.encode())
+        downloader.calls.append((url, dest))
+        return dest
+
+    downloader.download = distinct
+    romm = FakeRomm()
+    res = _run(tmp_path, FakePlugin(plan), romm, queue, downloader)
+
+    assert res.state is JobState.DONE
+    assert romm.list_roms_calls == 2
+    assert romm.ensure_collection_calls == []
+    assert len(upload.calls) == 3
+
+
 def test_a_duplicate_is_skipped_and_the_upload_fake_is_never_called(
     tmp_path, queue, upload
 ):
     """The requirement is not "ends in SKIPPED_DUPLICATE", it is "no bytes
     were uploaded". Assert on the upload fake, not just on the state."""
-    from romm_hub.dedup import hash_file
-
     scratch = tmp_path / "scratch.bin"
     scratch.write_bytes(ROM_BYTES)
     hashes = hash_file(scratch)

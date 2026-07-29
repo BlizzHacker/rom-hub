@@ -1,7 +1,7 @@
 """The import pipeline: everything Phase 2 built, chained into one run.
 
     plugin.plan() -> platform id -> download -> hash/dedup -> upload
-    -> collection -> DONE
+    -> confirm by hash -> collection -> DONE
 
 The plugin's only move is describing what it wants fetched. The host
 resolves the platform, opens the sockets, hashes the bytes, and holds the
@@ -22,6 +22,15 @@ genuinely 302s from `archive.org` to `iaNNNN.us.archive.org`, and
 refusing outright would break real imports -- but only to hosts the
 plugin declared.
 
+**An upload is not confirmed by its status code.** RomM's
+`/api/roms/upload/{id}/complete` answers a bare `201` with no body -- it
+carries no rom id, and accepting the request is not the same as the ROM
+appearing in the library. So after uploading, the pipeline re-lists the
+platform and locates each file by the digest it already computed for
+dedup. That yields the rom ids the collection step needs *and* proves the
+ROM landed; a file that is absent from the library after a "successful"
+upload fails the job rather than reporting DONE on faith.
+
 **Nothing escapes as a traceback.** Every failure lands the job in
 `FAILED` with a sentence an operator can act on, because the job record
 is where they will look, not the console the exception would have
@@ -37,7 +46,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from romm_hub.dedup import find_duplicate, hash_file
+from romm_hub.dedup import FileHashes, find_duplicate, hash_file
 from romm_hub.jobs import Job, JobQueue, JobState
 from romm_hub.netpolicy import PolicyViolation, check_url
 from romm_hub.romm.client import RommClient
@@ -345,11 +354,15 @@ def _import(
 
     to_upload: list[Path] = []
     duplicates: list[tuple[Path, dict]] = []
+    # Kept: these same digests identify the ROMs again after the upload,
+    # so the file is never hashed twice.
+    hashes_by_path: dict[Path, FileHashes] = {}
     for path in paths:
         try:
             hashes = hash_file(path)
         except OSError as exc:
             raise _ImportFailure(f"could not hash {path.name!r}: {exc}") from exc
+        hashes_by_path[path] = hashes
         match = find_duplicate(hashes, existing_roms)
         if match is None:
             to_upload.append(path)
@@ -371,21 +384,60 @@ def _import(
             message=message,
         )
 
-    # 5. Upload.
+    # 5. Upload. The return value is deliberately discarded: RomM's
+    #    /complete answers a bare 201 with no body, so there is nothing in
+    #    it to read -- not a rom id, not anything.
     queue.set_state(job.id, JobState.UPLOADING)
-    rom_ids: list[int] = []
     for path in to_upload:
         try:
-            response = upload_file(romm, path, platform_id)
+            upload_file(romm, path, platform_id)
         except Exception as exc:
             raise _ImportFailure(
                 f"upload of {path.name!r} to RomM failed: {exc}"
             ) from exc
-        rom_id = _rom_id_of(response)
+
+    # 5b. Find what was just uploaded, by the digests already computed in
+    #     step 4. This does two jobs at once:
+    #
+    #       * It is the only way to learn the new rom ids, since /complete
+    #         carries none. Step 6 needs them.
+    #       * It is a real post-condition. A 201 says the server accepted
+    #         the request; finding our own hash in the library says the ROM
+    #         actually landed. Reporting DONE on the strength of a status
+    #         code alone would call a silently-dropped upload a success.
+    #
+    #     One listing for the whole plan, matched against every file --
+    #     never one call per file, because real libraries hold thousands of
+    #     roms and this runs on every import.
+    try:
+        library = romm.list_roms(platform_id)
+    except Exception as exc:
+        raise _ImportFailure(
+            f"the upload of {len(to_upload)} file(s) reported success, but "
+            f"confirming it in the library failed: {exc}"
+        ) from exc
+
+    rom_ids: list[int] = []
+    missing: list[str] = []
+    for path in to_upload:
+        match = find_duplicate(hashes_by_path[path], library)
+        if match is None:
+            missing.append(path.name)
+            continue
+        rom_id = _rom_id_of(match)
         if rom_id is not None:
             rom_ids.append(rom_id)
 
-    # 6. Collection, only if the plan asked for one.
+    if missing:
+        raise _ImportFailure(
+            f"RomM reported the upload of {', '.join(missing)} succeeded, but "
+            f"the file did not appear in the library for platform "
+            f"{plan.platform!r} afterwards -- the ROM did not land, so the "
+            f"import is not done. Check RomM's own logs for the upload."
+        )
+
+    # 6. Collection, only if the plan asked for one. After 5b, because the
+    #    rom ids it needs only exist once that lookup has run.
     if plan.collection:
         if not rom_ids:
             raise _ImportFailure(
@@ -414,23 +466,15 @@ def _import(
     )
 
 
-def _rom_id_of(payload: dict) -> int | None:
-    """Pull a rom id out of a RomM payload.
+def _rom_id_of(rom: dict) -> int | None:
+    """The integer id of a rom from a `GET /api/roms` listing.
 
-    RomM's /complete answers with both `id` and `rom_id`; a rom listing
-    answers with `id`. Several shapes are tolerated because getting this
-    wrong only costs the collection step, and guessing an int out of an
-    unexpected field would cost more.
+    Never from an upload response: `/complete` answers 201 with no body,
+    so there is no id there to read.
     """
-    if not isinstance(payload, dict):
+    if not isinstance(rom, dict):
         return None
-    for key in ("id", "rom_id"):
-        value = payload.get(key)
-        if isinstance(value, int) and not isinstance(value, bool):
-            return value
-    rom = payload.get("rom")
-    if isinstance(rom, dict):
-        value = rom.get("id")
-        if isinstance(value, int) and not isinstance(value, bool):
-            return value
+    value = rom.get("id")
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
     return None

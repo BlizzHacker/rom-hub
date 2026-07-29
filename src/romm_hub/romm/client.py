@@ -242,11 +242,31 @@ class RommClient:
 
     def complete_upload(self, upload_id: str) -> dict:
         """POST /api/roms/upload/{upload_id}/complete once every chunk has
-        been sent."""
+        been sent.
+
+        RomM answers with a bare `201` and **no body at all** -- its
+        `complete_chunked_upload` ends
+        `return Response(status_code=status.HTTP_201_CREATED)`. So there
+        is no rom id here to read, and `resp.json()` on an empty body
+        raises `JSONDecodeError`, which upload_file's cancel-and-re-raise
+        would have reported as a failed upload on every real upload there
+        has ever been.
+
+        An empty body is therefore the expected success shape and becomes
+        `{}`. A body that is present but unparseable also becomes `{}`:
+        the endpoint promises nothing, no caller reads the value, and the
+        upload genuinely did succeed. Callers that need the new rom's id
+        look it up in the library by hash -- see `romm_hub.importer`.
+        """
         resp = self._authorized_request(
             "POST", f"/api/roms/upload/{upload_id}/complete"
         )
-        return resp.json()
+        if not resp.content:
+            return {}
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
 
     def cancel_upload(self, upload_id: str) -> None:
         """POST /api/roms/upload/{upload_id}/cancel -- called on any
