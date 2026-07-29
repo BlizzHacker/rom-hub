@@ -1,9 +1,8 @@
-"""The plugin directory: a list of known sources, in the qBittorrent mould.
+"""The plugin directory: a community-kept list of known sources.
 
-qBittorrent's unofficial search-plugin wiki is the model — a community-kept
-table of who publishes what, with a direct link to install from. This is the
-same idea, made machine-readable so the CLI can list and install by slug
-instead of asking people to copy raw URLs by hand.
+A table of who publishes what, with a direct link to install from, made
+machine-readable so the CLI can list and install by slug instead of asking
+people to copy raw URLs by hand.
 
 **The catalog holds no authority.** It says where a plugin lives; it does not
 say what a plugin may do. An installed plugin's network allowlist comes from
@@ -19,7 +18,7 @@ from pathlib import Path
 
 SUPPORTED_CATALOG_VERSION = "1"
 
-# Mirrors qBittorrent's convention. ASCII fallbacks exist because a Windows
+# ASCII fallbacks exist because a Windows
 # console defaults to cp1252, which cannot encode these at all -- printing them
 # raises UnicodeEncodeError and takes the whole command down, so the status
 # column would break `browse` on the platform this was developed on.
