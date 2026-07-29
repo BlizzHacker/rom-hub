@@ -1,17 +1,20 @@
 [plugin]
-slug        = "myrient"
-name        = "Myrient-style directory index"
-version     = "0.1.0"
+slug        = "nointro-archive"
+name        = "No-Intro sets on Archive.org"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
-search   = "myrient.search:Search"
-importer = "myrient.importer:Importer"
+search   = "nointro_archive.search:Search"
+importer = "nointro_archive.importer:Importer"
 
 # myrient.erista.me shut down on 2026-03-31 and is deliberately NOT listed:
 # an allowlist is a statement about where this plugin actually goes, and a
-# dead host in it would be decoration. `base_url` below points at the live
+# dead host in it would be decoration. That shutdown is also why this plugin
+# is not called "myrient" -- it sources Archive.org's No-Intro mirrors, and a
+# name promising Myrient would misdescribe every request it makes.
+# `base_url` below points at the live
 # mirror the plugin ships against; repointing it at another mirror means
 # editing this file and reinstalling, which is the point -- a config change
 # must not be able to widen network reach. Downloads redirect to
@@ -25,7 +28,7 @@ romm_api = []
 # the allowlist above or every request is refused by the broker.
 base_url    = { type = "str", default = "https://archive.org/download/" }
 # Index directories to search, in order. Each must appear in
-# myrient/platforms.py or it is refused as "needs mapping".
+# nointro_archive/platforms.py or it is refused as "needs mapping".
 collections = { type = "list[str]", default = [
     "nointro.gg",
     "nointro.ms-mkiii",
@@ -40,4 +43,4 @@ collections = { type = "list[str]", default = [
     "nointro.wsc",
     "nointro.gbamultiboot",
 ] }
-collection  = { type = "str", default = "Myrient" }
+collection  = { type = "str", default = "No-Intro" }
