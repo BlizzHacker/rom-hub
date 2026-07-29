@@ -280,6 +280,98 @@ def test_an_upload_that_never_appears_in_the_library_lands_failed(
     assert "did not appear" in queue.get(res.job_id).error
 
 
+# -- the pre-download duplicate check -------------------------------------
+
+
+def test_a_filename_already_on_the_platform_skips_without_fetching_any_bytes(
+    tmp_path, queue, upload
+):
+    """The payoff: a re-import of something already in the library must not
+    cost a download at all. Asserting on the state alone would pass even if
+    the whole file had been fetched first."""
+    romm = FakeRomm(roms=[{"id": 4242, "fs_name": "g.zip"}])
+    downloader = FakeDownloader()
+
+    res = _run(tmp_path, FakePlugin(_plan()), romm, queue, downloader)
+
+    assert downloader.calls == [], "no bytes may be fetched for a known file"
+    assert upload.calls == []
+    assert res.state is JobState.SKIPPED_DUPLICATE
+    assert res.rom_id == 4242
+
+
+def test_the_precheck_skips_only_the_files_that_are_already_present(
+    tmp_path, queue, upload
+):
+    """A partially-present plan still has to fetch the missing half."""
+    plan = _plan(
+        files=[
+            FetchFile(url="https://allowed.example/a.zip", filename="a.zip"),
+            FetchFile(url="https://allowed.example/b.zip", filename="b.zip"),
+        ]
+    )
+    romm = FakeRomm(roms=[{"id": 4242, "fs_name": "a.zip"}])
+    downloader = FakeDownloader()
+
+    res = _run(tmp_path, FakePlugin(plan), romm, queue, downloader)
+
+    assert [c[1].name for c in downloader.calls] == ["b.zip"]
+    assert [c[0].name for c in upload.calls] == ["b.zip"]
+    assert res.state is JobState.DONE
+    assert "already present" in res.message
+
+
+def test_the_precheck_listing_is_reused_for_hash_dedup_not_fetched_twice(
+    tmp_path, queue, upload
+):
+    """One listing serves both checks. A real library is thousands of roms
+    and this runs on every import."""
+    romm = FakeRomm()
+    _run(tmp_path, FakePlugin(_plan()), romm, queue)
+
+    # One before the download, one after the scan to confirm. Not three.
+    assert romm.list_roms_calls == 2
+
+
+def test_an_upload_is_confirmed_by_filename_when_the_hash_cannot_match(
+    tmp_path, queue, upload
+):
+    """RomM's digest for a .7z or .rar cannot be reproduced here, so the
+    confirmation would otherwise report a ROM missing that landed fine.
+    The name is decisive at this point: the Hub chose it, and RomM writes
+    it to `roms/<slug>/<that name>`."""
+
+    class HashlessRomm(FakeRomm):
+        def register_uploads(self):
+            # Registers the row, but with hashes the Hub could never have
+            # computed -- exactly what happens for an unreadable archive.
+            for path in self.pending:
+                self.roms.append(
+                    {"id": self._next_rom_id, "fs_name": path.name,
+                     "sha1_hash": "0" * 40}
+                )
+                self._next_rom_id += 1
+            self.pending = []
+
+    romm = HashlessRomm()
+    res = _run(tmp_path, FakePlugin(_plan()), romm, queue, scanner=FakeScanner(romm))
+
+    assert res.state is JobState.DONE
+    assert res.rom_id == 999
+
+
+def test_a_different_filename_is_not_treated_as_a_duplicate(
+    tmp_path, queue, upload
+):
+    romm = FakeRomm(roms=[{"id": 4242, "fs_name": "something-else.zip"}])
+    downloader = FakeDownloader()
+
+    res = _run(tmp_path, FakePlugin(_plan()), romm, queue, downloader)
+
+    assert downloader.calls != []
+    assert res.state is JobState.DONE
+
+
 # -- the library scan (RomM's upload creates no row on its own) -----------
 
 
