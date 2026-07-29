@@ -1,8 +1,8 @@
 """Which library backend the Hub is talking to, chosen by configuration.
 
 `ROM_HUB_BACKEND` names it; `romm` is the default because it is the one
-that exists and the one every deployment on the estate is already
-pointing at. Adding a backend is adding an entry to `_BACKENDS` and a
+this host was built against first and the one most existing deployments
+already point at. Adding a backend is adding an entry to `_BACKENDS` and a
 package beside `romm/` -- nothing above this module gains a branch.
 
 Entries are imported lazily. A backend's package may pull in a client

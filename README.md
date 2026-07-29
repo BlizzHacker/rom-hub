@@ -1,18 +1,39 @@
 # ROM Hub
 
-A plugin standard, and a host that runs it, for self-hosted ROM libraries. It
-runs as a sidecar: the library server is never modified.
+**A plugin host for self-hosted ROM library managers.** It runs beside
+[RomM](https://github.com/rommapp/romm),
+[Gaseous](https://github.com/gaseous-project/gaseous-server) or
+[Retrom](https://github.com/JMBeresford/retrom) as a sidecar and never modifies
+the library server. Plugins add sources — searching them, importing from them,
+enriching what you already have — to a server that has no plugin system of its
+own.
 
-[RomM](https://github.com/rommapp/romm) is the backend that ships, and the
-default. It is not the only one the plugins work with: a plugin returns a
-*description* of work — which files to fetch, which metadata to set — and the
-Hub executes it, so nothing in a plugin has ever known which server is on the
-other side. `ROM_HUB_BACKEND` picks; `rom-hub backend info` says what the
-chosen one can do.
+**A plugin is backend-agnostic, and that is structural rather than a promise.**
+A plugin never talks to a library server and holds no credential for one. It
+returns a *description* of work — which files to fetch, which metadata to set,
+where an item can be streamed — and the Hub executes that description against
+whichever server `ROM_HUB_BACKEND` selects. Nothing inside a plugin has ever
+known which of the three is on the other side, so a plugin written against one
+works against all of them, as far as that server is capable (`rom-hub backend
+info` says what the chosen one can do).
 
-See [docs/DESIGN.md](docs/DESIGN.md) for the architecture and
-[docs/DESIGN-federation-netplay.md](docs/DESIGN-federation-netplay.md) for the
-deferred federation and multiplayer work.
+The same shape is what makes untrusted plugins tractable: a plugin runs as its
+own subprocess with no token, no filesystem mount and no sockets, and reaches
+the network only through an RPC the host checks against the allowlist that
+plugin declared. See [Security model](#security-model) — including, plainly,
+what is *not* confined.
+
+- **[docs/PLUGINS.md](docs/PLUGINS.md)** — the plugin directory: seven
+  published plugins, what each one asks for, and the terms of the source it
+  reads from.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — how to write a plugin and get it
+  listed.
+- **[docs/DESIGN.md](docs/DESIGN.md)** — the architecture.
+- **[docs/DESIGN-federation-netplay.md](docs/DESIGN-federation-netplay.md)** —
+  deferred federation and multiplayer work.
+
+MIT licensed; see [LICENSE](LICENSE). Each plugin is a separate work under its
+own licence, carried in its own repository.
 
 ## Renamed from `romm-hub`
 
@@ -209,13 +230,37 @@ Two RomM quirks the Hub works around, recorded because they cost time to find:
 
 ## Quick start
 
+    git clone https://github.com/BlizzHacker/rom-hub
+    cd rom-hub
     python -m pip install -e ".[dev]"
-    python -m rom_hub.cli plugin install ./plugins-dev/archive-org
-    python -m rom_hub.cli search "oregon trail" --limit 5
 
-On Linux that install also pulls `pyseccomp`, which is what lets the plugin
+    rom-hub plugin browse                  # the seven published plugins
+    rom-hub plugin install archive-org     # clones the repo, pinned to its tag
+    rom-hub search "oregon trail" --limit 5
+
+`plugin install` takes a catalog slug, a git URL, or a local path. A slug is
+resolved through [`catalog/plugins.json`](catalog/plugins.json), which supplies
+the repository **and** the tag, so these two are the same install:
+
+    rom-hub plugin install archive-org
+    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
+
+Every install is pinned to a tag and the resolved commit SHA is recorded, so a
+tag moved after the fact does not change what you have. Updating is an explicit
+re-run with a new ref; nothing updates itself.
+
+**Searching needs no library server at all** — it fans out across installed
+plugins and prints results. `import` and `enrich` are the commands that need
+one configured.
+
+On Linux the install also pulls `pyseccomp`, which is what lets the plugin
 subprocess confine itself. If it is missing, `rom-hub` refuses to run plugins
-rather than running them unconfined (see below).
+rather than running them unconfined. On **Windows and macOS there is no
+confinement available at all**, and plugins refuse to run without
+
+    ROM_HUB_ALLOW_UNSANDBOXED=1
+
+which means exactly what it says. See [Security model](#security-model).
 
 ## Importing
 
