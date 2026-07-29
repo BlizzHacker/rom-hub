@@ -39,6 +39,7 @@ DEFAULT_BACKEND = "romm"
 # classmethod and a `capabilities()` method.
 _BACKENDS: dict[str, str] = {
     "romm": "rom_hub.backends.romm.backend:RommBackend",
+    "retrom": "rom_hub.backends.retrom.backend:RetromBackend",
 }
 
 
