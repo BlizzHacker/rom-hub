@@ -109,7 +109,7 @@ contribution a clean proposal rather than "please merge my application."
          │             ┌──────────┬─────────────────┴────┐           │
          │       [plugin A]   [plugin B]           [plugin C]        │
          │       subprocess   subprocess           subprocess        │
-         │       no token · no mounts · no direct network            │
+         │       no token · no mounts · not sandboxed (Phase 1)      │
          │                                                           │
          │   /mnt/usb1/roms     ◄── written ONLY by Hub Core         │
          │   /opt/romm-stream   ◄── cores installed by Hub Core      │
@@ -231,10 +231,11 @@ support does not force a contract revision.
 
 Plugins are arbitrary code from the internet. The Hub holds a RomM admin token
 and write access to the ROM library. Declared permissions are worth nothing if
-they are honour-system, so **they are enforced structurally**:
+they are honour-system, so the design goal is that the runtime enforces them
+rather than the plugin's good behaviour:
 
-> **A plugin subprocess has no RomM token, no library mount, and no direct
-> network access.**
+> **Design goal: a plugin subprocess has no RomM token, no library mount, and
+> no direct network access.**
 
 Host and plugin speak **JSON-RPC over stdin/stdout**. A plugin does not fetch;
 it calls `ctx.http.get(url)`, which is an RPC back to the host. The host checks
@@ -242,25 +243,88 @@ the URL against the manifest `network` allowlist and only then performs the
 request. A plugin returns a *description* of privileged work ("import this URL
 as platform `psx`"); the host validates and executes it.
 
+### What is enforced today, and what is not
+
+Phase 1 delivers part of that goal. The split matters enough to state exactly.
+
+**Enforced.** On the brokered path the allowlist is real, not advisory.
+`netpolicy.url_allowed` sits in front of the only code that opens a socket
+(`broker/fetcher.py`), `check_url` is unavoidable en route to it — one call
+site, the same variable, no TOCTOU gap — and the matcher survived a 44-case
+adversarial corpus (suffix confusion, userinfo, IDN and UTS-46 dot mapping,
+percent-encoding, IP literals, embedded CR/LF) with no exploitable result.
+Default-deny holds: a manifest with no `[permissions]` table can reach nothing.
+Redirects are disabled and response headers are not exposed, so a plugin cannot
+launder a `Location` into a second request.
+
+**Not enforced in Phase 1.** The plugin runs as a plain
+`subprocess.Popen([sys.executable, "-m", "romm_hub_sdk.runner"])`. There is no
+sandbox of any kind: no namespace or job object, no seccomp filter, no separate
+uid, no `RLIMIT_*`, no import restrictions. The runner imports the plugin's
+module, and that module inherits every capability the host process has —
+`import socket` is one line away. A **hostile** plugin can therefore bypass the
+broker entirely: open its own connection to an undeclared host, read files
+outside its own directory, or spawn a child process, with none of it visible to
+the allowlist.
+
+So in Phase 1 the allowlist constrains **cooperative** plugins and documents
+what a plugin intends to reach. It is not a containment boundary.
+
+> **Phase 1 consequence: only install plugins you trust.** Reading a manifest's
+> `network` allowlist tells you what an honest plugin will do. It tells you
+> nothing about a dishonest one.
+
 Three consequences, all load-bearing:
 
-1. **The permission is real.** A plugin declaring `archive.org` genuinely cannot
-   reach anywhere else. The worst case for a hostile plugin is bad *data*, not a
-   stolen token or a wiped library.
-2. **Plugins are trivially testable.** All traffic crosses one chokepoint, so
-   record-once/replay fixtures come free and the conformance suite runs offline.
+1. **The permission becomes real** — once the subprocess is isolated. A plugin
+   declaring `archive.org` then genuinely cannot reach anywhere else, and the
+   worst case for a hostile plugin is bad *data*, not a stolen token or a wiped
+   library. In Phase 1 this holds only for a plugin that stays on the brokered
+   path.
+2. **Plugins are trivially testable.** All *intended* traffic crosses one
+   chokepoint, so record-once/replay fixtures come free and the conformance
+   suite runs offline. True today.
 3. **Rate-limiting and caching live in one place** instead of being
-   re-implemented — or forgotten — by every plugin author.
+   re-implemented — or forgotten — by every plugin author. True today for
+   everything that goes through the broker.
 
-Plus per-call timeouts, memory caps and output-size caps: one wedged plugin
-cannot hang a search across the others.
+Plus per-call timeouts: one wedged plugin cannot hang a search across the
+others. Memory and output-size caps are specified alongside them but are not
+yet complete — see the Phase 1 review findings.
+
+### Isolation is a blocking prerequisite for Phase 2
+
+Phase 1 does not talk to RomM at all, so the worst a hostile plugin reaches
+today is the host's own filesystem and network. **Phase 2 introduces a RomM
+admin token**, which turns the same escape from "leaks search queries" into
+full library compromise. Isolation must land *before* Phase 2, not alongside
+it. See the Phasing table.
+
+Candidate mechanisms, in order of preference:
+
+- **`bubblewrap` or `nsjail`** on Linux — wrap the subprocess in
+  `--unshare-net --ro-bind <plugin_dir> …`. Roughly thirty lines, and nothing
+  about the plugin itself changes, so the "50-line plugin" premise survives.
+- **A `seccomp` filter** installed by the child before the plugin module is
+  imported: deny `socket`/`connect`, restrict `openat` to the plugin directory.
+- **The container boundary** — run the plugin host in a locked-down container
+  with no egress except the broker's. This is *not* the rejected "container per
+  plugin" below: authors still ship a git repo, not an image.
+
+Windows needs a job object and macOS a sandbox profile, or both fall back to
+the container.
+
+When isolation lands, consequence 1 above becomes unconditional, and the
+Phase 1 caveats in this section, in `README.md`, and in the `plugin install`
+output must be removed.
 
 ### The cost, stated honestly
 
-A plugin cannot open a socket, so it cannot use `requests`, `httpx`, or
-Archive.org's own `internetarchive` SDK. This is the price of the permission
-being real rather than advisory, and it is a genuine tax on the "50-line
-plugin" premise.
+The plugin API offers no way to open a socket, so a plugin written against it
+cannot use `requests`, `httpx`, or Archive.org's own `internetarchive` SDK.
+This is the price of the permission being enforceable rather than advisory, and
+it is a genuine tax on the "50-line plugin" premise. (Until the sandbox lands,
+the API is the only thing that stops it — see above.)
 
 Mitigation: ship a **`requests`-shaped adapter** over `ctx.http`, so the idiom
 plugin authors already know (`ctx.http.get(url).json()`) works unchanged. The
@@ -415,17 +479,27 @@ RomM's `CONTRIBUTING.md` requires opening an issue and discussing on Discord
 
 ## Phasing
 
-| Phase | Delivers | Proves |
-|---|---|---|
-| 1 | Hub core + RPP v1 + broker + `search` + CLI | the contract is real |
-| 2 | `importer` + RomM adapter + job queue | it is actually useful |
-| 3 | Web UI + Traefik nav injection | it is pleasant |
-| 4 | `metadata`, `stream`, `cores` | Archive.org plugin complete |
-| 5 | sub-projects C and D | *separate design pass* |
+| Phase | Delivers | Proves | Blocked on |
+|---|---|---|---|
+| 1 | Hub core + RPP v1 + broker + `search` + CLI | the contract is real | — |
+| 2 | `importer` + RomM adapter + job queue | it is actually useful | **plugin sandboxing** |
+| 3 | Web UI + Traefik nav injection | it is pleasant | — |
+| 4 | `metadata`, `stream`, `cores` | Archive.org plugin complete | — |
+| 5 | sub-projects C and D | *separate design pass* | — |
 
 Phase 1 ends with a plugin that can search Archive.org from a CLI. That is the
 smallest thing that validates the riskiest assumption — the plugin contract —
 before any UI work is spent on it.
+
+**Phase 2 is blocked on plugin sandboxing.** Phase 2 is where the Hub first
+holds a RomM admin token, and Phase 1 ships without any isolation of the plugin
+subprocess (see [What is enforced today, and what is
+not](#what-is-enforced-today-and-what-is-not)). Shipping the token before the
+sandbox would turn a hostile plugin from a search-query leak into a full
+library compromise. Real isolation — bubblewrap/nsjail `--unshare-net
+--ro-bind`, a seccomp filter, or the container boundary — is a prerequisite,
+not a parallel workstream, and the docs above must be updated to drop the
+Phase 1 caveat when it lands.
 
 ---
 

@@ -65,7 +65,14 @@ def _cmd_plugin_install(args) -> int:
     plugin = reg.install(source, ref)
     caps = ", ".join(sorted(plugin.manifest.capabilities))
     print(f"installed {plugin.slug} {plugin.manifest.version} (capabilities: {caps})")
-    print(f"  network allowlist: {plugin.manifest.network or '(none)'}")
+    print(f"  pinned commit: {plugin.commit or '(unknown)'}")
+    print(f"  declared network allowlist: {plugin.manifest.network or '(none)'}")
+    # An operator approving an install must not read the allowlist as a
+    # guarantee. It is enforced on the ctx.http broker, which is the supported
+    # path but not, in Phase 1, the only one.
+    print("  note: this allowlist is enforced on the ctx.http broker, but Phase 1")
+    print("        does not sandbox the plugin subprocess, so a hostile plugin can")
+    print("        bypass the broker entirely. Install only plugins you trust.")
     return 0
 
 
@@ -134,7 +141,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     install = psub.add_parser("install", help="install a plugin from a git repo or path")
     install.add_argument("source", help="a catalog slug, git URL, or local path")
-    install.add_argument("--ref", default=None, help="tag or branch to pin")
+    install.add_argument(
+        "--ref", default=None, help="branch, tag, or commit SHA to install"
+    )
     install.set_defaults(func=_cmd_plugin_install)
 
     browse = psub.add_parser("browse", help="list plugins in the directory")
