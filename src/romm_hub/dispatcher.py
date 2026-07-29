@@ -4,6 +4,7 @@ A crashed or hung plugin costs its own results and nothing else. The caller
 always learns how many sources actually answered.
 """
 
+import functools
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
@@ -39,13 +40,14 @@ class SearchOutcome:
         return self.responded == self.total
 
 
-def _default_factory(plugin, fetcher, timeout) -> PluginProcess:
+def _default_factory(plugin, fetcher, timeout, allow_unsandboxed=False) -> PluginProcess:
     return PluginProcess(
         plugin_dir=plugin.path,
         manifest=plugin.manifest,
         config=plugin.config,
         fetcher=fetcher,
         timeout=timeout,
+        allow_unsandboxed=allow_unsandboxed,
     )
 
 
@@ -57,8 +59,14 @@ def search_all(
     limit: int = 50,
     timeout: float = 30.0,
     process_factory=None,
+    allow_unsandboxed: bool = False,
 ) -> SearchOutcome:
-    factory = process_factory or _default_factory
+    # The sandbox policy is bound to the default factory here rather than
+    # added to the factory signature: an injected factory stays a plain
+    # (plugin, fetcher, timeout) callable, which is all a test needs to be.
+    factory = process_factory or functools.partial(
+        _default_factory, allow_unsandboxed=allow_unsandboxed
+    )
     candidates = [
         p for p in plugins if p.enabled and "search" in p.manifest.capabilities
     ]
