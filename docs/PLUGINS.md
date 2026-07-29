@@ -135,6 +135,7 @@ and neither can this directory change it for you.
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Backends | Flags | Network |
 |---|---|---|---|---|---|---|---|---|
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
+| ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
 | ❗ [itch.io (free games) — NO IMPORT](https://github.com/BlizzHacker/rom-hub-itch-io) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-itch-io)) | 0.3.0 | 2026-07-29 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
 | ✔ [libretro cores (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-cores) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cores)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cores/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | `buildbot.libretro.com` |
@@ -157,6 +158,18 @@ Searches the Internet Archive's software collections by title and imports the it
 **Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
 
 **Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ Hasheous — `hasheous`
+
+Turns a ROM's hash into a game identity, and hands back other providers' ids — IGDB, TheGamesDB, RetroAchievements — without you holding a key for any of them.
+
+**Source terms.** The cleanest terms of any identification source here, because there is no game content in an answer. Hasheous distributes matching data only: hash to name to other databases' identifiers. Its own README says it "Is completely free to use" and its MCP documentation says the hosted endpoint is "intentionally public for free database lookups"; the lookup routes take no key and this plugin sends no credential. The DAT catalogues it ingests (No-Intro, Redump, TOSEC, MAME) are published openly by those projects, and the metadata ids it maps to belong to IGDB, TheGamesDB and RetroAchievements — hasheous holds those keys so you do not have to. Its robots.txt allows `User-agent: *` and disallows some named AI crawlers; this plugin is a ROM manager issuing one GET per hash, not a crawler.
+
+**Comments.** Metadata only, and hash-keyed only: the four `ByHash` routes are the whole GET surface, so a ROM with no hash is refused rather than resolved by searching for its title and taking the top hit. Pass the digest with `--source-id md5:<hex>` (or sha1:, sha256:, crc:, or a bare digest — 8/32/40/64 characters are unambiguous). CRC-32 is refused unless `allow_crc32` is set, because 32 bits over this corpus collide and the failure is a confident answer about a different game. Every answer is cross-checked against the console RomM already has the ROM filed under, comparing hasheous's own DAT-derived `signature.game.system` first; a mismatch refuses and writes nothing. Only provider ids hasheous itself marks `Mapped` are written — a `NotMapped` row is a scheduled search, not an answer.
+
+**Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
+
+**Network requested.** `hasheous.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Homebrew Hub (gbdev) — `homebrew`
 
