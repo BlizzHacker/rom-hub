@@ -113,6 +113,34 @@ def test_ordinary_rom_filenames_are_still_accepted(ok):
     assert FetchFile(url="https://archive.org/x", filename=ok).filename == ok
 
 
+def _file(name, url=None):
+    return FetchFile(url=url or f"https://archive.org/download/x/{name}", filename=name)
+
+
+@pytest.mark.parametrize(
+    "names",
+    [
+        ["g.zip", "g.zip"],
+        # Windows opens these as one file, so two entries that look
+        # distinct would still collide on disk. Refused on both platforms.
+        ["g.zip", "G.zip"],
+        ["a.zip", "b.zip", "a.zip"],
+    ],
+)
+def test_two_files_in_a_plan_may_not_share_a_filename(names):
+    """Two entries writing to one path is not a naming quirk, it is a
+    corrupt ROM: the second download sees the first file already there,
+    resumes with a Range header, and appends its body to the first one's.
+    The result hashes fine, uploads twice, and reports DONE."""
+    with pytest.raises(ValidationError):
+        FetchPlan(files=[_file(n) for n in names], platform="dos")
+
+
+def test_distinct_filenames_are_fine():
+    plan = FetchPlan(files=[_file("a.zip"), _file("b.zip")], platform="dos")
+    assert [f.filename for f in plan.files] == ["a.zip", "b.zip"]
+
+
 def test_negative_size_rejected():
     with pytest.raises(ValidationError):
         FetchFile(url="https://archive.org/x", filename="g.zip", size_bytes=-1)
