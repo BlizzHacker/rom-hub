@@ -85,14 +85,20 @@ class CatalogEntry:
     def flags(self) -> list[str]:
         """The things a reader must know before installing, not after.
 
-        Both of these have burned somebody: a search-only plugin looks
-        broken when its importer refuses, and a plugin needing an API key
+        Both of these have burned somebody: a plugin whose importer always
+        refuses looks broken when it does, and a plugin needing an API key
         looks broken when it returns nothing. Saying so in the directory is
         cheaper than the bug report.
+
+        The `search_only` field is rendered as "cannot import" rather than
+        "search-only" because those stopped meaning the same thing: itch-io
+        implements `metadata` and still cannot import anything, so the
+        category name would be wrong where the behaviour it stands for is
+        still exactly right.
         """
         out = []
         if self.search_only:
-            out.append("**search-only**")
+            out.append("**cannot import** (every import is refused)")
         if self.key_required:
             out.append("**API key required** (stored in clear text)")
         return out

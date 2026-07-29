@@ -150,7 +150,11 @@ def test_search_only_and_key_required_are_surfaced_in_the_page():
     assert ra.key_required
 
     md = render_markdown(entries)
-    assert "search-only" in md
+    # Rendered as the behaviour, not the category: itch-io implements
+    # `metadata` and still cannot import anything, so "search-only" would
+    # be wrong where "cannot import" is exactly right.
+    assert "cannot import" in md
+    assert "search-only" not in md
     # The clear-text storage is the part that must not be buried.
     assert "clear text" in md.lower()
 

@@ -157,7 +157,9 @@ Open a pull request adding an entry to
   licence, which is its `LICENSE` file. A directory that says where to get
   ROMs and stays quiet about whether they may lawfully be got is doing half
   the job;
-- set `search_only` if your importer cannot complete, and `key_required` if
+- set `search_only` if your importer cannot complete — it renders as "cannot
+  import", because a plugin can implement `metadata` and still never fetch a
+  file — and `key_required` if
   the plugin is useless without a credential. Both are things a reader needs
   before installing, not after filing a bug;
 - set `in_tree` only if the plugin ships inside this repository.

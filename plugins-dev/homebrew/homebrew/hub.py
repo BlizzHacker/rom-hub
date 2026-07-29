@@ -48,10 +48,39 @@ class Entry:
     developer: str = ""
     typetag: str = ""
     files: list[HubFile] = field(default_factory=list)
+    #: Image names relative to the entry's static directory. The Hub's
+    #: own convention puts a `cover.*` first when the submitter provided
+    #: one; the rest are in-game shots.
+    screenshots: list[str] = field(default_factory=list)
 
     @property
     def site_url(self) -> str:
         return SITE + self.slug
+
+    def cover(self) -> str | None:
+        """The submitter's cover image, or None when there is not one.
+
+        **Only a file actually named `cover.*` counts.** Roughly half the
+        Hub's entries have one and the rest carry in-game screenshots
+        instead; promoting a screenshot to box art would fill a library
+        with pictures of gameplay that an operator then has to undo one
+        at a time. `MetadataPatch` treats an absent field as "leave it
+        alone" precisely so this can return None.
+        """
+        for name in self.screenshots:
+            stem = name.rsplit("/", 1)[-1].lower()
+            if stem.startswith("cover."):
+                return name
+        return None
+
+    def static_url(self, name: str) -> str:
+        """Where the Hub serves one of this entry's files.
+
+        The same join `download_url` performs, for the same reason: a
+        screenshot name is sometimes a path within the entry
+        (`screenshots/uJacb3.png`) and sometimes bare.
+        """
+        return f"{STATIC}{self.basepath}/entries/{self.slug}/{name}"
 
     def payload(self) -> HubFile | None:
         """The file to import: the Hub's own default, else the first one.
@@ -111,6 +140,12 @@ def parse_entry(raw: dict) -> Entry | None:
             )
         )
 
+    screenshots = [
+        item.strip()
+        for item in (raw.get("screenshots") or [])
+        if isinstance(item, str) and item.strip()
+    ]
+
     platform = raw.get("platform")
     return Entry(
         slug=slug,
@@ -122,6 +157,7 @@ def parse_entry(raw: dict) -> Entry | None:
         developer=str(raw.get("developer") or ""),
         typetag=str(raw.get("typetag") or ""),
         files=files,
+        screenshots=screenshots,
     )
 
 

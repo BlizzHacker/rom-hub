@@ -1,19 +1,21 @@
 [plugin]
 slug        = "homebrew"
 name        = "Homebrew Hub (gbdev)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 search   = "homebrew.search:Search"
 importer = "homebrew.importer:Importer"
+metadata = "homebrew.metadata:Metadata"
 
-# One host does both jobs: /api/search answers the queries and /static/
-# serves the ROMs, with no redirect off it. hh.gbdev.io -- the human site
-# whose /g/<slug> pages results link to -- is deliberately NOT declared,
-# because nothing here ever fetches it; SearchResult.url is shown, never
-# retrieved.
+# One host does all three jobs: /api/search answers the queries and
+# /static/ serves both the ROMs and the cover images, with no redirect off
+# it (verified 2026-07-29 -- `curl -w %{num_redirects}` reports 0 for a
+# real cover URL). hh.gbdev.io -- the human site whose /g/<slug> pages
+# results link to -- is deliberately NOT declared, because nothing here
+# ever fetches it; SearchResult.url is shown, never retrieved.
 [permissions]
 network  = ["hh3.gbdev.io"]
 romm_api = []
@@ -24,3 +26,8 @@ romm_api = []
 typetag    = { type = "str", default = "" }
 max_pages  = { type = "int", default = 3 }
 collection = { type = "str", default = "Homebrew" }
+# `metadata` only. Whether to write the Hub's title over the library's.
+# On by default because for homebrew the submitter *is* the publisher of
+# record, so the Hub's title is as authoritative as the material has --
+# but an operator who has curated their own spelling can turn it off.
+set_name   = { type = "bool", default = true }
