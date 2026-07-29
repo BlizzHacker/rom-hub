@@ -113,8 +113,8 @@ which is already written into shell profiles on an LXC container.
 
 RomM is not the only self-hosted ROM library manager — [Gaseous][] and
 [Retrom][] exist, and an operator running one of those wants the plugin
-ecosystem just as much. Serving them costs far less than it looks, and the
-reason is the thing this project already got right:
+ecosystem just as much. All three now ship. Serving them cost far less
+than it looks, and the reason is the thing this project already got right:
 
 > **Plugins were always backend-agnostic.** A plugin returns a `FetchPlan`
 > or a `MetadataPatch` — *descriptions*, never actions — and the host
@@ -122,9 +122,38 @@ reason is the thing this project already got right:
 > RomM-specific code was the executor.
 
 So the seam is one file: `src/rom_hub/backends/base.py` defines
-`LibraryBackend`, `src/rom_hub/backends/romm/` implements it, and
-`ROM_HUB_BACKEND` (default `romm`) chooses. `importer.py` and
+`LibraryBackend`, `src/rom_hub/backends/{romm,gaseous,retrom}/` implement
+it, and `ROM_HUB_BACKEND` (default `romm`) chooses. `importer.py` and
 `metadata.py` name no product.
+
+The three are more different than "another REST API" suggests. Each row
+below was established from the backend's source and a live run, not
+assumed:
+
+| | RomM | Gaseous | Retrom |
+|---|---|---|---|
+| Transport | REST | REST | gRPC-Web over HTTP/1.1 + WebDAV |
+| Import | chunked upload API | `POST /api/v1.1/Roms` multipart | no upload API — files land via WebDAV, then `UpdateLibrary` indexes them |
+| Dedup | by hash (archives hashed as decompressed members concatenated) | filename (see platform-0 note) | filename only — Retrom stores no checksums |
+| Collections | yes | no — `CollectionsController` is empty | no — not in the schema |
+| Metadata write | yes | no — a rom exposes only GET/DELETE | yes, read-modify-write |
+| Post-import | socket.io `scan` event | `ImportQueueProcessor` | `UpdateLibrary` |
+
+Known upstream quirks the executors account for, worth recording:
+
+- **Gaseous:** `OverridePlatformId` is stored, resolved and passed to
+  `ImportGameFile` but never read in its body — the platform comes from the
+  file signature, so an unrecognised ROM lands on platform 0 (measured:
+  asked 13/DOS, got 0). Listing without a `PlatformId` joins a `Game` table
+  absent from schema 1042 and 404s, so the backend always lists per
+  platform. `ContentManagerController` is for attachments
+  (screenshots/video/manuals, 50 MB cap), not ROMs, which is why it is not
+  an artwork path.
+- **RomM:** `/api/token` needs an explicit `scope` or every call 403s;
+  `/complete` returns 201 with no body and needs a socket.io `scan` before
+  the ROM exists.
+- **Retrom:** needs a content directory inside `RETROM_DATA_DIR`; the
+  backend probes and refuses with instructions before downloading.
 
 [Gaseous]: https://github.com/gaseous-project/gaseous-server
 [Retrom]: https://github.com/JMBeresford/retrom
@@ -141,8 +170,10 @@ That is deliberate, and it is the opposite of the usual instinct. An
 interface invented ahead of its second implementation is an interface
 shaped like its first one anyway — only with more surface to be wrong
 about, and with the guesses indistinguishable from the requirements. What
-Gaseous or Retrom turn out to need that is not here gets added when there
-is a caller for it, and the diff will say which backend asked.
+Gaseous or Retrom turned out to need that was not here was added when there
+was a caller for it, and the diff said which backend asked — the interface
+has held, the only method-level accommodation being for Retrom's
+asynchronous `scan`.
 
 One thing is deliberately **absent**: there is no "create a platform"
 method. `platform_id()` resolves a name and raises when nothing matches,
@@ -156,19 +187,44 @@ A backend declares a `frozenset` of what it supports: `import`,
 verified rather than assumed, which is exactly why it is stated as data
 instead of taken for granted by every caller.
 
-Without the declaration, `rom-hub import --collection "Shooters"` against
-a backend with no collections downloads four gigabytes, uploads them, and
-*then* fails on a 404 from an endpoint that does not exist — with the ROM
-half-filed and the message about HTTP rather than about collections. With
-it, the command refuses before the first byte and says which backend and
-which capability.
+The declaration answers *when* to check. It does not answer *what to do
+about the answer*, and getting that second half wrong was a real bug.
+Knowing a capability is missing is not the same as refusing the operation
+over it, and the two must be told apart per capability. The classification
+lives in `backends/base.py` next to the capability names —
+`ESSENTIAL_CAPABILITIES`, `OPTIONAL_CAPABILITIES`, `UNGATED_CAPABILITIES`
+— with the reasoning against each, and a test asserts the three sets
+partition `ALL_CAPABILITIES` so a capability added later cannot fall
+through unclassified.
 
-`scan` is the interesting one. RomM's `/complete` writes the file and
-creates **no database row**, so an explicit socket.io `scan` is what makes
-the ROM exist; a backend that indexes on receipt implements
-`scan_platform` as a no-op and simply does not declare `scan`. The
-pipeline never branches on which — it always calls, and the backend
-decides whether that means anything.
+- **Essential** — `import` and `metadata`. Without `import` there is
+  nowhere to put the ROM; without `metadata` an enrich writes nothing.
+  These *refuse before any bytes move* (`require()`). The failure mode this
+  prevents is the expensive one: `rom-hub import --collection "Shooters"`
+  downloading four gigabytes, uploading them, and *then* 404ing on an
+  endpoint that does not exist, with the ROM half-filed.
+- **Optional** — `collections` and `artwork`. A collection groups a ROM
+  that is already in the library; artwork is a cover on a record. The
+  operation is complete without them, so the host does them when it can and
+  *skips-and-reports* when it cannot (`degrade()`, which raises rather than
+  degrade an essential capability — the guard rail on the whole policy).
+  This is what makes `rom-hub import archive-org …` work against Gaseous
+  and Retrom, both of which have no collections while the archive-org
+  plugin names one by default with no way to clear it from the CLI. The
+  skip appears in the job outcome and in `rom-hub jobs`, not only in a log
+  line.
+- **Ungated** — `scan`. RomM's `/complete` writes the file and creates
+  **no database row**, so an explicit socket.io `scan` is what makes the
+  ROM exist; a backend that indexes on receipt implements `scan_platform`
+  as a no-op and simply does not declare `scan`. The pipeline never
+  branches on it — it always calls, and the backend decides whether that
+  means anything, which is why there is nothing to gate.
+
+The one asymmetry: a `--collection` an operator *typed* still refuses (in
+the CLI, up front), while a collection a plugin *defaulted* degrades.
+Dropping boilerplate nobody chose costs nothing; silently not honouring a
+name someone typed is how a library ends up unsorted with no error to
+explain it.
 
 ### What did not move
 
@@ -621,9 +677,13 @@ constraint stays; the unfamiliarity does not.
 4. User selects an item; dispatcher calls `importer.plan(result)`.
 5. Host validates the returned `FetchPlan` against the plugin's permissions.
 6. **Host** downloads (resumable, via range requests) to `var/downloads/`.
-7. **Host** uploads: `upload/start` → `PUT` chunks → `complete`.
-8. **Host** ensures the target platform exists and adds the ROM to an
-   "Archive.org" collection.
+7. **Host** uploads (the mechanism is the backend's: RomM's chunked
+   `upload/start`→`PUT`→`complete`, a Gaseous multipart `POST`, or a Retrom
+   WebDAV write), then registers what landed (`scan`).
+8. **Host** adds the ROM to an "Archive.org" collection **if the backend
+   has collections** — RomM does; Gaseous and Retrom do not, so the step is
+   skipped and reported rather than failing the import (see
+   [`capabilities()`](#capabilities-is-what-makes-degradation-honest)).
 
 Steps 5–8 are entirely host-side. The plugin's involvement ends at step 4.
 
