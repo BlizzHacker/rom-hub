@@ -1,0 +1,43 @@
+[plugin]
+slug        = "myrient"
+name        = "Myrient-style directory index"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "myrient.search:Search"
+importer = "myrient.importer:Importer"
+
+# myrient.erista.me shut down on 2026-03-31 and is deliberately NOT listed:
+# an allowlist is a statement about where this plugin actually goes, and a
+# dead host in it would be decoration. `base_url` below points at the live
+# mirror the plugin ships against; repointing it at another mirror means
+# editing this file and reinstalling, which is the point -- a config change
+# must not be able to widen network reach. Downloads redirect to
+# dnNNNNNN.<region>.archive.org, and every redirect hop is re-validated.
+[permissions]
+network  = ["archive.org", "*.archive.org"]
+romm_api = []
+
+[config]
+# Where the directory indexes live. Must end in "/". Its host has to be in
+# the allowlist above or every request is refused by the broker.
+base_url    = { type = "str", default = "https://archive.org/download/" }
+# Index directories to search, in order. Each must appear in
+# myrient/platforms.py or it is refused as "needs mapping".
+collections = { type = "list[str]", default = [
+    "nointro.gg",
+    "nointro.ms-mkiii",
+    "nointro.md",
+    "nointro.32x",
+    "nointro.tg-16",
+    "nointro.sg",
+    "nointro.atari-2600",
+    "nointro.atari-5200",
+    "nointro.atari-7800",
+    "nointro.ws",
+    "nointro.wsc",
+    "nointro.gbamultiboot",
+] }
+collection  = { type = "str", default = "Myrient" }

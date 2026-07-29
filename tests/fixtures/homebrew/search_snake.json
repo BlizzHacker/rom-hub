@@ -1,0 +1,278 @@
+{
+ "results": 11,
+ "page_total": 2,
+ "page_current": 1,
+ "page_elements": 10,
+ "sort": "firstadded_date",
+ "order": "desc",
+ "entries": [
+  {
+   "$schema": "https://raw.githubusercontent.com/gbdev/database/refs/heads/master/schemas/game-schema-d5.json",
+   "slug": "johnybot_super-snake-off",
+   "title": "Super Snake Off",
+   "screenshots": [
+    "cover.png",
+    "screenshots/CpWMh4.png",
+    "screenshots/0Q5h3R.png",
+    "screenshots/3Tkifh.png",
+    "screenshots/yyAQFy.png"
+   ],
+   "typetag": "game",
+   "platform": "NES",
+   "tags": [
+    "Arcade",
+    "competitive",
+    "Multiplayer",
+    "2D",
+    "Two Player",
+    "Simple",
+    "Strategy",
+    "Pixel Art",
+    "Retro"
+   ],
+   "files": [
+    {
+     "default": true,
+     "filename": "files/SnakeOff.nes",
+     "playable": true
+    }
+   ],
+   "developer": "Johnybot",
+   "website": "https://johnybot.itch.io/super-snake-off",
+   "basepath": "database-nes",
+   "baserepo": "https://github.com/nesdev-org/homebrew-db",
+   "firstadded_date": "2025-06-01T20:44:48Z",
+   "devtoolinfo": ""
+  },
+  {
+   "date": "2018-11-03",
+   "developer": "26F",
+   "files": [
+    {
+     "default": true,
+     "filename": "snake.gb",
+     "playable": true
+    }
+   ],
+   "platform": "GB",
+   "screenshots": [
+    "snake.png"
+   ],
+   "slug": "snake-gbdk",
+   "title": "Snake GBDK",
+   "typetag": "game",
+   "website": "https://github.com/26F/Snake-GBDK-",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2022-07-10T13:00:56Z",
+   "devtoolinfo": ""
+  },
+  {
+   "date": "2022-05-22",
+   "developer": "Christian Reinbacher",
+   "files": [
+    {
+     "default": true,
+     "filename": "snake.gb",
+     "playable": true
+    }
+   ],
+   "platform": "GB",
+   "screenshots": [
+    "title.png"
+   ],
+   "slug": "gb-snake-reini1305",
+   "title": "Snake",
+   "typetag": "game",
+   "website": "https://github.com/reini1305/gb_snake",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2022-07-10T13:00:56Z",
+   "devtoolinfo": ""
+  },
+  {
+   "developer": "",
+   "files": [
+    {
+     "default": true,
+     "filename": "snake.gb",
+     "playable": true
+    }
+   ],
+   "platform": "GB",
+   "repository": "",
+   "screenshots": [
+    "screen1.png",
+    "screen2.png",
+    "screen3.png"
+   ],
+   "slug": "gbdev14-snake",
+   "title": "gbdev14-snake",
+   "typetag": "game",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2021-08-22T21:05:33Z",
+   "devtoolinfo": ""
+  },
+  {
+   "developer": "Jangie",
+   "files": [
+    {
+     "description": "release",
+     "filename": "Snake__(Gameboy).zip"
+    },
+    {
+     "default": true,
+     "filename": "Snake.cgb",
+     "playable": true
+    }
+   ],
+   "platform": "GBC",
+   "rom": "Snake.cgb",
+   "screenshots": [
+    "20110402_snake.png"
+   ],
+   "slug": "snake-jangie",
+   "title": "Snake",
+   "typetag": "game",
+   "tags": [
+    "Arcade",
+    "event:bung-1st-coding-compo"
+   ],
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-12-24T11:34:52Z",
+   "devtoolinfo": ""
+  },
+  {
+   "description": "",
+   "developer": "Patriek Lesparre",
+   "files": [
+    {
+     "description": "release",
+     "filename": "SnakEat__(Gameboy).zip"
+    },
+    {
+     "default": true,
+     "filename": "SnakEat.gbc",
+     "playable": true
+    }
+   ],
+   "platform": "GBC",
+   "rom": "SnakEat.gbc",
+   "screenshots": [
+    "20110402_snakeat.png"
+   ],
+   "slug": "snakeat",
+   "title": "SnakEat",
+   "typetag": "game",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-12-24T11:33:00Z",
+   "devtoolinfo": ""
+  },
+  {
+   "description": "Yvar de Goffau tried to make a different Snake game, so here is a variant with smooth graphics at 60hz, a proper difficulty curve and multiple selectable levels.",
+   "developer": "Yvar de Goffau",
+   "files": [
+    {
+     "description": "release",
+     "filename": "Snake_Yvar_de_Goffau_(15-01-2018)_(Gameboy).gb"
+    }
+   ],
+   "platform": "GB",
+   "screenshots": [
+    "20180121_snake_(15-01-2018)_(gb_game).png"
+   ],
+   "slug": "snake-by-yvar-de-goffau",
+   "title": "Snake by Yvar de Goffau",
+   "typetag": "game",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-12-23T12:44:57Z",
+   "devtoolinfo": ""
+  },
+  {
+   "date": "1999-09-19",
+   "developer": "Spiffyuk",
+   "files": [
+    {
+     "description": "release",
+     "filename": "sneakysnakes.zip"
+    },
+    {
+     "default": true,
+     "filename": "snake.gb",
+     "playable": true
+    }
+   ],
+   "platform": "GB",
+   "screenshots": [
+    "sneakysnakes.png",
+    "20110402_sneaky_snakes.png"
+   ],
+   "slug": "sneaky-snakes",
+   "title": "Sneaky Snakes",
+   "typetag": "game",
+   "tags": [
+    "event:bung-2nd-coding-compo"
+   ],
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-12-03T23:16:13Z",
+   "devtoolinfo": ""
+  },
+  {
+   "date": "2013-08-28",
+   "developer": "Sanky",
+   "files": [
+    {
+     "default": true,
+     "filename": "snake.gbc",
+     "playable": true
+    }
+   ],
+   "platform": "GB",
+   "repository": "https://bitbucket.org/Sanqui/snake/src/?at=master",
+   "screenshots": [
+    "screenshot.bmp"
+   ],
+   "slug": "snake-sanky",
+   "tags": [
+    "Open Source"
+   ],
+   "title": "Snake",
+   "typetag": "game",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-01-15T10:06:59Z",
+   "devtoolinfo": ""
+  },
+  {
+   "developer": "Donald Hays",
+   "files": [
+    {
+     "default": true,
+     "filename": "snake.gb",
+     "playable": true
+    }
+   ],
+   "gameWebsite": "http://donaldhays.com/projects/snake/",
+   "platform": "GB",
+   "repository": "https://github.com/DonaldHays/snake-gb",
+   "screenshots": [
+    "screenshot.png"
+   ],
+   "slug": "snake-gb",
+   "tags": [
+    "Open Source"
+   ],
+   "title": "Snake for Game Boy",
+   "typetag": "game",
+   "basepath": "database-gb",
+   "baserepo": "https://github.com/gbdev/database",
+   "firstadded_date": "2018-01-15T09:51:39Z",
+   "devtoolinfo": ""
+  }
+ ]
+}
