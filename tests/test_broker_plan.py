@@ -219,8 +219,18 @@ def test_userinfo_cannot_disguise_the_real_host(plugin_dir):
 
 
 def test_a_non_mapping_plan_is_a_plugin_error_not_a_crash(plugin_dir):
+    """Matches on "got list", not merely on "invalid FetchPlan".
+
+    `FetchPlan(**raw)` raises TypeError for a list all by itself, and the
+    handler below the isinstance guard converts that to the same exception
+    type -- so a test that asserted only the type could not tell whether
+    the guard ran at all, and deleting it would leave the suite green. The
+    type name in the message is the guard's own; only it produces that
+    wording."""
     with _proc(plugin_dir, {"mode": "raw_not_a_mapping"}) as proc:
-        with pytest.raises(PluginCallError, match="invalid FetchPlan"):
+        with pytest.raises(
+            PluginCallError, match="invalid FetchPlan: expected an object, got list"
+        ):
             proc.plan(SearchResult(source_id="1", title="t"))
 
 

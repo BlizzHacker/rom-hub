@@ -240,8 +240,14 @@ class _PlanOverrides:
             update["platform"] = self._platform
         if self._collection:
             update["collection"] = self._collection
-        # model_copy(update=...) skips validation, so re-validate rather
-        # than trusting a CLI string to be a legal platform.
+        # Reconstruct rather than model_copy(update=...), which skips
+        # validation entirely. Defence in depth, and honestly labelled as
+        # such: today no argparse value can actually fail this, because the
+        # `if` guards above drop the empty string and any non-empty string
+        # is a legal `platform`/`collection`. It is here so that widening
+        # either field's constraints, or adding a third override, cannot
+        # quietly land an unvalidated value in a FetchPlan. A mutation test
+        # confirms the suite does not currently notice its removal.
         return type(plan)(**{**plan.model_dump(), **update}) if update else plan
 
 
