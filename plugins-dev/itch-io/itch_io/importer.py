@@ -1,5 +1,9 @@
 """itch.io `importer`: decide what a game page permits, and say so.
 
+**THIS PLUGIN IS SEARCH-ONLY.** `plan()` has five exits and all five raise
+ImportRefused. There is no success path, and adding one is not a matter of
+finishing the code -- it needs a verb the broker does not offer.
+
 This importer routes a game page to one of five outcomes, and **every one
 of them is a refusal**. That is not a stub; it is the accurate answer for
 this source, and the reason is worth stating once rather than discovering
