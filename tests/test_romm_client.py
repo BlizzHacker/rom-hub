@@ -12,6 +12,8 @@ from romm_hub.romm.client import RommClient, RommError
 PLATFORMS = [
     {"id": 5, "slug": "dos", "name": "DOS"},
     {"id": 9, "slug": "snes", "name": "Super Nintendo"},
+    # slug and fs_slug can differ; fs_slug-only lookups must still resolve.
+    {"id": 12, "slug": "genesis-slug", "fs_slug": "genesis-fs", "name": "Genesis"},
 ]
 
 
@@ -70,6 +72,8 @@ def test_authenticate_posts_form_encoded_and_stores_token():
     assert req.method == "POST"
     assert req.url.path == "/api/token"
     assert req.headers["content-type"] == "application/x-www-form-urlencoded"
+    body = req.read().decode()
+    assert "grant_type=password" in body
 
 
 def test_subsequent_calls_send_bearer_token():
@@ -110,6 +114,23 @@ def test_platform_id_unknown_slug_raises_romm_error_naming_it():
 
     with pytest.raises(RommError, match="nope"):
         client.platform_id("nope")
+
+
+def test_platform_id_falls_back_to_fs_slug():
+    """PlatformSchema has both `slug` and `fs_slug`; a lookup that only
+    matches fs_slug (not slug) must still resolve."""
+    calls = []
+    client = _client(calls)
+
+    assert client.platform_id("genesis-fs") == 12
+
+
+def test_platform_id_lookup_is_case_insensitive():
+    calls = []
+    client = _client(calls)
+
+    assert client.platform_id("DOS") == 5
+    assert client.platform_id("Genesis-Fs") == 12
 
 
 def test_401_raises_romm_error_about_authentication_not_httpstatuserror():
@@ -164,7 +185,28 @@ def test_ensure_collection_creates_when_missing():
     assert any(c.url.path == "/api/collections" and c.method == "POST" for c in calls)
 
 
-def test_add_to_collection_posts_rom_ids():
+def test_ensure_collection_create_posts_multipart_not_json():
+    """Body_add_collection_api_collections_post mixes Form fields with an
+    optional `artwork: binary` file, which makes the endpoint
+    multipart/form-data — a JSON body here is wrong."""
+    calls = []
+    client = _client(calls, collections=[])
+
+    client.ensure_collection("New Collection")
+
+    post = next(
+        c for c in calls if c.url.path == "/api/collections" and c.method == "POST"
+    )
+    content_type = post.headers["content-type"]
+    assert content_type.startswith("multipart/form-data")
+    body = post.read().decode(errors="replace")
+    assert 'name="name"' in body
+    assert "New Collection" in body
+
+
+def test_add_to_collection_posts_json_not_multipart():
+    """CollectionRomsPayload ({"rom_ids": [...]})  IS JSON, unlike the
+    collections-create endpoint."""
     calls = []
     client = _client(calls)
 
@@ -173,3 +215,30 @@ def test_add_to_collection_posts_rom_ids():
     post = calls[-1]
     assert post.method == "POST"
     assert post.url.path == "/api/collections/7/roms"
+    assert post.headers["content-type"] == "application/json"
+    import json as _json
+
+    assert _json.loads(post.read()) == {"rom_ids": [1, 2, 3]}
+
+
+def test_401_or_403_on_a_write_raises_romm_error_naming_authorization():
+    """A write bounced for auth reasons (e.g. missing scope on the token)
+    must surface plainly, not as a generic status-code message."""
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if request.url.path == "/api/token":
+            return httpx.Response(200, json={"access_token": "tok-123"})
+        if request.url.path == "/api/collections/7/roms":
+            return httpx.Response(403, json={"detail": "forbidden"})
+        return httpx.Response(404, json={"detail": "unhandled"})
+
+    client = RommClient(
+        "https://romm.example", "user", "pw", transport=httpx.MockTransport(handler)
+    )
+
+    with pytest.raises(RommError, match="(?i)authoriz") as exc_info:
+        client.add_to_collection(7, [1])
+
+    assert not isinstance(exc_info.value, httpx.HTTPStatusError)
