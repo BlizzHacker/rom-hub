@@ -12,12 +12,21 @@ from .broker.fetcher import HttpxFetcher
 from .catalog import CatalogError, load_catalog, symbol_for
 from .dispatcher import search_all
 from .registry import Registry, RegistryError
+from .sandbox import probe
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
 
 
 def default_root() -> Path:
     return Path(os.environ.get("ROMM_HUB_HOME", Path.home() / ".romm-hub"))
+
+
+def allow_unsandboxed() -> bool:
+    """Whether the operator has opted out of the fail-closed sandbox policy.
+
+    Read at call time, not import time, so tests and shells can flip it.
+    """
+    return os.environ.get("ROMM_HUB_ALLOW_UNSANDBOXED", "") == "1"
 
 
 def _catalog_entry(slug: str):
@@ -67,12 +76,25 @@ def _cmd_plugin_install(args) -> int:
     print(f"installed {plugin.slug} {plugin.manifest.version} (capabilities: {caps})")
     print(f"  pinned commit: {plugin.commit or '(unknown)'}")
     print(f"  declared network allowlist: {plugin.manifest.network or '(none)'}")
-    # An operator approving an install must not read the allowlist as a
-    # guarantee. It is enforced on the ctx.http broker, which is the supported
-    # path but not, in Phase 1, the only one.
-    print("  note: this allowlist is enforced on the ctx.http broker, but Phase 1")
-    print("        does not sandbox the plugin subprocess, so a hostile plugin can")
-    print("        bypass the broker entirely. Install only plugins you trust.")
+    # An operator approving an install must be told exactly how much of that
+    # allowlist is a boundary and how much is a declaration of intent, and the
+    # answer depends on whether this host can confine the subprocess at all.
+    available, reason = probe()
+    if available:
+        print("  note: the plugin subprocess installs a seccomp filter on itself")
+        print("        before importing any plugin code, so network egress and")
+        print("        process spawn are blocked outright — the allowlist above is")
+        print("        enforced, not advisory. File reads are NOT confined: seccomp")
+        print("        cannot filter on a path, so a plugin can still read any file")
+        print("        this process can. Install only plugins you trust.")
+    else:
+        print("  note: this host cannot confine plugins, so plugins will refuse to")
+        print("        run unless ROMM_HUB_ALLOW_UNSANDBOXED=1 is set. With it set")
+        print("        there is no confinement at all: a hostile plugin can ignore")
+        print("        the allowlist above, open its own sockets, read any file this")
+        print("        process can, and spawn processes. Install only plugins you")
+        print("        trust.")
+        print(f"        reason: {reason}")
     return 0
 
 
@@ -115,6 +137,7 @@ def _cmd_search(args) -> int:
             query=args.query,
             platform=args.platform,
             limit=args.limit,
+            allow_unsandboxed=allow_unsandboxed(),
         )
     finally:
         fetcher.close()

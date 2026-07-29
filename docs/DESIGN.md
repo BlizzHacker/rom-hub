@@ -245,42 +245,84 @@ as platform `psx`"); the host validates and executes it.
 
 ### What is enforced today, and what is not
 
-Phase 1 delivers part of that goal. The split matters enough to state exactly.
+Phase 1 delivered the broker. Phase 1.5 confined the plugin subprocess itself.
+Two of the three lines below are now closed; the third is not, and the split
+matters enough to state exactly.
 
-**Enforced.** On the brokered path the allowlist is real, not advisory.
-`netpolicy.url_allowed` sits in front of the only code that opens a socket
-(`broker/fetcher.py`), `check_url` is unavoidable en route to it — one call
-site, the same variable, no TOCTOU gap — and the matcher survived a 44-case
-adversarial corpus (suffix confusion, userinfo, IDN and UTS-46 dot mapping,
-percent-encoding, IP literals, embedded CR/LF) with no exploitable result.
-Default-deny holds: a manifest with no `[permissions]` table can reach nothing.
-Redirects are disabled and response headers are not exposed, so a plugin cannot
-launder a `Location` into a second request.
+**Enforced: the brokered path.** On the brokered path the allowlist is real,
+not advisory. `netpolicy.url_allowed` sits in front of the only code that opens
+a socket (`broker/fetcher.py`), `check_url` is unavoidable en route to it — one
+call site, the same variable, no TOCTOU gap — and the matcher survived a
+44-case adversarial corpus (suffix confusion, userinfo, IDN and UTS-46 dot
+mapping, percent-encoding, IP literals, embedded CR/LF) with no exploitable
+result. Default-deny holds: a manifest with no `[permissions]` table can reach
+nothing. Redirects are disabled and response headers are not exposed, so a
+plugin cannot launder a `Location` into a second request.
 
-**Not enforced in Phase 1.** The plugin runs as a plain
-`subprocess.Popen([sys.executable, "-m", "romm_hub_sdk.runner"])`. There is no
-sandbox of any kind: no namespace or job object, no seccomp filter, no separate
-uid, no `RLIMIT_*`, no import restrictions. The runner imports the plugin's
-module, and that module inherits every capability the host process has —
-`import socket` is one line away. A **hostile** plugin can therefore bypass the
-broker entirely: open its own connection to an undeclared host, read files
-outside its own directory, or spawn a child process, with none of it visible to
-the allowlist.
+**Enforced: network egress.** New in Phase 1.5, and it is what makes a
+manifest's `network` allowlist a containment boundary rather than a declaration
+of intent. The plugin subprocess installs a **self-imposed seccomp filter on
+itself, before any plugin code is imported** — `PR_SET_NO_NEW_PRIVS` first,
+then a filter returning `EPERM` for `socket`, `socketcall`, `connect`,
+`sendto`, and `sendmsg`. Restricting *yourself* needs no privilege, which is
+why this works where a namespace sandbox does not. A plugin that ignores
+`ctx.http` and reaches for `import socket` gets a `PermissionError`, not a
+connection. Measured on the deployment target inside **default Docker** — no
+`--security-opt`, no added capabilities:
 
-So in Phase 1 the allowlist constrains **cooperative** plugins and documents
-what a plugin intends to reach. It is not a containment boundary.
+    NNP_OK → FILTER_LOADED → BLOCKED: PermissionError
 
-> **Phase 1 consequence: only install plugins you trust.** Reading a manifest's
-> `network` allowlist tells you what an honest plugin will do. It tells you
-> nothing about a dishonest one.
+**Enforced: useful process spawn.** `execve` and `execveat` are denied, so a
+plugin cannot shell out to something that would run unconfined. `clone` and
+`fork` are deliberately **not** blocked: CPython uses `clone` for threads, so
+denying it breaks the interpreter rather than the attacker. That costs nothing
+here, because a forked child **inherits the seccomp filter** and is confined
+exactly as its parent is. There is no escape by forking.
+
+**Not enforced: arbitrary file read.** seccomp **cannot filter on a path.** A
+filter matches on the syscall number and register values only; it cannot
+dereference a pointer argument, so the filename handed to `openat` is invisible
+to it. Confining reads requires a **mount namespace**, which this deployment
+cannot create (see below). A plugin can therefore still read any file the Hub
+process can read — including the Hub's own config and database.
+
+> **Consequence, scoped to what is left: only install plugins you trust.** A
+> plugin's declared `network` allowlist is now a real boundary: an untrusted
+> plugin cannot reach an undeclared host and cannot exec its way out. It still
+> runs with the Hub's own file-read reach. Reading a manifest tells you where
+> an honest plugin will go on the network; it tells you nothing about which of
+> your files a dishonest one will open.
+
+**Why not bubblewrap or nsjail.** They were the preferred candidate, and they
+were measured rather than assumed. Inside default Docker:
+
+    $ docker run --rm debian unshare --user --net echo ok
+    unshare: unshare failed: Operation not permitted
+
+Docker's own default seccomp profile refuses the `unshare` that a namespace
+sandbox is built on, so `bwrap --unshare-net --ro-bind` cannot start at all
+without `--security-opt seccomp=unconfined` or `--privileged` — which would
+open a larger hole than the one being closed. Recorded here so the option is
+not re-litigated: it is not a matter of preference, it is unavailable on this
+target. A self-imposed seccomp filter needs no privilege and is what remains,
+at the price of the filesystem line above.
+
+**On a host that cannot install the filter.** `sandbox.probe()` reports
+availability; the filter is Linux-only and additionally needs `pyseccomp`.
+Where it is unavailable — Windows and macOS development hosts, most obviously —
+the Hub **fails closed**: `PluginProcess` raises `SandboxRefused`, the plugin
+does not run, and the message names the override. Setting
+`ROMM_HUB_ALLOW_UNSANDBOXED=1` lifts the refusal and means exactly what it
+says: **no confinement at all**. With it set, a hostile plugin can open its own
+sockets to undeclared hosts, spawn processes, and read any file the Hub can. It
+is a development convenience, never a deployment setting.
 
 Three consequences, all load-bearing:
 
-1. **The permission becomes real** — once the subprocess is isolated. A plugin
-   declaring `archive.org` then genuinely cannot reach anywhere else, and the
-   worst case for a hostile plugin is bad *data*, not a stolen token or a wiped
-   library. In Phase 1 this holds only for a plugin that stays on the brokered
-   path.
+1. **The permission is real** on the network. A plugin declaring `archive.org`
+   genuinely cannot reach anywhere else, cooperative or not, so the worst case
+   for a hostile plugin's *traffic* is bad data rather than exfiltration to a
+   host of its choosing. What it can still do is read local files.
 2. **Plugins are trivially testable.** All *intended* traffic crosses one
    chokepoint, so record-once/replay fixtures come free and the conformance
    suite runs offline. True today.
@@ -292,39 +334,45 @@ Plus per-call timeouts: one wedged plugin cannot hang a search across the
 others. Memory and output-size caps are specified alongside them but are not
 yet complete — see the Phase 1 review findings.
 
-### Isolation is a blocking prerequisite for Phase 2
+### Filesystem confinement is a blocking prerequisite for Phase 2
 
-Phase 1 does not talk to RomM at all, so the worst a hostile plugin reaches
-today is the host's own filesystem and network. **Phase 2 introduces a RomM
-admin token**, which turns the same escape from "leaks search queries" into
-full library compromise. Isolation must land *before* Phase 2, not alongside
-it. See the Phasing table.
+Phase 1.5 closed the network and exec lines. The file-read line is still open,
+and **Phase 2 introduces a RomM admin token**, which the Hub stores. A plugin
+that can read the Hub's config or database can read that token — and the
+seccomp filter does not make that harmless, because a token only has to *leave*
+once to matter. So the Phase 1 sequencing stands, with a narrower and more
+accurate reason than before: what blocks Phase 2 is the filesystem, not the
+network.
 
-Candidate mechanisms, in order of preference:
+Closing it needs a **mount namespace** — `--ro-bind` the plugin directory and
+nothing else — which is exactly what the container denies today (above). The
+realistic routes:
 
-- **`bubblewrap` or `nsjail`** on Linux — wrap the subprocess in
-  `--unshare-net --ro-bind <plugin_dir> …`. Roughly thirty lines, and nothing
-  about the plugin itself changes, so the "50-line plugin" premise survives.
-- **A `seccomp` filter** installed by the child before the plugin module is
-  imported: deny `socket`/`connect`, restrict `openat` to the plugin directory.
-- **The container boundary** — run the plugin host in a locked-down container
-  with no egress except the broker's. This is *not* the rejected "container per
-  plugin" below: authors still ship a git repo, not an image.
+- **Run the plugin host in a container that permits `unshare`**, and let
+  bubblewrap hold the filesystem while seccomp keeps holding the network. A
+  deployment change, not a plugin-contract change.
+- **Keep the RomM token where a plugin cannot read it** — a separate process or
+  uid holds the credential and performs actions on request, so the plugin host
+  never has the secret in a readable file. Removes the reason the file-read
+  hole is fatal rather than closing the hole.
 
-Windows needs a job object and macOS a sandbox profile, or both fall back to
-the container.
+Windows and macOS have no equivalent of the seccomp path and fall back to the
+container; until then they refuse to run plugins unless
+`ROMM_HUB_ALLOW_UNSANDBOXED=1` is set.
 
-When isolation lands, consequence 1 above becomes unconditional, and the
-Phase 1 caveats in this section, in `README.md`, and in the `plugin install`
-output must be removed.
+When filesystem confinement lands, the file-read caveat in this section, in
+`README.md`, and in the `plugin install` output can be dropped. The network and
+exec caveats have already been dropped — they were retracted on evidence, so do
+not reintroduce them without evidence.
 
 ### The cost, stated honestly
 
 The plugin API offers no way to open a socket, so a plugin written against it
 cannot use `requests`, `httpx`, or Archive.org's own `internetarchive` SDK.
 This is the price of the permission being enforceable rather than advisory, and
-it is a genuine tax on the "50-line plugin" premise. (Until the sandbox lands,
-the API is the only thing that stops it — see above.)
+it is a genuine tax on the "50-line plugin" premise. (Since Phase 1.5 the
+seccomp filter stops it too, so an author who reaches for `httpx` anyway gets a
+`PermissionError` rather than traffic the allowlist never saw — see above.)
 
 Mitigation: ship a **`requests`-shaped adapter** over `ctx.http`, so the idiom
 plugin authors already know (`ctx.http.get(url).json()`) works unchanged. The
@@ -482,7 +530,7 @@ RomM's `CONTRIBUTING.md` requires opening an issue and discussing on Discord
 | Phase | Delivers | Proves | Blocked on |
 |---|---|---|---|
 | 1 | Hub core + RPP v1 + broker + `search` + CLI | the contract is real | — |
-| 2 | `importer` + RomM adapter + job queue | it is actually useful | **plugin sandboxing** |
+| 2 | `importer` + RomM adapter + job queue | it is actually useful | **filesystem confinement** |
 | 3 | Web UI + Traefik nav injection | it is pleasant | — |
 | 4 | `metadata`, `stream`, `cores` | Archive.org plugin complete | — |
 | 5 | sub-projects C and D | *separate design pass* | — |
@@ -491,15 +539,16 @@ Phase 1 ends with a plugin that can search Archive.org from a CLI. That is the
 smallest thing that validates the riskiest assumption — the plugin contract —
 before any UI work is spent on it.
 
-**Phase 2 is blocked on plugin sandboxing.** Phase 2 is where the Hub first
-holds a RomM admin token, and Phase 1 ships without any isolation of the plugin
-subprocess (see [What is enforced today, and what is
-not](#what-is-enforced-today-and-what-is-not)). Shipping the token before the
-sandbox would turn a hostile plugin from a search-query leak into a full
-library compromise. Real isolation — bubblewrap/nsjail `--unshare-net
---ro-bind`, a seccomp filter, or the container boundary — is a prerequisite,
-not a parallel workstream, and the docs above must be updated to drop the
-Phase 1 caveat when it lands.
+**Phase 2 is blocked on filesystem confinement.** Phase 1.5 closed the plugin
+subprocess's network egress and process spawn with a self-imposed seccomp
+filter, but seccomp cannot filter on a path, so a plugin can still read any
+file the Hub can (see [What is enforced today, and what is
+not](#what-is-enforced-today-and-what-is-not)). Phase 2 is where the Hub first
+holds a RomM admin token, and a token sitting in a file a plugin can read turns
+a hostile plugin from a search-query leak into a full library compromise.
+Closing that needs a mount namespace, which the current container denies; it is
+a prerequisite, not a parallel workstream, and the file-read caveat above comes
+out when it lands.
 
 ---
 
