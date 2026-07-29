@@ -242,7 +242,14 @@ def test_a_free_download_is_routed_all_the_way_and_then_refused_at_the_post_wall
     # Everything it worked out is in the refusal: file, platform, and why.
     assert "YourHappyPlace (Windows)" in message
     assert "'win'" in message
+    # The *reason* has to be in the message, not just in the README. A user
+    # who reads "refused" without "because itch.io offers no public download
+    # route" files this as a bug against the plugin. Both halves of the
+    # reason are pinned: the POST/csrf wall and the robots.txt disallow.
     assert "csrf_token" in message
+    assert "GET only" in message
+    assert "robots.txt" in message
+    assert "/game/download/" in message
 
 
 def test_the_largest_upload_wins_and_a_soundtrack_does_not():
