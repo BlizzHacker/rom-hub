@@ -103,6 +103,17 @@ def run_plugin(stdin, stdout) -> None:
                 # re-checks every URL against the allowlist. Nothing decided
                 # on this side of the pipe is load-bearing.
                 result = plan.model_dump()
+            elif method == "resolve":
+                if ctx is None:
+                    raise RuntimeError("init must be called before resolve")
+                if "stream" not in instances:
+                    instances["stream"] = _load(entrypoints["stream"], ctx)
+                target = instances["stream"].resolve(
+                    SearchResult(**params["result"])
+                )
+                # Re-validated host-side like every other capability's
+                # return value; a `url` target is allowlist-checked there.
+                result = target.model_dump()
             elif method == "enrich":
                 if ctx is None:
                     raise RuntimeError("init must be called before enrich")

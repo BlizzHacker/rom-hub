@@ -377,6 +377,50 @@ def _cmd_enrich(args) -> int:
     return EXIT_OK
 
 
+def _cmd_stream(args) -> int:
+    """Resolve one item to a stream target and print it.
+
+    Deliberately the whole command. `romm-stream` is a separate service and
+    integrating it is not this capability's job: the contract is "a plugin
+    resolves an item, the host validates the answer", and printing the
+    validated answer is exactly as far as the Hub goes.
+    """
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "stream")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    result = SearchResult(
+        source_id=args.source_id,
+        # The identifier is all the CLI knows; the plugin looks the rest up.
+        title=args.source_id,
+        plugin=plugin.slug,
+    )
+
+    fetcher = HttpxFetcher()
+    try:
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+        ) as proc:
+            target = proc.resolve_stream(result)
+    finally:
+        fetcher.close()
+
+    print(f"{target.kind}\t{target.target}")
+    if target.title:
+        print(f"title\t{target.title}")
+    if target.mime_type:
+        print(f"type\t{target.mime_type}")
+    for key in sorted(target.extra):
+        print(f"{key}\t{target.extra[key]}")
+    return EXIT_OK
+
+
 def _cmd_jobs(args) -> int:
     state = None
     if args.state:
@@ -486,6 +530,13 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     enrich.set_defaults(func=_cmd_enrich)
+
+    stream = sub.add_parser(
+        "stream", help="resolve one item to a stream target and print it"
+    )
+    stream.add_argument("plugin", help="slug of an installed stream plugin")
+    stream.add_argument("source_id", help="the plugin's id for the item")
+    stream.set_defaults(func=_cmd_stream)
 
     jobs = sub.add_parser("jobs", help="list import jobs")
     jobs.add_argument(

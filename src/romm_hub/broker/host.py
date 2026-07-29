@@ -9,6 +9,8 @@ socket is opened:
     enforced in plan()
   * the `artwork_url` on the `MetadataPatch` returned by enrich(), which the
     host fetches later, enforced in enrich()
+  * the `StreamTarget` returned by resolve_stream(), whose `url` kind is
+    something a player will fetch, enforced in resolve_stream()
 
 Adding another path without a check_url() on it would make the manifest's
 `network` declaration decorative.
@@ -31,7 +33,13 @@ from pydantic import ValidationError
 from romm_hub.manifest import Manifest
 from romm_hub.netpolicy import PolicyViolation, check_url
 from romm_hub.protocol import ProtocolError, read_message, write_message
-from romm_hub.types import FetchPlan, MetadataPatch, RomRef, SearchResult
+from romm_hub.types import (
+    FetchPlan,
+    MetadataPatch,
+    RomRef,
+    SearchResult,
+    StreamTarget,
+)
 
 from .fetcher import Fetcher
 
@@ -458,6 +466,37 @@ class PluginProcess:
                     f"(artwork_url): {exc}"
                 ) from exc
         return patch
+
+    def resolve_stream(self, result: SearchResult) -> StreamTarget:
+        """Ask the plugin where an item can be played. The host only checks.
+
+        Thin on purpose: streaming is `romm-stream`'s job, so the host
+        validates the answer and returns it rather than opening anything.
+        The check is still not optional -- a `url` target is something that
+        will be fetched by whatever is pointed at it, so it goes through
+        the same allowlist as every other URL a plugin hands over.
+        """
+        raw = self._call("resolve", {"result": result.model_dump()})
+        if not isinstance(raw, dict):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid StreamTarget: "
+                f"expected an object, got {type(raw).__name__}"
+            )
+        try:
+            target = StreamTarget(**raw)
+        except (ValidationError, TypeError) as exc:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid StreamTarget: "
+                f"{exc}"
+            ) from exc
+        if target.kind == "url":
+            try:
+                check_url(target.target, self.manifest.network)
+            except PolicyViolation as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} StreamTarget rejected: {exc}"
+                ) from exc
+        return target
 
     def close(self) -> None:
         if self._proc is None:
