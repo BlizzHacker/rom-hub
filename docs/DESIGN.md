@@ -333,6 +333,7 @@ inherited leak.
 | Command | Does |
 |---|---|
 | `rom-hub plugin browse\|install\|list\|enable\|disable` | plugin lifecycle |
+| `rom-hub plugin assets <slug> [--fetch]` | the data assets a plugin declares, whether they are cached, and (with `--fetch`) get them now |
 | `rom-hub search <query> [--platform] [--limit]` | fan out across enabled `search` plugins |
 | `rom-hub import <plugin> <source_id> [--platform] [--collection]` | plan → download → dedup → upload → collection |
 | `rom-hub enrich <plugin> <rom_id> [--source-id]` | enrich → fetch artwork → `PUT /api/roms/{id}` |
@@ -362,8 +363,15 @@ the deployment target's own storage, never on a workstation system drive.
 | Plugin git clones | deployment target `/opt/rom-hub/plugins/` |
 | In-flight downloads | deployment target `/opt/rom-hub/var/downloads/` |
 | Fetched artwork, in transit | `$ROM_HUB_HOME/var/artwork/<rom_id>/` |
+| Plugin data assets | `$ROM_HUB_HOME/var/plugin-data/<slug>/` |
 | Imported ROMs | `/mnt/library/roms` (RomM's existing library) |
 | Harvested cores | `$ROM_HUB_HOME/var/cores/` by default; `ROM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
+
+Plugin data assets are **not** in the plugin's own directory, and that is not
+a style choice: `plugins/<slug>/` is a git checkout the registry deletes and
+replaces on every reinstall, so a 42 MiB cache kept there would be
+re-downloaded every time a plugin was updated — and would put a dataset inside
+a tree the update diff is supposed to be able to review.
 
 The cores path is **configuration, not a constant**. Compiling
 `/opt/romm-stream/cores` into the Hub would put a plugin-supplied download
@@ -420,6 +428,14 @@ cores    = "archive_org.cores:Cores"
 network  = ["archive.org", "*.archive.org"]
 romm_api = ["roms:create", "platforms:read", "collections:write"]
 
+[[data_assets]]                             # optional; the host fetches these
+name       = "catalogue.sqlite"             # what the plugin opens
+url        = "https://archive.org/download/x/catalogue.zip"
+sha256     = "…64 hex characters…"          # of `name`, and mandatory
+size_bytes = 9118645                        # of the download, for the notice
+archive    = "zip"                          # optional
+member     = "catalogue.sqlite"             # required when `archive` is set
+
 [config]                                    # user-editable schema
 collections = { type = "list[str]", default = ["softwarelibrary"] }
 api_key     = { type = "secret" }           # never logged, never in git
@@ -464,6 +480,7 @@ allowlist before the host fetches it.
 | `metadata` | `MetadataPatch` | `check_url` on `artwork_url` in `PluginProcess.enrich()` **and** again in `metadata.run_enrich()`; the artwork filename goes through the same `bare_filename` and `dest_in_job_dir`; the RomM form-field names are an allowlist |
 | `stream` | `StreamTarget` | `check_url` when `kind="url"`; a `kind="handle"` may not *be* a URL, so the discriminator cannot be lied about to skip the check |
 | `cores` | `CoreArtifact[]`, `FetchPlan` | the **same** `_gated_plan()` the importer uses — one implementation, so the two cannot drift |
+| *(any)* `[[data_assets]]` | nothing — it is a manifest declaration, not a return value | `check_url` at **parse** time against `permissions.network`, so a violating manifest cannot be installed; then `HttpDownloader`'s per-hop `check_url` at fetch time; then a mandatory `sha256` before the plugin is told the path |
 
 Three things about that table are deliberate.
 
@@ -493,6 +510,121 @@ carry no artwork part at all.
 integrating it is not this capability's job. The host validates the target and
 returns it, and the CLI prints it. Building a second streaming transport inside
 the Hub would be inventing infrastructure the deployment already has.
+
+### Data assets: a dataset the plugin cannot fetch itself
+
+Some sources are not services. OpenVGDB publishes **no API at all** — its
+repository holds a `.gitignore` and a 28-byte `README.md`, and the entire
+project is one 9,118,645-byte SQLite database attached to a GitHub release,
+last published 2021-11-11. A plugin backed by a source like that needs the
+file, and RPP v1 as originally shipped gave it no way to get one. Four host
+facts, each independent and each fatal on its own:
+
+1. **Size.** `ctx.http` caps a response at `MAX_RESPONSE_BYTES` — 4 MiB — and
+   refuses on `Content-Length` before a body byte is pulled.
+2. **Encoding.** `HttpResponse` carries `text`, decoded with
+   `errors="replace"`. There is no byte channel; a zip under the cap would
+   still arrive irrecoverably mangled.
+3. **Redirects.** The release asset answers `302` to
+   `release-assets.githubusercontent.com`. `broker/fetcher.py` sets
+   `follow_redirects=False` — correctly, since a redirect could escape the
+   allowlist — and exposes no `Location`, so a plugin sees `302` and cannot
+   learn where to.
+4. **Nowhere to cache it.** A plugin subprocess is started per command and
+   dies with it. "Download it once and keep it" had no storage to use.
+
+The capability existed on the host side the whole time: `HttpDownloader`
+already streams multi-GB files with per-hop redirect re-validation, resumable
+ranges and filename containment. It was reachable only *into the library*, as
+part of an import. Data assets are that same capability made reachable for a
+plugin's own data — and nothing about the boundary is relaxed to do it.
+
+```toml
+[[data_assets]]
+name        = "openvgdb.sqlite"                       # what the plugin opens
+url         = "https://github.com/.../v29.0/openvgdb.zip"
+sha256      = "a6df8311ff188d41...e075b601"           # of `name`, mandatory
+size_bytes  = 9118645                                 # of the download
+archive     = "zip"                                   # optional
+member      = "openvgdb.sqlite"                       # required with `archive`
+description = "OpenVGDB v29.0: 51,742 roms, 40.3 MiB unpacked"
+```
+
+**Declared, not requested — and that is the whole design.** The obvious
+alternative is `ctx.download(url)`. It was rejected: a runtime request is not
+reviewable. A declaration is a line in a manifest that a human reads before
+installing, that `rom-hub plugin install` prints, that appears in the update
+diff the registry shows before a new version is accepted, and that a catalog
+can carry. `ctx.download(url)` is a string constructed at a moment nobody is
+watching, and it would let any plugin pull arbitrary megabytes from any host
+in its allowlist at any time. This is the same reasoning `permissions.network`
+already embodies, applied to a second kind of traffic.
+
+**Gated exactly like a `FetchPlan` URL, twice.** `manifest.py` refuses at parse
+time an asset whose host is not in `permissions.network` — so the allowlist a
+reviewer reads is a complete account of where the plugin causes traffic, and a
+manifest that violates it cannot be installed at all. Then the fetch reuses
+`importer.HttpDownloader`, so httpx follows nothing and each hop is re-checked
+with `check_url` before the next request goes out. That is not hypothetical
+here: the GitHub asset really does redirect to a different host, which is why
+`release-assets.githubusercontent.com` is a *separate declared entry* rather
+than something the download is allowed to reach implicitly.
+
+**Integrity is mandatory, and there is no trust-on-first-use.** The declared
+`sha256` is the digest of the file the plugin opens — the extracted member
+when `archive` is set, the downloaded bytes otherwise. The host verifies
+*before* the plugin is told the path, refuses on mismatch with nothing cached
+(neither the wrong file nor the partial download a resume would build on), and
+**re-verifies a cached copy on every use** rather than assuming it. A cache
+directory is a directory on a machine; "it was correct when we fetched it" is
+not a statement about the bytes that are there now. Without this, a 9 MB blob
+from the network would be feeding the names and covers written into a
+library — a supply chain the operator never agreed to.
+
+**A path, not bytes.** 42 MiB will not cross an 8 MiB JSON frame, buffering it
+would cost several times that in host memory, and SQLite cannot mmap a
+bytestring. The plugin receives `ctx.data_assets` (`{name: path}`) and opens
+the file itself, read-only.
+
+**A separate size budget, deliberately larger.** `MAX_DATA_ASSET_BYTES` is
+128 MiB, enforced on the download (declared length *and* while streaming, since
+the header is a hint) and again on unpacking (declared `file_size` *and* while
+decompressing, since a zip's header is written by whoever built it).
+`ctx.http`'s 4 MiB cap is **not** raised: it exists because that body is
+buffered in host memory and JSON-escaped into a reply frame that must stay
+under `protocol.MAX_MESSAGE_CHARS`. An asset enters neither. Raising the one to
+serve the other would have made every plugin response 128 MiB-shaped.
+
+**Containment is reused, not re-implemented.** The asset `name` and the archive
+`member` go through `types.bare_filename` — the same validator a `FetchPlan`
+filename uses, which is what refuses `C:evil.sqlite` — and every path is joined
+with `paths.dest_in_job_dir`. A zip entry name is never joined onto anything,
+so an archive whose entries are called `../../etc/passwd` has nowhere to write.
+
+**Announced before it happens, three times over.** `rom-hub plugin install`
+prints the size, the origin and the digest at the moment the operator is
+deciding. The fetch itself writes one line to stderr — size, full URL, digest
+prefix, cache location — *before* the request. `rom-hub plugin assets <slug>`
+shows what is declared and whether it is cached; `--fetch` performs the
+download deliberately and on its own. And `ROM_HUB_NO_ASSET_FETCH=1` refuses
+the download outright, naming the command that would perform it. A silent
+multi-megabyte download on somebody's first search would be a bad surprise, and
+none of the four paths above allows one.
+
+**`rpp_version` stays `"1"`.** The contract did not break. `[[data_assets]]` is
+optional and absent from all ten shipped plugins, which parse and run
+untouched; `PluginContext` gained a field with a default; the `init` handshake
+gained a key an older SDK ignores. A version bump would force every existing
+plugin to re-declare something that did not change, which is the opposite of
+what a version number is for.
+
+**Not covered by this, on purpose.** There is no update mechanism: a new
+dataset is a new `sha256` in a new plugin version, reviewed like any other
+manifest change. There is no writable scratch directory for plugins — the data
+directory holds host-verified files and nothing else, because a plugin that
+could write there could invalidate the verification. And only `zip` is
+supported: every additional archive format is another parser reading hostile
+bytes, and one covers the case that exists.
 
 ### `secret` config type
 
