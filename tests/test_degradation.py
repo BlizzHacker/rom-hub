@@ -379,13 +379,17 @@ def test_an_unknown_backend_names_the_ones_that_exist(
     tmp_path, importer_repo, monkeypatch, capsys
 ):
     monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
-    monkeypatch.setenv("ROM_HUB_BACKEND", "gaseous")
+    # Not `gaseous`: that used to be the stand-in for "a backend that does
+    # not exist", and once it did exist this test started asserting on an
+    # unconfigured-backend message instead of an unknown-backend one.
+    monkeypatch.setenv("ROM_HUB_BACKEND", "not-a-real-backend")
     assert main(["plugin", "install", str(importer_repo)]) == 0
     capsys.readouterr()
 
     assert main(["import", "demo", "x"]) != 0
     err = capsys.readouterr().err
-    assert "gaseous" in err and "romm" in err
+    assert "not-a-real-backend" in err
+    assert "romm" in err and "gaseous" in err
 
 
 # -- backend info ----------------------------------------------------------
