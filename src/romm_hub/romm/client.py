@@ -19,6 +19,11 @@ import httpx
 
 _EXCERPT_LIMIT = 300
 
+# How many roms to ask for per `GET /api/roms` page. The server defaults
+# `limit` to 50; asking for more just means fewer round trips over the
+# whole platform, which dedup walks in full on every import.
+_ROMS_PAGE_SIZE = 500
+
 # The OAuth2 scopes the import pipeline needs, space-separated exactly as
 # `Body_token_api_token_post.scope` wants them.
 #
@@ -200,9 +205,74 @@ class RommClient:
     # -- roms ---------------------------------------------------------------
 
     def list_roms(self, platform_id: int) -> list[dict]:
-        return self._authorized_request(
-            "GET", "/api/roms", params={"platform_ids": platform_id}
-        ).json()
+        """Every rom on `platform_id`, as a flat list of rom dicts.
+
+        `GET /api/roms` does **not** answer a bare array. It answers
+        `CustomLimitOffsetPage_SimpleRomSchema_`:
+
+            {"items": [...], "total": N, "limit": 50, "offset": 0,
+             "char_index": {...}, "rom_id_index": [...],
+             "filter_values": {...}}
+
+        Handing that envelope back as if it were the listing is how this
+        went wrong: `find_duplicate` iterates what it is given, and
+        iterating a dict yields its *keys* -- seven strings. Non-dict
+        entries are skipped as malformed, so the result was silently
+        "no roms match", every time, on a library of any size. That broke
+        both callers at once: dedup never detected a duplicate, and the
+        post-upload confirmation could never find the rom it had just
+        uploaded, so every import ended FAILED.
+
+        `limit` also defaults to 50 server-side, so a platform with more
+        roms than that would only ever be compared against its first page.
+        Paging is therefore not optional either: a missed duplicate is a
+        second copy in the user's library.
+
+        The walk stops on a short or empty page as well as on `total`, so
+        a server whose `total` disagrees with what it actually returns
+        cannot spin this loop forever.
+        """
+        roms: list[dict] = []
+        offset = 0
+        while True:
+            payload = self._authorized_request(
+                "GET",
+                "/api/roms",
+                params={
+                    "platform_ids": platform_id,
+                    "limit": _ROMS_PAGE_SIZE,
+                    "offset": offset,
+                },
+            ).json()
+
+            # A bare array is not what RomM 4.9.2 sends, but accepting one
+            # costs nothing and keeps this from being pinned to a single
+            # server version's response shape.
+            if isinstance(payload, list):
+                return payload
+            if not isinstance(payload, dict):
+                raise RommError(
+                    f"GET /api/roms returned {type(payload).__name__}, expected "
+                    f"a paginated object or a list"
+                )
+
+            items = payload.get("items")
+            if not isinstance(items, list):
+                raise RommError(
+                    "GET /api/roms response has no 'items' list; keys present: "
+                    f"{sorted(payload.keys())}"
+                )
+
+            roms.extend(items)
+            if not items or len(items) < _ROMS_PAGE_SIZE:
+                # A short page is the last page. This is the guard that ends
+                # the walk even when `total` is wrong or missing.
+                return roms
+
+            offset += len(items)
+            total = payload.get("total")
+            if isinstance(total, int) and offset >= total:
+                return roms
 
     # -- collections ----------------------------------------------------------
 
