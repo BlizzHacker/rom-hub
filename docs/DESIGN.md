@@ -14,8 +14,8 @@ Flashpoint, SteamGridDB, TGDB) are **hardcoded** — `backend/handler/metadata/`
 contains one module per provider, each wired in by name. Adding a source means
 editing core.
 
-We want the qBittorrent model instead: core ships an **engine**, the community
-ships **plugins**. A user pastes a URL, gets a new source, and core never changes.
+We want the opposite arrangement: core ships an **engine**, the community ships
+**plugins**. A user pastes a URL, gets a new source, and core never changes.
 
 This design covers a **sidecar** that adds that capability to an unmodified RomM,
 plus the first plugin (Archive.org) as the proof that the contract is real.
@@ -51,7 +51,7 @@ foreclose them.
 
 | | Sub-project | Status |
 |---|---|---|
-| **A** | Plugin engine + host (the qBittorrent-style extension system) | **designed here** |
+| **A** | Plugin engine + host (the extension system itself) | **designed here** |
 | **B** | Archive.org plugin (search, import, metadata, stream, cores) | **designed here** |
 | **C** | Cross-server federation / friend libraries | deferred |
 | **D** | Multiplayer + netplay | deferred |

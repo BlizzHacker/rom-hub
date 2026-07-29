@@ -1,7 +1,7 @@
 # ROM Hub
 
-qBittorrent-style plugins for a self-hosted ROM library, as a sidecar. The
-library server is never modified.
+A plugin standard, and a host that runs it, for self-hosted ROM libraries. It
+runs as a sidecar: the library server is never modified.
 
 [RomM](https://github.com/rommapp/romm) is the backend that ships, and the
 default. It is not the only one the plugins work with: a plugin returns a
