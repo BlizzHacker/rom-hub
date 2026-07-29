@@ -23,6 +23,7 @@ from romm_hub.importer import (
 )
 from romm_hub.jobs import JobQueue, JobState
 from romm_hub.romm.client import RommError
+from romm_hub.romm.scan import ScanError
 from romm_hub.types import FetchFile, FetchPlan, SearchResult
 
 ROM_BYTES = b"MZ\x90\x00rom payload" * 64
@@ -66,6 +67,7 @@ class FakeRomm:
         self.collections: dict[str, int] = {}
         self.ensure_collection_calls: list[str] = []
         self.add_to_collection_calls: list[tuple[int, list[int]]] = []
+        self.pending: list[Path] = []
         self._next_rom_id = 999
 
     def platform_id(self, slug):
@@ -80,21 +82,37 @@ class FakeRomm:
         return list(self.roms)
 
     def receive_upload(self, path):
-        """What a real RomM does with an accepted upload: the file becomes
-        visible in the next /api/roms listing, hashed. Note that nothing
-        about it comes back in the /complete response -- that is a bare
-        201 with no body."""
-        hashes = hash_file(path)
-        rom = {
-            "id": self._next_rom_id,
-            "name": path.name,
-            "crc_hash": hashes.crc32,
-            "md5_hash": hashes.md5,
-            "sha1_hash": hashes.sha1,
-        }
-        self._next_rom_id += 1
-        self.roms.append(rom)
-        return rom
+        """What a real RomM actually does with an accepted upload: it
+        writes the bytes into the library directory and creates **no
+        database row**. The file exists on disk and `/api/roms` still does
+        not list it. Nothing comes back in the /complete response either
+        -- that is a bare 201 with no body.
+
+        So an accepted upload lands in `pending`, not in `roms`. Only
+        `register_uploads` -- this fake's stand-in for the library scan --
+        makes it visible. Verified against RomM 4.9.2, where
+        `GET /api/roms?platform_ids=1` answered `total=0` after a
+        successful chunked upload.
+        """
+        self.pending.append(path)
+
+    def register_uploads(self):
+        """What RomM's `scan` socket event does: walk the library
+        directory and create rows for files that have none yet."""
+        for path in self.pending:
+            hashes = hash_file(path)
+            self.roms.append(
+                {
+                    "id": self._next_rom_id,
+                    "name": path.name,
+                    "fs_name": path.name,
+                    "crc_hash": hashes.crc32,
+                    "md5_hash": hashes.md5,
+                    "sha1_hash": hashes.sha1,
+                }
+            )
+            self._next_rom_id += 1
+        self.pending = []
 
     def ensure_collection(self, name):
         self.ensure_collection_calls.append(name)
@@ -145,6 +163,36 @@ class FakeUpload:
         return {}
 
 
+class FakeScanner:
+    """Stands in for `SocketIOScanner`. Satisfies the `Scanner` protocol
+    without opening a socket.
+
+    On success it calls `register_uploads()` on the FakeRomm it was built
+    for, which is what makes the pipeline's post-upload confirmation
+    possible -- exactly as the real scan is what creates the rows that
+    `GET /api/roms` then returns.
+    """
+
+    def __init__(self, romm=None, error=None):
+        self.romm = romm
+        self.error = error
+        self.calls: list[int] = []
+        # Recorded at scan time so ordering against the other steps is
+        # observable rather than assumed.
+        self.uploads_at_scan: list[tuple[Path, int]] | None = None
+        self.listings_at_scan: int | None = None
+
+    def scan_platform(self, platform_id):
+        self.calls.append(platform_id)
+        if self.romm is not None:
+            self.listings_at_scan = self.romm.list_roms_calls
+        if self.error is not None:
+            raise self.error
+        if self.romm is not None:
+            self.romm.register_uploads()
+        return {"scanned_platforms": 1, "new_roms": 1}
+
+
 @pytest.fixture
 def upload(monkeypatch):
     fake = FakeUpload()
@@ -158,7 +206,7 @@ def queue(tmp_path):
         yield q
 
 
-def _run(tmp_path, plugin, romm, queue, downloader=None, **kwargs):
+def _run(tmp_path, plugin, romm, queue, downloader=None, scanner=None, **kwargs):
     return run_import(
         plugin,
         RESULT,
@@ -166,6 +214,7 @@ def _run(tmp_path, plugin, romm, queue, downloader=None, **kwargs):
         queue=queue,
         download_dir=tmp_path / "downloads",
         downloader=downloader if downloader is not None else FakeDownloader(),
+        scanner=scanner if scanner is not None else FakeScanner(romm),
         **kwargs,
     )
 
@@ -229,6 +278,126 @@ def test_an_upload_that_never_appears_in_the_library_lands_failed(
     assert "g.zip" in res.message
     assert "did not appear" in res.message
     assert "did not appear" in queue.get(res.job_id).error
+
+
+# -- the library scan (RomM's upload creates no row on its own) -----------
+
+
+def test_an_upload_is_registered_with_a_scan_scoped_to_that_platform(
+    tmp_path, queue, upload
+):
+    """Without this the ROM is on disk and absent from the library."""
+    romm = FakeRomm()
+    scanner = FakeScanner(romm)
+    res = _run(tmp_path, FakePlugin(_plan()), romm, queue, scanner=scanner)
+
+    assert res.state is JobState.DONE
+    # The platform id, not the slug, and only the one just uploaded to.
+    assert scanner.calls == [7]
+
+
+def test_the_scan_runs_after_the_upload_and_before_the_confirming_listing(
+    tmp_path, queue, upload
+):
+    """Ordering is the whole point. Scanning before the upload registers
+    nothing; confirming before the scan reports a ROM missing that is
+    merely unregistered."""
+    romm = FakeRomm()
+    scanner = FakeScanner(romm)
+    _run(tmp_path, FakePlugin(_plan()), romm, queue, scanner=scanner)
+
+    # One listing had happened (the dedup one) when the scan ran; the
+    # confirming listing had not.
+    assert scanner.listings_at_scan == 1
+    assert romm.list_roms_calls == 2
+
+
+def test_nothing_is_scanned_when_every_file_was_already_a_duplicate(
+    tmp_path, queue, upload
+):
+    """No upload means nothing to register, and a scan of a real library
+    is expensive enough that firing one for nothing is a bug."""
+    scratch = tmp_path / "scratch.bin"
+    scratch.write_bytes(ROM_BYTES)
+    romm = FakeRomm(
+        roms=[{"id": 4242, "sha1_hash": hash_file(scratch).sha1, "name": "Some Game"}]
+    )
+    scanner = FakeScanner(romm)
+
+    res = _run(tmp_path, FakePlugin(_plan()), romm, queue, scanner=scanner)
+
+    assert res.state is JobState.SKIPPED_DUPLICATE
+    assert scanner.calls == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ScanError("timed out after 600s waiting for RomM"),
+        ScanError("could not open a socket.io connection to RomM"),
+        RuntimeError("something entirely unexpected"),
+    ],
+    ids=["timeout", "connect-failure", "unexpected"],
+)
+def test_a_scan_that_fails_lands_failed_and_says_the_upload_itself_worked(
+    tmp_path, queue, upload, error
+):
+    """The operator has to be able to tell these apart: the bytes are in
+    RomM's library directory, and only the registration did not happen.
+    Reporting a plain upload failure would send them re-uploading a file
+    that is already there."""
+    romm = FakeRomm()
+    res = _run(
+        tmp_path,
+        FakePlugin(_plan()),
+        romm,
+        queue,
+        scanner=FakeScanner(romm, error=error),
+    )
+
+    assert res.state is JobState.FAILED
+    assert res.rom_id is None
+    message = queue.get(res.job_id).error
+    assert "uploaded" in message
+    assert "registration" in message or "register" in message
+    assert "g.zip" in message
+
+
+def test_a_failed_scan_never_reports_done_even_though_the_bytes_arrived(
+    tmp_path, queue, upload
+):
+    """The regression guard for the whole blocker: an accepted upload is
+    not an imported ROM."""
+    romm = FakeRomm()
+    res = _run(
+        tmp_path,
+        FakePlugin(_plan()),
+        romm,
+        queue,
+        scanner=FakeScanner(romm, error=ScanError("nope")),
+    )
+
+    assert upload.calls != [], "the upload must actually have been attempted"
+    assert res.state is not JobState.DONE
+    assert romm.roms == [], "nothing was ever registered in the library"
+
+
+def test_the_collection_step_is_skipped_when_the_scan_failed(
+    tmp_path, queue, upload
+):
+    """A failure must stop the pipeline, not merely be recorded."""
+    romm = FakeRomm()
+    res = _run(
+        tmp_path,
+        FakePlugin(_plan(collection="Shareware")),
+        romm,
+        queue,
+        scanner=FakeScanner(romm, error=ScanError("nope")),
+    )
+
+    assert res.state is JobState.FAILED
+    assert romm.ensure_collection_calls == []
+    assert romm.add_to_collection_calls == []
 
 
 def test_a_collection_is_populated_with_the_looked_up_id(tmp_path, queue, upload):
@@ -454,15 +623,20 @@ def test_run_import_closes_the_downloader_it_built_itself(tmp_path, queue, uploa
             self.closed = True
             super().close()
 
+    romm = FakeRomm()
     monkey = pytest.MonkeyPatch()
     monkey.setattr("romm_hub.importer.HttpDownloader", TrackingDownloader)
     try:
         res = run_import(
             FakePlugin(_plan()),
             RESULT,
-            romm=FakeRomm(),
+            romm=romm,
             queue=queue,
             download_dir=tmp_path / "downloads",
+            # Supplied explicitly: this test is about the downloader run_import
+            # builds for itself, and the default scanner would open a real
+            # socket to a RomM that does not exist here.
+            scanner=FakeScanner(romm),
         )
     finally:
         monkey.undo()
