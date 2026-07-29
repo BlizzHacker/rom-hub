@@ -7,6 +7,13 @@ dependencies = [
     "pydantic>=2.7",
     "httpx>=0.27",
     "pyseccomp>=0.1.2; sys_platform == 'linux'",
+    # Not optional, and not a nicety. RomM's chunked upload writes the file
+    # to disk but creates no database row, and it exposes no REST endpoint
+    # that registers it (`/api/tasks/run/scan_library` answers 400 "cannot
+    # be run"). Its own web UI emits a socket.io "scan" event after every
+    # upload; romm_hub.romm.scan does the same. Without this, an imported
+    # ROM never appears in the library. See src/romm_hub/romm/scan.py.
+    "python-socketio[client]>=5.11",
 ]
 
 [project.optional-dependencies]

@@ -95,6 +95,28 @@ class RommClient:
 
     # -- auth -----------------------------------------------------------
 
+    @property
+    def base_url(self) -> str:
+        """The server root, without a trailing slash.
+
+        Needed because registering an upload is not a REST operation --
+        `romm_hub.romm.scan` has to open a socket.io connection to the
+        same server this client talks to, and must not be handed a second,
+        independently-configured URL that could drift from this one.
+        """
+        return str(self._client.base_url).rstrip("/")
+
+    def bearer_token(self) -> str:
+        """The cached access token, authenticating first if needed.
+
+        Exposed for the socket.io scan connection, which carries the same
+        credentials as the REST calls rather than logging in a second time.
+        """
+        if self._token is None:
+            self.authenticate()
+        assert self._token is not None
+        return self._token
+
     def authenticate(self) -> None:
         """POST /api/token (OAuth2 password grant, form-encoded) and cache
         the bearer token for subsequent requests.

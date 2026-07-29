@@ -50,6 +50,7 @@ from romm_hub.dedup import FileHashes, find_duplicate, hash_file
 from romm_hub.jobs import Job, JobQueue, JobState
 from romm_hub.netpolicy import PolicyViolation, check_url
 from romm_hub.romm.client import RommClient
+from romm_hub.romm.scan import Scanner, SocketIOScanner
 from romm_hub.romm.upload import upload_file
 from romm_hub.types import FetchPlan, SearchResult
 
@@ -270,6 +271,7 @@ def run_import(
     queue: JobQueue,
     download_dir: Path,
     downloader: Downloader | None = None,
+    scanner: Scanner | None = None,
     job_id: int | None = None,
 ) -> ImportResult:
     """Import one search result into RomM, recording progress in `queue`.
@@ -294,6 +296,12 @@ def run_import(
     owns_downloader = downloader is None
     if owns_downloader:
         downloader = HttpDownloader(allowlist=list(getattr(manifest, "network", [])))
+
+    # Constructing this opens nothing -- SocketIOScanner connects only when
+    # scan_platform() is called, which is after a successful upload and
+    # therefore never on an import that dedups or fails early.
+    if scanner is None:
+        scanner = SocketIOScanner(romm)
 
     try:
         if job_id is None:
@@ -320,6 +328,7 @@ def run_import(
                 job=job,
                 download_dir=download_dir,
                 downloader=downloader,
+                scanner=scanner,
             )
         except _ImportFailure as exc:
             return _fail(queue, job.id, str(exc))
@@ -357,6 +366,7 @@ def _import(
     job: Job,
     download_dir: Path,
     downloader: Downloader,
+    scanner: Scanner,
 ) -> ImportResult:
     slug = _slug_of(plugin)
 
@@ -449,6 +459,31 @@ def _import(
             raise _ImportFailure(
                 f"upload of {path.name!r} to RomM failed: {exc}"
             ) from exc
+
+    # 5a. Register the uploaded bytes with the library.
+    #
+    #     This step is not optional and it is not a refresh. RomM's
+    #     /complete writes the file into the library directory and creates
+    #     **no database row at all** -- `GET /api/roms` does not list it,
+    #     and no REST endpoint exists that would. Its own web UI emits a
+    #     socket.io `scan` after every upload; so does this. See
+    #     romm_hub.romm.scan for the upstream reading.
+    #
+    #     A failure here is reported as precisely what it is: the bytes
+    #     reached RomM and only the registration did not. An operator told
+    #     merely "upload failed" would go and upload it again, on top of a
+    #     file that is already sitting in the library directory.
+    names = ", ".join(path.name for path in to_upload)
+    try:
+        scanner.scan_platform(platform_id)
+    except Exception as exc:
+        raise _ImportFailure(
+            f"{names} uploaded to RomM successfully, but registering it in "
+            f"the library failed, so the ROM is not importable yet: {exc}. "
+            f"The file is already in RomM's library directory for platform "
+            f"{plan.platform!r} -- do not re-upload it; trigger a scan of "
+            f"that platform in RomM instead."
+        ) from exc
 
     # 5b. Find what was just uploaded, by the digests already computed in
     #     step 4. This does two jobs at once:
