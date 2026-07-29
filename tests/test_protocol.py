@@ -48,6 +48,37 @@ def test_oversize_line_raises():
         read_message(io.StringIO(huge))
 
 
+class EndlessLine:
+    """A stream whose current line never ends, counting what it hands out.
+
+    A cap that is checked *after* readline() returns has already lost: the
+    whole line is resident by then. This stream makes that visible.
+    """
+
+    def __init__(self, limit: int):
+        self.limit = limit
+        self.handed_out = 0
+
+    def readline(self, size: int = -1) -> str:
+        if size is None or size < 0:
+            size = self.limit  # unbounded readline: hand over everything
+        n = max(0, min(size, self.limit - self.handed_out))
+        self.handed_out += n
+        return "x" * n
+
+
+def test_oversize_line_is_refused_before_it_is_buffered():
+    stream = EndlessLine(limit=MAX_MESSAGE_BYTES + 1000)
+    with pytest.raises(ProtocolError, match="too large"):
+        read_message(stream)
+    # The point of the cap: at most the cap (plus the one character that
+    # proves the cap was exceeded) may ever reach host memory.
+    assert stream.handed_out <= MAX_MESSAGE_BYTES + 1, (
+        f"host buffered {stream.handed_out} chars for a capped "
+        f"{MAX_MESSAGE_BYTES}-char message"
+    )
+
+
 def test_embedded_newlines_do_not_break_framing():
     buf = io.StringIO()
     write_message(buf, {"kind": "result", "id": "p1", "result": "a\nb"})
