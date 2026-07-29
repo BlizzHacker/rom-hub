@@ -18,6 +18,7 @@ from romm_hub.importer import (
     DownloadError,
     HttpDownloader,
     ImportResult,
+    dest_in_job_dir,
     run_import,
 )
 from romm_hub.jobs import JobQueue, JobState
@@ -426,6 +427,53 @@ def test_every_file_in_a_multi_file_plan_is_downloaded_and_uploaded(
     assert res.state is JobState.DONE
     assert [c[1].name for c in downloader.calls] == ["a.zip", "b.zip"]
     assert [c[0].name for c in upload.calls] == ["a.zip", "b.zip"]
+
+
+# -- the job-directory containment guard -----------------------------------
+#
+# FetchFile's validator is the first layer. These tests pin the second one:
+# the host must refuse to write outside the job directory even when a name
+# reached it *unvalidated*, so that a future gap in the validator cannot
+# become a filesystem write. Both tests deliberately bypass pydantic with
+# model_construct -- that is the point.
+
+
+@pytest.mark.parametrize(
+    "evil", ["C:evil.zip", "..", "../evil.zip", "sub/evil.zip", "\\\\srv\\s\\e.zip"]
+)
+def test_a_name_that_slipped_past_the_validator_is_still_not_written(
+    tmp_path, queue, upload, evil
+):
+    """The containment layer, mutation-checked: delete it and this fails."""
+    plan = FetchPlan.model_construct(
+        files=[
+            FetchFile.model_construct(
+                url="https://allowed.example/g.zip", filename=evil, size_bytes=None
+            )
+        ],
+        platform="dos",
+        collection=None,
+    )
+    downloader = FakeDownloader()
+    res = _run(tmp_path, FakePlugin(plan), FakeRomm(), queue, downloader)
+
+    assert res.state is JobState.FAILED
+    # Refused *before* the network call, not cleaned up after a write.
+    assert downloader.calls == []
+    assert upload.calls == []
+    assert "outside" in queue.get(res.job_id).error
+
+
+def test_the_containment_check_allows_an_ordinary_name(tmp_path):
+    job_dir = tmp_path / "downloads" / "7"
+    assert dest_in_job_dir(job_dir, "g.zip") == job_dir / "g.zip"
+
+
+@pytest.mark.parametrize("evil", ["C:evil.zip", "..", "../e.zip", "/etc/passwd"])
+def test_the_containment_check_refuses_an_escaping_name(tmp_path, evil):
+    job_dir = tmp_path / "downloads" / "7"
+    with pytest.raises(Exception, match="outside"):
+        dest_in_job_dir(job_dir, evil)
 
 
 # -- the downloader's allowlist guard --------------------------------------
