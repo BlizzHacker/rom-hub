@@ -59,15 +59,55 @@ That is a real boundary, but it is not a sandbox for everything. Still true:
 **This directory grants nothing.** It records where a plugin lives. The
 permissions come from the plugin's own manifest, read at install time — so a
 compromised directory cannot widen what an installed plugin may reach.
+`test_catalog_cannot_widen_permissions` pins that: the broker reads
+`manifest.network` and never consults the catalog at all.
+
+### What the sandbox does and does not cover
+
+Worth being exact, because "sandboxed" is doing less work than it sounds:
+
+- **The broker enforces the network allowlist.** Every URL — including each
+  hop of a redirect, and including URLs the plugin returns in a `FetchPlan`
+  for the *host* to fetch — is checked against the plugin's declared hosts
+  before a socket is opened.
+- **On Linux, seccomp confines the plugin.** The subprocess installs the
+  filter on itself before importing any plugin code, so network egress and
+  process spawn are blocked outright rather than merely disallowed.
+- **File reads are NOT confined.** seccomp cannot filter on a path. A plugin
+  can read any file the Hub process can read. This is the real limit of the
+  boundary, and no plugin in this directory changes it.
+- **Windows cannot sandbox at all.** There is no confinement available, so
+  plugins refuse to run unless `ROMM_HUB_ALLOW_UNSANDBOXED=1` is set. With it
+  set there is none of the above: a hostile plugin can ignore the allowlist,
+  open its own sockets, read any readable file, and spawn processes.
+- Memory is **not** capped in Phase 1 (`setrlimit` is POSIX-only); the
+  wall-clock timeout and output-size cap are.
+
+**Install only plugins you trust.** The allowlist tells you what a plugin
+*asks for*; on Linux it is also what it is held to.
+
+## These plugins ship in-tree
+
+The six plugins below live in this repository's `plugins-dev/` directory and
+**have no individual public repositories yet**. Rather than print URLs that do
+not resolve, their repository and download fields use the reserved
+`.invalid` TLD (RFC 2606, guaranteed never to resolve) — if you see
+`romm-hub.invalid`, that is a placeholder saying "not published yet", not a
+link to follow. Install them by path:
+
+    romm-hub plugin install ./plugins-dev/archive-org
+
+Note that `plugin install` clones its source, so each plugin directory has to
+be a git repository for that to work.
 
 ## Installing
 
     romm-hub plugin browse                 # list what's here
-    romm-hub plugin install archive-org    # by slug, resolved through this catalog
+    romm-hub plugin install ./plugins-dev/archive-org   # in-tree, today
     romm-hub plugin install https://github.com/someone/their-plugin --ref v1.2.0
 
-Installs are pinned to a tag. Updating is deliberate — re-run `install` with a
-new ref — so a plugin cannot quietly change under you.
+Installs from a URL are pinned to a tag. Updating is deliberate — re-run
+`install` with a new ref — so a plugin cannot quietly change under you.
 
 ## Status
 
@@ -94,10 +134,21 @@ Open a pull request adding an entry to
   a later install silently ships different code;
 - declare `rpp_version` `"1"`;
 - list the `network` hosts your `manifest.toml` actually requests, so a reader
-  can judge the ask before installing.
+  can judge the ask before installing;
+- carry a one-line `description` and a `terms` paragraph stating **your
+  source's** licensing position in plain language — not your plugin's own
+  licence, which is its `LICENSE` file. A directory that says where to get
+  ROMs and stays quiet about whether they may lawfully be got is doing half
+  the job;
+- set `search_only` if your importer cannot complete, and `key_required` if
+  the plugin is useless without a credential. Both are things a reader needs
+  before installing, not after filing a bug;
+- set `in_tree` only if the plugin ships inside this repository.
 
 The catalog is validated on load, so a malformed entry fails the test suite
-rather than reaching a user.
+rather than reaching a user. `terms` and `description` must be non-empty: a
+blank cell reads like "nothing to declare" rather than "nobody filled this
+in".
 """
 
 

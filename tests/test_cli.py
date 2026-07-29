@@ -1,9 +1,11 @@
+import io
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from romm_hub.cli import main
+from romm_hub.cli import configure_output_encoding, main
 
 MANIFEST = """
 [plugin]
@@ -30,12 +32,35 @@ class Search(SearchProvider):
 """
 
 
-@pytest.fixture
-def source_repo(tmp_path: Path) -> Path:
-    repo = tmp_path / "demo-plugin"
+# Three titles a cp1252 console cannot encode, plus one it can. Taken from
+# the shape of real Archive.org listings: CJK, Cyrillic, and an accented
+# Latin character that people assume is "basically ASCII" and is not.
+UNICODE_PLUGIN = """
+from romm_hub_sdk import SearchProvider, SearchResult
+
+TITLES = [
+    "Plain ASCII Title",
+    "\\u30bd\\u30cb\\u30c3\\u30af\\u30ea\\u30f3\\u30ab\\u30fc",
+    "\\u041f\\u0440\\u0438\\u043a\\u043b\\u044e\\u0447\\u0435\\u043d\\u0438\\u044f",
+    "Pok\\u00e9mon Caf\\u00e9 Mix",
+    "Last ASCII Title",
+]
+
+
+class Search(SearchProvider):
+    def search(self, query, platform, limit):
+        return [
+            SearchResult(source_id=str(i), title=t)
+            for i, t in enumerate(TITLES)
+        ]
+"""
+
+
+def _make_repo(tmp_path: Path, name: str, plugin_source: str) -> Path:
+    repo = tmp_path / name
     repo.mkdir()
     (repo / "manifest.toml").write_text(MANIFEST, encoding="utf-8")
-    (repo / "demo.py").write_text(PLUGIN, encoding="utf-8")
+    (repo / "demo.py").write_text(plugin_source, encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
     subprocess.run(
@@ -44,6 +69,16 @@ def source_repo(tmp_path: Path) -> Path:
         check=True,
     )
     return repo
+
+
+@pytest.fixture
+def source_repo(tmp_path: Path) -> Path:
+    return _make_repo(tmp_path, "demo-plugin", PLUGIN)
+
+
+@pytest.fixture
+def unicode_source_repo(tmp_path: Path) -> Path:
+    return _make_repo(tmp_path, "unicode-plugin", UNICODE_PLUGIN)
 
 
 def test_install_then_list(tmp_path, source_repo, monkeypatch, capsys):
@@ -539,3 +574,127 @@ def test_a_failed_job_shows_its_error(tmp_path, monkeypatch, capsys):
 
     main(["jobs"])
     assert "stream-only" in capsys.readouterr().out
+
+
+# ------------------------------------------------- output encoding boundary
+#
+# A plugin chooses its own name, result titles, refusal messages and error
+# strings. On a cp1252 Windows console, printing one containing anything
+# outside that codepage raised UnicodeEncodeError from inside `print` and
+# killed the command -- discarding results that had already been fetched.
+# Fixed once at the stream, not at ~60 print sites.
+
+
+def cp1252_stdout(monkeypatch):
+    """Replace stdout with a real cp1252 stream, and hand back its bytes.
+
+    Forced rather than probed so this is meaningful on Linux CI, where the
+    default stdout is UTF-8 and could never reproduce the bug.
+    """
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict", newline="")
+    monkeypatch.setattr(sys, "stdout", stream)
+    return stream, raw
+
+
+def test_a_title_outside_cp1252_does_not_kill_the_command(
+    tmp_path, unicode_source_repo, monkeypatch
+):
+    """The reported crash: CJK/accented titles on a cp1252 console.
+
+    Asserts both halves -- it does not raise, AND the results that bracket
+    the unprintable ones still arrive. The old failure lost every line from
+    the first bad title onwards.
+    """
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    main(["plugin", "install", str(unicode_source_repo)])
+
+    stream, raw = cp1252_stdout(monkeypatch)
+    assert main(["search", "sonic", "--limit", "6"]) == 0
+    stream.flush()
+    out = raw.getvalue().decode("cp1252")
+
+    # Nothing was dropped: the ASCII titles on either side of the
+    # unprintable ones are both here, and so is the summary line after them.
+    assert "Plain ASCII Title" in out
+    assert "Last ASCII Title" in out
+    assert "1 of 1 source" in out
+    assert "5 results" in out
+
+    # The unencodable titles degraded rather than vanishing or erroring.
+    # Derived from the codec rather than hard-coded, so the test states
+    # the property -- "this is what backslashreplace produces" -- instead
+    # of a literal that needs three levels of escaping to write down.
+    def degraded(text: str) -> str:
+        return text.encode("cp1252", "backslashreplace").decode("cp1252")
+
+    assert degraded("ソ") in out    # Japanese title
+    assert degraded("П") in out    # Cyrillic title
+    assert degraded("é") in out    # accented Latin
+    # It really is an escape sequence, not the raw character.
+    assert degraded("ソ").startswith("\\u")
+
+
+def test_utf8_output_is_not_mangled(tmp_path, unicode_source_repo, monkeypatch):
+    """Degrade only where the target genuinely cannot represent a character.
+
+    A UTF-8 stdout can represent all of these, so it must receive them
+    intact -- the fix must not "sanitise" output that was never in danger.
+    """
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROMM_HUB_ALLOW_UNSANDBOXED", "1")
+    main(["plugin", "install", str(unicode_source_repo)])
+
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="utf-8", errors="strict", newline="")
+    monkeypatch.setattr(sys, "stdout", stream)
+    assert main(["search", "sonic", "--limit", "6"]) == 0
+    stream.flush()
+    out = raw.getvalue().decode("utf-8")
+
+    assert "ソニックリンカー" in out
+    assert "Приключения" in out
+    assert "Pokémon Café Mix" in out
+    assert "\\u" not in out
+
+
+def test_configuring_the_stream_keeps_its_encoding(monkeypatch):
+    """Only the error handler changes.
+
+    Rewriting the encoding would change what a redirect or a pipe receives,
+    which is the consumer's contract and not ours to alter.
+    """
+    stream, _ = cp1252_stdout(monkeypatch)
+    configure_output_encoding()
+    assert stream.encoding.lower().replace("-", "") == "cp1252"
+    assert stream.errors == "backslashreplace"
+
+
+def test_a_stream_that_cannot_be_reconfigured_is_left_alone(monkeypatch):
+    """pytest's capture object and StringIO have no `reconfigure`.
+
+    Configuring output must never be the reason a command fails.
+    """
+    monkeypatch.setattr(sys, "stdout", io.StringIO())
+    monkeypatch.setattr(sys, "stderr", io.StringIO())
+    configure_output_encoding()  # must not raise
+
+    class Detached(io.StringIO):
+        def reconfigure(self, **kwargs):
+            raise ValueError("underlying buffer has been detached")
+
+    monkeypatch.setattr(sys, "stdout", Detached())
+    configure_output_encoding()  # must not raise either
+
+
+def test_stderr_is_covered_too(tmp_path, monkeypatch):
+    """Plugin failures print to stderr, and carry plugin-authored text."""
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict", newline="")
+    monkeypatch.setattr(sys, "stderr", stream)
+    configure_output_encoding()
+    print("error: ソニック failed", file=sys.stderr)
+    stream.flush()
+    degraded = "ソ".encode("cp1252", "backslashreplace").decode("cp1252")
+    assert degraded in raw.getvalue().decode("cp1252")
