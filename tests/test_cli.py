@@ -307,6 +307,62 @@ def test_import_reports_a_sandbox_refusal_clearly(
     assert "ROMM_HUB_ALLOW_UNSANDBOXED" in (combined.out + combined.err)
 
 
+# --- enrich --------------------------------------------------------------
+#
+# Same rule as `import`: none of these may reach a live RomM. Each stops at
+# a check that fires before any RomM connection is attempted.
+
+
+def test_enrich_from_an_unknown_plugin_exits_nonzero_with_a_clear_message(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["enrich", "no-such-plugin", "1"]) != 0
+    err = capsys.readouterr().err
+    assert "no-such-plugin" in err
+    assert "not installed" in err
+
+
+def test_enrich_from_a_plugin_without_the_capability_says_so(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    assert main(["enrich", "demo", "1"]) != 0
+    assert "metadata" in capsys.readouterr().err
+
+
+def test_enrich_without_romm_settings_names_the_variables(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """The capability check passes, so the next thing that must stop it is
+    the unconfigured RomM -- not a connection attempt."""
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    for name in ("ROMM_URL", "ROMM_USER", "ROMM_PASSWORD"):
+        monkeypatch.delenv(name, raising=False)
+    main(["plugin", "install", str(source_repo)])
+    installed = tmp_path / "home" / "plugins" / "demo" / "manifest.toml"
+    installed.write_text(
+        MANIFEST.replace(
+            '[capabilities]\nsearch = "demo:Search"',
+            '[capabilities]\nsearch = "demo:Search"\nmetadata = "demo:Search"',
+        ),
+        encoding="utf-8",
+    )
+    assert main(["enrich", "demo", "1"]) != 0
+    assert "ROMM_URL" in capsys.readouterr().err
+
+
+def test_enrich_from_a_disabled_plugin_is_refused(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROMM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    main(["plugin", "disable", "demo"])
+    assert main(["enrich", "demo", "1"]) != 0
+    assert "disabled" in capsys.readouterr().err
+
+
 def test_a_failed_job_shows_its_error(tmp_path, monkeypatch, capsys):
     from romm_hub.cli import jobs_db_path
     from romm_hub.jobs import JobQueue, JobState
