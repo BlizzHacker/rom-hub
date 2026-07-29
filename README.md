@@ -418,7 +418,7 @@ record instead:
 `pytest --cov` reports **86.6 %** on Linux and **86.9 %** on Windows (branch
 coverage, `rom_hub` + `rom_hub_sdk`). CI enforces a floor and publishes the
 per-module table to the run summary. One number in that table is misleading and
-is explained rather than fixed: `rom_hub_sdk/runner.py` measures ~14 % because
+is explained rather than fixed: `rom_hub_sdk/runner.py` measures 12 % on Linux because
 it only ever executes inside the *plugin subprocess*, whose environment is
 built from `{}` upward — instrumenting it would mean punching a hole in the
 allowlist that `tests/test_hostile_plugin.py` exists to defend. It is covered
