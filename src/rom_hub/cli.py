@@ -369,12 +369,28 @@ def _cmd_import(args) -> int:
     backend = open_backend()
 
     # And refused before either, if the backend cannot do this at all.
-    # `--collection` against a backend without collections is a mistake
-    # about the flag, and it should read like one -- not like a 404 from
-    # an endpoint the operator has never heard of, four gigabytes later.
     require(backend, IMPORT, "importing a ROM")
+
+    # `--collection` is the one place a missing *optional* capability
+    # still refuses, and the asymmetry is deliberate. The pipeline
+    # degrades a collection, because the name it sees is usually a
+    # plugin's default (archive-org files everything under "Archive.org")
+    # and dropping boilerplate costs the operator nothing they asked for.
+    # This is the opposite case: they typed the name. Quietly importing
+    # somewhere other than where they said is how a library ends up
+    # unsorted with no error to explain it -- so it stops here, before the
+    # plugin process starts, and the hint says what to run instead.
     if args.collection:
-        require(backend, COLLECTIONS, f"--collection {args.collection!r}")
+        require(
+            backend,
+            COLLECTIONS,
+            f"--collection {args.collection!r}",
+            hint=(
+                f"Re-run without --collection to import the ROM anyway; it "
+                f"will land in the library ungrouped, and no collection "
+                f"named {args.collection!r} will be created."
+            ),
+        )
 
     result = SearchResult(
         source_id=args.source_id,
@@ -661,6 +677,13 @@ def _cmd_jobs(args) -> int:
         # failure, so it is never truncated away.
         if job.error:
             print(f"       ! {job.error}")
+        # A note is not an error: the job succeeded, minus something
+        # optional the backend cannot do. Marked differently so a DONE
+        # import carrying one does not read as broken -- but shown, because
+        # a degradation nobody is told about is just a silent difference
+        # between what was asked for and what happened.
+        if job.notes:
+            print(f"       ~ {job.notes}")
     print()
     print(f"{len(jobs)} job(s)")
     return EXIT_OK
