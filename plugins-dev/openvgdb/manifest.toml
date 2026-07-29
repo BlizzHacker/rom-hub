@@ -1,0 +1,27 @@
+[plugin]
+slug        = "openvgdb"
+name        = "OpenVGDB"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+metadata = "openvgdb.metadata:Metadata"
+
+# The database itself is read from disk, not fetched -- see README.md, "Why
+# the database is not downloaded". These two hosts are here only because a
+# cover URL out of OpenVGDB points at one of them, and the *host* fetches
+# that URL after checking it against this list.
+#
+# `art.gametdb.com` is deliberately absent even though 1,789 GameCube and
+# Wii covers point there: it serves `robots.txt` with `User-agent: *` /
+# `Disallow: *.*`, so those covers are never probed and never proposed.
+[permissions]
+network  = ["raw.githubusercontent.com", "gamefaqs.gamespot.com"]
+romm_api = []
+
+[config]
+db_path  = { type = "str", default = "" }
+artwork  = { type = "bool", default = true }
+set_name = { type = "bool", default = true }
+region   = { type = "str", default = "" }

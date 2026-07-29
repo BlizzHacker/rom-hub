@@ -1,0 +1,24 @@
+clrmamepro (
+	name "Nintendo - Game Boy"
+	description "Nintendo - Game Boy"
+	version "2026.05.02"
+	homepage "http://github.com/robloach/libretro-dats"
+)
+game (
+	name "Tetris (World) (Rev 1)"
+	rom ( name "Tetris (World) (Rev 1).gb" size 32768 crc 46DF91AD md5 982ED5D2B12A0377EB14BCDC4123744E sha1 74591CC9501AF93873F9A5D3EB12DA12C0723BBC )
+)
+game (
+	name "Tetris 2 (USA)"
+	region "USA"
+	rom ( name "Tetris 2 (USA).gb" size 131072 crc AA4A1EDB md5 9DDC6F4F0DC369008CBD2AC4EC561E75 sha1 EC7B3419C08F1A5713AFFF2B26C1534D91602338 )
+)
+game (
+	name "14 Juillet (World) (Fr)"
+	rom ( name "14 Juillet (World) (Fr) (Aftermarket) (Unl).gb" size 1048576 crc 7B66BEE4 md5 E5B790931CDB6308A1939239C707AB24 sha1 02F387457A779CBD2F493E52743CD32C169C098E )
+)
+game (
+	name "Kirby's Dream Land (USA, Europe)"
+	region "USA"
+	rom ( name "Kirby's Dream Land (USA, Europe).gb" size 262144 crc 40F25740 md5 A66E4918EDCD042EC171A57FE3CE36C3 sha1 90979BAA1D0E24B41B5C304C5DDAF77450692D5A )
+)

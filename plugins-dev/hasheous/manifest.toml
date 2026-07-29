@@ -1,0 +1,23 @@
+[plugin]
+slug        = "hasheous"
+name        = "Hasheous"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+metadata = "hasheous.metadata:Metadata"
+
+# One host. The lookup is a plain GET at `hasheous.org/api/v1/Lookup/ByHash/
+# <kind>/<hex>` and nothing else is fetched: this plugin proposes no artwork,
+# so there is no image host and no CDN hop to declare.
+[permissions]
+network  = ["hasheous.org"]
+romm_api = []
+
+[config]
+verify_platform   = { type = "bool", default = true }
+allow_crc32       = { type = "bool", default = false }
+set_name          = { type = "bool", default = true }
+raw_metadata      = { type = "bool", default = true }
+cross_provider_ids = { type = "bool", default = false }

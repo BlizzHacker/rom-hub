@@ -135,11 +135,14 @@ and neither can this directory change it for you.
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Backends | Flags | Network |
 |---|---|---|---|---|---|---|---|---|
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
+| ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
 | ❗ [itch.io (free games) — NO IMPORT](https://github.com/BlizzHacker/rom-hub-itch-io) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-itch-io)) | 0.3.0 | 2026-07-29 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
 | ✔ [libretro cores (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-cores) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cores)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cores/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | `buildbot.libretro.com` |
+| ✔ [libretro Database (DAT)](https://github.com/BlizzHacker/rom-hub-libretro-database) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-database)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-database/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `raw.githubusercontent.com` |
 | ✔ [libretro Thumbnails](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `thumbnails.libretro.com` |
 | ❗ [No-Intro sets on Archive.org](https://github.com/BlizzHacker/rom-hub-nointro-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-nointro-archive)) | 0.2.1 | 2026-07-29 | [`v0.2.1` tarball](https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.2.1.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
+| ❗ [OpenVGDB](https://github.com/BlizzHacker/rom-hub-openvgdb) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-openvgdb)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `raw.githubusercontent.com`, `gamefaqs.gamespot.com` |
 | ❗ [RetroAchievements](https://github.com/BlizzHacker/rom-hub-retroachievements) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-retroachievements)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | **API key required** (stored in clear text) | `retroachievements.org` |
 
 **Reading the Backends column.** A plain name means everything this plugin declares works there. `*` means it all runs but an *extra* is skipped — a collection not created, a cover not stored — and the skip is reported in the outcome. `!` means one of its capabilities cannot run at all and is refused up front, while the rest still work. A struck-through name is a server the plugin is no use against. The per-plugin sections below name the capability and the reason in each case.
@@ -157,6 +160,18 @@ Searches the Internet Archive's software collections by title and imports the it
 **Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
 
 **Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ Hasheous — `hasheous`
+
+Turns a ROM's hash into a game identity, and hands back other providers' ids — IGDB, TheGamesDB, RetroAchievements — without you holding a key for any of them.
+
+**Source terms.** The cleanest terms of any identification source here, because there is no game content in an answer. Hasheous distributes matching data only: hash to name to other databases' identifiers. Its own README says it "Is completely free to use" and its MCP documentation says the hosted endpoint is "intentionally public for free database lookups"; the lookup routes take no key and this plugin sends no credential. The DAT catalogues it ingests (No-Intro, Redump, TOSEC, MAME) are published openly by those projects, and the metadata ids it maps to belong to IGDB, TheGamesDB and RetroAchievements — hasheous holds those keys so you do not have to. Its robots.txt allows `User-agent: *` and disallows some named AI crawlers; this plugin is a ROM manager issuing one GET per hash, not a crawler.
+
+**Comments.** Metadata only, and hash-keyed only: the four `ByHash` routes are the whole GET surface, so a ROM with no hash is refused rather than resolved by searching for its title and taking the top hit. Pass the digest with `--source-id md5:<hex>` (or sha1:, sha256:, crc:, or a bare digest — 8/32/40/64 characters are unambiguous). CRC-32 is refused unless `allow_crc32` is set, because 32 bits over this corpus collide and the failure is a confident answer about a different game. Every answer is cross-checked against the console RomM already has the ROM filed under, comparing hasheous's own DAT-derived `signature.game.system` first; a mismatch refuses and writes nothing. Only provider ids hasheous itself marks `Mapped` are written — a `NotMapped` row is a scheduled search, not an answer.
+
+**Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
+
+**Network requested.** `hasheous.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Homebrew Hub (gbdev) — `homebrew`
 
@@ -196,6 +211,18 @@ Lists and installs emulator cores from libretro's public buildbot, for a build t
 
 **Network requested.** `buildbot.libretro.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
+### ✔ libretro Database (DAT) — `libretro-database`
+
+Resolves a ROM to its No-Intro or Redump catalogue entry by hash and proposes that entry's name.
+
+**Source terms.** About as clean as a metadata source gets. `libretro/libretro-database` is a public repository whose DAT files exist to be read by programs like this one — it is what RetroArch itself does to build playlists. A DAT is a list of names, sizes and checksums: there is no game content in it, so no copyright is being routed around. The catalogues underneath are No-Intro's and Redump's, published openly by those projects and republished by libretro. `raw.githubusercontent.com` serves no robots.txt at all (HTTP 404), so there is no crawl directive to observe; the plugin fetches at most one file per configured set per ROM regardless.
+
+**Comments.** Writes the DAT's `game (name …)` and **never** its `rom (name …)`. Those differ in the real data — the Game Boy game titled `14 Juillet (World) (Fr)` has a rom file named `14 Juillet (World) (Fr) (Aftermarket) (Unl).gb` — and the parser keeps them in separate attributes so they cannot be confused, which is the mistake libretro-thumbnails documented rather than made. Matching is by CRC-32/MD5/SHA-1 first and by an exact filename second; a hash that misses does **not** fall back to the filename, because you named a specific dump. Sets no `libretro_id`: RomM's own handler defines that field as the SHA-1 of a libretro *thumbnail* filename, so a DAT-derived value there would collide with a field RomM maintains for something else. One DAT is fetched per lookup and no caching is possible, so note the headroom: `redump/Sony - PlayStation 2.dat` is 4,060,828 bytes against the Hub's 4,194,304-byte response ceiling — about 3% — and a size refusal is reported as exactly that rather than as a miss. Arcade, DOS and the 8-bit micros are absent: those catalogues live under different directories with different keys.
+
+**Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
+
+**Network requested.** `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
 ### ✔ libretro Thumbnails — `libretro-thumbnails`
 
 Proposes box art, title screens and in-game screenshots for a ROM by matching its No-Intro-style name.
@@ -219,6 +246,18 @@ Reads plain HTTP directory indexes of No-Intro sets held on the Internet Archive
 **Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
 
 **Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ OpenVGDB — `openvgdb`
+
+Proposes a curated title — `Tetris`, not `Tetris (World) (Rev A)` — and a cover, from a local copy of the Open Video Game Database.
+
+**Source terms.** Read this one carefully, because the honest answer is in two halves. OpenVGDB is published as a public GitHub release and is bundled or downloaded by a long list of emulator frontends, OpenEmu and Provenance among them — but its repository declares no licence file and GitHub reports no licence for it, so "freely redistributable in practice" is accurate where "licensed for redistribution" would not be. The hash and filename tables are catalogue facts about dumps. The cover art is not in the database at all: it stores URLs to GameFAQs and to community projects, and the images at the other end are the publishers' copyright, hosted rather than licensed to you. Fetching one to illustrate your own library is what the database is for; republishing a library built that way is your call. `art.gametdb.com` covers are never proposed, because that host's robots.txt disallows everything.
+
+**Comments.** **Needs a one-time 8.7 MB download you perform yourself**, and `db_path` set to the unpacked `openvgdb.sqlite`; a plugin cannot fetch it, for four independent reasons the README sets out (the zip is over `ctx.http`'s 4 MiB cap, `HttpResponse` carries text and not bytes, the GitHub asset 302s to a host the fetcher will not follow to, and a plugin subprocess has nowhere to cache anything). OpenVGDB publishes no API, so there is nothing to query instead. The database is opened read-only through a `file:...?mode=ro` URI, because `sqlite3.connect` on a plain path creates an empty database and a typo would otherwise answer "no match" forever. Matching is by hash, serial, or an exact filename — never a prefix — always scoped to one system; two matches refuse rather than choose. Covers are probed before they are proposed, so a 403 on an image costs the art and not the title. Sets no provider ids: OpenVGDB's row numbers are meaningful to nothing outside your own copy. The data stops at 2021 and at OpenEmu's 43 consoles, so there is no DOS, no Amiga and nothing after the PSP. Expect titles more often than covers: measured with the Hub's own user agent, `gamefaqs.gamespot.com` (31,235 of the 43,801 covers) answers 403 behind Cloudflare while `raw.githubusercontent.com` (10,777, all arcade) answers 200 — robots permits the fetch, the site declines to serve it, and the probe turns that into a missing cover rather than a failed enrich.
+
+**Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
+
+**Network requested.** `raw.githubusercontent.com`, `gamefaqs.gamespot.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ❗ RetroAchievements — `retroachievements`
 

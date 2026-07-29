@@ -1,0 +1,133 @@
+{
+  "id": 4321,
+  "name": "Altered Beast",
+  "platform": {
+    "name": "Sega Mega Drive",
+    "metadata": [
+      {
+        "id": "29",
+        "immutableId": "29",
+        "status": "Mapped",
+        "matchMethod": "Automatic",
+        "source": "IGDB",
+        "link": "https://www.igdb.com/platforms/29",
+        "lastSearch": "2026-07-01T00:00:00",
+        "nextSearch": "2026-08-01T00:00:00",
+        "winningVoteCount": 0,
+        "totalVoteCount": 0,
+        "winningVotePercent": 0
+      }
+    ]
+  },
+  "publisher": {
+    "name": "Sega",
+    "metadata": []
+  },
+  "signature": {
+    "game": {
+      "id": "10241",
+      "gameId": "0",
+      "name": "Altered Beast",
+      "description": "Altered Beast (USA, Europe)",
+      "year": "1988",
+      "publisher": "Sega",
+      "demo": "NotDemo",
+      "system": "Sega - Mega Drive - Genesis",
+      "systemVariant": null,
+      "countryString": "USA, Europe",
+      "country": { "US": "USA", "EU": "Europe" },
+      "languageString": "En",
+      "language": { "En": "English" },
+      "copyright": null,
+      "romCount": 1,
+      "systemId": 33,
+      "publisherId": 7,
+      "metadataSource": 0,
+      "score": 100
+    },
+    "rom": {
+      "id": "88213",
+      "name": "Altered Beast (USA, Europe).md",
+      "size": 524288,
+      "crc": "05CB39E5",
+      "md5": "5D7550788A4D1B47AD81FBBBF5C615A9",
+      "sha1": "274ED5C2EA2DDC855F67D4C4E61C9D9B7EB68403",
+      "sha256": null,
+      "status": "Verified",
+      "country": { "US": "USA", "EU": "Europe" },
+      "language": { "En": "English" },
+      "developmentStatus": null,
+      "attributes": {},
+      "romType": "Cartridge",
+      "romTypeMedia": null,
+      "mediaDetail": null,
+      "mediaLabel": null,
+      "signatureSource": "NoIntros",
+      "score": 100
+    }
+  },
+  "metadata": [
+    {
+      "id": "1234",
+      "immutableId": "1234",
+      "status": "Mapped",
+      "matchMethod": "Automatic",
+      "source": "IGDB",
+      "link": "https://www.igdb.com/games/1234",
+      "lastSearch": "2026-07-01T00:00:00",
+      "nextSearch": "2026-08-01T00:00:00",
+      "winningVoteCount": 0,
+      "totalVoteCount": 0,
+      "winningVotePercent": 0
+    },
+    {
+      "id": "7195",
+      "immutableId": "7195",
+      "status": "Mapped",
+      "matchMethod": "Automatic",
+      "source": "RetroAchievements",
+      "link": "https://retroachievements.org/game/7195",
+      "lastSearch": "2026-07-01T00:00:00",
+      "nextSearch": "2026-08-01T00:00:00",
+      "winningVoteCount": 0,
+      "totalVoteCount": 0,
+      "winningVotePercent": 0
+    },
+    {
+      "id": null,
+      "immutableId": null,
+      "status": "NotMapped",
+      "matchMethod": "NoMatch",
+      "source": "TheGamesDb",
+      "link": null,
+      "lastSearch": "2026-07-01T00:00:00",
+      "nextSearch": "2026-08-01T00:00:00",
+      "winningVoteCount": 0,
+      "totalVoteCount": 0,
+      "winningVotePercent": 0
+    },
+    {
+      "id": "3-altered-beast",
+      "immutableId": "3-altered-beast",
+      "status": "Mapped",
+      "matchMethod": "Automatic",
+      "source": "GiantBomb",
+      "link": null,
+      "lastSearch": "2026-07-01T00:00:00",
+      "nextSearch": "2026-08-01T00:00:00",
+      "winningVoteCount": 0,
+      "totalVoteCount": 0,
+      "winningVotePercent": 0
+    }
+  ],
+  "attributes": [
+    {
+      "id": 91,
+      "attributeType": "ShortString",
+      "attributeName": "Publisher",
+      "attributeRelationType": "Company",
+      "value": "Sega",
+      "link": null
+    }
+  ]
+}
