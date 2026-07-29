@@ -1,10 +1,16 @@
 [plugin]
 slug        = "itch-io"
-name        = "itch.io (free games)"
-version     = "0.1.0"
+name        = "itch.io (free games) — SEARCH-ONLY"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
+# SEARCH-ONLY. `importer` is declared and implemented, and it always refuses:
+# itch.io issues a download URL only for a POST carrying the game page's
+# csrf_token, `/game/download/` is Disallowed in itch.io's robots.txt, and this
+# Hub's broker performs GET only. The importer exists to do the routing work and
+# then say so by name -- see README, "This plugin cannot import. That is the
+# correct answer." Nothing here will ever place a file in your library.
 [capabilities]
 search   = "itch_io.search:Search"
 importer = "itch_io.importer:Importer"
