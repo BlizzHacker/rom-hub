@@ -1,0 +1,21 @@
+[plugin]
+slug        = "libretro-thumbnails"
+name        = "libretro Thumbnails"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+metadata = "libretro_thumbnails.metadata:Metadata"
+
+# One host, and only one: thumbnails.libretro.com serves the images
+# directly with no redirect (verified 2026-07-29 -- `curl -w %{num_redirects}`
+# reports 0 for a real boxart URL), so there is no CDN hop to declare and
+# nothing else to allow.
+[permissions]
+network  = ["thumbnails.libretro.com"]
+romm_api = []
+
+[config]
+art_kind       = { type = "str", default = "boxart" }
+index_fallback = { type = "bool", default = true }
