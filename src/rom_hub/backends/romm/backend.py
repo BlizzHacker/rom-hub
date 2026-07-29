@@ -47,8 +47,8 @@ BACKEND_NAME = "romm"
 
 # The connection settings, each with the backend-neutral name that also
 # works. `ROMM_URL` and friends are not deprecated and were not renamed:
-# they are RomM's name, they are already in shell profiles and systemd
-# units on an LXC container, and they are correct for the backend they configure.
+# they are RomM's name, they are already in operators' shell profiles and
+# systemd units, and they are correct for the backend they configure.
 # The `ROM_HUB_BACKEND_*` spellings exist so a deployment that switches
 # backends does not have to rewrite its unit file to a different product's
 # vocabulary.
