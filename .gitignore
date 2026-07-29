@@ -17,3 +17,10 @@ plugins-dev/*/.git/
 
 # Subagent reports, not project content
 .git-report-*.md
+
+# Coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+junit-*.xml
