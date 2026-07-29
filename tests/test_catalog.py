@@ -88,23 +88,58 @@ def test_archive_org_entry_is_pinned_to_a_tag():
     assert entry.download.endswith(".tar.gz")
 
 
-def test_in_tree_plugins_do_not_advertise_repo_urls_that_resolve():
-    """These six have no public repos yet, so their URLs must not pretend to.
+def test_no_entry_still_points_at_an_unpublished_placeholder():
+    """The plugins are published now, so `.invalid` must not survive anywhere.
 
-    A directory printing a URL that 404s is worse than one printing none: a
-    reader cannot tell a dead link from a supply-chain swap. `.invalid` is
-    reserved by RFC 2606 and is guaranteed never to resolve, so it reads as
-    a placeholder and can never be registered by somebody else.
+    This is the successor to the rule that used to run the other way. While
+    the plugins had no public repos, their URLs were required to be
+    `.invalid` (RFC 2606, guaranteed never to resolve) so a reader could not
+    mistake a dead link for a supply-chain swap. Each one now has a real
+    repository, and a placeholder left behind would be the same lie in the
+    opposite direction: a directory claiming a plugin is unpublished when it
+    is one clone away.
     """
     for entry in load_catalog(CATALOG_PATH):
-        if not entry.in_tree:
-            continue
         for url in (entry.repository, entry.install, entry.download):
             host = url.split("/")[2]
-            assert host.endswith(".invalid"), (
-                f"{entry.slug}: {url} looks like a real URL, but this plugin "
-                f"ships in-tree and has no public repo"
+            assert not host.endswith(".invalid"), (
+                f"{entry.slug}: {url} is still an unpublished placeholder"
             )
+        assert not entry.in_tree, (
+            f"{entry.slug}: in_tree says it has no public repo, but "
+            f"{entry.repository} is one"
+        )
+
+
+def test_every_entry_is_pinned_to_the_tag_of_the_version_it_names():
+    """Three facts, one truth: the manifest's version, the catalog's, and the tag.
+
+    A plugin whose code moved without its version moving is the failure this
+    cannot catch on its own -- see `test_the_published_tag_still_matches_the
+    _development_copy`, which is the live check for that. What it *does*
+    catch is the cheap and much more likely mistake: bumping a plugin and
+    forgetting to move the ref, so the directory keeps installing the old
+    tag while advertising the new version.
+    """
+    import tomllib
+
+    plugins_dev = Path(__file__).resolve().parents[1] / "plugins-dev"
+    for entry in load_catalog(CATALOG_PATH):
+        manifest = tomllib.loads(
+            (plugins_dev / entry.slug / "manifest.toml").read_text(encoding="utf-8")
+        )
+        version = str(manifest["plugin"]["version"])
+        assert entry.version == version, (
+            f"{entry.slug}: catalog says {entry.version}, manifest says {version}"
+        )
+        assert entry.ref == f"v{version}", (
+            f"{entry.slug}: version {version} should be installed from tag "
+            f"v{version}, not {entry.ref!r}"
+        )
+        # And the tarball a reader would click must be the same tag the CLI
+        # would clone, not merely *a* tag from the same repository.
+        assert entry.download.endswith(f"/{entry.ref}.tar.gz")
+        assert entry.download.startswith(entry.repository + "/")
 
 
 def test_entries_must_declare_a_known_status():
@@ -352,6 +387,75 @@ def test_the_needs_and_extras_are_real_backend_capabilities():
     assert set(CAPABILITY_NEEDS.values()) <= ALL_CAPABILITIES
     # An "extra" that the host would refuse to degrade is not an extra.
     assert set(CAPABILITY_EXTRAS.values()) <= OPTIONAL_CAPABILITIES
+
+
+
+# ------------------------------------------ the copy vs the published tag
+
+
+def _tree(root: Path) -> dict[str, bytes]:
+    """Every file under `root`, keyed by posix path, newline-normalised.
+
+    Build artefacts are excluded and CRLF is folded to LF: this repository
+    is developed on Windows with `core.autocrlf`, so a checkout of the same
+    commit differs from a tarball of it in every text file and in nothing
+    that matters.
+    """
+    out = {}
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root).as_posix()
+        if rel.startswith(".git/") or "__pycache__" in rel:
+            continue
+        out[rel] = path.read_bytes().replace(b"\r\n", b"\n")
+    return out
+
+
+@pytest.mark.live
+def test_the_published_tag_still_matches_the_development_copy():
+    """`plugins-dev/` is a copy, and this is what stops it drifting silently.
+
+    The published repository at the pinned tag is canonical; `plugins-dev/`
+    exists so the plugin test suites can run with no network. Two copies of
+    anything drift, so the drift is made *detectable* rather than merely
+    discouraged: this downloads each tag and diffs it against the copy.
+
+    Marked `live` and therefore deselected by default. No test in the
+    offline suite may reach the network -- that is the whole reason the
+    development copy is there.
+    """
+    import io
+    import tarfile
+    import tempfile
+
+    import httpx
+
+    plugins_dev = Path(__file__).resolve().parents[1] / "plugins-dev"
+    drifted = []
+    for entry in load_catalog(CATALOG_PATH):
+        response = httpx.get(entry.download, follow_redirects=True, timeout=60)
+        assert response.status_code == 200, (
+            f"{entry.slug}: {entry.download} answered {response.status_code}"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            with tarfile.open(fileobj=io.BytesIO(response.content), mode="r:gz") as tar:
+                tar.extractall(tmp, filter="data")
+            (extracted,) = Path(tmp).iterdir()
+            published = _tree(extracted)
+        local = _tree(plugins_dev / entry.slug)
+        if published != local:
+            differing = sorted(
+                name
+                for name in set(published) | set(local)
+                if published.get(name) != local.get(name)
+            )
+            drifted.append(f"{entry.slug} @ {entry.ref}: {differing}")
+
+    assert not drifted, (
+        "plugins-dev has drifted from the published tags. The tag is "
+        "canonical -- see plugins-dev/README.md:\n  " + "\n  ".join(drifted)
+    )
 
 
 def test_the_display_name_comes_from_the_backend_not_from_this_module():

@@ -96,28 +96,31 @@ The **Backends** column below applies that rule to each plugin's declared
 capabilities. It is generated from the two declarations — the plugin's and the
 backend's — so it cannot drift out of step with either.
 
-## These plugins ship in-tree
+## Every plugin listed here is published
 
-The seven plugins below live in this repository's `plugins-dev/` directory and
-**have no individual public repositories yet**. Rather than print URLs that do
-not resolve, their repository and download fields use the reserved
-`.invalid` TLD (RFC 2606, guaranteed never to resolve) — if you see
-`rom-hub.invalid`, that is a placeholder saying "not published yet", not a
-link to follow. Install them by path:
+Each of the seven below lives in its own public repository, and every
+`repository`, `install` and `download` URL on this page resolves. Nothing here
+is a placeholder any more.
 
-    rom-hub plugin install ./plugins-dev/archive-org
-
-Note that `plugin install` clones its source, so each plugin directory has to
-be a git repository for that to work.
+They also have a **development copy** in this repository's `plugins-dev/`
+directory, which is what the offline test suite runs against. The published
+repository at the pinned tag is **canonical**: if the two ever disagree, the
+tag is right and the copy is stale. `plugins-dev/README.md` says how they are
+kept in step and how to check.
 
 ## Installing
 
-    rom-hub plugin browse                 # list what's here
-    rom-hub plugin install ./plugins-dev/archive-org   # in-tree, today
-    rom-hub plugin install https://github.com/someone/their-plugin --ref v1.2.0
+    rom-hub plugin browse                # list what's here
+    rom-hub plugin install archive-org   # by slug, resolved through this directory
+    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
 
-Installs from a URL are pinned to a tag. Updating is deliberate — re-run
-`install` with a new ref — so a plugin cannot quietly change under you.
+Installing by slug takes the repository **and** the tag from this directory, so
+the two forms above fetch the same commit — which the Hub then records as a
+resolved SHA, because a tag can be moved after you install it.
+
+Every install is pinned to a tag, never a branch. Updating is deliberate — you
+re-run `install` with a new ref — so a plugin cannot quietly change under you,
+and neither can this directory change it for you.
 
 ## Status
 
@@ -131,13 +134,13 @@ Installs from a URL are pinned to a tag. Updating is deliberate — re-run
 
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Backends | Flags | Network |
 |---|---|---|---|---|---|---|---|---|
-| ✔ Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/archive-org` (in-tree) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
-| ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
-| ❗ itch.io (free games) — NO IMPORT | BlizzHacker (in-tree, no public repo yet) | 0.3.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
-| ✔ libretro cores (buildbot) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-cores` (in-tree) | `cores` | Gaseous · Retrom · RomM | — | `buildbot.libretro.com` |
-| ✔ libretro Thumbnails | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-thumbnails` (in-tree) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `thumbnails.libretro.com` |
-| ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.1 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
-| ❗ RetroAchievements | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/retroachievements` (in-tree) | `metadata` | ~~Gaseous~~ · Retrom · RomM | **API key required** (stored in clear text) | `retroachievements.org` |
+| ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
+| ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
+| ❗ [itch.io (free games) — NO IMPORT](https://github.com/BlizzHacker/rom-hub-itch-io) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-itch-io)) | 0.3.0 | 2026-07-29 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
+| ✔ [libretro cores (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-cores) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cores)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cores/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | `buildbot.libretro.com` |
+| ✔ [libretro Thumbnails](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `thumbnails.libretro.com` |
+| ❗ [No-Intro sets on Archive.org](https://github.com/BlizzHacker/rom-hub-nointro-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-nointro-archive)) | 0.2.1 | 2026-07-29 | [`v0.2.1` tarball](https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.2.1.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
+| ❗ [RetroAchievements](https://github.com/BlizzHacker/rom-hub-retroachievements) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-retroachievements)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | **API key required** (stored in clear text) | `retroachievements.org` |
 
 **Reading the Backends column.** A plain name means everything this plugin declares works there. `*` means it all runs but an *extra* is skipped — a collection not created, a cover not stored — and the skip is reported in the outcome. `!` means one of its capabilities cannot run at all and is refused up front, while the rest still work. A struck-through name is a server the plugin is no use against. The per-plugin sections below name the capability and the reason in each case.
 
@@ -253,7 +256,11 @@ Open a pull request adding an entry to
   file — and `key_required` if
   the plugin is useless without a credential. Both are things a reader needs
   before installing, not after filing a bug;
-- set `in_tree` only if the plugin ships inside this repository.
+- leave `in_tree` `false` unless your plugin has **no** published repository
+  and can only be installed from a path inside this tree. Every plugin listed
+  today has one, so every entry is `false`; the flag exists so that a
+  not-yet-published plugin renders the path that works instead of a link that
+  404s.
 
 The catalog is validated on load, so a malformed entry fails the test suite
 rather than reaching a user. `terms` and `description` must be non-empty: a
