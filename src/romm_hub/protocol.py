@@ -14,7 +14,10 @@ callers must kill the peer, never try to resync.
 import json
 from typing import IO
 
-MAX_MESSAGE_BYTES = 8 * 1024 * 1024
+# Characters, not bytes: these are text-mode streams and json.dumps runs with
+# ensure_ascii=False, so a CJK payload is up to 3x this in bytes on the wire.
+# The name says which one it is.
+MAX_MESSAGE_CHARS = 8 * 1024 * 1024
 VALID_KINDS = frozenset({"call", "result", "error"})
 
 
@@ -32,13 +35,13 @@ def read_message(stream: IO[str]) -> dict | None:
     while True:
         # Bounded: at most one character beyond the cap is ever resident, and
         # that character is only there to prove the cap was exceeded.
-        line = stream.readline(MAX_MESSAGE_BYTES + 1)
+        line = stream.readline(MAX_MESSAGE_CHARS + 1)
         if line == "":
             return None  # clean EOF
-        if len(line) > MAX_MESSAGE_BYTES:
+        if len(line) > MAX_MESSAGE_CHARS:
             raise ProtocolError(
-                f"message too large: exceeds {MAX_MESSAGE_BYTES}; the stream is "
-                "now desynchronised and the peer must be killed"
+                f"message too large: exceeds {MAX_MESSAGE_CHARS} characters; "
+                "the stream is now desynchronised and the peer must be killed"
             )
         line = line.strip()
         if not line:
