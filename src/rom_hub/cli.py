@@ -667,7 +667,14 @@ def _cmd_jobs(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="rom-hub", description="RomM plugin host")
+    parser = argparse.ArgumentParser(
+        prog="rom-hub",
+        description=(
+            "Plugin host for a self-hosted ROM library (ROM Provider "
+            "Protocol v1). 'rom-hub backend info' says which library "
+            "server is active and what it can do."
+        ),
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     plugin = sub.add_parser("plugin", help="manage plugins")
@@ -702,36 +709,42 @@ def build_parser() -> argparse.ArgumentParser:
 
     importer = sub.add_parser(
         "import",
-        help="import one item into RomM (needs ROMM_URL, ROMM_USER, ROMM_PASSWORD)",
+        help=(
+            "import one item into the library (needs the active backend's "
+            "settings -- see 'rom-hub backend info')"
+        ),
     )
     importer.add_argument("plugin", help="slug of an installed importer plugin")
     importer.add_argument("source_id", help="the plugin's id for the item")
     importer.add_argument(
         "--platform",
         default=None,
-        help="RomM platform slug to file this under, overriding the plugin's",
+        help="platform slug to file this under, overriding the plugin's",
     )
     importer.add_argument(
         "--collection",
         default=None,
-        help="RomM collection to add it to, overriding the plugin's",
+        help=(
+            "collection to add it to, overriding the plugin's; refused up "
+            "front if the active backend has no collections"
+        ),
     )
     importer.set_defaults(func=_cmd_import)
 
     enrich = sub.add_parser(
         "enrich",
         help=(
-            "enrich one rom's metadata through a plugin "
-            "(needs ROMM_URL, ROMM_USER, ROMM_PASSWORD)"
+            "enrich one rom's metadata through a plugin (needs the active "
+            "backend's settings -- see 'rom-hub backend info')"
         ),
     )
     enrich.add_argument("plugin", help="slug of an installed metadata plugin")
-    enrich.add_argument("rom_id", type=int, help="RomM's id for the rom")
+    enrich.add_argument("rom_id", type=int, help="the library's id for the rom")
     enrich.add_argument(
         "--source-id",
         default=None,
         help=(
-            "the plugin's own id for this game, when RomM's record does not "
+            "the plugin's own id for this game, when the library's record does not "
             "identify it (a plugin that will not guess says so and names this)"
         ),
     )
