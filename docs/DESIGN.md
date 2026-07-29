@@ -133,6 +133,62 @@ The Hub owns a **SQLite database** for plugin registrations, per-plugin config,
 install/pin records and job history. **RomM's MariaDB is never touched.** This
 is what keeps RomM upgrades from breaking the Hub and vice versa.
 
+As built: plugin registrations and pins are `$ROMM_HUB_HOME/state.json`, the
+import job queue is `$ROMM_HUB_HOME/var/jobs.db`, and in-flight downloads are
+`$ROMM_HUB_HOME/var/downloads/<job-id>/`. `ROMM_HUB_HOME` defaults to
+`~/.romm-hub` and is what points all of it at the estate rather than at `C:`.
+
+### RomM connection settings
+
+The Hub reads its RomM credentials from the environment — `ROMM_URL`,
+`ROMM_USER`, `ROMM_PASSWORD` — never from a file in the repo. All three are
+required by `romm-hub import`, which names whichever are missing and stops
+before opening a connection.
+
+Because `subprocess.Popen` copies the parent environment into every child,
+putting credentials in the environment means the broker must control what a
+plugin subprocess inherits. Otherwise "the plugin never holds the RomM token"
+would be a statement about the API surface only: `os.environ["ROMM_PASSWORD"]`
+requires no socket, no file, and no syscall the seccomp filter can observe.
+
+**The environment is default-deny, like the manifest and the netpolicy.** The
+child's environment is built from `{}` and only `SAFE_ENV_VARS` are added —
+`PATH`, plus the handful of platform variables a Python interpreter needs to
+start (`SYSTEMROOT`/`COMSPEC`/`PATHEXT`/`TEMP`/`TMP` on Windows,
+`HOME`/`TMPDIR` on POSIX), plus `PYTHONIOENCODING=utf-8` set by the host so the
+JSON-over-pipes protocol does not depend on the ambient locale. No
+`PYTHONPATH`, no `PYTHONHOME`, nothing user-defined.
+
+This was first written as a denylist of the three `ROMM_*` names, and that was
+wrong in a way worth recording: it blocked exactly the three names someone had
+thought of and passed through 92 others, including a real GitHub token and a
+DeepSeek API key that happened to be in the developer's shell. A denylist
+cannot work for a namespace anyone can add to, and unlike a socket or a path
+there is no second line of defence behind the environment — seccomp cannot see
+it at all. Measured: 92 variables visible to a plugin before, 7 after.
+
+Two things this still does not do. It does not close the class — a plugin can
+read the Hub's `/proc/<pid>/environ`, so credentials cannot be *handed* to a
+plugin but can still be *gone looking for*. And there is deliberately no
+mechanism for a plugin to request a variable; if one is ever needed it should
+be an explicit, reviewable manifest grant like `permissions.network`, not an
+inherited leak.
+
+### CLI surface
+
+| Command | Does |
+|---|---|
+| `romm-hub plugin browse\|install\|list\|enable\|disable` | plugin lifecycle |
+| `romm-hub search <query> [--platform] [--limit]` | fan out across enabled `search` plugins |
+| `romm-hub import <plugin> <source_id> [--platform] [--collection]` | plan → download → dedup → upload → collection |
+| `romm-hub jobs [--state]` | the persisted import queue, with failure reasons |
+
+`--platform`/`--collection` are applied **host-side, after** the plugin's plan
+has been validated and its URLs allowlist-checked, so they retarget where a ROM
+files and cannot widen where bytes come from. They deliberately cannot rescue a
+plugin's refusal: a "needs mapping" emulator is fixed by adding the mapping,
+not by naming a platform once and leaving the gap for the next operator.
+
 ### Where things live
 
 Per the estate convention: source is small and lives in git; anything that
@@ -457,9 +513,22 @@ curation.
 ### Platform mapping
 
 `metadata.emulator` (`dosbox`, `vice`, `mame`, …) maps to RomM platform slugs via
-a table shipped in the plugin repo. Unmapped emulators surface as "needs mapping"
-in the UI rather than importing to a wrong platform — silent misfiling is worse
-than a visible gap.
+a table shipped in the plugin repo (`archive_org/platforms.py`). Unmapped
+emulators surface as "needs mapping" rather than importing to a wrong platform —
+silent misfiling is worse than a visible gap.
+
+As built, the table is an **exact-match lookup with no fallback**. Archive.org's
+emulator ids have an obvious family/variant shape (`vice-resid`, `vice-pet`,
+`pce-macplus`, `pce-atarist-color`), and a prefix rule would map most of them for
+free — but in those two families the *variant* is the machine, so the shortcut
+maps a PET to a C64 and an Atari ST to a Mac. The keys were sampled from live
+Archive.org rather than from an emulator list, and the values were checked
+against RomM 4.9.2's own platform-slug enum.
+
+Payload selection: `emulator_ext` matched case-insensitively against `files[]`
+(Archive.org spells it both `zip` and `ZIP`), largest match wins, and a file with
+no `size` — every item's `_files.xml` — sorts below every sized one so a metadata
+stub can never outrank the ROM.
 
 ---
 
