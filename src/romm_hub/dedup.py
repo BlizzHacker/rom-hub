@@ -73,8 +73,15 @@ def find_duplicate(hashes: FileHashes, existing_roms: list[dict]) -> dict | None
         if not value:
             continue
         for rom in existing_roms:
+            # This list came back from RomM over HTTP, so its shape is not
+            # this codebase's to guarantee. A non-dict entry or a non-string
+            # hash used to raise AttributeError, which run_import's catch-all
+            # turned into a FAILED job whose message pointed at the Hub
+            # rather than at the response that was actually malformed.
+            if not isinstance(rom, dict):
+                continue
             rom_value = rom.get(field)
-            if not rom_value:
+            if not isinstance(rom_value, str) or not rom_value:
                 continue
             if rom_value.lower() == value.lower():
                 return rom
