@@ -269,6 +269,9 @@ def test_a_multi_file_plan_costs_one_extra_listing_not_one_per_file(
     assert romm.list_roms_calls == 2
     assert romm.ensure_collection_calls == []
     assert len(upload.calls) == 3
+    # One upload per file, each to its own path -- never the same path
+    # twice, which is what two entries sharing a filename would produce.
+    assert len({c[0] for c in upload.calls}) == len(plan.files)
 
 
 def test_a_duplicate_is_skipped_and_the_upload_fake_is_never_called(
