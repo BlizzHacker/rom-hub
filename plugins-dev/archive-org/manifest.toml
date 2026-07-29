@@ -9,6 +9,7 @@ license     = "MIT"
 search   = "archive_org.search:Search"
 importer = "archive_org.importer:Importer"
 metadata = "archive_org.metadata:Metadata"
+stream   = "archive_org.stream:Stream"
 
 [permissions]
 network  = ["archive.org", "*.archive.org"]

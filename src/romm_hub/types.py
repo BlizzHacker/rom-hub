@@ -8,6 +8,8 @@ import base64
 import binascii
 import json
 from pathlib import PurePosixPath, PureWindowsPath
+from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -396,3 +398,75 @@ class MetadataPatch(BaseModel):
             and self.artwork_url is None
             and self.artwork_base64 is None
         )
+
+
+# -- stream -------------------------------------------------------------
+
+# Long enough for a signed URL with a token in it, short enough that a
+# plugin cannot make the host's log its dumping ground.
+_MAX_STREAM_TARGET_CHARS = 4096
+
+# Schemes that name something a program will go and *retrieve*. A target
+# using one of these is a URL whatever the plugin calls it, and it has to
+# go through the allowlist -- otherwise `kind="handle"` is a way to hand
+# the host an unchecked URL and hope something downstream fetches it.
+_FETCHABLE_SCHEMES = frozenset(
+    {"http", "https", "ftp", "ftps", "file", "data", "blob", "javascript", "ws", "wss"}
+)
+
+
+class StreamTarget(BaseModel):
+    """Where a `stream` plugin says an item can be played.
+
+    Deliberately opaque and deliberately thin. Streaming itself is
+    `romm-stream`'s job, not the Hub's: this capability's whole contract is
+    "resolve an item to something a player can be pointed at", so the host
+    validates the answer and hands it over rather than building any
+    transport of its own.
+
+    `kind` is the discriminator that decides how the answer is treated:
+
+      * `url`    -- the host checks it against the plugin's `network`
+                    allowlist, exactly as it checks a FetchPlan URL, because
+                    something will eventually fetch it.
+      * `handle` -- an identifier for another service (`ia:rubik_202308`,
+                    a room id, a session token). Never fetched by the host.
+
+    A `handle` may therefore not *be* a URL. Without that rule the
+    discriminator would be the hole: declare `kind="handle"`, put
+    `https://evil.example/x` in `target`, and the allowlist check is
+    skipped on a string that any consumer would treat as a URL anyway.
+    """
+
+    kind: Literal["url", "handle"]
+    target: str = Field(min_length=1, max_length=_MAX_STREAM_TARGET_CHARS)
+    mime_type: str | None = Field(default=None, max_length=255)
+    title: str | None = Field(default=None, max_length=_MAX_ROM_NAME_CHARS)
+    extra: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("target")
+    @classmethod
+    def _no_control_characters(cls, v: str) -> str:
+        # This string is printed, logged, and handed to another service. A
+        # CR or LF in it is a header-splitting or log-forging primitive
+        # depending on who consumes it, and no legitimate target has one.
+        bad = sorted({c for c in v if ord(c) < 0x20 or ord(c) == 0x7F})
+        if bad:
+            raise ValueError(
+                f"stream target must not contain control characters: "
+                f"{[hex(ord(c)) for c in bad]}"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def _a_handle_is_not_a_url(self) -> "StreamTarget":
+        if self.kind != "handle":
+            return self
+        scheme = urlsplit(self.target).scheme.lower()
+        if scheme in _FETCHABLE_SCHEMES:
+            raise ValueError(
+                f"a stream target of kind 'handle' must not be a {scheme!r} URL "
+                f"-- declare kind='url' so the host can check it against the "
+                f"plugin's network allowlist"
+            )
+        return self
