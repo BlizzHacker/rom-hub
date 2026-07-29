@@ -1,0 +1,120 @@
+"""Turn `<directory>/<file>` into a FetchPlan.
+
+The plugin decides *what* to fetch and nothing else: `ctx.http` is an RPC
+back to the host, and the host re-validates every URL in the returned plan
+against this plugin's manifest allowlist before fetching any of it --
+including each hop of the redirect Archive.org answers with, which is why
+`*.archive.org` is declared alongside `archive.org`.
+
+Three decisions here are load-bearing:
+
+**The file is confirmed to exist in the index, not assumed.** A URL could
+be built from the source id by string concatenation alone, and it would be
+wrong the moment a set is rebuilt and a file renamed -- the host would
+fetch the mirror's 404 page, hash it, upload it, and report DONE. So the
+directory index is read (from the cache the search already filled, usually
+at no cost) and the entry is matched by name. No entry, no plan.
+
+**The URL is built from the index's own href, not from the name.** Mirrors
+percent-encode differently, and a name round-tripped through a guess at
+encoding is a name that sometimes 404s. The href is what the server said.
+
+**The platform comes from the directory, and is never guessed.** See
+platforms.py.
+"""
+
+from romm_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
+
+from .filenames import safe_filename
+from .index import INDEXES
+from .platforms import platform_for
+from .search import base_url, index_url
+
+DEFAULT_COLLECTION = "Myrient"
+
+
+class ImportRefused(Exception):
+    """This file cannot be imported, and the message says why."""
+
+
+class Importer(ImportProvider):
+    def plan(self, result: SearchResult) -> FetchPlan:
+        root = base_url(self.ctx.config.get("base_url"))
+        directory, name = self._split(result.source_id)
+
+        # 1. Which platform? Asked before any request, so a source id from a
+        #    directory nobody mapped costs nothing to refuse.
+        platform = platform_for(directory)
+        if platform is None:
+            raise ImportRefused(
+                f"directory {directory!r} needs mapping: it is not in this "
+                f"plugin's directory -> RomM platform table, and guessing would "
+                f"file the ROM under the wrong system. Add it to "
+                f"myrient/platforms.py."
+            )
+
+        # 2. Does the file actually exist there?
+        listing = index_url(root, directory)
+        entries = INDEXES.get(self.ctx.http, listing)
+        entry = next((e for e in entries if e.name == name), None)
+        if entry is None:
+            raise ImportRefused(
+                f"{name!r} is not in the directory index at {listing!r}; the "
+                f"mirror lists {len(entries)} entries there. Sets get rebuilt "
+                f"and files get renamed, so a stale source id has to fail here "
+                f"rather than fetch the mirror's 404 page."
+            )
+        if entry.is_dir:
+            raise ImportRefused(
+                f"{name!r} is a directory in {listing!r}, not a file. This "
+                f"plugin imports files; it does not descend into subdirectories."
+            )
+        if not entry.is_payload:
+            raise ImportRefused(
+                f"{name!r} is mirror bookkeeping (its name ends in one of the "
+                f"suffixes Archive.org appends to every item), not a ROM."
+            )
+
+        return FetchPlan(
+            files=[
+                FetchFile(
+                    # The server's own href: encoding is its business, not a
+                    # guess made here.
+                    url=listing + entry.href,
+                    # What the host opens for writing. FetchFile rejects
+                    # anything but a bare name, so the mirror's name is
+                    # sanitised into one deterministically.
+                    filename=safe_filename(entry.name, fallback="rom.zip"),
+                    size_bytes=entry.size_bytes,
+                )
+            ],
+            platform=platform,
+            collection=self.ctx.config.get("collection") or DEFAULT_COLLECTION,
+        )
+
+    def _split(self, source_id: str | None) -> tuple[str, str]:
+        """Split `<directory>/<file>` using the configured directories.
+
+        A Myrient-layout directory contains slashes of its own
+        (`No-Intro/Nintendo - Game Boy`), so the split cannot be "last
+        slash wins" and inventing a separator would make source ids that no
+        longer look like the paths they are. Matching against the configured
+        list instead means the boundary is never ambiguous -- and a source
+        id naming a directory this install does not search is refused, which
+        is the correct answer rather than an accident.
+        """
+        raw = (source_id or "").strip().strip("/")
+        if not raw:
+            raise ImportRefused("the search result carries no source id")
+        for directory in self.ctx.config.get("collections") or []:
+            prefix = str(directory).strip().strip("/") + "/"
+            if raw.startswith(prefix):
+                name = raw[len(prefix) :]
+                if not name or "/" in name:
+                    break
+                return str(directory).strip().strip("/"), name
+        raise ImportRefused(
+            f"{source_id!r} does not name a file in any configured directory. "
+            f"Expected '<directory>/<file>', where <directory> is one of "
+            f"{list(self.ctx.config.get('collections') or [])!r}."
+        )
