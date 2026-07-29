@@ -209,9 +209,11 @@ class RommClient:
     def start_upload(
         self, platform_id: int, filename: str, total_size: int, total_chunks: int
     ) -> dict:
-        """POST /api/roms/upload/start -> the new upload session (its id
-        is read by the caller to address the following PUT/complete/cancel
-        calls). `platform_id` must be the integer id from `platform_id()`,
+        """POST /api/roms/upload/start -> the new upload session. The
+        response carries the session id under the key `upload_id` (RomM's
+        backend/endpoints/roms/upload.py returns
+        `{"upload_id": upload_id}`) -- callers must read that key, not
+        `id`. `platform_id` must be the integer id from `platform_id()`,
         never a slug."""
         resp = self._authorized_request(
             "POST",
@@ -225,15 +227,18 @@ class RommClient:
         )
         return resp.json()
 
-    def upload_chunk(self, upload_id: str, index: int, chunk: bytes) -> None:
+    def upload_chunk(self, upload_id: str, index: int, chunk: bytes) -> dict:
         """PUT /api/roms/upload/{upload_id} with the raw chunk bytes as
-        the body, once per chunk."""
-        self._authorized_request(
+        the body, once per chunk. Returns the JSON body
+        (`{"received": <int>, "total": <int>}`) in case a caller wants to
+        track the server's own received-chunk count."""
+        resp = self._authorized_request(
             "PUT",
             f"/api/roms/upload/{upload_id}",
             headers={"x-chunk-index": str(index)},
             content=chunk,
         )
+        return resp.json()
 
     def complete_upload(self, upload_id: str) -> dict:
         """POST /api/roms/upload/{upload_id}/complete once every chunk has

@@ -10,6 +10,20 @@ below sends exactly that many chunks. An empty file would mean
 `total_chunks == 0`, which is the same hang by a different name, so it is
 rejected client-side before any request is made at all.
 
+The server does NOT trust our chosen `chunk_size` for the byte length of
+each chunk. Reading RomM's own source
+(backend/endpoints/roms/upload.py::_expected_chunk_size), it derives its
+own expected size from the two headers we already sent:
+
+    chunk_size = ceil(total_size / total_chunks)
+    expected(i) = chunk_size            if i < total_chunks - 1
+                = total_size - chunk_size * (total_chunks - 1)   otherwise
+
+and rejects any chunk whose length doesn't match. This only equals our
+requested `chunk_size` when `total_size` divides evenly by it, so every
+other upload must slice using the server's own formula, not the
+originally-requested `chunk_size`.
+
 Any failure -- a chunk PUT, or even the final /complete -- calls
 POST /api/roms/upload/{id}/cancel before re-raising as RommError, so a
 half-uploaded file does not linger server-side.
@@ -50,6 +64,9 @@ def upload_file(
         raise RommError(f"cannot upload empty file: {path}")
 
     total_chunks = math.ceil(total_size / chunk_size)
+    # The server's own expected chunk size -- see module docstring. Not
+    # the `chunk_size` argument: that only chose total_chunks.
+    server_chunk_size = (total_size + total_chunks - 1) // total_chunks
 
     start = client.start_upload(
         platform_id=platform_id,
@@ -57,12 +74,21 @@ def upload_file(
         total_size=total_size,
         total_chunks=total_chunks,
     )
-    upload_id = start["id"]
+    if "upload_id" not in start:
+        raise RommError(
+            "RomM upload/start response is missing 'upload_id'; "
+            f"keys present: {sorted(start.keys())}"
+        )
+    upload_id = start["upload_id"]
 
     try:
         with path.open("rb") as fh:
             for index in range(total_chunks):
-                chunk = fh.read(chunk_size)
+                if index < total_chunks - 1:
+                    size = server_chunk_size
+                else:
+                    size = total_size - server_chunk_size * (total_chunks - 1)
+                chunk = fh.read(size)
                 client.upload_chunk(upload_id, index, chunk)
                 if progress is not None:
                     progress(index + 1, total_chunks)
