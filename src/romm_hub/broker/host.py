@@ -55,6 +55,7 @@ class PluginProcess:
         self._proc: subprocess.Popen | None = None
         self._counter = 0
         self._timed_out = False
+        self._dead = False
         self._stderr_tail: collections.deque[str] = collections.deque(
             maxlen=STDERR_TAIL_LINES
         )
@@ -125,16 +126,34 @@ class PluginProcess:
             self._stderr_thread.join(timeout=1.0)
         return "".join(self._stderr_tail)[-STDERR_TAIL_CHARS:].strip()
 
+    def _mark_dead(self) -> None:
+        """This process can serve no further calls; its pipes are unusable.
+
+        close() still reaps it -- being dead is not being reaped.
+        """
+        self._dead = True
+        if self._proc is not None:
+            try:
+                self._proc.kill()
+            except (OSError, ValueError):
+                pass
+
     def _kill_for_timeout(self) -> None:
         """Watchdog. Killing the process unblocks the host's pending read."""
         self._timed_out = True
-        if self._proc is not None:
-            self._proc.kill()
+        self._mark_dead()
 
     def _call(self, method: str, params: dict):
-        if self._proc is None or self._proc.stdin is None or self._proc.stdout is None:
+        if (
+            self._dead
+            or self._proc is None
+            or self._proc.stdin is None
+            or self._proc.stdout is None
+        ):
             raise PluginCallError("plugin process is not running")
 
+        # A verdict from an earlier deadline is not evidence about this call.
+        self._timed_out = False
         call_id = self._next_id()
         try:
             write_message(
@@ -159,6 +178,10 @@ class PluginProcess:
                 except (ProtocolError, ValueError) as exc:
                     if self._timed_out:
                         break
+                    # A rejected or unparseable frame can leave the stream
+                    # mid-message, and there is no resyncing it -- see the
+                    # size cap in protocol.py. The process is finished.
+                    self._mark_dead()
                     raise PluginCallError(
                         f"plugin {self.manifest.slug}: {exc}"
                     ) from exc
@@ -185,8 +208,13 @@ class PluginProcess:
                 return msg["result"]
         finally:
             watchdog.cancel()
+            # Read the verdict once, here, rather than letting a watchdog that
+            # fires during teardown change the answer underneath the caller.
+            timed_out = self._timed_out
 
-        if self._timed_out:
+        # Every path out of the loop is terminal for this process.
+        self._mark_dead()
+        if timed_out:
             raise PluginCallError(
                 f"plugin {self.manifest.slug} timed out after {self.timeout}s "
                 f"during {method!r} and was killed"
