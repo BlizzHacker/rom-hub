@@ -46,7 +46,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from romm_hub.dedup import FileHashes, find_duplicate, hash_file
+from romm_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from romm_hub.jobs import Job, JobQueue, JobState
 from romm_hub.netpolicy import PolicyViolation, check_url
 from romm_hub.romm.client import RommClient
@@ -390,12 +390,42 @@ def _import(
         ) from exc
     queue.set_platform(job.id, plan.platform)
 
-    # 3. Download. Recorded before the first byte, so a failed attempt still
-    #    tells a retry where its partial bytes are.
+    # 3. List the library once, up front. This happens *before* the
+    #    download because it feeds two checks, and the first of them can
+    #    make the download unnecessary.
+    #
+    #    A dedup that could not run is not a dedup that passed -- uploading
+    #    anyway would put a duplicate in the library on every transient 5xx
+    #    from /api/roms.
+    try:
+        existing_roms = romm.list_roms(platform_id)
+    except Exception as exc:
+        raise _ImportFailure(
+            f"could not list existing roms for platform {plan.platform!r}, so "
+            f"the import was stopped rather than risk a duplicate: {exc}"
+        ) from exc
+
+    duplicates: list[tuple[str, dict]] = []
+
+    # 3a. The cheap check: filename on this platform. RomM assembles every
+    #     upload to `roms/<platform_fs_slug>/<filename>`, so a name already
+    #     present on the same platform is the same ROM -- and this costs no
+    #     bytes at all. Re-importing something already in the library is the
+    #     common case, and it should not mean downloading it again first.
+    wanted = []
+    for entry in plan.files:
+        match = find_by_filename(entry.filename, existing_roms)
+        if match is None:
+            wanted.append(entry)
+        else:
+            duplicates.append((entry.filename, match))
+
+    # 3b. Download whatever survived. Recorded before the first byte, so a
+    #     failed attempt still tells a retry where its partial bytes are.
     job_dir = download_dir / str(job.id)
     queue.set_state(job.id, JobState.DOWNLOADING, local_path=str(job_dir))
     paths: list[Path] = []
-    for entry in plan.files:
+    for entry in wanted:
         dest = dest_in_job_dir(job_dir, entry.filename)
         try:
             downloader.download(entry.url, dest, expected_size=entry.size_bytes)
@@ -405,19 +435,10 @@ def _import(
             ) from exc
         paths.append(dest)
 
-    # 4. Dedup. A dedup that could not run is not a dedup that passed --
-    #    uploading anyway would put a duplicate in the library on every
-    #    transient 5xx from /api/roms.
-    try:
-        existing_roms = romm.list_roms(platform_id)
-    except Exception as exc:
-        raise _ImportFailure(
-            f"could not list existing roms for platform {plan.platform!r}, so "
-            f"the import was stopped rather than risk a duplicate: {exc}"
-        ) from exc
-
+    # 4. The exact check: content hash, against the same listing. Catches
+    #    the same ROM stored under a different name, which the filename
+    #    check cannot see.
     to_upload: list[Path] = []
-    duplicates: list[tuple[Path, dict]] = []
     # Kept: these same digests identify the ROMs again after the upload,
     # so the file is never hashed twice.
     hashes_by_path: dict[Path, FileHashes] = {}
@@ -431,10 +452,10 @@ def _import(
         if match is None:
             to_upload.append(path)
         else:
-            duplicates.append((path, match))
+            duplicates.append((path.name, match))
 
     if not to_upload:
-        names = ", ".join(path.name for path, _ in duplicates)
+        names = ", ".join(name for name, _ in duplicates)
         existing_id = _rom_id_of(duplicates[0][1]) if duplicates else None
         message = (
             f"already in RomM ({names}); nothing was uploaded"
@@ -509,7 +530,16 @@ def _import(
     rom_ids: list[int] = []
     missing: list[str] = []
     for path in to_upload:
-        match = find_duplicate(hashes_by_path[path], library)
+        # Hash first: it is the strongest evidence that *this* file landed.
+        # Filename is accepted as a fallback because it is also decisive
+        # here -- the Hub chose the name via x-upload-filename and RomM
+        # assembles to `roms/<platform_fs_slug>/<that name>` -- and because
+        # the Hub cannot reproduce RomM's digest for the archive formats it
+        # has no reader for (.7z, .rar). Without this, those would upload
+        # and scan correctly and then be reported as missing.
+        match = find_duplicate(hashes_by_path[path], library) or find_by_filename(
+            path.name, library
+        )
         if match is None:
             missing.append(path.name)
             continue
