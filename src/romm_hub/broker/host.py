@@ -10,9 +10,15 @@ any socket is opened:
 
 Adding a third path without a check_url() on it would make the manifest's
 `network` declaration decorative.
+
+There is also a path that leads *in*: the subprocess environment. Popen
+copies the parent's by default, so anything the Hub is configured with —
+including the RomM password — would arrive inside the plugin for free. See
+`SECRET_ENV_VARS`.
 """
 
 import collections
+import os
 import subprocess
 import sys
 import threading
@@ -31,6 +37,27 @@ from .fetcher import Fetcher
 # the host's own memory its problem.
 STDERR_TAIL_LINES = 100
 STDERR_TAIL_CHARS = 4000
+
+# Environment variables stripped from every plugin subprocess.
+#
+# Popen hands the parent's whole environment to the child by default, and
+# Phase 2's `import` reads the RomM password from exactly there. Without
+# this, "the plugin never holds the RomM token" would be true of the API
+# and false of the process: `os.environ["ROMM_PASSWORD"]` needs no socket,
+# no file, and no syscall the seccomp filter can even see.
+#
+# This is a denylist of the names *this project* puts in the environment,
+# and it does not pretend to be more. A plugin can still read any file the
+# Hub can (see README), so this closes the trivial path, not the class.
+SECRET_ENV_VARS = ("ROMM_URL", "ROMM_USER", "ROMM_PASSWORD")
+
+
+def plugin_environment(base: dict | None = None) -> dict:
+    """The parent environment minus anything a plugin must not be handed."""
+    env = dict(os.environ if base is None else base)
+    for name in SECRET_ENV_VARS:
+        env.pop(name, None)
+    return env
 
 
 class PluginCallError(Exception):
@@ -89,6 +116,7 @@ class PluginProcess:
             encoding="utf-8",
             bufsize=1,
             cwd=str(self.plugin_dir),
+            env=plugin_environment(),
         )
         # stderr must be drained for as long as the process lives. The host
         # blocks reading stdout, so if nobody reads stderr the plugin's first
