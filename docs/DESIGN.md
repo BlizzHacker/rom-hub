@@ -146,13 +146,33 @@ required by `romm-hub import`, which names whichever are missing and stops
 before opening a connection.
 
 Because `subprocess.Popen` copies the parent environment into every child,
-putting credentials in the environment means the broker must **strip them from
-the plugin subprocess**, which it does (`broker/host.py`, `SECRET_ENV_VARS`).
-Otherwise "the plugin never holds the RomM token" would be a statement about
-the API surface only: `os.environ["ROMM_PASSWORD"]` requires no socket, no
-file, and no syscall the seccomp filter can observe. This does not close the
-class — a plugin can still read the Hub's `/proc/<pid>/environ` — but it stops
-the credentials arriving unasked.
+putting credentials in the environment means the broker must control what a
+plugin subprocess inherits. Otherwise "the plugin never holds the RomM token"
+would be a statement about the API surface only: `os.environ["ROMM_PASSWORD"]`
+requires no socket, no file, and no syscall the seccomp filter can observe.
+
+**The environment is default-deny, like the manifest and the netpolicy.** The
+child's environment is built from `{}` and only `SAFE_ENV_VARS` are added —
+`PATH`, plus the handful of platform variables a Python interpreter needs to
+start (`SYSTEMROOT`/`COMSPEC`/`PATHEXT`/`TEMP`/`TMP` on Windows,
+`HOME`/`TMPDIR` on POSIX), plus `PYTHONIOENCODING=utf-8` set by the host so the
+JSON-over-pipes protocol does not depend on the ambient locale. No
+`PYTHONPATH`, no `PYTHONHOME`, nothing user-defined.
+
+This was first written as a denylist of the three `ROMM_*` names, and that was
+wrong in a way worth recording: it blocked exactly the three names someone had
+thought of and passed through 92 others, including a real GitHub token and a
+DeepSeek API key that happened to be in the developer's shell. A denylist
+cannot work for a namespace anyone can add to, and unlike a socket or a path
+there is no second line of defence behind the environment — seccomp cannot see
+it at all. Measured: 92 variables visible to a plugin before, 7 after.
+
+Two things this still does not do. It does not close the class — a plugin can
+read the Hub's `/proc/<pid>/environ`, so credentials cannot be *handed* to a
+plugin but can still be *gone looking for*. And there is deliberately no
+mechanism for a plugin to request a variable; if one is ever needed it should
+be an explicit, reviewable manifest grant like `permissions.network`, not an
+inherited leak.
 
 ### CLI surface
 
