@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from romm_hub.broker.fetcher import HttpxFetcher
+from romm_hub.cli import allow_unsandboxed
 from romm_hub.dispatcher import search_all
 from romm_hub.registry import Registry
 
@@ -30,6 +31,9 @@ def installed_registry(tmp_path):
 
 @pytest.mark.live
 def test_real_search_returns_results(installed_registry):
+    # Same policy switch the CLI reads. On a host without seccomp (Windows,
+    # macOS) this test needs ROMM_HUB_ALLOW_UNSANDBOXED=1 in the environment,
+    # exactly as a real `romm-hub search` would — see the README.
     fetcher = HttpxFetcher()
     try:
         outcome = search_all(
@@ -37,6 +41,7 @@ def test_real_search_returns_results(installed_registry):
             fetcher=fetcher,
             query="oregon trail",
             limit=5,
+            allow_unsandboxed=allow_unsandboxed(),
         )
     finally:
         fetcher.close()

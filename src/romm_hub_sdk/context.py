@@ -4,9 +4,11 @@ This API offers no socket. A plugin calls ctx.http, which is an RPC back to
 the host; the host checks the manifest allowlist before fetching anything.
 The shape deliberately mirrors `requests` so the idiom is familiar.
 
-Phase 1 does not sandbox the plugin subprocess, so this is the supported path
-rather than the only possible one — a hostile plugin can still `import socket`
-and skip the broker. See "Security: the broker model" in docs/DESIGN.md.
+Since Phase 1.5 this is not merely the supported path but the only one that
+works: the subprocess confines itself with a seccomp filter before any plugin
+module is imported, so `import socket` yields a PermissionError rather than a
+connection. File reads are still unconfined -- seccomp cannot filter on a path.
+See "Security: the broker model" in docs/DESIGN.md.
 """
 
 import json
