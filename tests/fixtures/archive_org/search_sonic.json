@@ -1,0 +1,222 @@
+{
+  "response": {
+    "numFound": 285,
+    "docs": [
+      {
+        "collection": [
+          "softwarelibrary_flash_games",
+          "softwarelibrary",
+          "softwarelibrary_flash",
+          "fav-andrei_rei",
+          "fav-bookaholicholly",
+          "fav-darius_watt",
+          "fav-demitrice_robinson",
+          "fav-isabella_mcdaniel",
+          "fav-ryan_jolly",
+          "fav-tanmasked_archives"
+        ],
+        "emulator": "ruffle-swf",
+        "identifier": "flash_sonicboomcannon",
+        "item_size": 1830919,
+        "title": "Sonic Boom Cannon"
+      },
+      {
+        "collection": [
+          "softwarelibrary_mac",
+          "softwarelibrary",
+          "emulation"
+        ],
+        "emulator": "vmac-colormac",
+        "identifier": "dwightrodgers",
+        "item_size": 21128807,
+        "title": "Gamma Zee & Super Sonic the Road Kill (some issues)"
+      },
+      {
+        "collection": [
+          "softwarelibrary_c64_showcase",
+          "softwarelibrary_c64",
+          "softwarelibrary",
+          "emulation",
+          "fav-arcwin",
+          "fav-hunter_feiner",
+          "fav-jimmytails",
+          "fav-lucichfarms",
+          "fav-sandra_plock",
+          "fav-sundancecody",
+          "fav-superstig",
+          "fav-weston_istre"
+        ],
+        "emulator": "vice-resid",
+        "identifier": "sonic_c64",
+        "item_size": 2238103,
+        "title": "Sonic the Hedgehog (Commodore 64)"
+      },
+      {
+        "collection": [
+          "hiddenpalace",
+          "stream_only",
+          "softwarelibrary",
+          "emulation",
+          "fav-kalem_landrum"
+        ],
+        "emulator": "megadriv",
+        "identifier": "sonic-the-hedgehog-2-beta-8-sep-2419921927hiddenpalaceorg",
+        "item_size": 1332903,
+        "title": "Sonic the Hedgehog 2 (September 24th, 1992 Beta 8 Prototype)"
+      },
+      {
+        "collection": [
+          "prototypesandpress",
+          "softwarelibrary",
+          "emulation",
+          "fav-androw_aydie",
+          "fav-aniana_vikanovember98",
+          "fav-anubis_exalt",
+          "fav-arshes91",
+          "fav-azusa_n",
+          "fav-blake_williams725",
+          "fav-chainswordcs",
+          "fav-chiatrix63",
+          "fav-closer1000",
+          "fav-cosmic_delta",
+          "fav-daimondslash3r",
+          "fav-dillan_smith",
+          "fav-elmotus",
+          "fav-enbyram",
+          "fav-erika_lellis",
+          "fav-extreme_wreck_2000",
+          "fav-fay_spaniel",
+          "fav-icup7612_edits",
+          "fav-jaydon_breadburn",
+          "fav-jidjip",
+          "fav-justcalmup",
+          "fav-legolord2010",
+          "fav-leoplace71",
+          "fav-mariosonicu",
+          "fav-megakidasua",
+          "fav-milton_gagliardi",
+          "fav-myrsphere",
+          "fav-neoblaze72_the_kaiju_hunter",
+          "fav-paul_welge",
+          "fav-riley_boggs",
+          "fav-salmoonrunaround",
+          "fav-spyroguy",
+          "fav-supermario18",
+          "fav-tag4",
+          "fav-the_gaming_lilac",
+          "fav-theelecplay",
+          "fav-tohoko",
+          "fav-tybo_tiffany",
+          "fav-ude37",
+          "fav-user_21758",
+          "fav-xcarlandrex",
+          "fav-zenksren",
+          "fav-zyllion_master"
+        ],
+        "identifier": "sonic-boom-rise-of-lyric-development-build",
+        "item_size": 8583330058,
+        "title": "Sonic Boom: Rise of Lyric Development Builld v3783 | 7/18/2014"
+      },
+      {
+        "collection": [
+          "flux-dumps",
+          "softwarelibrary",
+          "emulation",
+          "no-preview",
+          "fav-femenonie"
+        ],
+        "identifier": "sonic-linker",
+        "item_size": 482298960,
+        "title": "Sonic Linker （ソニックリンカー）"
+      },
+      {
+        "collection": [
+          "prototypesandpress",
+          "softwarelibrary",
+          "emulation"
+        ],
+        "identifier": "sonic-heroes-npdp-prototype-2.7z",
+        "item_size": 898091523,
+        "title": "Sonic Heroes NPDP Prototype 2"
+      },
+      {
+        "collection": [
+          "softwarelibrary_flash_games",
+          "softwarelibrary_flash",
+          "softwarelibrary",
+          "emulation",
+          "fav-alesonic99",
+          "fav-apollo_justice160",
+          "fav-bookaholicholly",
+          "fav-daniel_sandoval788",
+          "fav-djeorge_louise_gabriel",
+          "fav-dtlux1",
+          "fav-fireheart223",
+          "fav-hannah_tucker261",
+          "fav-indoorzzz",
+          "fav-jose_velasquez320",
+          "fav-lolo_d",
+          "fav-mariojacob7red",
+          "fav-mcmspeedstar",
+          "fav-missaimee1",
+          "fav-orion_microsoft_2",
+          "fav-stephen_blossom",
+          "fav-thinaxanel_",
+          "fav-tristan_apos_t",
+          "fav-v2_ve140",
+          "fav-y2kloverr",
+          "fav-zachary_kirby",
+          "fav-zaira_cunha"
+        ],
+        "emulator": "ruffle-swf",
+        "identifier": "sonic-boom-amy-rose-dress-up",
+        "item_size": 2405052,
+        "title": "Sonic Boom Amy Rose Dress Up"
+      },
+      {
+        "collection": [
+          "softwarelibrary_flash_animation",
+          "softwarelibrary_flash",
+          "softwarelibrary",
+          "emulation",
+          "fav-azurii",
+          "fav-ccwl2014_",
+          "fav-dolphi_memoca",
+          "fav-kacey_clay",
+          "fav-mcmspeedstar",
+          "fav-raresun"
+        ],
+        "emulator": "ruffle-swf",
+        "identifier": "good-bye-chao",
+        "item_size": 965118,
+        "title": "Sonic: Goodbye Chao"
+      },
+      {
+        "collection": [
+          "softwarelibrary_flash_animation",
+          "softwarelibrary",
+          "softwarelibrary_flash",
+          "fav-abstractpainter123456",
+          "fav-blaze477",
+          "fav-blazejohnson28",
+          "fav-bookaholicholly",
+          "fav-brian_justice",
+          "fav-chris_k677",
+          "fav-devanta_studivant",
+          "fav-extreme_wreck_2000",
+          "fav-johnny2071",
+          "fav-kacey_clay",
+          "fav-mathieu_faure",
+          "fav-mcmspeedstar",
+          "fav-ppaazt_denton",
+          "fav-sarah_barnett488",
+          "fav-super_nitro_z64"
+        ],
+        "emulator": "ruffle-swf",
+        "identifier": "sonic-shorts-volume-3",
+        "item_size": 10301152,
+        "title": "Sonic Shorts Volume 3"
+      }
+    ]
+  }
+}

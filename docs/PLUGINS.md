@@ -38,15 +38,55 @@ That is a real boundary, but it is not a sandbox for everything. Still true:
 **This directory grants nothing.** It records where a plugin lives. The
 permissions come from the plugin's own manifest, read at install time — so a
 compromised directory cannot widen what an installed plugin may reach.
+`test_catalog_cannot_widen_permissions` pins that: the broker reads
+`manifest.network` and never consults the catalog at all.
+
+### What the sandbox does and does not cover
+
+Worth being exact, because "sandboxed" is doing less work than it sounds:
+
+- **The broker enforces the network allowlist.** Every URL — including each
+  hop of a redirect, and including URLs the plugin returns in a `FetchPlan`
+  for the *host* to fetch — is checked against the plugin's declared hosts
+  before a socket is opened.
+- **On Linux, seccomp confines the plugin.** The subprocess installs the
+  filter on itself before importing any plugin code, so network egress and
+  process spawn are blocked outright rather than merely disallowed.
+- **File reads are NOT confined.** seccomp cannot filter on a path. A plugin
+  can read any file the Hub process can read. This is the real limit of the
+  boundary, and no plugin in this directory changes it.
+- **Windows cannot sandbox at all.** There is no confinement available, so
+  plugins refuse to run unless `ROMM_HUB_ALLOW_UNSANDBOXED=1` is set. With it
+  set there is none of the above: a hostile plugin can ignore the allowlist,
+  open its own sockets, read any readable file, and spawn processes.
+- Memory is **not** capped in Phase 1 (`setrlimit` is POSIX-only); the
+  wall-clock timeout and output-size cap are.
+
+**Install only plugins you trust.** The allowlist tells you what a plugin
+*asks for*; on Linux it is also what it is held to.
+
+## These plugins ship in-tree
+
+The six plugins below live in this repository's `plugins-dev/` directory and
+**have no individual public repositories yet**. Rather than print URLs that do
+not resolve, their repository and download fields use the reserved
+`.invalid` TLD (RFC 2606, guaranteed never to resolve) — if you see
+`romm-hub.invalid`, that is a placeholder saying "not published yet", not a
+link to follow. Install them by path:
+
+    romm-hub plugin install ./plugins-dev/archive-org
+
+Note that `plugin install` clones its source, so each plugin directory has to
+be a git repository for that to work.
 
 ## Installing
 
     romm-hub plugin browse                 # list what's here
-    romm-hub plugin install archive-org    # by slug, resolved through this catalog
+    romm-hub plugin install ./plugins-dev/archive-org   # in-tree, today
     romm-hub plugin install https://github.com/someone/their-plugin --ref v1.2.0
 
-Installs are pinned to a tag. Updating is deliberate — re-run `install` with a
-new ref — so a plugin cannot quietly change under you.
+Installs from a URL are pinned to a tag. Updating is deliberate — re-run
+`install` with a new ref — so a plugin cannot quietly change under you.
 
 ## Status
 
@@ -58,9 +98,78 @@ new ref — so a plugin cannot quietly change under you.
 
 ## Plugins
 
-| Source | Author (Repository) | Version | Last update | Install | Capabilities | Network | Comments |
+| Source | Author (Repository) | Version | Last update | Install | Capabilities | Flags | Network |
 |---|---|---|---|---|---|---|---|
-| ✔ [Archive.org](https://github.com/BlizzHacker/romm-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/romm-hub-archive-org)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/romm-hub-archive-org/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | `archive.org`, `*.archive.org` | Public-domain and abandonware software library. Results carry extra.stream_only for items Archive.org only permits playing in-browser; the importer refuses those outright and maps metadata.emulator to a RomM platform, failing visibly rather than guessing. |
+| ✔ Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/archive-org` (in-tree) | `search`, `importer`, `metadata`, `stream` | — | `archive.org`, `*.archive.org` |
+| ✔ Homebrew Hub (gbdev) | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/homebrew` (in-tree) | `search`, `importer` | — | `hh3.gbdev.io` |
+| ❗ itch.io (free games) — SEARCH-ONLY | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/itch-io` (in-tree) | `search`, `importer` | **search-only** | `itch.io`, `*.itch.io` |
+| ✔ libretro Thumbnails | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/libretro-thumbnails` (in-tree) | `metadata` | — | `thumbnails.libretro.com` |
+| ❗ No-Intro sets on Archive.org | BlizzHacker (in-tree, no public repo yet) | 0.2.0 | 2026-07-29 | `./plugins-dev/nointro-archive` (in-tree) | `search`, `importer` | — | `archive.org`, `*.archive.org` |
+| ❗ RetroAchievements | BlizzHacker (in-tree, no public repo yet) | 0.1.0 | 2026-07-29 | `./plugins-dev/retroachievements` (in-tree) | `metadata` | **API key required** (stored in clear text) | `retroachievements.org` |
+
+### ✔ Archive.org — `archive-org`
+
+Searches the Internet Archive's software collections by title and imports the item's payload file.
+
+**Source terms.** Mixed, and the Archive says which is which. The default `softwarelibrary` scope holds public-domain and abandonware software alongside commercial titles still under copyright — the Internet Archive hosts them under its own library and DMCA position, not under a licence that passes to you. Items the Archive will only let you play in a browser are marked `stream_only`, and the importer refuses those outright rather than working around the restriction. Access is public and unauthenticated; `/advancedsearch.php`, `/metadata/` and `/download/` are not disallowed by the Archive's robots.txt.
+
+**Comments.** Results carry `extra.stream_only` so a UI can route an item to streaming instead of offering an import that would be refused. `metadata.emulator` maps to a RomM platform through an exact-match table with no fallback: an unmapped emulator fails loudly as "needs mapping" rather than filing a ROM under a guessed system. Search terms are confined to the title field — a bare term used to go to Archive.org's default field, which returned `Die Hard` for `sonic`.
+
+**Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ Homebrew Hub (gbdev) — `homebrew`
+
+Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew and imports the ROM directly.
+
+**Source terms.** The cleanest source in this directory. Homebrew Hub indexes games written by their authors for the Game Boy, published by those authors for free distribution — the rights holder is the uploader, so there is no third-party copyright being routed around. Individual entries carry their own licences, which vary; the Hub's own catalogue metadata is community-maintained and openly published. Nothing here is a commercial ROM.
+
+**Comments.** The only plugin in this directory built from the start for material that is unambiguously free to redistribute. One host does both jobs — `/api/search` answers queries and `/static/` serves the ROMs with no redirect off it — so the allowlist is a single host. `hh.gbdev.io`, the human-facing site those results link to, is deliberately not declared, because the plugin shows that URL and never fetches it.
+
+**Network requested.** `hh3.gbdev.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ itch.io (free games) — SEARCH-ONLY — `itch-io`
+
+> **search-only**
+
+Finds free games on itch.io. It cannot import them, and never will as built — every import is refused by design.
+
+**Source terms.** Consent by construction, within a boundary this plugin does not cross. itch.io is a storefront where the uploader is the rights holder, so anything listed free is offered free by the person entitled to offer it. But itch.io's robots.txt `Disallow`s `/search` and `/game/download/`, and its download URLs are issued only for a POST carrying the game page's csrf_token. This plugin reads only `/games/...` browse listings, which the same robots.txt permits, and it authenticates as nobody. Note that itch.io's "free" filter includes name-your-own-price titles; those are refused.
+
+**Comments.** The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes.
+
+**Network requested.** `itch.io`, `*.itch.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ libretro Thumbnails — `libretro-thumbnails`
+
+Proposes box art, title screens and in-game screenshots for a ROM by matching its No-Intro-style name.
+
+**Source terms.** Read the licence before you publish anything downstream. The libretro thumbnail packs are community-collected scans and captures of commercial game packaging and screens; the artwork is the publishers' copyright, and libretro distributes it for use in emulator frontends rather than under a licence that grants redistribution. Fetching it to illustrate your own library is the intended use. The host is public and unauthenticated, and its robots.txt does not disallow the image paths.
+
+**Comments.** Metadata only — it proposes art and never touches a ROM. Matching is by exact No-Intro-style filename against the per-system index, so a name this plugin cannot spell yields no art rather than the wrong game's box. One host, verified to serve images with zero redirects, so there is no CDN hop to declare.
+
+**Network requested.** `thumbnails.libretro.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ No-Intro sets on Archive.org — `nointro-archive`
+
+Reads plain HTTP directory indexes of No-Intro sets held on the Internet Archive, matching by file name.
+
+**Source terms.** Plainly: these are copyrighted commercial console ROMs, and this plugin does not launder that. No-Intro sets are checksum-verified dumps of retail cartridges; the copyright belongs to the publishers, most of whom have never licensed redistribution. Whether you may download one depends on where you live and on whether you own the original media — in the United States the archival exemption courts have recognised does not extend to downloading a copy of something you do not own. The plugin circumvents no access control, paywall, login or robots directive, and `https://archive.org/download/` is a public unauthenticated listing the Archive's robots.txt does not disallow. If you want only material that is unambiguously free to redistribute, use `homebrew` instead.
+
+**Comments.** Formerly `myrient`. Myrient (myrient.erista.me) shut down on 31 March 2026 and now answers HTTP 200 with the same 2,334-byte notice for every path — including paths it never served — so status codes cannot detect it. The plugin therefore checks that a page actually parsed as an index, which is the only thing standing between a dead source and an HTML page filed as a ROM. Its Myrient index parser and Wayback-captured fixture are retained in case a mirror reproduces that layout. MiNERVA, the successor, `Disallow`s `/browse/` and `/rom/` and is deliberately not used.
+
+**Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ RetroAchievements — `retroachievements`
+
+> **API key required** (stored in clear text)
+
+Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, stored in clear text.
+
+**Source terms.** An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.
+
+**Comments.** READ THIS BEFORE INSTALLING: the API key is stored in the Hub's plugin config **in clear text**. RPP v1 reserves a `secret` config type and this host rejects it — `manifest.py` raises "reserved in RPP v1 but not implemented in Phase 1" for any field declaring it (re-verified 2026-07-29) — so `api_key` is a plain `str` and there is no encrypted store to put it in. Treat it as a credential written to disk in the open. Without a key the plugin returns nothing; that is the missing key, not a fault.
+
+**Network requested.** `retroachievements.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ## Adding your plugin
 
@@ -73,7 +182,18 @@ Open a pull request adding an entry to
   a later install silently ships different code;
 - declare `rpp_version` `"1"`;
 - list the `network` hosts your `manifest.toml` actually requests, so a reader
-  can judge the ask before installing.
+  can judge the ask before installing;
+- carry a one-line `description` and a `terms` paragraph stating **your
+  source's** licensing position in plain language — not your plugin's own
+  licence, which is its `LICENSE` file. A directory that says where to get
+  ROMs and stays quiet about whether they may lawfully be got is doing half
+  the job;
+- set `search_only` if your importer cannot complete, and `key_required` if
+  the plugin is useless without a credential. Both are things a reader needs
+  before installing, not after filing a bug;
+- set `in_tree` only if the plugin ships inside this repository.
 
 The catalog is validated on load, so a malformed entry fails the test suite
-rather than reaching a user.
+rather than reaching a user. `terms` and `description` must be non-empty: a
+blank cell reads like "nothing to declare" rather than "nobody filled this
+in".

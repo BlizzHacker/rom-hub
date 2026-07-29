@@ -60,9 +60,21 @@ METADATA_SUFFIXES = (
 
 # A directory listing this plugin can use has entries in it. A page with none
 # is not an empty directory -- it is a different page, and saying so out loud
-# is the difference between "no results" and "this mirror is gone". See
-# README: myrient.erista.me answers 200 with a static shutdown notice for
-# every path it ever served.
+# is the difference between "no results" and "this mirror is gone".
+#
+# THIS IS THE ONLY THING THAT DETECTS A DEAD MIRROR. Status codes cannot do
+# it, and myrient.erista.me is the proof: since it shut down on 2026-03-31 it
+# answers **HTTP 200** for every path it ever served *and* for paths it never
+# served, with the same 2,334-byte shutdown notice each time -- verified by
+# fetching both a real deep file URL and a nonsense one and getting byte-
+# identical bodies. There is no status code, no header and no length change
+# to key off. `response.status_code != 200` above will therefore never fire
+# for this failure mode; only "did anything parse as an entry?" will.
+#
+# Delete this check and the failure becomes silent in both directions: search
+# reports "no results" forever without ever saying why, and an importer that
+# trusted the same 200 would download the notice, hash it, upload it and
+# report DONE with an HTML page filed as a ROM.
 MIN_USABLE_ENTRIES = 1
 
 

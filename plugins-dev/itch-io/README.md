@@ -1,12 +1,27 @@
-# itch.io plugin for RomM Hub
+# itch.io plugin for RomM Hub — **SEARCH-ONLY**
+
+> ## ⚠ This plugin cannot import. It never will, as built.
+>
+> **It is a search plugin.** It finds free games on itch.io and shows you what
+> and where they are. **Every import attempt is refused, by design**, and no
+> file it names is ever placed in your RomM library.
+>
+> Why: itch.io hands out a download URL only in response to a **POST** carrying
+> the game page's `csrf_token`, `/game/download/` is **`Disallow`ed in itch.io's
+> robots.txt**, and this Hub's broker performs **GET only**. There is no public
+> download route a plugin may lawfully use, so there is nothing to plan.
+>
+> **This is not a bug and not an unfinished feature.** If you see a refusal,
+> the plugin is working. See
+> [This plugin cannot import](#this-plugin-cannot-import-that-is-the-correct-answer).
 
 Implements the RPP v1 `search` and `importer` capabilities against itch.io's
 **free** games.
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `search` | `itch.io/games/free[/<facet>]?format=json` | free games matching a query |
-| `importer` | the game page on `<developer>.itch.io` | works out the file and platform, then refuses — see below |
+| `search` | `itch.io/games/free[/<facet>]?format=json` | free games matching a query — **this is what the plugin is for** |
+| `importer` | the game page on `<developer>.itch.io` | works out the file and platform, then **always refuses** — see below |
 
 ## Install
 
@@ -52,7 +67,7 @@ Note that itch.io's "free" filter includes **name-your-own-price** titles.
 They appear in results; the importer refuses them (see below), which is where
 that distinction gets enforced.
 
-## Why nothing imports yet
+## This plugin cannot import. That is the correct answer.
 
 **itch.io will not hand a download URL to a GET.** Verified against the live
 site:
@@ -66,7 +81,8 @@ site:
 
 RomM Hub's broker offers `http.get` and nothing else — a plugin has no
 sockets — and the host fetches `FetchPlan` URLs with GET too. So the importer
-does every piece of real routing work and then refuses:
+does every piece of real routing work and then refuses. **All five outcomes
+are refusals; there is no sixth branch that succeeds:**
 
 1. **Checkout gate** → refused, naming what itch.io called it ("Name your own
    price", "$5 USD or more"). Answered before any file is named, so the
@@ -84,7 +100,13 @@ page. The host would then hash that page, upload it, and file it in RomM as a
 ROM — an import that reports `DONE` with the wrong bytes. A visible refusal
 beats that, which is the same call `archive-org` makes on `stream_only` items.
 
-If the broker ever grows a POST verb, step 5 is the only place that changes.
+Every one of those messages names *why* it refused — robots.txt, the missing
+public download route, a checkout, or a download key — so a refusal reads as
+the source's terms and not as a defect in this plugin. **Do not file a refusal
+as a bug.**
+
+If the broker ever grows a POST verb, step 5 is the only place that changes,
+and this plugin stops being search-only. Until then it is search-only.
 
 ## Platform mapping
 

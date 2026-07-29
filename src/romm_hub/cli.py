@@ -34,6 +34,57 @@ CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
 EXIT_OK = 0
 EXIT_ERROR = 1
 
+# What an unencodable character degrades to. `backslashreplace` writes
+# `日` where `replace` would write `?`: still ASCII, but it names the
+# character instead of erasing it, so a redirected file or a piped consumer
+# keeps something greppable and reversible rather than a row of question
+# marks. This is the only thing that changes -- the stream's *encoding* is
+# left exactly as the terminal, the redirect or the pipe set it.
+_OUTPUT_ERRORS = "backslashreplace"
+
+
+def configure_output_encoding() -> None:
+    """Make CLI output unable to crash on a character it cannot encode.
+
+    A Windows console is cp1252. Every string the CLI prints is ultimately
+    attacker-adjacent: a plugin chooses its own name, its result titles, its
+    refusal messages and its error strings, and Archive.org alone is full of
+    Japanese, Cyrillic and accented titles. Printing one to a cp1252 stdout
+    raises UnicodeEncodeError from inside `print`, which killed the whole
+    command -- including every result that had already been fetched
+    successfully, and every line that would have come after.
+
+    This is fixed once, here, rather than at the ~60 `print` sites that
+    would each have to remember. `reconfigure(errors=...)` changes only the
+    error handler, so:
+
+    - a UTF-8 stdout can represent everything and is therefore untouched --
+      nothing is mangled on a terminal that was already fine;
+    - a cp1252 stdout degrades only the individual characters it genuinely
+      cannot represent, and keeps printing;
+    - a redirect or a pipe keeps whatever encoding it was given, so
+      `romm-hub search x > out.txt` behaves like the console it replaced.
+
+    Note this does *not* replace `catalog.symbol_for`, which picks a
+    deliberately readable ASCII fallback (`ok`, `!`, `x`) for the status
+    column instead of the mechanical `\\u2714` this would produce. That
+    handles one known symbol well; this handles arbitrary text safely. The
+    two are complementary -- the first is for legibility, the second is the
+    guarantee that nothing crashes.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            # Not a TextIOWrapper: pytest's capture object, a StringIO, or a
+            # detached stream. Nothing to do, and nothing to fail over.
+            continue
+        try:
+            reconfigure(errors=_OUTPUT_ERRORS)
+        except (ValueError, OSError):
+            # Closed or detached mid-flight. Refusing to run the command
+            # over a cosmetic setting would be the wrong trade.
+            continue
+
 # Job states an import can end in without anything being wrong.
 _SUCCESS_STATES = (JobState.DONE, JobState.SKIPPED_DUPLICATE)
 
@@ -639,6 +690,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Before anything can print -- argparse's own help and usage errors
+    # included, since a plugin slug can reach those too.
+    configure_output_encoding()
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
