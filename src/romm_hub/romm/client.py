@@ -63,7 +63,14 @@ class RommClient:
 
     def authenticate(self) -> None:
         """POST /api/token (OAuth2 password grant, form-encoded) and cache
-        the bearer token for subsequent requests."""
+        the bearer token for subsequent requests.
+
+        `Body_token_api_token_post` also has a `scope` field defaulting to
+        "". We deliberately do not send one — a guessed scope string could
+        be silently wrong in a way that only bites at the first real write
+        (e.g. an upload), so this is left to the server default and flagged
+        for a live check in Task 8 rather than guessed here.
+        """
         try:
             resp = self._client.post(
                 "/api/token",
@@ -102,6 +109,14 @@ class RommClient:
         except httpx.HTTPError as exc:
             raise RommError(f"{method} {path} failed: {exc}") from exc
 
+        if resp.status_code in (401, 403):
+            # Distinct from the generic branch below: a write (or any call)
+            # that gets bounced for auth reasons must say so plainly, not
+            # just surface a bare status code.
+            raise RommError(
+                f"{method} {path} failed: authentication/authorization failed "
+                f"({resp.status_code}): {_excerpt(resp)}"
+            )
         if not (200 <= resp.status_code < 300):
             raise RommError(
                 f"{method} {path} failed ({resp.status_code}): {_excerpt(resp)}"
@@ -116,20 +131,30 @@ class RommClient:
     def platform_id(self, slug: str) -> int:
         """Resolve a platform slug (e.g. "dos") to RomM's integer platform id.
 
-        The full listing is fetched and cached on first use, so resolving
-        any number of slugs afterward — including ones not asked for yet —
-        costs no further HTTP requests.
+        PlatformSchema carries both `slug` and `fs_slug`; either may be the
+        one a plugin knows about, so both are cached. Matching is
+        case-insensitive. The full listing is fetched and cached on first
+        use, so resolving any number of slugs afterward — including ones
+        not asked for yet — costs no further HTTP requests.
+
+        Getting this wrong means a ROM files under the wrong system, which
+        is worse than a visible failure — so an unmatched slug raises
+        rather than guessing.
         """
         if not self._platforms_loaded:
             for platform in self.list_platforms():
-                key = platform.get("slug") or platform.get("fs_slug")
-                if key and "id" in platform:
-                    self._platform_cache[key] = platform["id"]
+                platform_id_value = platform.get("id")
+                if platform_id_value is None:
+                    continue
+                for key in (platform.get("slug"), platform.get("fs_slug")):
+                    if key:
+                        self._platform_cache[key.lower()] = platform_id_value
             self._platforms_loaded = True
 
-        if slug not in self._platform_cache:
+        lookup = slug.lower()
+        if lookup not in self._platform_cache:
             raise RommError(f"no RomM platform matches slug {slug!r}")
-        return self._platform_cache[slug]
+        return self._platform_cache[lookup]
 
     # -- roms ---------------------------------------------------------------
 
@@ -144,11 +169,26 @@ class RommClient:
         return self._authorized_request("GET", "/api/collections").json()
 
     def ensure_collection(self, name: str) -> int:
-        """Return the id of the collection named `name`, creating it if absent."""
+        """Return the id of the collection named `name`, creating it if absent.
+
+        POST /api/collections is `multipart/form-data`
+        (`Body_add_collection_api_collections_post` mixes `Form` fields with
+        an optional `artwork: binary` file field, which is what makes
+        FastAPI require multipart even when no file is attached), NOT JSON.
+        httpx only encodes as multipart when a `files=` mapping is given —
+        passing `data=` alone always produces urlencoded — so an empty
+        artwork part is included to force the encoding, mirroring what a
+        browser sends for an HTML file input left empty.
+        """
         for collection in self.list_collections():
             if collection.get("name") == name:
                 return collection["id"]
-        resp = self._authorized_request("POST", "/api/collections", json={"name": name})
+        resp = self._authorized_request(
+            "POST",
+            "/api/collections",
+            data={"name": name, "description": "", "url_cover": ""},
+            files={"artwork": ("", b"", "application/octet-stream")},
+        )
         return resp.json()["id"]
 
     def add_to_collection(self, collection_id: int, rom_ids: list[int]) -> None:
