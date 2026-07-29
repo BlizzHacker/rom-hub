@@ -35,6 +35,18 @@ upload fails the job rather than reporting DONE on faith.
 `FAILED` with a sentence an operator can act on, because the job record
 is where they will look, not the console the exception would have
 printed to.
+
+**An optional step the backend cannot do is not a failure.** The
+capability check at step 1a asks two questions, not one: can this backend
+be imported to at all (if not, refuse before the download), and can it do
+the extras this plan asks for (if not, do the import and say what was
+skipped). Collections are the extra that exists today: two of the three
+shipped backends have no collection concept at all, while the archive-org
+plugin names a collection by default with no way to clear one from the
+CLI -- so refusing meant those backends could not import from archive-org
+at all. Which capability is essential and which is optional is decided in
+`rom_hub.backends.base`, next to the capability names and next to the
+reasoning, because that is where the next backend author will look.
 """
 
 from __future__ import annotations
@@ -48,9 +60,13 @@ import httpx
 
 from rom_hub.backends.base import (
     COLLECTIONS,
+    IMPORT,
+    CapabilityUnsupported,
     LibraryBackend,
     Scanner,
-    capabilities_of,
+    SkippedStep,
+    degrade,
+    require,
 )
 from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from rom_hub.jobs import Job, JobQueue, JobState
@@ -216,6 +232,11 @@ class ImportResult:
     state: JobState
     rom_id: int | None
     message: str
+    #: Optional steps the backend could not perform, skipped rather than
+    #: fatal. Already spelled out in `message` -- this is the same thing
+    #: structured, for a caller that wants to branch on it rather than
+    #: read it. Empty on an import that did everything the plan asked.
+    degraded: tuple[SkippedStep, ...] = ()
 
 
 class _ImportFailure(Exception):
@@ -368,29 +389,55 @@ def _import(
             f"{result.source_id!r}: {exc}"
         ) from exc
 
-    # 1a. Can this backend do what the plan asks for at all?
+    # 1a. Can this backend do what the plan asks for -- and what part of it
+    #     can it not do?
     #
     #     Asked here, before a single byte is fetched, because the
-    #     alternative is discovering it at step 6: the ROM downloaded,
-    #     hashed, uploaded and registered, and then a 404 from an endpoint
-    #     the backend never had. The operator would be left with a
-    #     half-filed import and a message about HTTP rather than about
-    #     collections.
+    #     alternative is discovering it at step 5 or 6: the ROM
+    #     downloaded, hashed, uploaded, and then a 404 from an endpoint
+    #     the backend never had, leaving a half-filed import and a message
+    #     about HTTP.
     #
-    #     `--collection` is checked in the CLI too, and this is not that
-    #     check repeated: a plan can name a collection the operator never
-    #     typed, since a plugin sets one by default (Archive.org files
-    #     under "Archive.org"). Both routes have to refuse legibly.
-    supported = capabilities_of(backend)
-    if plan.collection and COLLECTIONS not in supported:
-        raise _ImportFailure(
-            f"the {getattr(backend, 'name', 'active')!r} backend does not "
-            f"support collections, so the import was stopped before anything "
-            f"was downloaded: {plan.collection!r} could not be created or "
-            f"added to. The collection was named by --collection or by "
-            f"plugin {slug!r}'s own plan; this backend can only import "
-            f"without one."
+    #     Two different answers, and the split is `backends.base`'s
+    #     essential/optional classification, not a judgement made here:
+    #
+    #       * IMPORT missing -> refuse. There is no reduced import that
+    #         still happens without somewhere to upload to and something
+    #         to dedup against.
+    #       * COLLECTIONS missing -> proceed, and record the skip. A
+    #         collection groups a ROM that is already in the library; the
+    #         ROM is what was asked for. This used to refuse, and it is
+    #         why `rom-hub import archive-org rubik_202308` downloaded
+    #         nothing at all against the backends that have none -- the
+    #         archive-org plugin names a collection by default and there
+    #         is no CLI flag that clears one.
+    #
+    #     The pipeline cannot tell a plugin's default collection from one
+    #     the operator typed; by the time a FetchPlan exists they look
+    #     identical. `_cmd_import` can, and refuses an explicit
+    #     `--collection` before this is ever reached.
+    #
+    #     Converted to an _ImportFailure rather than allowed to propagate:
+    #     an unsupported capability is a refusal with a sentence already
+    #     written for an operator, and the job record should carry that
+    #     sentence, not "unexpected CapabilityUnsupported during import".
+    try:
+        require(backend, IMPORT, "importing a ROM")
+    except CapabilityUnsupported as exc:
+        raise _ImportFailure(str(exc)) from exc
+
+    skipped: list[SkippedStep] = []
+    collection_skip: SkippedStep | None = None
+    if plan.collection:
+        collection_skip = degrade(
+            backend, COLLECTIONS, f"adding it to the collection {plan.collection!r}"
         )
+        if collection_skip is not None:
+            skipped.append(collection_skip)
+            # On the row now, not at the end: the note is true from this
+            # point regardless of how the job finishes, and a job that
+            # later fails on something else should still show it.
+            queue.set_notes(job.id, str(collection_skip))
 
     # 2. Slug -> integer platform id. Never guess: a wrong id files the ROM
     #    under the wrong system, which is worse than a visible failure.
@@ -478,6 +525,7 @@ def _import(
         message = (
             f"already in {library_name} ({names}); nothing was uploaded"
             + (f" -- matches rom id {existing_id}" if existing_id is not None else "")
+            + _skipped_suffix(skipped)
         )
         queue.set_state(job.id, JobState.SKIPPED_DUPLICATE)
         return ImportResult(
@@ -485,6 +533,7 @@ def _import(
             state=JobState.SKIPPED_DUPLICATE,
             rom_id=existing_id,
             message=message,
+            degraded=tuple(skipped),
         )
 
     # 5. Upload. The return value is deliberately discarded: RomM's
@@ -574,9 +623,11 @@ def _import(
             f"the upload."
         )
 
-    # 6. Collection, only if the plan asked for one. After 5b, because the
-    #    rom ids it needs only exist once that lookup has run.
-    if plan.collection:
+    # 6. Collection, only if the plan asked for one *and* the backend can
+    #    do it. After 5b, because the rom ids it needs only exist once
+    #    that lookup has run. When it cannot, `skipped` already holds the
+    #    note written at step 1a and the import finishes without it.
+    if plan.collection and collection_skip is None:
         if not rom_ids:
             raise _ImportFailure(
                 f"uploaded {len(to_upload)} file(s), but {library_name}'s "
@@ -592,16 +643,30 @@ def _import(
                 f"{plan.collection!r} failed: {exc}"
             ) from exc
 
-    # 7. Done.
-    skipped = f", {len(duplicates)} already present" if duplicates else ""
-    message = f"imported {len(to_upload)} file(s) as rom id(s) {rom_ids}{skipped}"
+    # 7. Done -- and, if anything optional was skipped on the way, done
+    #    with that said out loud. The operator reads this line and the job
+    #    record; a skip that appears in neither is a skip that silently
+    #    changed what they got.
+    present = f", {len(duplicates)} already present" if duplicates else ""
+    message = (
+        f"imported {len(to_upload)} file(s) as rom id(s) {rom_ids}{present}"
+        + _skipped_suffix(skipped)
+    )
     queue.set_state(job.id, JobState.DONE)
     return ImportResult(
         job_id=job.id,
         state=JobState.DONE,
         rom_id=rom_ids[0] if rom_ids else None,
         message=message,
+        degraded=tuple(skipped),
     )
+
+
+def _skipped_suffix(skipped: list[SkippedStep]) -> str:
+    """The degradation notes, appended to whatever the outcome was."""
+    if not skipped:
+        return ""
+    return ". " + "; ".join(str(step) for step in skipped)
 
 
 def _rom_id_of(rom: dict) -> int | None:
