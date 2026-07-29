@@ -62,3 +62,40 @@ def test_check_url_raises_with_useful_message():
 
 def test_malformed_url_denied():
     assert not url_allowed("not a url", PATTERNS)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # urlsplit keeps a backslash inside the hostname, and the wildcard's
+        # suffix test then matched -- so the policy layer answered
+        # "permitted" for a string that is not a legal DNS name at all. Not
+        # exploitable (httpx carries the backslash through and resolution
+        # fails), but the layer whose whole job is saying no should not be
+        # the one saying yes here.
+        "https://evil.example\\.archive.org/g.zip",
+        "https://evil\\.archive.org/g.zip",
+        "https://ev il.archive.org/g.zip",
+    ],
+)
+# Not listed: tab/CR/LF injection. urlsplit strips those before .hostname
+# is built, so the host it yields is the same one httpx would resolve --
+# and httpx refuses the URL outright (InvalidURL, non-printable ASCII), so
+# that case already fails closed at the transport rather than here.
+def test_a_host_that_is_not_a_legal_dns_name_is_never_allowed(url):
+    assert url_allowed(url, PATTERNS) is False
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://archive.org/g.zip",
+        "https://ia801.us.archive.org/g.zip",
+        "https://ARCHIVE.org/g.zip",
+        "https://xn--80ak6aa92e.archive.org/g.zip",
+        "https://archive.org:443/g.zip",
+        "https://user:pw@archive.org/g.zip",
+    ],
+)
+def test_the_dns_name_check_does_not_break_legitimate_hosts(url):
+    assert url_allowed(url, PATTERNS) is True
