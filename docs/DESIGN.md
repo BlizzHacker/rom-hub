@@ -1,7 +1,7 @@
 # RomM Hub — Design
 
-**Status:** draft, pending review
-**Date:** 2026-07-28
+**Status:** Phases 1–3 built; **RPP v1 fully implemented**
+**Date:** 2026-07-29
 **Scope of this document:** sub-projects **A** and **B** only (see [Scope](#scope)).
 
 ---
@@ -181,7 +181,15 @@ inherited leak.
 | `romm-hub plugin browse\|install\|list\|enable\|disable` | plugin lifecycle |
 | `romm-hub search <query> [--platform] [--limit]` | fan out across enabled `search` plugins |
 | `romm-hub import <plugin> <source_id> [--platform] [--collection]` | plan → download → dedup → upload → collection |
+| `romm-hub enrich <plugin> <rom_id> [--source-id]` | enrich → fetch artwork → `PUT /api/roms/{id}` |
+| `romm-hub stream <plugin> <source_id>` | resolve one item to a validated stream target and print it |
+| `romm-hub cores list\|install <plugin> [<core>]` | list a plugin's cores, or download one into the configured cores directory |
 | `romm-hub jobs [--state]` | the persisted import queue, with failure reasons |
+
+`--source-id` exists because RomM does not record which plugin an import came
+from, so a `metadata` plugin cannot in general work out which of its own items
+a rom is. A plugin that refuses to guess (Archive.org does) says so and names
+the flag.
 
 `--platform`/`--collection` are applied **host-side, after** the plugin's plan
 has been validated and its URLs allowlist-checked, so they retarget where a ROM
@@ -199,8 +207,14 @@ grows lives on the estate or the USB4 array, never on `C:`.
 | Hub source, this doc | git repo (small — Python + Markdown) |
 | Plugin git clones | an LXC container `/opt/romm-hub/plugins/` |
 | In-flight downloads | an LXC container `/opt/romm-hub/var/downloads/` |
+| Fetched artwork, in transit | `$ROMM_HUB_HOME/var/artwork/<rom_id>/` |
 | Imported ROMs | `/mnt/library/roms` (RomM's existing library) |
-| Harvested cores | `/opt/romm-stream/cores` |
+| Harvested cores | `$ROMM_HUB_HOME/var/cores/` by default; `ROMM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
+
+The cores path is **configuration, not a constant**. Compiling
+`/opt/romm-stream/cores` into the Hub would put a plugin-supplied download
+outside `ROMM_HUB_HOME` on every host that is not an LXC container — including a
+developer workstation, where it would land on `C:`.
 
 `.gitignore` enforces this.
 
@@ -259,20 +273,72 @@ api_key     = { type = "secret" }           # never logged, never in git
 
 ### Capabilities
 
-| Capability | Method | Returns |
-|---|---|---|
-| `search` | `search(query, platform, limit)` | `SearchResult[]` |
-| `importer` | `plan(result)` | `FetchPlan` — URLs, target platform, filenames |
-| `metadata` | `enrich(rom_ref)` | `MetadataPatch` |
-| `stream` | `resolve(result)` | `StreamTarget` |
-| `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` |
+| Capability | Method | Returns | What the host does with it |
+|---|---|---|---|
+| `search` | `search(query, platform, limit)` | `SearchResult[]` | merges, dedups against the library |
+| `importer` | `plan(result)` | `FetchPlan` — URLs, target platform, filenames | downloads, hashes, uploads, files under a platform |
+| `metadata` | `enrich(rom_ref)` | `MetadataPatch` | fetches the artwork, `PUT /api/roms/{id}` |
+| `stream` | `resolve(result)` | `StreamTarget` | validates and returns it — nothing else |
+| `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` | downloads into the configured cores directory |
+
+**RPP v1 is fully implemented as of Phase 3.** All five capabilities have a
+host implementation, a CLI command and tests that exercise them through a real
+plugin subprocess.
 
 **Reserved, unimplemented in v1:** `peer`, `netplay`. Reserved so that
 sub-projects C and D cannot collide with a v1 name later.
 
 A minimal plugin implements `search` + `importer` only — the ~50-line
 community contribution that makes this worth building. Archive.org implements
-all five.
+four of the five: `search`, `importer`, `metadata` and `stream`. It does
+**not** implement `cores`, and that is a correction to an earlier draft of
+this document rather than an omission — see [The Archive.org
+plugin](#the-archiveorg-plugin).
+
+### Each capability's security gate
+
+The invariant is the same one `importer` established, applied without
+exception: **a plugin returns a description; the host performs every
+privileged action.** Concretely, every URL a plugin hands back — in any
+capability — passes `netpolicy.check_url` against that plugin's declared
+allowlist before the host fetches it.
+
+| Capability | What the plugin returns | The gate |
+|---|---|---|
+| `search` | result metadata only | nothing to fetch; `ctx.http` was already gated |
+| `importer` | `FetchPlan` | `check_url` per file, in `PluginProcess.plan()`; `FetchFile` validates every filename; `dest_in_job_dir` contains every write |
+| `metadata` | `MetadataPatch` | `check_url` on `artwork_url` in `PluginProcess.enrich()` **and** again in `metadata.run_enrich()`; the artwork filename goes through the same `bare_filename` and `dest_in_job_dir`; the RomM form-field names are an allowlist |
+| `stream` | `StreamTarget` | `check_url` when `kind="url"`; a `kind="handle"` may not *be* a URL, so the discriminator cannot be lied about to skip the check |
+| `cores` | `CoreArtifact[]`, `FetchPlan` | the **same** `_gated_plan()` the importer uses — one implementation, so the two cannot drift |
+
+Three things about that table are deliberate.
+
+**`metadata` and `cores` were the same hole as `importer`.** An artwork URL and
+a core download URL are both "a string a plugin chose, which the host then
+fetches with its own network access". Adding either without a `check_url` on it
+would have made the manifest's `network` declaration decorative for that
+capability, which is why the broker's module docstring enumerates the paths out
+and why each one is tested with an undeclared host.
+
+**Filename validation is reused, not re-implemented.** `bare_filename()` and
+`dest_in_job_dir()` were extracted (to `types.py` and the new `paths.py`) when
+the second and third callers appeared. A copy would have been a second place
+for the rule to be subtly different, and the containment check is exactly the
+kind of code where "subtly different" means "absent".
+
+**`metadata`'s worst case is not an escape.** It is a *faithful* write. RomM's
+update endpoint applies the record it is given, so a plugin that only knows the
+name would erase every curated id if unset fields were forwarded as empty form
+parts. `MetadataPatch.form_fields()` emits nothing for an unset field, and a
+test fails if that stops being true. Measured against a real RomM 4.9.2: a
+name-only `PUT` left an existing `igdb_id` untouched, and an *empty* artwork
+part is a `400` — so, unlike `ensure_collection`, an artwork-less update must
+carry no artwork part at all.
+
+**`stream` is deliberately shallow.** `romm-stream` is a separate service;
+integrating it is not this capability's job. The host validates the target and
+returns it, and the CLI prints it. Building a second streaming transport inside
+the Hub would be inventing infrastructure the estate already has.
 
 ### `secret` config type
 
@@ -506,9 +572,31 @@ curation.
 |---|---|
 | `search` | `advancedsearch.php`, scoped to configured collections |
 | `importer` | `emulator_ext` selects the payload from the item's file list; refuses `stream_only` items |
-| `metadata` | `00_coverscreenshot.jpg` → cover; `files[].format` makes artwork extraction deterministic |
-| `stream` | hands `stream_only` items to the existing `romm-stream` service on 104 |
-| `cores` | `metadata.emulator` names the core to harvest into `/opt/romm-stream/cores` |
+| `metadata` | `metadata.title` → name; `00_coverscreenshot.jpg` → cover, falling back to `files[].format` (`Emulator Screenshot`, then `Item Tile`), which makes artwork extraction deterministic |
+| `stream` | the item's own `/details/` page, which is where Emularity plays it; routes on the same `stream_only` signal the importer refuses on |
+| `cores` | **not implemented** — see below |
+
+Two of these differ from the original design, both on evidence found while
+building them.
+
+**`metadata` needs the identifier, and refuses to guess it.** The `RomRef` the
+host supplies carries RomM's name and filename, and neither is an Archive.org
+identifier (`rubik.zip` is not `rubik_202308`). Searching for the rom's name
+and taking the top hit would write *a* game's title and cover into the
+library rather than *this* game's, and the operator would have no way to
+notice. So the identifier is passed explicitly — `romm-hub enrich archive-org
+<rom_id> --source-id <identifier>` — and its absence is a refusal that names
+the flag. The same reasoning as the platform table's "needs mapping": silent
+misfiling is worse than a visible gap.
+
+**`cores` is not implemented, and the earlier claim that it would be was
+wrong.** `metadata.emulator` names an emulator (`dosbox`, `vice`); it does not
+name a downloadable artifact, and Archive.org publishes no core distribution
+to harvest from. Implementing the capability would mean inventing a download
+URL, and a plugin that fabricates a target is a plugin whose refusals cannot
+be believed either. The Hub's `cores` capability is complete and is exercised
+by a plugin subprocess in the test suite; what is missing is an upstream that
+Archive.org actually offers.
 
 ### Platform mapping
 
@@ -596,13 +684,19 @@ RomM's `CONTRIBUTING.md` requires opening an issue and discussing on Discord
 
 ## Phasing
 
-| Phase | Delivers | Proves | Blocked on |
-|---|---|---|---|
-| 1 | Hub core + RPP v1 + broker + `search` + CLI | the contract is real | — |
-| 2 | `importer` + RomM adapter + job queue | it is actually useful | **filesystem confinement** |
-| 3 | Web UI + Traefik nav injection | it is pleasant | — |
-| 4 | `metadata`, `stream`, `cores` | Archive.org plugin complete | — |
-| 5 | sub-projects C and D | *separate design pass* | — |
+| Phase | Delivers | Proves | Blocked on | Status |
+|---|---|---|---|---|
+| 1 | Hub core + RPP v1 + broker + `search` + CLI | the contract is real | — | **done** |
+| 2 | `importer` + RomM adapter + job queue | it is actually useful | **filesystem confinement** | **done** |
+| 3 | `metadata`, `stream`, `cores` | **RPP v1 is fully implemented** | — | **done** |
+| 4 | Web UI | it is pleasant | — | not started |
+| 5 | sub-projects C and D | *separate design pass* | — | not started |
+
+(Phases 3 and 4 are swapped relative to the original plan. The capabilities
+were built before the UI because a UI over three unimplemented capabilities
+would have had to be rewritten once they existed; nothing about the UI work
+depended on doing it first. The nav-injection half of the old Phase 3 was
+dropped outright on evidence — see [UI](#ui).)
 
 Phase 1 ends with a plugin that can search Archive.org from a CLI. That is the
 smallest thing that validates the riskiest assumption — the plugin contract —
@@ -618,6 +712,15 @@ a hostile plugin from a search-query leak into a full library compromise.
 Closing that needs a mount namespace, which the current container denies; it is
 a prerequisite, not a parallel workstream, and the file-read caveat above comes
 out when it lands.
+
+**Phase 2 shipped with that prerequisite unmet, and Phase 3 does not widen the
+gap.** Stated plainly because "we said it was blocking and shipped anyway" is
+the kind of thing that quietly becomes untrue in a document. What Phase 3 adds
+is three more capabilities using the *same* RomM token Phase 2 already held:
+`metadata` writes through it, `stream` and `cores` never touch RomM at all,
+and no capability puts a new secret anywhere a plugin could read. The exposure
+is unchanged — which is not the same as acceptable, and the mitigation in
+`README.md` is still the honest one: only install plugins you trust.
 
 ---
 

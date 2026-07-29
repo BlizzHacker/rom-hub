@@ -1,14 +1,20 @@
 """Supervises one plugin subprocess and brokers everything privileged.
 
-The plugin gets no RomM token, no filesystem mount, and no sockets. Two
-paths lead out, and both are gated by the same manifest allowlist before
-any socket is opened:
+The plugin gets no RomM token, no filesystem mount, and no sockets. Every
+path that leads out is gated by the same manifest allowlist before any
+socket is opened:
 
   * `http.get`, which the plugin calls, enforced in _serve_plugin_call()
   * the `FetchPlan` returned by plan(), whose URLs the *host* fetches later,
     enforced in plan()
+  * the `artwork_url` on the `MetadataPatch` returned by enrich(), which the
+    host fetches later, enforced in enrich()
+  * the `StreamTarget` returned by resolve_stream(), whose `url` kind is
+    something a player will fetch, enforced in resolve_stream()
+  * the `FetchPlan` returned by core_plan(), which is the import gate reused
+    verbatim -- a core is a binary landing on disk, like a ROM
 
-Adding a third path without a check_url() on it would make the manifest's
+Adding another path without a check_url() on it would make the manifest's
 `network` declaration decorative.
 
 There is also a path that leads *in*: the subprocess environment. Popen
@@ -29,7 +35,15 @@ from pydantic import ValidationError
 from romm_hub.manifest import Manifest
 from romm_hub.netpolicy import PolicyViolation, check_url
 from romm_hub.protocol import ProtocolError, read_message, write_message
-from romm_hub.types import FetchPlan, SearchResult
+from romm_hub.types import (
+    MAX_CORES_PER_PLUGIN,
+    CoreArtifact,
+    FetchPlan,
+    MetadataPatch,
+    RomRef,
+    SearchResult,
+    StreamTarget,
+)
 
 from .fetcher import Fetcher
 
@@ -395,7 +409,16 @@ class PluginProcess:
         the host to go get them. Both are gated by the same allowlist, or the
         manifest's `network` declaration means nothing for imports.
         """
-        raw = self._call("plan", {"result": result.model_dump()})
+        return self._gated_plan(self._call("plan", {"result": result.model_dump()}))
+
+    def _gated_plan(self, raw) -> FetchPlan:
+        """Re-establish a FetchPlan host-side and allowlist every URL in it.
+
+        Shared by `plan()` (a ROM) and `core_plan()` (an emulator core),
+        because those are the same privileged act with a different
+        destination: a plugin naming URLs the host will fetch. One
+        implementation, so a gate added to one is a gate on both.
+        """
         # The plugin is under no obligation to have used FetchPlan to build
         # this; the runner only calls model_dump() on whatever it returned.
         # So the shape is re-established here, on the trusted side.
@@ -423,6 +446,106 @@ class PluginProcess:
                     f"(file {index}, {f.filename!r}): {exc}"
                 ) from exc
         return plan
+
+    def cores(self) -> list[CoreArtifact]:
+        """The emulator cores this plugin offers. A catalogue, nothing more.
+
+        Nothing here is fetched: `core_plan()` is what turns one of these
+        into URLs, and that goes through the same gate a ROM import does.
+        """
+        raw = self._call("list_cores", {})
+        if not isinstance(raw, list):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
+                "expected a list of cores"
+            )
+        if len(raw) > MAX_CORES_PER_PLUGIN:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} offered {len(raw)} cores, over the "
+                f"{MAX_CORES_PER_PLUGIN} limit"
+            )
+        cores = []
+        for item in raw:
+            try:
+                cores.append(CoreArtifact(**item))
+            except (ValidationError, TypeError) as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} returned an invalid core: {exc}"
+                ) from exc
+        return cores
+
+    def core_plan(self, core: CoreArtifact) -> FetchPlan:
+        """Ask the plugin what to fetch for one core. The host fetches it.
+
+        Same type and same gate as an import plan, deliberately: a core is
+        a binary from the internet landing on the operator's disk, which is
+        every bit as privileged as a ROM is.
+        """
+        return self._gated_plan(self._call("plan_core", {"core": core.model_dump()}))
+
+    def enrich(self, rom: RomRef) -> MetadataPatch:
+        """Ask the plugin what to change about a rom. The host changes it.
+
+        Third channel of the same kind as `plan()`: a MetadataPatch can
+        carry an `artwork_url` that the *host* will fetch, so it gets the
+        same allowlist gate. Everything else in the patch is re-validated
+        here too -- the runner only calls model_dump() on whatever the
+        plugin returned, so the field allowlists in MetadataPatch are only
+        real on this side of the pipe.
+        """
+        raw = self._call("enrich", {"rom": rom.model_dump()})
+        if not isinstance(raw, dict):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid MetadataPatch: "
+                f"expected an object, got {type(raw).__name__}"
+            )
+        try:
+            patch = MetadataPatch(**raw)
+        except (ValidationError, TypeError) as exc:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid MetadataPatch: "
+                f"{exc}"
+            ) from exc
+        if patch.artwork_url is not None:
+            try:
+                check_url(patch.artwork_url, self.manifest.network)
+            except PolicyViolation as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} MetadataPatch rejected "
+                    f"(artwork_url): {exc}"
+                ) from exc
+        return patch
+
+    def resolve_stream(self, result: SearchResult) -> StreamTarget:
+        """Ask the plugin where an item can be played. The host only checks.
+
+        Thin on purpose: streaming is `romm-stream`'s job, so the host
+        validates the answer and returns it rather than opening anything.
+        The check is still not optional -- a `url` target is something that
+        will be fetched by whatever is pointed at it, so it goes through
+        the same allowlist as every other URL a plugin hands over.
+        """
+        raw = self._call("resolve", {"result": result.model_dump()})
+        if not isinstance(raw, dict):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid StreamTarget: "
+                f"expected an object, got {type(raw).__name__}"
+            )
+        try:
+            target = StreamTarget(**raw)
+        except (ValidationError, TypeError) as exc:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned an invalid StreamTarget: "
+                f"{exc}"
+            ) from exc
+        if target.kind == "url":
+            try:
+                check_url(target.target, self.manifest.network)
+            except PolicyViolation as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} StreamTarget rejected: {exc}"
+                ) from exc
+        return target
 
     def close(self) -> None:
         if self._proc is None:
