@@ -197,3 +197,53 @@ class RommClient:
             f"/api/collections/{collection_id}/roms",
             json={"rom_ids": rom_ids},
         )
+
+    # -- chunked upload ---------------------------------------------------
+    #
+    # Three calls, orchestrated by romm_hub.romm.upload.upload_file:
+    #   start -> N x upload_chunk -> complete, with cancel on any failure.
+    # Kept here (not just in upload.py) so every RomM HTTP call funnels
+    # through the same _authorized_request auth/error handling as the rest
+    # of the client.
+
+    def start_upload(
+        self, platform_id: int, filename: str, total_size: int, total_chunks: int
+    ) -> dict:
+        """POST /api/roms/upload/start -> the new upload session (its id
+        is read by the caller to address the following PUT/complete/cancel
+        calls). `platform_id` must be the integer id from `platform_id()`,
+        never a slug."""
+        resp = self._authorized_request(
+            "POST",
+            "/api/roms/upload/start",
+            headers={
+                "x-upload-platform": str(platform_id),
+                "x-upload-filename": filename,
+                "x-upload-total-size": str(total_size),
+                "x-upload-total-chunks": str(total_chunks),
+            },
+        )
+        return resp.json()
+
+    def upload_chunk(self, upload_id: str, index: int, chunk: bytes) -> None:
+        """PUT /api/roms/upload/{upload_id} with the raw chunk bytes as
+        the body, once per chunk."""
+        self._authorized_request(
+            "PUT",
+            f"/api/roms/upload/{upload_id}",
+            headers={"x-chunk-index": str(index)},
+            content=chunk,
+        )
+
+    def complete_upload(self, upload_id: str) -> dict:
+        """POST /api/roms/upload/{upload_id}/complete once every chunk has
+        been sent."""
+        resp = self._authorized_request(
+            "POST", f"/api/roms/upload/{upload_id}/complete"
+        )
+        return resp.json()
+
+    def cancel_upload(self, upload_id: str) -> None:
+        """POST /api/roms/upload/{upload_id}/cancel -- called on any
+        failure so a half-uploaded file does not linger server-side."""
+        self._authorized_request("POST", f"/api/roms/upload/{upload_id}/cancel")
