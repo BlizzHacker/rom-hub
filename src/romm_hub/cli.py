@@ -17,6 +17,7 @@ from pathlib import Path
 from .broker.fetcher import HttpxFetcher
 from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
+from .cores import CoreError, find_core, install_core
 from .dispatcher import search_all
 from .importer import run_import
 from .jobs import JobQueue, JobState
@@ -59,6 +60,23 @@ def downloads_dir(root: Path | None = None) -> Path:
 def artwork_dir(root: Path | None = None) -> Path:
     """Where a fetched cover lands on its way to RomM. Same reasoning again."""
     return Path(root or default_root()) / "var" / "artwork"
+
+
+def cores_dir(root: Path | None = None) -> Path:
+    """Where installed emulator cores land.
+
+    Configuration, not a constant. On the deployment target this points at
+    the `romm-stream` core directory, but that path is the *operator's* to
+    choose -- hard-coding `/opt/romm-stream/cores` here would make the Hub
+    unusable anywhere else and would put a plugin-supplied download outside
+    `ROMM_HUB_HOME` on every host that did not happen to match.
+
+    Read at call time so a shell can flip it, like every other setting.
+    """
+    configured = os.environ.get("ROMM_HUB_CORES_DIR", "").strip()
+    if configured:
+        return Path(configured)
+    return Path(root or default_root()) / "var" / "cores"
 
 
 def romm_settings() -> tuple[str, str, str]:
@@ -421,6 +439,63 @@ def _cmd_stream(args) -> int:
     return EXIT_OK
 
 
+def _with_cores_plugin(args, action):
+    """Start `args.plugin` for a cores call, or return the refusal.
+
+    Both cores subcommands need the same three things -- an installed,
+    enabled plugin that declares `cores`, and a running subprocess -- and
+    neither needs RomM at all: a core never touches the library.
+    """
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "cores")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    fetcher = HttpxFetcher()
+    try:
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+        ) as proc:
+            return action(proc)
+    finally:
+        fetcher.close()
+
+
+def _cmd_cores_list(args) -> int:
+    def show(proc) -> int:
+        cores = proc.cores()
+        if not cores:
+            print("this plugin offers no cores")
+            return EXIT_OK
+        print(f"{'CORE':<24} {'VERSION':<12} {'SYSTEM':<14} NAME")
+        for core in cores:
+            print(
+                f"{core.core_id:<24} {core.version or '-':<12} "
+                f"{core.system or '-':<14} {core.name}"
+            )
+        print()
+        print(f"{len(cores)} core(s). Install with: romm-hub cores install "
+              f"{args.plugin} <core>")
+        return EXIT_OK
+
+    return _with_cores_plugin(args, show)
+
+
+def _cmd_cores_install(args) -> int:
+    def install(proc) -> int:
+        core = find_core(proc.cores(), args.core)
+        result = install_core(proc, core, cores_dir=cores_dir())
+        print(result.message)
+        return EXIT_OK
+
+    return _with_cores_plugin(args, install)
+
+
 def _cmd_jobs(args) -> int:
     state = None
     if args.state:
@@ -538,6 +613,20 @@ def build_parser() -> argparse.ArgumentParser:
     stream.add_argument("source_id", help="the plugin's id for the item")
     stream.set_defaults(func=_cmd_stream)
 
+    cores = sub.add_parser("cores", help="list and install emulator cores")
+    csub = cores.add_subparsers(dest="cores_command", required=True)
+
+    cores_list = csub.add_parser("list", help="list the cores a plugin offers")
+    cores_list.add_argument("plugin", help="slug of an installed cores plugin")
+    cores_list.set_defaults(func=_cmd_cores_list)
+
+    cores_install = csub.add_parser(
+        "install", help="download one core into the configured cores directory"
+    )
+    cores_install.add_argument("plugin", help="slug of an installed cores plugin")
+    cores_install.add_argument("core", help="the core id, from 'cores list'")
+    cores_install.set_defaults(func=_cmd_cores_install)
+
     jobs = sub.add_parser("jobs", help="list import jobs")
     jobs.add_argument(
         "--state",
@@ -558,6 +647,7 @@ def main(argv: list[str] | None = None) -> int:
         ManifestError,
         CatalogError,
         PluginCallError,
+        CoreError,
         EnrichError,
         RommError,
         OSError,

@@ -12,7 +12,7 @@ from typing import Any
 
 from romm_hub.protocol import read_message, write_message
 from romm_hub.sandbox import SandboxUnavailable, install as install_sandbox
-from romm_hub.types import RomRef, SearchResult
+from romm_hub.types import CoreArtifact, RomRef, SearchResult
 
 from .context import HttpClient, PluginContext
 
@@ -103,6 +103,21 @@ def run_plugin(stdin, stdout) -> None:
                 # re-checks every URL against the allowlist. Nothing decided
                 # on this side of the pipe is load-bearing.
                 result = plan.model_dump()
+            elif method == "list_cores":
+                if ctx is None:
+                    raise RuntimeError("init must be called before list_cores")
+                if "cores" not in instances:
+                    instances["cores"] = _load(entrypoints["cores"], ctx)
+                result = [c.model_dump() for c in instances["cores"].list()]
+            elif method == "plan_core":
+                if ctx is None:
+                    raise RuntimeError("init must be called before plan_core")
+                if "cores" not in instances:
+                    instances["cores"] = _load(entrypoints["cores"], ctx)
+                core_plan = instances["cores"].plan(CoreArtifact(**params["core"]))
+                # Re-validated and re-gated host-side by the same code that
+                # gates an import plan.
+                result = core_plan.model_dump()
             elif method == "resolve":
                 if ctx is None:
                     raise RuntimeError("init must be called before resolve")

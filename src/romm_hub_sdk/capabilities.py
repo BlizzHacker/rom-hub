@@ -13,6 +13,7 @@ URL and a `cores` download URL are gated exactly like a `FetchPlan` URL.
 from abc import ABC, abstractmethod
 
 from romm_hub.types import (
+    CoreArtifact,
     FetchPlan,
     MetadataPatch,
     RomRef,
@@ -75,4 +76,23 @@ class StreamProvider(Capability):
         Raise for an item that cannot be streamed. The host does not build
         any streaming transport of its own: it validates this answer and
         hands it on.
+        """
+
+
+class CoreProvider(Capability):
+    @abstractmethod
+    def list(self) -> list[CoreArtifact]:
+        """The emulator cores this plugin can install. A catalogue only."""
+
+    @abstractmethod
+    def plan(self, core: CoreArtifact) -> FetchPlan:
+        """Describe what to fetch for one core. The HOST performs the fetch.
+
+        The same `FetchPlan` an importer returns, and gated identically:
+        every URL is checked against this plugin's `network` allowlist and
+        every filename must be a bare name. A core is a binary landing on
+        the operator's disk, which is exactly as privileged as a ROM.
+
+        `platform` is a label for the operator here rather than a RomM
+        platform slug -- name the system the core emulates.
         """

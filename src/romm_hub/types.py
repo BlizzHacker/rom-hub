@@ -470,3 +470,46 @@ class StreamTarget(BaseModel):
                 f"plugin's network allowlist"
             )
         return self
+
+
+# -- cores ---------------------------------------------------------------
+
+# A core id is chosen by the plugin and typed by an operator
+# (`romm-hub cores install <plugin> <core_id>`). It is compared, printed
+# and logged; it is never a path component -- the files a core installs
+# are named by the FetchPlan, which validates them as filenames already.
+_CORE_ID_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+)
+_MAX_CORE_ID_CHARS = 64
+
+# An emulator catalogue, not a package index. Bounded like a FetchPlan's
+# file list, and for the same reason: the host walks whatever it is given.
+MAX_CORES_PER_PLUGIN = 256
+
+
+class CoreArtifact(BaseModel):
+    """One installable emulator core, as a plugin describes it.
+
+    A description only. `CoreProvider.plan(core)` turns the operator's
+    choice into a `FetchPlan`, and that is what the host acts on -- so the
+    same allowlist and the same filename rules apply to a core download as
+    to a ROM download, by reusing the same type rather than resembling it.
+    """
+
+    core_id: str = Field(min_length=1, max_length=_MAX_CORE_ID_CHARS)
+    name: str = Field(min_length=1, max_length=200)
+    version: str | None = Field(default=None, max_length=64)
+    system: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("core_id")
+    @classmethod
+    def _identifier_only(cls, v: str) -> str:
+        bad = sorted(set(v) - _CORE_ID_CHARS)
+        if bad:
+            raise ValueError(
+                f"core_id contains characters that are not permitted in an "
+                f"identifier: {bad!r}"
+            )
+        return v
