@@ -11,6 +11,7 @@ import traceback
 from typing import Any
 
 from romm_hub.protocol import read_message, write_message
+from romm_hub.sandbox import SandboxUnavailable, install as install_sandbox
 
 from .context import HttpClient, PluginContext
 
@@ -43,6 +44,19 @@ def _load(entrypoint: str, ctx: PluginContext):
     return getattr(module, class_name)(ctx)
 
 
+def _sandbox_state() -> dict:
+    """Install confinement if possible; describe the outcome either way.
+
+    Called during init, before any plugin module is imported. Never raises:
+    the host decides whether an unsandboxed plugin may proceed.
+    """
+    try:
+        install_sandbox()
+    except SandboxUnavailable as exc:
+        return {"sandboxed": False, "sandbox_reason": str(exc)}
+    return {"sandboxed": True, "sandbox_reason": "seccomp filter installed"}
+
+
 def run_plugin(stdin, stdout) -> None:
     channel = StdioChannel(stdin, stdout)
     instances: dict[str, Any] = {}
@@ -67,7 +81,8 @@ def run_plugin(stdin, stdout) -> None:
                 ctx = PluginContext(
                     config=params.get("config") or {}, http=HttpClient(channel)
                 )
-                result: Any = {"ok": True}
+                # Confine BEFORE any plugin code can be imported by _load().
+                result: Any = {"ok": True, **_sandbox_state()}
             elif method == "search":
                 if ctx is None:
                     raise RuntimeError("init must be called before search")
