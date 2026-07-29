@@ -1,4 +1,4 @@
-# Myrient-style directory-index plugin for RomM Hub
+# nointro-archive: No-Intro sets on Archive.org, for RomM Hub
 
 Implements the RPP v1 `search` and `importer` capabilities against a plain
 HTTP **directory index** — no API, just the listing a web server renders for a
@@ -9,37 +9,64 @@ directory.
 | `search` | `<base_url><directory>/` | reads the index once, caches it, matches file names |
 | `importer` | the same index | confirms the file is still listed, then plans it |
 
-## Read this first: Myrient is gone
+## Read this first: this plugin is not Myrient
 
-**myrient.erista.me shut down on 31 March 2026.** It is not merely offline —
-it answers **`200 OK` with a static shutdown notice for every path it ever
-served**, including deep file URLs:
+**Myrient (myrient.erista.me) shut down on 31 March 2026.** This plugin
+**sources Archive.org's No-Intro mirrors** — `https://archive.org/download/`,
+the `nointro.*` items — and does not contact Myrient at all. `myrient.erista.me`
+is not in the manifest allowlist, so it could not reach it even if configured
+to try.
+
+It was called `myrient` during development, and shipping it under that name
+would have been misleading: the name would have promised a source that no
+longer exists while every request actually went to the Internet Archive. Hence
+`nointro-archive`, which describes what it really does.
+
+**What is retained is the Myrient *shape*, deliberately.** `base_url` +
+directory + a name-matched listing is a layout several mirrors reproduce, and
+`nointro_archive/platforms.py` still carries Myrient's own
+`No-Intro/<Platform>` directory names. The Myrient index parser is kept, and
+so is its regression fixture — a real Myrient listing captured from the
+**Wayback Machine** (`tests/fixtures/nointro_archive/myrient_no_intro_game_boy.html`),
+because myrient.erista.me no longer serves one. If a mirror reproducing that
+tree ever appears, pointing this plugin at it is a config change plus one line
+in `manifest.toml`; nothing has to be re-derived.
+
+### Why the shutdown check cannot use status codes
+
+Myrient is not merely offline. It answers **`200 OK` with a static shutdown
+notice for every path it ever served — and for paths it never served**:
 
     $ curl -sI 'https://myrient.erista.me/files/No-Intro/Nintendo - Game Boy/Tetris (World) (Rev 1).zip'
     HTTP/2 200
     content-type: text/html          # 2,334 bytes of shutdown notice
 
-A plugin that checked status codes would report "no results" forever and never
+    $ curl -sI 'https://myrient.erista.me/this/path/never/existed'
+    HTTP/2 200
+    content-type: text/html          # the same 2,334 bytes, byte for byte
+
+There is no status code, no header and no length difference to key off. A
+plugin that trusted status codes would report "no results" forever and never
 say why, and an importer that trusted them would download the notice, hash it,
 upload it, and report `DONE` with an HTML page filed as a ROM.
 
-So the plugin ships pointed at a live mirror instead, and it **checks that a
-page is actually an index** rather than trusting the status code: a `200` from
-which no entries can be parsed is an error that says so. There is a test for
-exactly that, replaying the real shutdown page
-(`tests/fixtures/myrient/myrient_shutdown.html`).
+So the plugin **checks that a page is actually an index** instead: a `200`
+from which no entries can be parsed is an error that says so out loud. That
+guard (`MIN_USABLE_ENTRIES` in `nointro_archive/index.py`) is the only thing
+standing between a dead source and silently returning garbage, and there is a
+test replaying the real shutdown page
+(`tests/fixtures/nointro_archive/myrient_shutdown.html`) to keep it that way.
 
-The Myrient *shape* is preserved throughout — `base_url` + directory + a
-name-matched listing — and `myrient/platforms.py` still carries Myrient's own
-`No-Intro/<Platform>` directory names, so pointing this at any mirror that
-reproduces that layout is a config change plus one line in `manifest.toml`.
-A replacement that reproduces Myrient's tree was looked for and not found:
-MiNERVA Archive is live but `Disallow`s `/browse/` and `/rom/` in its
-robots.txt, so it was not used.
+### MiNERVA is deliberately not used
+
+MiNERVA Archive, the successor most often pointed to, is live — but its
+robots.txt `Disallow`s `/browse/` and `/rom/`, which are exactly the paths a
+scripted client would need. Working around a robots directive was not on the
+table, so MiNERVA is not a `base_url` default and is not in the allowlist.
 
 ## Install
 
-    romm-hub plugin install ./plugins-dev/myrient
+    romm-hub plugin install ./plugins-dev/nointro-archive
     romm-hub search "streets of rage" --platform genesis --limit 5
 
 ## Config
@@ -48,7 +75,7 @@ robots.txt, so it was not used.
 |---|---|---|---|
 | `base_url` | `str` | `https://archive.org/download/` | mirror root; must be `https://` and its host must be in the manifest allowlist |
 | `collections` | `list[str]` | the twelve `nointro.*` items below | directories to search, **in order** |
-| `collection` | `str` | `Myrient` | RomM collection imported ROMs are grouped into |
+| `collection` | `str` | `No-Intro` | RomM collection imported ROMs are grouped into |
 
 Default `collections`: `nointro.gg`, `nointro.ms-mkiii`, `nointro.md`,
 `nointro.32x`, `nointro.tg-16`, `nointro.sg`, `nointro.atari-2600`,
@@ -113,7 +140,7 @@ directory in `collections` is.
 ## Platform mapping
 
 The only thing a directory index says about a ROM's platform is which
-directory it is in, so `myrient/platforms.py` maps directory names to RomM
+directory it is in, so `nointro_archive/platforms.py` maps directory names to RomM
 platform slugs. **Exact match, no fallback** — an unmapped directory raises
 **"needs mapping"** and names itself.
 

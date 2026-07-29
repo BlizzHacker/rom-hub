@@ -125,7 +125,7 @@ class Search(SearchProvider):
                     f"directory {directory!r} needs mapping: it is not in this "
                     f"plugin's directory -> RomM platform table, and guessing "
                     f"would file every ROM in it under the wrong system. Add it "
-                    f"to myrient/platforms.py."
+                    f"to nointro_archive/platforms.py."
                 )
             pairs.append((str(directory), slug))
         return pairs
