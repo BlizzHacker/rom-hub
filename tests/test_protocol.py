@@ -3,7 +3,7 @@ import io
 import pytest
 
 from romm_hub.protocol import (
-    MAX_MESSAGE_BYTES,
+    MAX_MESSAGE_CHARS,
     ProtocolError,
     read_message,
     write_message,
@@ -43,7 +43,7 @@ def test_missing_kind_raises():
 
 
 def test_oversize_line_raises():
-    huge = '{"kind": "result", "id": "p1", "result": "' + "x" * MAX_MESSAGE_BYTES + '"}\n'
+    huge = '{"kind": "result", "id": "p1", "result": "' + "x" * MAX_MESSAGE_CHARS + '"}\n'
     with pytest.raises(ProtocolError, match="too large"):
         read_message(io.StringIO(huge))
 
@@ -68,14 +68,14 @@ class EndlessLine:
 
 
 def test_oversize_line_is_refused_before_it_is_buffered():
-    stream = EndlessLine(limit=MAX_MESSAGE_BYTES + 1000)
+    stream = EndlessLine(limit=MAX_MESSAGE_CHARS + 1000)
     with pytest.raises(ProtocolError, match="too large"):
         read_message(stream)
     # The point of the cap: at most the cap (plus the one character that
     # proves the cap was exceeded) may ever reach host memory.
-    assert stream.handed_out <= MAX_MESSAGE_BYTES + 1, (
+    assert stream.handed_out <= MAX_MESSAGE_CHARS + 1, (
         f"host buffered {stream.handed_out} chars for a capped "
-        f"{MAX_MESSAGE_BYTES}-char message"
+        f"{MAX_MESSAGE_CHARS}-char message"
     )
 
 

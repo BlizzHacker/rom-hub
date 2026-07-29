@@ -16,7 +16,7 @@ import httpx
 
 USER_AGENT = "romm-hub/0.1 (+https://github.com/rommapp/romm)"
 
-# Under protocol.MAX_MESSAGE_BYTES (8 MiB): the body is JSON-escaped into a
+# Under protocol.MAX_MESSAGE_CHARS (8 MiB): the body is JSON-escaped into a
 # reply frame, which only ever grows it.
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 
@@ -52,6 +52,12 @@ class HttpxFetcher:
         )
 
     def get(self, url: str, params: dict) -> tuple[int, str]:
+        # One HttpxFetcher is shared by every plugin in a fan-out, so a
+        # Set-Cookie from one plugin's request would ride along on another
+        # plugin's request to the same allowed host: a side channel between
+        # plugins that are supposed to be isolated. Nothing in the brokered
+        # API can set or read a cookie, so there is nothing to preserve.
+        self._client.cookies.clear()
         with self._client.stream("GET", url, params=params or None) as resp:
             # Believe Content-Length when it is offered: refusing before a
             # single body byte is pulled is strictly cheaper. It is a hint,

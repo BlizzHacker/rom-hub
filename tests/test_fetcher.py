@@ -97,6 +97,28 @@ def test_the_declared_charset_is_honoured():
         fetcher.close()
 
 
+def test_a_cookie_from_one_request_never_rides_along_on_the_next():
+    """One fetcher serves every plugin in a fan-out; its jar must not.
+
+    Two plugins allowed on the same host would otherwise share session state.
+    """
+    seen: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("cookie"))
+        return httpx.Response(
+            200, headers={"Set-Cookie": "sess=plugin-A-secret"}, text="ok"
+        )
+
+    fetcher = _fetcher(handler)
+    try:
+        fetcher.get("https://allowed.example/a", {})
+        fetcher.get("https://allowed.example/b", {})
+    finally:
+        fetcher.close()
+    assert seen == [None, None], f"cookie leaked between requests: {seen}"
+
+
 def test_an_unknown_charset_falls_back_rather_than_raising():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
