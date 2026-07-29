@@ -86,6 +86,24 @@ Worth being exact, because "sandboxed" is doing less work than it sounds:
 **Install only plugins you trust.** The allowlist tells you what a plugin
 *asks for*; on Linux it is also what it is held to.
 
+## Which backends a plugin works against
+
+Every plugin here works against **all three** supported library servers —
+RomM, Gaseous and Retrom — because a plugin never talks to one. It returns a
+*description* (a `FetchPlan`, a `MetadataPatch`) and the host executes it
+against whichever backend `ROM_HUB_BACKEND` selects. So this directory carries
+no per-plugin backend column: the plugin is not what decides.
+
+What the *backend* decides is whether an optional step in that description can
+be honoured. A `metadata` plugin (libretro-thumbnails, retroachievements)
+writes fields, which Gaseous cannot do — so an enrich against Gaseous is
+refused up front, because writing nothing is not a degraded write. An `importer`
+plugin that files its results under a collection (archive-org defaults to
+"Archive.org") still imports against a backend with no collections — Gaseous and
+Retrom — with the grouping skipped and reported, because the ROM is the job and
+the collection is a nicety on top. The rule is per capability, not per plugin,
+and it lives in `README.md` under *Cannot-do-the-job vs cannot-do-an-extra*.
+
 ## These plugins ship in-tree
 
 The six plugins below live in this repository's `plugins-dev/` directory and

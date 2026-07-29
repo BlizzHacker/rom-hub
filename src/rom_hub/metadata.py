@@ -17,6 +17,14 @@ builds a field mapping from `model_dump()`.
 **Either the whole patch lands or none of it does.** Artwork is fetched
 before the write, so a cover that cannot be downloaded fails the enrich
 rather than applying the name and quietly dropping the image.
+
+The one exception is a backend that has no artwork support *at all*, and
+it is not quiet: `ARTWORK` is classified optional in
+`rom_hub.backends.base`, so the cover is dropped before it is fetched,
+the fields are written, and the result says which part did not happen.
+Losing a name and a release date because the library stores no images is
+a worse answer than writing them. `METADATA` is classified essential and
+still refuses -- an enrich that writes nothing is not a degraded enrich.
 """
 
 from __future__ import annotations
@@ -25,7 +33,14 @@ import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
 
-from rom_hub.backends.base import ARTWORK, METADATA, LibraryBackend, require
+from rom_hub.backends.base import (
+    ARTWORK,
+    METADATA,
+    LibraryBackend,
+    SkippedStep,
+    degrade,
+    require,
+)
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.paths import UnsafeDestination, dest_in_job_dir
 from rom_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
@@ -49,6 +64,9 @@ class EnrichResult:
     artwork_bytes: int
     changed: bool
     message: str
+    #: Optional parts of the patch the backend could not take, dropped
+    #: rather than fatal. Already spelled out in `message`.
+    degraded: tuple[SkippedStep, ...] = ()
 
 
 def rom_ref_from(rom: dict, rom_id: int, extra: dict | None = None) -> RomRef:
@@ -125,13 +143,42 @@ def run_enrich(
         )
 
     fields = patch.form_fields()
+
+    # The artwork decision, made before `_artwork` -- which is where the
+    # cover would be fetched over the network. A backend that cannot take
+    # a cover costs no download either way.
+    #
+    # ARTWORK is classified optional in `backends.base`: a patch carrying
+    # a name, a release date and an igdb_id *and* a cover should not lose
+    # all four because the backend stores no images. So the cover is
+    # dropped, the rest is written, and the skip is in the result.
+    skipped: list[SkippedStep] = []
     if patch.has_artwork():
-        # Before `_artwork`, which is where the cover would be fetched
-        # over the network. A backend that cannot take a cover should
-        # cost no download at all, and should say why rather than
-        # rejecting a multipart part with a status code.
-        require(backend, ARTWORK, f"the artwork plugin {slug!r} proposed")
-    artwork = _artwork(patch, slug, allowlist, work_dir, downloader)
+        artwork_skip = degrade(
+            backend, ARTWORK, f"the cover art plugin {slug!r} proposed"
+        )
+        if artwork_skip is not None:
+            skipped.append(artwork_skip)
+
+    if skipped and not fields:
+        # Nothing survives the skip. Writing an empty patch would report a
+        # change that did not happen; this is the one shape where dropping
+        # the cover leaves no operation at all.
+        return EnrichResult(
+            rom_id=rom.rom_id,
+            fields={},
+            artwork_bytes=0,
+            changed=False,
+            message=(
+                f"plugin {slug!r} proposed only cover art for rom "
+                f"{rom.rom_id}, and {str(skipped[0])}; nothing was written"
+            ),
+            degraded=tuple(skipped),
+        )
+
+    artwork = (
+        None if skipped else _artwork(patch, slug, allowlist, work_dir, downloader)
+    )
 
     try:
         backend.update_rom(rom.rom_id, fields, artwork=artwork)
@@ -142,12 +189,14 @@ def run_enrich(
 
     described = ", ".join(sorted(fields)) or "no fields"
     cover = f" and {len(artwork[1])} bytes of artwork" if artwork else ""
+    note = ". " + "; ".join(str(step) for step in skipped) if skipped else ""
     return EnrichResult(
         rom_id=rom.rom_id,
         fields=fields,
         artwork_bytes=len(artwork[1]) if artwork else 0,
         changed=True,
-        message=f"rom {rom.rom_id}: updated {described}{cover}",
+        message=f"rom {rom.rom_id}: updated {described}{cover}{note}",
+        degraded=tuple(skipped),
     )
 
 

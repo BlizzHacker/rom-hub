@@ -329,6 +329,37 @@ def test_jobs_can_be_filtered_by_state(tmp_path, monkeypatch, capsys):
     assert "other_item" not in out
 
 
+def test_jobs_shows_a_skipped_step_without_calling_it_an_error(
+    tmp_path, monkeypatch, capsys
+):
+    """A DONE import that skipped an optional step the backend cannot do
+    must say so here -- this listing is where an operator looks when the
+    collection they expected is empty -- but it must not be marked the way
+    a failure is, because the import worked."""
+    from rom_hub.cli import jobs_db_path
+    from rom_hub.jobs import JobQueue, JobState
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("ROM_HUB_HOME", str(home))
+    with JobQueue(jobs_db_path(home)) as queue:
+        job = queue.enqueue("archive-org", "rubik_202308", "Rubik", "dos")
+        queue.set_notes(
+            job.id,
+            "adding it to the collection 'Archive.org' was skipped: the "
+            "'gaseous' backend does not support collections",
+        )
+        queue.set_state(job.id, JobState.DONE)
+
+    assert main(["jobs"]) == 0
+    out = capsys.readouterr().out
+    assert "Archive.org" in out
+    assert "does not support collections" in out
+    # Marked as a note, not with the "!" every failure carries.
+    note_line = [line for line in out.splitlines() if "Archive.org" in line][0]
+    assert note_line.strip().startswith("~")
+    assert "!" not in note_line
+
+
 def test_an_unknown_job_state_is_an_error_message_not_a_traceback(
     tmp_path, monkeypatch, capsys
 ):

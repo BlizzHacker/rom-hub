@@ -1,20 +1,27 @@
-"""Saying what the active backend cannot do, before it costs anything.
+"""Saying what the active backend cannot do, before it costs anything --
+and doing the rest of the job anyway when what it cannot do is optional.
 
-The failure this exists to prevent is specific and expensive: an operator
-runs `rom-hub import --collection "Shooters"` against a backend that has
-no collections, waits for four gigabytes, and gets a 404 from an endpoint
-they have never heard of -- with the ROM half-filed and the message about
-HTTP rather than about collections.
+Two failures are being prevented here, and they pull in opposite
+directions:
 
-Every test below therefore asserts two things: that the refusal happened,
-and that **nothing was fetched**. The second is the whole point. A
-refusal after the download is not degradation, it is just a nicer
-traceback.
+1. An operator runs `rom-hub import --collection "Shooters"` against a
+   backend with no collections, waits for four gigabytes, and gets a 404
+   from an endpoint they have never heard of -- ROM half-filed, message
+   about HTTP. Every refusal test therefore asserts both that the refusal
+   happened *and* that nothing was fetched. A refusal after the download
+   is not degradation, it is a nicer traceback.
 
-Both routes into an unsupported collection are covered, because
-`--collection` is not the only one -- a plugin's own plan can name a
-collection the operator never typed (Archive.org files under
-"Archive.org" by default).
+2. An operator runs `rom-hub import archive-org rubik_202308` against
+   Gaseous or Retrom and gets **nothing at all**, because the plugin
+   names a collection by default and neither backend has collections.
+   That was the state of this file's policy until the essential/optional
+   split: the ROM they asked for was refused over the label they did not.
+
+So: `IMPORT` and `METADATA` refuse (nothing was fetched), `COLLECTIONS`
+and `ARTWORK` are skipped with the skip reported in the result *and* on
+the job row, and an explicitly typed `--collection` still refuses --
+because a default nobody chose and a name somebody typed are not the same
+request.
 """
 
 from __future__ import annotations
@@ -26,13 +33,18 @@ from types import SimpleNamespace
 import pytest
 
 from rom_hub.backends.base import (
+    ALL_CAPABILITIES,
     ARTWORK,
     COLLECTIONS,
+    ESSENTIAL_CAPABILITIES,
     IMPORT,
     METADATA,
+    OPTIONAL_CAPABILITIES,
     SCAN,
+    UNGATED_CAPABILITIES,
     CapabilityUnsupported,
     capabilities_of,
+    degrade,
     require,
 )
 from rom_hub.cli import main
@@ -150,55 +162,58 @@ def test_require_passes_silently_when_supported():
     require(LimitedBackend({COLLECTIONS}), COLLECTIONS, "anything")
 
 
+def test_require_can_carry_the_way_out():
+    backend = LimitedBackend({IMPORT}, name="example")
+    with pytest.raises(CapabilityUnsupported) as exc:
+        require(backend, COLLECTIONS, "--collection 'x'", hint="Re-run without it.")
+    assert "Re-run without it." in str(exc.value)
+
+
+# -- the classification ----------------------------------------------------
+
+
+def test_every_capability_is_classified():
+    """A capability added later must be deliberately placed, not left to
+    fall through whichever branch happens to be the default."""
+    classified = (
+        ESSENTIAL_CAPABILITIES | OPTIONAL_CAPABILITIES | UNGATED_CAPABILITIES
+    )
+    assert classified == ALL_CAPABILITIES
+    assert not (ESSENTIAL_CAPABILITIES & OPTIONAL_CAPABILITIES)
+    assert not (ESSENTIAL_CAPABILITIES & UNGATED_CAPABILITIES)
+    assert not (OPTIONAL_CAPABILITIES & UNGATED_CAPABILITIES)
+
+
+@pytest.mark.parametrize("capability", sorted(ESSENTIAL_CAPABILITIES))
+def test_an_essential_capability_cannot_be_degraded(capability):
+    """The guard rail on the whole policy: the way this gets weakened is
+    a later caller quietly turning "cannot do the job" into a footnote."""
+    with pytest.raises(ValueError, match="essential"):
+        degrade(LimitedBackend(set()), capability, "something")
+
+
+def test_degrade_returns_none_when_the_backend_can_do_it():
+    assert degrade(LimitedBackend({COLLECTIONS}), COLLECTIONS, "x") is None
+
+
+def test_a_skip_says_what_and_which_backend():
+    step = degrade(LimitedBackend({IMPORT}, name="gaseous"), COLLECTIONS, "grouping it")
+    assert step is not None
+    assert "grouping it" in str(step)
+    assert "gaseous" in str(step)
+    assert "collections" in str(step)
+
+
 # -- import ----------------------------------------------------------------
 
 
-def test_a_plan_naming_a_collection_is_refused_before_any_download(
-    tmp_path, queue
-):
-    backend = LimitedBackend({IMPORT, SCAN})
-    downloader = CountingDownloader()
-    result = run_import(
-        FakePlugin(_plan(collection="Archive.org")),
-        RESULT,
-        backend=backend,
-        queue=queue,
-        download_dir=tmp_path / "downloads",
-        downloader=downloader,
-    )
+def _upload_is_visible_afterwards(backend):
+    """Make `list_roms` answer with what was uploaded.
 
-    assert result.state is JobState.FAILED
-    assert "collections" in result.message
-    assert "Archive.org" in result.message
-    # The assertion that matters: no bytes, no upload, no collection call.
-    assert downloader.calls == []
-    assert backend.uploads == []
-    assert backend.collections_called == []
-
-
-def test_the_failure_reaches_the_job_record(tmp_path, queue):
-    """An operator reads `rom-hub jobs`, not the console they were not
-    watching."""
-    backend = LimitedBackend({IMPORT})
-    result = run_import(
-        FakePlugin(_plan(collection="Archive.org")),
-        RESULT,
-        backend=backend,
-        queue=queue,
-        download_dir=tmp_path / "downloads",
-        downloader=CountingDownloader(),
-    )
-    job = queue.get(result.job_id)
-    assert job.state is JobState.FAILED
-    assert "collections" in (job.error or "")
-
-
-def test_the_same_plan_without_a_collection_imports_fine(tmp_path, queue):
-    """Degradation is a refusal of the unsupported part, not of the tool."""
-    backend = LimitedBackend({IMPORT, SCAN})
-
-    # `list_roms` has to answer with the uploaded rom afterwards, or the
-    # pipeline's own post-condition check fails for an unrelated reason.
+    The pipeline confirms its own upload by re-listing, so a backend stub
+    that never reports the file fails every import for a reason that has
+    nothing to do with capabilities.
+    """
     uploaded: list[dict] = []
     backend.list_roms = lambda platform_id: list(uploaded)
     original_upload = backend.upload_rom
@@ -208,6 +223,140 @@ def test_the_same_plan_without_a_collection_imports_fine(tmp_path, queue):
         uploaded.append({"id": 999, "fs_name": Path(path).name})
 
     backend.upload_rom = upload
+    return uploaded
+
+
+def test_a_plan_naming_a_collection_still_imports_on_a_backend_without_them(
+    tmp_path, queue
+):
+    """The bug this branch exists for.
+
+    `rom-hub import archive-org rubik_202308` against Gaseous or Retrom
+    downloaded nothing at all, because archive-org names a collection by
+    default and there is no CLI flag that clears one. A collection is a
+    grouping nicety; the ROM is the job.
+    """
+    backend = LimitedBackend({IMPORT, SCAN}, name="gaseous")
+    _upload_is_visible_afterwards(backend)
+    downloader = CountingDownloader()
+
+    result = run_import(
+        FakePlugin(_plan(collection="Archive.org")),
+        RESULT,
+        backend=backend,
+        queue=queue,
+        download_dir=tmp_path / "downloads",
+        downloader=downloader,
+    )
+
+    assert result.state is JobState.DONE, result.message
+    assert len(backend.uploads) == 1
+    assert downloader.calls  # the ROM was actually fetched
+    # ... and the collection was not faked, only skipped.
+    assert backend.collections_called == []
+
+
+def test_the_skipped_collection_is_reported_in_the_outcome(tmp_path, queue):
+    """"It worked" and "it worked, minus the grouping you asked for" are
+    different outcomes and must read differently."""
+    backend = LimitedBackend({IMPORT, SCAN}, name="gaseous")
+    _upload_is_visible_afterwards(backend)
+
+    result = run_import(
+        FakePlugin(_plan(collection="Archive.org")),
+        RESULT,
+        backend=backend,
+        queue=queue,
+        download_dir=tmp_path / "downloads",
+        downloader=CountingDownloader(),
+    )
+
+    assert "collections" in result.message
+    assert "Archive.org" in result.message
+    assert "gaseous" in result.message
+    assert [step.capability for step in result.degraded] == [COLLECTIONS]
+
+
+def test_the_skip_reaches_the_job_record_without_looking_like_a_failure(
+    tmp_path, queue
+):
+    """An operator reads `rom-hub jobs`, not the console they were not
+    watching -- but a DONE job whose note landed in the error column reads
+    as broken."""
+    backend = LimitedBackend({IMPORT, SCAN}, name="retrom")
+    _upload_is_visible_afterwards(backend)
+
+    result = run_import(
+        FakePlugin(_plan(collection="Archive.org")),
+        RESULT,
+        backend=backend,
+        queue=queue,
+        download_dir=tmp_path / "downloads",
+        downloader=CountingDownloader(),
+    )
+
+    job = queue.get(result.job_id)
+    assert job.state is JobState.DONE
+    assert "collections" in (job.notes or "")
+    assert "Archive.org" in (job.notes or "")
+    assert not job.error
+
+
+def test_a_supported_collection_is_still_created(tmp_path, queue):
+    """Degrading the unsupported case must not have quietly disabled the
+    supported one."""
+    backend = LimitedBackend({IMPORT, SCAN, COLLECTIONS})
+    _upload_is_visible_afterwards(backend)
+
+    result = run_import(
+        FakePlugin(_plan(collection="Archive.org")),
+        RESULT,
+        backend=backend,
+        queue=queue,
+        download_dir=tmp_path / "downloads",
+        downloader=CountingDownloader(),
+    )
+
+    assert result.state is JobState.DONE, result.message
+    assert backend.collections_called == ["Archive.org"]
+    assert result.degraded == ()
+    assert queue.get(result.job_id).notes is None
+
+
+def test_an_essential_capability_still_refuses_before_any_download(
+    tmp_path, queue
+):
+    """The half of this that must not be weakened. A backend that cannot
+    be uploaded to has nowhere to put the ROM -- there is no reduced
+    import left to do, so nothing is fetched."""
+    backend = LimitedBackend({COLLECTIONS}, name="listener")
+    downloader = CountingDownloader()
+
+    result = run_import(
+        FakePlugin(_plan()),
+        RESULT,
+        backend=backend,
+        queue=queue,
+        download_dir=tmp_path / "downloads",
+        downloader=downloader,
+    )
+
+    assert result.state is JobState.FAILED
+    assert "import" in result.message
+    assert "listener" in result.message
+    # The assertion that matters: no bytes, no upload.
+    assert downloader.calls == []
+    assert backend.uploads == []
+    job = queue.get(result.job_id)
+    assert job.state is JobState.FAILED
+    # A refusal is an error, not a note -- the opposite filing from a skip.
+    assert "import" in (job.error or "")
+
+
+def test_the_same_plan_without_a_collection_imports_fine(tmp_path, queue):
+    """Degradation is a refusal of the unsupported part, not of the tool."""
+    backend = LimitedBackend({IMPORT, SCAN})
+    _upload_is_visible_afterwards(backend)
 
     result = run_import(
         FakePlugin(_plan()),
@@ -219,6 +368,7 @@ def test_the_same_plan_without_a_collection_imports_fine(tmp_path, queue):
     )
     assert result.state is JobState.DONE, result.message
     assert len(backend.uploads) == 1
+    assert result.degraded == ()
 
 
 # -- enrich ----------------------------------------------------------------
@@ -237,27 +387,68 @@ def test_enrich_against_a_backend_that_cannot_write_metadata(tmp_path):
     assert backend.updates == []
 
 
-def test_artwork_is_refused_without_being_fetched(tmp_path):
-    """The cover is a network fetch. A backend that cannot take one should
-    cost no download at all."""
-    backend = LimitedBackend({METADATA})
+def test_artwork_is_dropped_without_being_fetched_and_the_fields_land(tmp_path):
+    """The cover is a network fetch, so a backend that cannot take one
+    costs no download -- but the name it *can* take is still written.
+    Losing four fields because the fifth is an image is a worse answer
+    than writing the four."""
+    backend = LimitedBackend({METADATA}, name="fieldsonly")
     downloader = CountingDownloader()
     patch = MetadataPatch(
         name="Doom",
         artwork_url="https://allowed.example/cover.png",
         artwork_filename="cover.png",
     )
-    with pytest.raises(CapabilityUnsupported) as exc:
-        run_enrich(
-            FakePlugin(patch=patch),
-            REF,
-            backend=backend,
-            work_dir=tmp_path / "artwork",
-            downloader=downloader,
-        )
-    assert "artwork" in str(exc.value)
+    result = run_enrich(
+        FakePlugin(patch=patch),
+        REF,
+        backend=backend,
+        work_dir=tmp_path / "artwork",
+        downloader=downloader,
+    )
+
+    assert result.changed
+    assert backend.updates == [(42, {"name": "Doom"}, None)]
     assert downloader.calls == []
+    assert "artwork" in result.message
+    assert [step.capability for step in result.degraded] == [ARTWORK]
+
+
+def test_an_artwork_only_patch_reports_that_nothing_was_written(tmp_path):
+    """Dropping the only thing the patch proposed leaves no operation.
+    Reporting `changed` for it would be reporting a write that did not
+    happen."""
+    backend = LimitedBackend({METADATA}, name="fieldsonly")
+    patch = MetadataPatch(
+        artwork_url="https://allowed.example/cover.png",
+        artwork_filename="cover.png",
+    )
+    result = run_enrich(
+        FakePlugin(patch=patch),
+        REF,
+        backend=backend,
+        work_dir=tmp_path / "artwork",
+        downloader=CountingDownloader(),
+    )
+
+    assert not result.changed
     assert backend.updates == []
+    assert "artwork" in result.message
+    assert "nothing was written" in result.message
+
+
+def test_artwork_still_reaches_a_backend_that_takes_it(tmp_path):
+    """The supported path, unchanged by the degradation of the other."""
+    backend = LimitedBackend({METADATA, ARTWORK})
+    patch = MetadataPatch(
+        name="Doom", artwork_base64="aGVsbG8=", artwork_filename="cover.png"
+    )
+    result = run_enrich(
+        FakePlugin(patch=patch), REF, backend=backend, work_dir=tmp_path / "artwork"
+    )
+    assert result.changed
+    assert result.degraded == ()
+    assert backend.updates[0][2] is not None
 
 
 def test_a_field_only_patch_still_applies_without_artwork_support(tmp_path):
@@ -331,11 +522,18 @@ def importer_repo(tmp_path):
     return repo
 
 
-def test_collection_flag_is_refused_before_a_subprocess_starts(
+def test_an_explicitly_typed_collection_is_refused_with_a_way_forward(
     tmp_path, importer_repo, monkeypatch, capsys
 ):
-    """No plugin process, no connection, no download -- just an answer.
+    """The asymmetry, tested.
 
+    A plugin's default collection is dropped and noted. A name the
+    operator typed is not: silently importing somewhere other than where
+    they said is how a library ends up unsorted with nothing to explain
+    it. So this refuses -- and, because a refusal an operator cannot act
+    on is a dead end, it says what to run instead.
+
+    No plugin process, no connection, no download -- just an answer.
     Refused early enough that this passes on a host with no sandbox and
     no ROM_HUB_ALLOW_UNSANDBOXED, which is itself the evidence that no
     PluginProcess was ever started.
@@ -353,6 +551,32 @@ def test_collection_flag_is_refused_before_a_subprocess_starts(
     assert "collections" in err
     assert "Shooters" in err
     assert "limited" in err
+    # The way out, not just the diagnosis.
+    assert "--collection" in err
+    assert "ungrouped" in err
+
+
+def test_the_same_import_without_the_flag_is_not_refused(
+    tmp_path, importer_repo, monkeypatch, capsys
+):
+    """The counterpart: the flag is what was refused, not the import.
+
+    The demo plugin's plan names no collection, so this gets as far as
+    starting a PluginProcess -- which is exactly the point, and is why it
+    needs the unsandboxed opt-out the refusal test deliberately does not.
+    """
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    backend = LimitedBackend({IMPORT})
+    monkeypatch.setattr("rom_hub.cli.open_backend", lambda *a, **k: backend)
+    assert main(["plugin", "install", str(importer_repo)]) == 0
+    capsys.readouterr()
+
+    # It will fail later (the fake demo.example host is unreachable), but
+    # the failure must be a download, not a capability refusal.
+    main(["import", "demo", "x"])
+    err = capsys.readouterr().err
+    assert "collections" not in err
 
 
 def test_an_unconfigured_backend_is_reported_not_raised(
