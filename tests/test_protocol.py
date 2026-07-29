@@ -79,6 +79,41 @@ def test_oversize_line_is_refused_before_it_is_buffered():
     )
 
 
+MALFORMED = [
+    ("call_without_id", '{"kind": "call", "method": "http.get", "params": {}}'),
+    ("id_not_a_string", '{"kind": "result", "id": 7, "result": 1}'),
+    ("call_without_method", '{"kind": "call", "id": "p1", "params": {}}'),
+    ("call_method_not_a_string", '{"kind": "call", "id": "p1", "method": 7}'),
+    ("call_params_not_an_object", '{"kind": "call", "id": "p1", "method": "x", "params": 7}'),
+    ("result_without_result", '{"kind": "result", "id": "p1"}'),
+    ("error_not_an_object", '{"kind": "error", "id": "p1", "error": "boom"}'),
+    ("error_without_message", '{"kind": "error", "id": "p1", "error": {}}'),
+    ("error_message_not_a_string", '{"kind": "error", "id": "p1", "error": {"message": 7}}'),
+]
+
+
+@pytest.mark.parametrize("name,frame", MALFORMED, ids=[n for n, _ in MALFORMED])
+def test_malformed_frames_raise_protocol_error_not_key_or_type_error(name, frame):
+    """Shape is validated once, here, so no consumer has to index blind.
+
+    A plugin controls its own stdout, so every one of these is a frame it can
+    emit at will. Escaping as KeyError or TypeError breaks the documented
+    contract of PluginProcess.search and reads like a Hub bug.
+    """
+    with pytest.raises(ProtocolError):
+        read_message(io.StringIO(frame + "\n"))
+
+
+def test_a_well_formed_frame_of_each_kind_still_passes():
+    for frame in (
+        '{"kind": "call", "id": "h1", "method": "search", "params": {"q": 1}}',
+        '{"kind": "call", "id": "h1", "method": "search"}',
+        '{"kind": "result", "id": "p1", "result": null}',
+        '{"kind": "error", "id": "p1", "error": {"message": "boom"}}',
+    ):
+        assert read_message(io.StringIO(frame + "\n")) is not None
+
+
 def test_embedded_newlines_do_not_break_framing():
     buf = io.StringIO()
     write_message(buf, {"kind": "result", "id": "p1", "result": "a\nb"})
