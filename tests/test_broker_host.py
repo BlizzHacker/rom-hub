@@ -252,3 +252,31 @@ def test_a_malformed_plugin_frame_is_a_plugin_call_error(plugin_dir, name, frame
     proc._proc = ScriptedProc(frame + "\n")
     with pytest.raises(PluginCallError):
         proc._call("search", {})
+
+
+def test_a_timed_out_process_refuses_the_next_call_cleanly(plugin_dir):
+    """A killed process must not be re-entered as though it were alive.
+
+    The dispatcher builds one process per search today, so the blast radius is
+    contained -- but reusing a process across two capability calls is the
+    obvious Phase 2 optimisation, since spawning an interpreter per call is
+    expensive.
+    """
+    with _proc(plugin_dir, RecordingFetcher(), {"mode": "hang"}, timeout=2.0) as proc:
+        with pytest.raises(PluginCallError, match="timed out"):
+            proc.search("q", None, 10)
+        with pytest.raises(PluginCallError, match="not running"):
+            proc.search("q", None, 10)
+
+
+def test_a_stale_timeout_verdict_does_not_relabel_the_next_failure(plugin_dir):
+    """_timed_out was set and never cleared, so it coloured everything after.
+
+    Any later protocol error then masquerades as a timeout, sending the
+    investigation after a deadline that never expired.
+    """
+    proc = _proc(plugin_dir, RecordingFetcher())
+    proc._proc = ScriptedProc("{not json}\n")
+    proc._timed_out = True  # residue from an earlier call's deadline
+    with pytest.raises(PluginCallError, match="invalid JSON"):
+        proc._call("search", {})
