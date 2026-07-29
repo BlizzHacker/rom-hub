@@ -9,17 +9,60 @@ import sys
 from pathlib import Path
 
 from .broker.fetcher import HttpxFetcher
+from .catalog import CatalogError, load_catalog, symbol_for
 from .dispatcher import search_all
 from .registry import Registry, RegistryError
+
+CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
 
 
 def default_root() -> Path:
     return Path(os.environ.get("ROMM_HUB_HOME", Path.home() / ".romm-hub"))
 
 
+def _catalog_entry(slug: str):
+    """Resolve a bare slug through the directory, or return None.
+
+    A source that looks like a URL or an existing path is used as given --
+    the catalog is a convenience, never a required intermediary.
+    """
+    if "/" in slug or "\\" in slug or Path(slug).exists():
+        return None
+    try:
+        entries = load_catalog(CATALOG_PATH)
+    except CatalogError:
+        return None
+    return next((e for e in entries if e.slug == slug), None)
+
+
+def _cmd_plugin_browse(args) -> int:
+    try:
+        entries = load_catalog(CATALOG_PATH)
+    except CatalogError as exc:
+        print(f"catalog unreadable: {exc}", file=sys.stderr)
+        return 1
+    print(f"{'':<3}{'SLUG':<16} {'VERSION':<9} {'CAPABILITIES':<22} AUTHOR")
+    for e in sorted(entries, key=lambda x: x.slug):
+        caps = ",".join(e.capabilities)
+        mark = symbol_for(e.status, getattr(sys.stdout, "encoding", None))
+        print(f"{mark:<3}{e.slug:<16} {e.version:<9} {caps:<22} {e.author}")
+        print(f"   {e.repository}")
+        # Shown before install so the permission ask is a decision, not a
+        # surprise discovered afterwards.
+        print(f"   requests network: {', '.join(e.network) or '(none)'}")
+    print()
+    print(f"{len(entries)} plugin(s). Install with: romm-hub plugin install <slug>")
+    return 0
+
+
 def _cmd_plugin_install(args) -> int:
     reg = Registry(default_root())
-    plugin = reg.install(args.source, args.ref)
+    source, ref = args.source, args.ref
+    entry = _catalog_entry(source)
+    if entry is not None:
+        source, ref = entry.install, ref or entry.ref
+        print(f"resolved {entry.slug!r} from the catalog: {source} @ {ref}")
+    plugin = reg.install(source, ref)
     caps = ", ".join(sorted(plugin.manifest.capabilities))
     print(f"installed {plugin.slug} {plugin.manifest.version} (capabilities: {caps})")
     print(f"  network allowlist: {plugin.manifest.network or '(none)'}")
@@ -90,9 +133,12 @@ def build_parser() -> argparse.ArgumentParser:
     psub = plugin.add_subparsers(dest="plugin_command", required=True)
 
     install = psub.add_parser("install", help="install a plugin from a git repo or path")
-    install.add_argument("source")
+    install.add_argument("source", help="a catalog slug, git URL, or local path")
     install.add_argument("--ref", default=None, help="tag or branch to pin")
     install.set_defaults(func=_cmd_plugin_install)
+
+    browse = psub.add_parser("browse", help="list plugins in the directory")
+    browse.set_defaults(func=_cmd_plugin_browse)
 
     listing = psub.add_parser("list", help="list installed plugins")
     listing.set_defaults(func=_cmd_plugin_list)
