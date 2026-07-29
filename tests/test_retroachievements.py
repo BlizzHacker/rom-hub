@@ -44,8 +44,8 @@ from retroachievements.metadata import (  # noqa: E402
     NotConfigured,
 )
 
-from romm_hub.types import RomRef  # noqa: E402
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import RomRef  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "retroachievements"
 GAME_LIST = json.loads((FIXTURES / "get_game_list_console_1.json").read_text())
@@ -159,7 +159,7 @@ def test_no_raw_metadata_is_written_because_rpp_v1_has_no_field_for_it():
     LaunchBox, Hasheous, Flashpoint, HLTB, MobyGames and manuals. None is
     RetroAchievements, and putting RA's payload in one of them would be a
     lie in the database about where the data came from."""
-    from romm_hub.types import RAW_METADATA_FIELDS
+    from rom_hub.types import RAW_METADATA_FIELDS
 
     assert not any("_ra_" in field for field in RAW_METADATA_FIELDS)
     provider, _ = _provider()
@@ -206,7 +206,7 @@ def test_a_whitespace_only_key_counts_as_no_key():
 def test_the_secret_config_type_really_is_rejected_by_this_host():
     """The README's claim, pinned. If a later phase implements `secret`,
     this test fails and the README stops being true at the same moment."""
-    from romm_hub.manifest import ManifestError, parse_manifest
+    from rom_hub.manifest import ManifestError, parse_manifest
 
     manifest = (
         '[plugin]\nslug="x"\nname="X"\nversion="1"\nrpp_version="1"\n'
@@ -376,7 +376,7 @@ def test_junk_entries_in_the_list_are_stepped_over_not_crashed_on():
 
 
 def test_the_only_url_it_uses_is_inside_its_declared_allowlist():
-    from romm_hub.netpolicy import check_url
+    from rom_hub.netpolicy import check_url
 
     provider, http = _provider()
     provider.enrich(_ref())

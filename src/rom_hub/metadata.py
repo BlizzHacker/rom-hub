@@ -25,9 +25,9 @@ import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
 
-from romm_hub.netpolicy import PolicyViolation, check_url
-from romm_hub.paths import UnsafeDestination, dest_in_job_dir
-from romm_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
+from rom_hub.netpolicy import PolicyViolation, check_url
+from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
 
 # Artwork is a cover image, not a ROM. It is fetched into memory to be
 # posted straight back out, so the ceiling is the same one MetadataPatch
@@ -186,7 +186,7 @@ def _artwork(
         # Imported here rather than at module scope: importer pulls in the
         # job queue, the dedup hasher and the socket.io scanner, none of
         # which an enrich needs.
-        from romm_hub.importer import HttpDownloader
+        from rom_hub.importer import HttpDownloader
 
         downloader = HttpDownloader(allowlist=allowlist, timeout=ARTWORK_TIMEOUT)
     try:

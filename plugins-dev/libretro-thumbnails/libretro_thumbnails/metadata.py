@@ -37,7 +37,7 @@ import html
 import re
 from urllib.parse import quote, unquote
 
-from romm_hub_sdk import MetadataPatch, MetadataProvider, RomRef
+from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
 
 from .names import candidates, match_key, scrub
 from .systems import NeedsMapping, system_for  # noqa: F401  (re-exported)

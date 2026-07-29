@@ -1,4 +1,4 @@
-# RetroAchievements plugin for RomM Hub
+# RetroAchievements plugin for ROM Hub
 
 Implements the RPP v1 `metadata` capability: identifies a ROM by its hash on
 [RetroAchievements](https://retroachievements.org) and writes back the game's
@@ -10,15 +10,15 @@ Implements the RPP v1 `metadata` capability: identifies a ROM by its hash on
 
 ## Install
 
-    romm-hub plugin install ./plugins-dev/retroachievements
-    romm-hub enrich retroachievements 42 --source-id <md5>
+    rom-hub plugin install ./plugins-dev/retroachievements
+    rom-hub enrich retroachievements 42 --source-id <md5>
 
 ## ⚠ The API key is stored in plain text
 
 **Read this before you paste a key.**
 
 RPP v1 reserves a `secret` config type for credentials. **This host does not
-implement it** — `romm_hub/manifest.py` rejects any field declaring
+implement it** — `rom_hub/manifest.py` rejects any field declaring
 `type = "secret"` with *"reserved in RPP v1 but not implemented in Phase 1"*.
 So `api_key` is declared as a plain `str`, and the Hub stores it **in the clear**
 in its plugin config on disk, alongside every other setting. Anything that can
@@ -110,7 +110,7 @@ rcheevos itself — RetroArch and every RA-enabled emulator print it, and
 `source_id`, in that order, so a future host that computes hashes for plugins
 needs no change here. Today the route that works is the CLI:
 
-    romm-hub enrich retroachievements 42 --source-id 32e1a15161ef1f070b023738353bde51
+    rom-hub enrich retroachievements 42 --source-id 32e1a15161ef1f070b023738353bde51
 
 RomM already has the value: `GET /api/roms/42` returns `md5_hash`. Anything
 that is not 32 hex characters is refused before a request is made.

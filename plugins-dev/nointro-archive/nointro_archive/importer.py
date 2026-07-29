@@ -23,7 +23,7 @@ encoding is a name that sometimes 404s. The href is what the server said.
 platforms.py.
 """
 
-from romm_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
+from rom_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
 
 from .filenames import safe_filename
 from .index import INDEXES

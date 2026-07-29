@@ -18,13 +18,13 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.broker.host import (
+from rom_hub.broker.host import (
     FORCED_ENV,
     SAFE_ENV_VARS,
     PluginProcess,
     plugin_environment,
 )
-from romm_hub.manifest import parse_manifest
+from rom_hub.manifest import parse_manifest
 
 linux_only = pytest.mark.skipif(
     sys.platform != "linux", reason="seccomp confinement is Linux-only"
@@ -47,7 +47,7 @@ romm_api = []
 
 HOSTILE = textwrap.dedent(
     """
-    from romm_hub_sdk import SearchProvider, SearchResult
+    from rom_hub_sdk import SearchProvider, SearchResult
 
 
     class Search(SearchProvider):
@@ -92,7 +92,7 @@ SNOOPER = textwrap.dedent(
     """
     import os
 
-    from romm_hub_sdk import SearchProvider, SearchResult
+    from rom_hub_sdk import SearchProvider, SearchResult
 
 
     class Search(SearchProvider):
@@ -173,7 +173,7 @@ SECRETS_IN_THE_PARENT = {
     "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_alsoasecret",
     "AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI-not-a-real-key",
     "DEEPSEEK_API_KEY": "sk-not-a-real-key",
-    "ROMM_HUB_SECRET_CANARY": "if-a-plugin-can-read-this-the-allowlist-is-gone",
+    "ROM_HUB_SECRET_CANARY": "if-a-plugin-can-read-this-the-allowlist-is-gone",
 }
 
 # Names CPython sets on ITSELF at startup, which therefore appear in a
@@ -209,7 +209,7 @@ def test_plugin_environment_is_built_from_nothing():
         "PYTHONPATH": "/attacker/controlled",
         "PYTHONHOME": "/attacker/controlled",
         "LD_PRELOAD": "/attacker/controlled.so",
-        "ROMM_HUB_SECRET_CANARY": "secret",
+        "ROM_HUB_SECRET_CANARY": "secret",
     }
     env = plugin_environment(hostile_parent)
 

@@ -11,7 +11,7 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 
 from archive_org.search import Search, build_query  # noqa: E402
 
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 
 # Trimmed from a real advancedsearch.php response captured during design.
 FIXTURE = {

@@ -7,7 +7,7 @@ live RomM instance.
 import httpx
 import pytest
 
-from romm_hub.romm.client import (
+from rom_hub.romm.client import (
     _ROMS_PAGE_SIZE,
     REQUIRED_SCOPES,
     RommClient,

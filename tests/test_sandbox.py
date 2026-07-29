@@ -5,7 +5,7 @@ import textwrap
 
 import pytest
 
-from romm_hub.sandbox import DENIED_SYSCALLS, SandboxUnavailable, install, probe
+from rom_hub.sandbox import DENIED_SYSCALLS, SandboxUnavailable, install, probe
 
 linux_only = pytest.mark.skipif(
     sys.platform != "linux", reason="seccomp is Linux-only"
@@ -49,7 +49,7 @@ def test_filter_blocks_socket_in_a_child_process():
     script = textwrap.dedent(
         """
         import socket, sys
-        from romm_hub.sandbox import install
+        from rom_hub.sandbox import install
         install()
         try:
             socket.socket()
@@ -68,7 +68,7 @@ def test_filter_blocks_socket_in_a_child_process():
 def test_filter_allows_file_reads_so_imports_still_work():
     script = textwrap.dedent(
         """
-        from romm_hub.sandbox import install
+        from rom_hub.sandbox import install
         install()
         import json, base64          # imports after the filter must still work
         print("IMPORTS_OK", json.dumps({"a": 1}))

@@ -5,7 +5,7 @@ import textwrap
 
 import pytest
 
-from romm_hub.sandbox import probe
+from rom_hub.sandbox import probe
 
 
 def _sandbox_state_in_subprocess() -> dict:
@@ -13,7 +13,7 @@ def _sandbox_state_in_subprocess() -> dict:
 
     On Linux, `_sandbox_state()` calls `sandbox.install()`, which loads a
     seccomp filter as a side effect. That filter is irreversible and
-    process-wide (see `romm_hub.sandbox.install`'s docstring): loading it in
+    process-wide (see `rom_hub.sandbox.install`'s docstring): loading it in
     the pytest process itself would block `execve` for the rest of the
     session, breaking every later test that spawns a subprocess. It must
     only ever be exercised in a dedicated child process, never in-process.
@@ -21,7 +21,7 @@ def _sandbox_state_in_subprocess() -> dict:
     script = textwrap.dedent(
         """
         import json
-        from romm_hub_sdk import runner
+        from rom_hub_sdk import runner
         print(json.dumps(runner._sandbox_state()))
         """
     )
@@ -34,7 +34,7 @@ def _sandbox_state_in_subprocess() -> dict:
 
 def test_init_result_reports_sandbox_state():
     """The init reply must carry the keys the host's policy check reads."""
-    from romm_hub_sdk import runner
+    from rom_hub_sdk import runner
 
     assert hasattr(runner, "_sandbox_state")
     state = _sandbox_state_in_subprocess()
@@ -54,7 +54,7 @@ def test_sandbox_state_is_false_off_linux_with_a_reason():
     # Safe to call directly here: off Linux, install() raises before it can
     # ever touch pyseccomp, so there is no filter-loading side effect to
     # isolate into a subprocess.
-    from romm_hub_sdk import runner
+    from rom_hub_sdk import runner
 
     state = runner._sandbox_state()
     assert state["sandboxed"] is False

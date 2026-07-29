@@ -25,8 +25,8 @@ from homebrew.importer import ImportRefused, Importer  # noqa: E402
 from homebrew.platforms import hub_platform_for, platform_for  # noqa: E402
 from homebrew.search import Search  # noqa: E402
 
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from romm_hub.types import FetchFile, SearchResult  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import FetchFile, SearchResult  # noqa: E402
 
 
 def fixture(name: str) -> dict:

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from romm_hub.types import SearchResult
+from rom_hub.types import SearchResult
 
 
 def test_minimal_result_gets_defaults():

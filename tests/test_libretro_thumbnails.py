@@ -29,8 +29,8 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 from libretro_thumbnails.metadata import BASE, Metadata, NoThumbnail  # noqa: E402
 from libretro_thumbnails.systems import NeedsMapping  # noqa: E402
 
-from romm_hub.types import RomRef  # noqa: E402
-from romm_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.types import RomRef  # noqa: E402
+from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "libretro"
 
@@ -118,7 +118,7 @@ def test_an_exactly_named_rom_resolves_on_the_first_probe():
 
 def test_the_plugin_names_a_url_and_never_fetches_the_artwork_itself():
     """The host fetches it, after checking it against the allowlist."""
-    from romm_hub.netpolicy import check_url
+    from rom_hub.netpolicy import check_url
 
     provider, _ = _provider()
     patch = provider.enrich(_ref())
@@ -204,7 +204,7 @@ def test_libretro_id_is_never_set_because_there_is_no_such_id():
     provider, _ = _provider()
     assert provider.enrich(_ref()).provider_ids == {}
     with pytest.raises(ValidationError):
-        from romm_hub.types import MetadataPatch
+        from rom_hub.types import MetadataPatch
 
         MetadataPatch(provider_ids={"libretro_id": "Super Mario World (USA)"})
 
@@ -367,7 +367,7 @@ def test_art_kind_selects_a_different_libretro_set():
 
 @pytest.mark.parametrize("kind", ["boxart", "title", "snap", "logo"])
 def test_every_kind_stays_inside_the_allowlist(kind):
-    from romm_hub.netpolicy import check_url
+    from rom_hub.netpolicy import check_url
 
     directory = {
         "boxart": "Named_Boxarts",

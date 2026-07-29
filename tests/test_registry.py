@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from romm_hub.registry import Registry, RegistryError
+from rom_hub.registry import Registry, RegistryError
 
 MANIFEST = """
 [plugin]

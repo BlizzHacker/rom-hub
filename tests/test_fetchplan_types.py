@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from romm_hub.types import MAX_FILES_PER_PLAN, FetchFile, FetchPlan
+from rom_hub.types import MAX_FILES_PER_PLAN, FetchFile, FetchPlan
 
 
 def test_minimal_plan():
