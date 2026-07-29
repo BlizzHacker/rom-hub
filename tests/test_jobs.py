@@ -97,6 +97,19 @@ def test_set_state_failed_persists_the_error_text(tmp_path):
     assert reloaded.error == "platform slug 'dos' has no match"
 
 
+def test_set_platform_overwrites_the_platform_the_job_was_enqueued_with(tmp_path):
+    """A job is enqueued before the plugin has said what platform it is
+    for, so the row starts with whatever the search result carried."""
+    q = JobQueue(tmp_path / "jobs.sqlite3")
+    job = q.enqueue("p", "1", "t", "")
+
+    q.set_platform(job.id, "dos")
+
+    assert q.get(job.id).platform == "dos"
+    with JobQueue(tmp_path / "jobs.sqlite3") as reopened:
+        assert reopened.get(job.id).platform == "dos"
+
+
 def test_schema_is_created_on_first_use_against_a_path_that_does_not_exist_yet(tmp_path):
     db_path = tmp_path / "does" / "not" / "exist" / "jobs.sqlite3"
     assert not db_path.exists()

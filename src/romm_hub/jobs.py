@@ -160,6 +160,20 @@ class JobQueue:
                 (local_path, job_id),
             )
 
+    def set_platform(self, job_id: int, platform: str) -> None:
+        """Record the platform an import actually resolved.
+
+        A job is enqueued before the plugin has been asked what to fetch,
+        so at that point the only platform available is whatever the
+        search result carried -- often nothing. The plugin's FetchPlan is
+        the authoritative answer, and it arrives afterwards. Without this
+        the persisted row would keep the guess, which matters precisely
+        because these rows outlive the process that made them.
+        """
+        self._conn.execute(
+            "UPDATE jobs SET platform = ? WHERE id = ?", (platform, job_id)
+        )
+
     def get(self, job_id: int) -> Job | None:
         row = self._conn.execute(
             "SELECT * FROM jobs WHERE id = ?", (job_id,)
