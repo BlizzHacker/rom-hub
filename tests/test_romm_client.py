@@ -7,7 +7,12 @@ live RomM instance.
 import httpx
 import pytest
 
-from romm_hub.romm.client import REQUIRED_SCOPES, RommClient, RommError
+from romm_hub.romm.client import (
+    _ROMS_PAGE_SIZE,
+    REQUIRED_SCOPES,
+    RommClient,
+    RommError,
+)
 
 PLATFORMS = [
     {"id": 5, "slug": "dos", "name": "DOS"},
@@ -236,6 +241,113 @@ def test_non_2xx_on_a_regular_call_raises_romm_error_with_status_and_body():
 
     assert "internal server error" in str(exc_info.value)
     assert not isinstance(exc_info.value, httpx.HTTPStatusError)
+
+
+def _paged_roms_client(pages_of, total):
+    """A mock RomM whose /api/roms answers the real paginated envelope."""
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if request.url.path == "/api/token":
+            return httpx.Response(200, json={"access_token": "tok-123"})
+        if request.url.path == "/api/roms":
+            offset = int(request.url.params.get("offset", 0))
+            limit = int(request.url.params.get("limit", 50))
+            items = pages_of[offset : offset + limit]
+            return httpx.Response(
+                200,
+                json={
+                    "items": items,
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset,
+                    "char_index": {},
+                    "rom_id_index": [],
+                    "filter_values": {},
+                },
+            )
+        return httpx.Response(404, json={"detail": "unhandled"})
+
+    client = RommClient(
+        "https://romm.example", "user", "pw", transport=httpx.MockTransport(handler)
+    )
+    return client, calls
+
+
+def test_list_roms_unwraps_the_paginated_envelope_into_a_list():
+    """GET /api/roms returns CustomLimitOffsetPage_SimpleRomSchema_ --
+    `{"items": [...], "total": N, "limit": 50, "offset": 0, ...}` -- not a
+    bare list. Returning the envelope makes every consumer iterate a dict,
+    which yields its *keys* (strings). `find_duplicate` skips non-dict
+    entries, so it silently matched nothing: dedup never fired and the
+    post-upload confirmation could never find the rom it had just uploaded.
+    """
+    roms = [{"id": 1, "sha1_hash": "aa"}, {"id": 2, "sha1_hash": "bb"}]
+    client, _ = _paged_roms_client(roms, total=2)
+
+    result = client.list_roms(5)
+
+    assert isinstance(result, list), f"expected a list, got {type(result).__name__}"
+    assert result == roms
+    # The thing that actually bit: every entry must be a dict a consumer can
+    # read hashes off, not a string key from the envelope.
+    assert all(isinstance(r, dict) for r in result)
+
+
+def test_list_roms_pages_past_the_server_limit():
+    """`limit` is capped server-side (it defaults to 50). A platform with
+    more roms than one page would otherwise be compared against only its
+    first page, so dedup would miss duplicates beyond it and re-upload
+    them.
+
+    Sized off the client's own page size so this keeps testing paging if
+    that constant is ever retuned.
+    """
+    count = _ROMS_PAGE_SIZE + 30
+    roms = [{"id": i, "sha1_hash": f"{i:040x}"} for i in range(1, count + 1)]
+    client, calls = _paged_roms_client(roms, total=count)
+
+    result = client.list_roms(5)
+
+    assert len(result) == count
+    assert [r["id"] for r in result] == list(range(1, count + 1))
+    rom_calls = [c for c in calls if c.url.path == "/api/roms"]
+    assert len(rom_calls) > 1, "expected more than one page to be fetched"
+    assert all(c.url.params.get("platform_ids") == "5" for c in rom_calls)
+    # Offsets must advance, or a second page is just the first page again.
+    assert [c.url.params.get("offset") for c in rom_calls] == [
+        "0", str(_ROMS_PAGE_SIZE)
+    ]
+
+
+def test_list_roms_stops_instead_of_looping_forever_on_a_lying_total():
+    """A `total` that never matches what the server actually returns must
+    not spin: an empty page ends the walk regardless of what `total` says."""
+    client, calls = _paged_roms_client([{"id": 1}], total=10_000)
+
+    result = client.list_roms(5)
+
+    assert result == [{"id": 1}]
+    assert len([c for c in calls if c.url.path == "/api/roms"]) < 10
+
+
+def test_list_roms_still_accepts_a_bare_list_response():
+    """Tolerate a RomM that answers a plain array rather than the envelope,
+    so the client is not pinned to one server version's response shape."""
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if request.url.path == "/api/token":
+            return httpx.Response(200, json={"access_token": "tok-123"})
+        return httpx.Response(200, json=[{"id": 7, "sha1_hash": "cc"}])
+
+    client = RommClient(
+        "https://romm.example", "user", "pw", transport=httpx.MockTransport(handler)
+    )
+
+    assert client.list_roms(5) == [{"id": 7, "sha1_hash": "cc"}]
 
 
 def test_ensure_collection_returns_existing_id_without_creating():
