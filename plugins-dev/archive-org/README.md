@@ -4,8 +4,39 @@ Implements the RPP v1 `search` and `importer` capabilities:
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `search` | `advancedsearch.php` | items in the configured collections |
+| `search` | `advancedsearch.php` | items in the configured collections, matched **on title** |
 | `importer` | `metadata/<identifier>` | picks the payload file and the RomM platform |
+
+## How search matches
+
+Your terms are matched against the item **title**, not the whole record:
+
+    title:("prince" AND "of" AND "persia") AND collection:(softwarelibrary)
+
+It used to be `(prince of persia) AND collection:(...)`, which put the terms
+in Archive.org's *default* field — description, subject tags, uploader notes,
+everything — and left relevance ranking to sort it out. It did not sort it
+out. `sonic` returned **Die Hard (2004)(Die Chefrocker)**, `oregon trail`
+returned **Great Hierophant's .WOZ Archive** and **A2R Images**, and
+`prince of persia` returned **Total Replay**. Those items really do match
+somewhere in their metadata; that is just not the claim someone searching a
+ROM library is making.
+
+Two things it deliberately does **not** do:
+
+- **It does not require a phrase.** `title:("prince of persia")` also removes
+  the junk, but it demands the words in that order and next to each other —
+  checked live, it returns *nothing* for `persia prince` or `hedgehog sonic`.
+  Every term must appear in the title; where they appear is not this plugin's
+  business.
+- **It does not also search the identifier.** Checked live, adding
+  `identifier:(...)` changed essentially nothing, because an Archive.org
+  identifier already echoes the title.
+
+An empty query drops the title clause entirely, so browsing a collection
+still works. Terms are quoted, which makes Lucene's operators literal — real
+titles like `r-type` and `sonic & knuckles` need no special handling and were
+verified live.
 
 ## Install
 

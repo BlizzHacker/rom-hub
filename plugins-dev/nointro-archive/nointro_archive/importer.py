@@ -30,7 +30,7 @@ from .index import INDEXES
 from .platforms import platform_for
 from .search import base_url, index_url
 
-DEFAULT_COLLECTION = "Myrient"
+DEFAULT_COLLECTION = "No-Intro"
 
 
 class ImportRefused(Exception):
@@ -50,7 +50,7 @@ class Importer(ImportProvider):
                 f"directory {directory!r} needs mapping: it is not in this "
                 f"plugin's directory -> RomM platform table, and guessing would "
                 f"file the ROM under the wrong system. Add it to "
-                f"myrient/platforms.py."
+                f"nointro_archive/platforms.py."
             )
 
         # 2. Does the file actually exist there?
