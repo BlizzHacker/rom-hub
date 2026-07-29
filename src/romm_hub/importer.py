@@ -40,7 +40,7 @@ printed to.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path
 from typing import Protocol
 from urllib.parse import urljoin
 
@@ -49,6 +49,7 @@ import httpx
 from romm_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from romm_hub.jobs import Job, JobQueue, JobState
 from romm_hub.netpolicy import PolicyViolation, check_url
+from romm_hub.paths import UnsafeDestination, dest_in_job_dir
 from romm_hub.romm.client import RommClient
 from romm_hub.romm.scan import Scanner, SocketIOScanner
 from romm_hub.romm.upload import upload_file
@@ -218,49 +219,11 @@ class _ImportFailure(Exception):
     """Internal: a step failed with a message already fit for an operator."""
 
 
-def dest_in_job_dir(job_dir: Path, filename: str) -> Path:
-    """Join `filename` onto `job_dir`, refusing anything that lands outside.
-
-    `FetchFile`'s validator is supposed to make this unreachable, and it is
-    the layer that gives a plugin author a legible error. This is the layer
-    that has to hold when that one has a gap -- a validator bug must not be
-    able to become a filesystem write. It is deliberately kept even though
-    nothing should reach it: the previous validator looked complete too,
-    and `job_dir / "C:evil.zip"` still wrote outside the job directory.
-
-    Both path flavours are consulted so the answer does not depend on the
-    host OS: `"C:evil.zip"` is one bare name to POSIX and a drive-relative
-    path to Windows, and it must be refused either way.
-    """
-    job_dir = Path(job_dir)
-    if PureWindowsPath(filename).parts != (filename,) or PurePosixPath(
-        filename
-    ).parts != (filename,):
-        raise _ImportFailure(
-            f"refusing to write {filename!r}: it is not a bare name, so it "
-            f"could land outside the job directory {str(job_dir)!r}"
-        )
-
-    dest = job_dir / filename
-    try:
-        # resolve() also collapses "..", and follows any symlink already
-        # standing in the job directory.
-        root = job_dir.resolve()
-        resolved = dest.resolve()
-    except (OSError, ValueError) as exc:
-        # ValueError is what an embedded NUL byte raises here.
-        raise _ImportFailure(
-            f"refusing to write {filename!r} outside the job directory "
-            f"{str(job_dir)!r} -- the name could not be resolved at all "
-            f"({type(exc).__name__}: {exc})"
-        ) from exc
-
-    if resolved.parent != root:
-        raise _ImportFailure(
-            f"refusing to write {filename!r} outside the job directory "
-            f"{str(job_dir)!r} -- it would land at {str(resolved)!r}"
-        )
-    return dest
+# `dest_in_job_dir` lives in romm_hub.paths now -- `metadata` and `cores`
+# hand the host plugin-chosen filenames too, and they must be checked by
+# the same code, not by a second copy of it. Re-exported here because it
+# is imported from this module by name in several places.
+__all__ = ["dest_in_job_dir", "run_import", "HttpDownloader", "ImportResult"]
 
 
 def run_import(
@@ -426,7 +389,12 @@ def _import(
     queue.set_state(job.id, JobState.DOWNLOADING, local_path=str(job_dir))
     paths: list[Path] = []
     for entry in wanted:
-        dest = dest_in_job_dir(job_dir, entry.filename)
+        try:
+            dest = dest_in_job_dir(job_dir, entry.filename)
+        except UnsafeDestination as exc:
+            # Same job outcome as before this check moved: FAILED, with the
+            # containment message verbatim in the job's error column.
+            raise _ImportFailure(str(exc)) from exc
         try:
             downloader.download(entry.url, dest, expected_size=entry.size_bytes)
         except Exception as exc:
