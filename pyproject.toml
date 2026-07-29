@@ -11,8 +11,8 @@ dependencies = [
     # to disk but creates no database row, and it exposes no REST endpoint
     # that registers it (`/api/tasks/run/scan_library` answers 400 "cannot
     # be run"). Its own web UI emits a socket.io "scan" event after every
-    # upload; rom_hub.romm.scan does the same. Without this, an imported
-    # ROM never appears in the library. See src/rom_hub/romm/scan.py.
+    # upload; rom_hub.backends.romm.scan does the same. Without this, an imported
+    # ROM never appears in the library. See src/rom_hub/backends/romm/scan.py.
     "python-socketio[client]>=5.11",
 ]
 

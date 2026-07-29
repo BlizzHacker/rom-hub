@@ -4,17 +4,23 @@ Install plugins, list them, search across them, import what a search
 found, and inspect the import job queue.
 
 `import` is the only command that writes anything anywhere. It refuses
-early and cheaply -- unknown plugin, disabled plugin, missing capability,
-unconfigured RomM -- so that by the time a RomM connection is opened the
-only things left to go wrong are real ones.
+early and cheaply -- unknown plugin, disabled plugin, missing plugin
+capability, unconfigured backend, **and a backend that cannot do what
+was asked** -- so that by the time a connection is opened the only things
+left to go wrong are real ones.
+
+Nothing here names RomM. The library server is whatever
+`ROM_HUB_BACKEND` selects (`romm` by default) and is reached only through
+`rom_hub.backends.LibraryBackend`; `rom-hub backend info` prints which
+one is active and what it can do.
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
-from . import env
+from . import backends, env
+from .backends import BackendError, LibraryBackend
 from .broker.fetcher import HttpxFetcher
 from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
@@ -25,7 +31,6 @@ from .jobs import JobQueue, JobState
 from .manifest import ManifestError
 from .metadata import EnrichError, rom_ref_from, run_enrich
 from .registry import Registry, RegistryError
-from .romm.client import RommClient, RommError
 from .sandbox import probe
 from .types import SearchResult
 
@@ -148,24 +153,24 @@ def cores_dir(root: Path | None = None) -> Path:
     return Path(root or default_root()) / "var" / "cores"
 
 
-def romm_settings() -> tuple[str, str, str]:
-    """RomM connection settings from the environment.
+def backend_name() -> str:
+    """Which library backend to use. `romm` unless told otherwise.
 
-    Raises naming **every** missing variable at once rather than one per
-    run: an operator configuring this for the first time should need one
-    attempt, not three.
+    Read at call time, like every other setting, so a shell can flip it
+    between two servers without reinstalling anything.
     """
-    values = {name: os.environ.get(name, "") for name in
-              ("ROMM_URL", "ROMM_USER", "ROMM_PASSWORD")}
-    missing = [name for name, value in values.items() if not value]
-    if missing:
-        raise RuntimeError(
-            f"RomM is not configured: {', '.join(missing)} "
-            f"{'is' if len(missing) == 1 else 'are'} not set. Set ROMM_URL "
-            f"(e.g. http://romm.example:8080), ROMM_USER, and ROMM_PASSWORD "
-            f"to a RomM account permitted to upload."
-        )
-    return values["ROMM_URL"], values["ROMM_USER"], values["ROMM_PASSWORD"]
+    return env.get("ROM_HUB_BACKEND").strip() or backends.DEFAULT_BACKEND
+
+
+def open_backend(name: str | None = None) -> LibraryBackend:
+    """Build the configured backend. Opens no connection.
+
+    Raises `UnknownBackend` for a name that is not installed and
+    `BackendNotConfigured` for one that is but has nothing to connect
+    to -- both before a subprocess is started or a socket opened, which
+    is the whole reason this is read first.
+    """
+    return backends.load(name or backend_name())
 
 
 def allow_unsandboxed() -> bool:
@@ -353,11 +358,7 @@ def _cmd_import(args) -> int:
 
     # Read before anything is started, so an unconfigured Hub costs no
     # subprocess and no half-open connection.
-    try:
-        base_url, username, password = romm_settings()
-    except RuntimeError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return EXIT_ERROR
+    backend = open_backend()
 
     result = SearchResult(
         source_id=args.source_id,
@@ -373,7 +374,6 @@ def _cmd_import(args) -> int:
     try:
         with (
             JobQueue(jobs_db_path(root)) as queue,
-            RommClient(base_url, username, password) as romm,
             PluginProcess(
                 plugin_dir=plugin.path,
                 manifest=plugin.manifest,
@@ -385,12 +385,13 @@ def _cmd_import(args) -> int:
             outcome = run_import(
                 _PlanOverrides(proc, args.platform, args.collection),
                 result,
-                romm=romm,
+                backend=backend,
                 queue=queue,
                 download_dir=downloads_dir(root),
             )
     finally:
         fetcher.close()
+        backend.close()
 
     stream = sys.stdout if outcome.state in _SUCCESS_STATES else sys.stderr
     # ASCII only: a Windows console defaults to cp1252, and this project has
@@ -431,34 +432,28 @@ def _cmd_enrich(args) -> int:
 
     # Read before anything is started, so an unconfigured Hub costs no
     # subprocess and no half-open connection.
-    try:
-        base_url, username, password = romm_settings()
-    except RuntimeError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return EXIT_ERROR
+    backend = open_backend()
 
     root = default_root()
     fetcher = HttpxFetcher()
     try:
-        with (
-            RommClient(base_url, username, password) as romm,
-            PluginProcess(
-                plugin_dir=plugin.path,
-                manifest=plugin.manifest,
-                config=plugin.config,
-                fetcher=fetcher,
-                allow_unsandboxed=allow_unsandboxed(),
-            ) as proc,
-        ):
-            rom = romm.get_rom(args.rom_id)
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+        ) as proc:
+            rom = backend.get_rom(args.rom_id)
             result = run_enrich(
                 proc,
                 rom_ref_from(rom, args.rom_id, {"source_id": args.source_id or ""}),
-                romm=romm,
+                backend=backend,
                 work_dir=artwork_dir(root) / str(args.rom_id),
             )
     finally:
         fetcher.close()
+        backend.close()
 
     print(result.message)
     return EXIT_OK
@@ -721,7 +716,7 @@ def main(argv: list[str] | None = None) -> int:
         PluginCallError,
         CoreError,
         EnrichError,
-        RommError,
+        BackendError,
         OSError,
     ) as exc:
         # ManifestError escapes a bad manifest on an otherwise clean install,
@@ -730,9 +725,12 @@ def main(argv: list[str] | None = None) -> int:
         # which -- unlike `search`, where the dispatcher isolates each plugin
         # -- talks to one PluginProcess directly, so a SandboxRefused from
         # start() would otherwise reach the operator as a traceback with the
-        # opt-out buried in it. EnrichError and RommError are `enrich`'s
+        # opt-out buried in it. EnrichError and BackendError are `enrich`'s
         # equivalents: unlike an import, an enrich has no job record to fail
-        # into, so its failures reach the operator only here. None of these
+        # into, so its failures reach the operator only here. BackendError is
+        # one name for every backend's failures, including RomM's RommError
+        # and the three refusals that keep this honest -- UnknownBackend,
+        # BackendNotConfigured and CapabilityUnsupported. None of these
         # deserve a traceback.
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR

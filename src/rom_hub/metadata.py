@@ -25,6 +25,7 @@ import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
 
+from rom_hub.backends.base import LibraryBackend
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.paths import UnsafeDestination, dest_in_job_dir
 from rom_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
@@ -87,15 +88,16 @@ def run_enrich(
     plugin,
     rom: RomRef,
     *,
-    romm,
+    backend: LibraryBackend,
     work_dir: Path,
     downloader=None,
 ) -> EnrichResult:
-    """Enrich one rom through `plugin`, writing the result to RomM.
+    """Enrich one rom through `plugin`, writing the result to the library.
 
     `plugin` is a started `PluginProcess` (anything with `.enrich()` and a
-    `.manifest`). `work_dir` is where a fetched cover lands on its way to
-    RomM; nothing is ever written outside it.
+    `.manifest`). `backend` is a `LibraryBackend`; nothing here knows
+    which one. `work_dir` is where a fetched cover lands on its way to it;
+    nothing is ever written outside it.
     """
     work_dir = Path(work_dir)
     manifest = getattr(plugin, "manifest", None)
@@ -125,10 +127,10 @@ def run_enrich(
     artwork = _artwork(patch, slug, allowlist, work_dir, downloader)
 
     try:
-        romm.update_rom(rom.rom_id, fields, artwork=artwork)
+        backend.update_rom(rom.rom_id, fields, artwork=artwork)
     except Exception as exc:  # noqa: BLE001
         raise EnrichError(
-            f"updating rom {rom.rom_id} in RomM failed: {exc}"
+            f"updating rom {rom.rom_id} in the library failed: {exc}"
         ) from exc
 
     described = ", ".join(sorted(fields)) or "no fields"
