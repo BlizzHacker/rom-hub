@@ -188,14 +188,18 @@ class PluginProcess:
 
     def _serve_plugin_call(self, msg: dict) -> None:
         assert self._proc is not None and self._proc.stdin is not None
-        call_id = msg["id"]
+        # read_message has already guaranteed id/method/params, but this whole
+        # block indexes peer-controlled data, so it stays inside the try:
+        # defence in depth costs nothing here.
+        call_id = msg.get("id")
         try:
             if msg["method"] != "http.get":
                 raise PluginCallError(f"unsupported host method {msg['method']!r}")
-            url = msg["params"]["url"]
+            params = msg.get("params") or {}
+            url = params["url"]
             # The enforcement point. Nothing below runs for a blocked URL.
             check_url(url, self.manifest.network)
-            status, text = self.fetcher.get(url, msg["params"].get("params") or {})
+            status, text = self.fetcher.get(url, params.get("params") or {})
             reply = {
                 "kind": "result",
                 "id": call_id,
