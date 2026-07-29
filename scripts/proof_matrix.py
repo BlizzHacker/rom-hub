@@ -207,7 +207,7 @@ romm_api = []
 
 
 def _redact(url: str) -> str:
-    """`http://192.168.0.94:8085` -> `http://<host>:8085`.
+    """`http://library.example:8085` -> `http://<host>:8085`.
 
     docs/PROOF.md is public. The port is evidence -- it says the matrix ran
     against something other than a default install -- and the host is not.
@@ -659,9 +659,18 @@ def _gaseous(args):
         GASEOUS_PASSWORD=args.gaseous_password,
     )
     backend = GaseousBackend.from_env()
-    return backend, lambda: _probe_version(
-        args.gaseous_url, "/api/v1.1/System/Version", lambda r: r.text.strip().strip('"')
-    )
+
+    def version() -> str:
+        # Gaseous answers `System/Version` with a 302 to its login form
+        # unless the session cookie is present, so this goes through the
+        # client's own authorized request rather than a bare GET. Read-only,
+        # and asked for after the run, so it cannot perturb anything.
+        resp = backend.client._authorized_request(
+            "GET", f"{args.gaseous_url.rstrip('/')}/api/v1.1/System/Version"
+        )
+        return resp.text.strip().strip('"')
+
+    return backend, version
 
 
 def _retrom(args):
@@ -744,6 +753,13 @@ def render(runs: list[BackendRun], command: str, started: datetime) -> str:
             f"`{run.image or '—'}` | `{_redact(run.url) if run.url else '—'}` | "
             f"{', '.join(sorted(run.declared)) if run.declared else '—'} |"
         )
+    add("")
+    add(
+        "**Version** is what each server reports about itself, and is the "
+        "authoritative pin. **Image** is filled in only when the matrix runs "
+        "on the machine hosting the containers; run from anywhere else there "
+        "is no Docker daemon to ask, and a blank is better than a guess."
+    )
     add("")
     add("## What the four outcomes mean")
     add("")
@@ -884,11 +900,15 @@ def main(argv: list[str] | None = None) -> int:
             backend = None
             try:
                 backend, version = factory(args)
+                exercise(run, backend, work, run.platform, args.verbose)
+                # After, not before: two of the three answer a version only
+                # over an authenticated session, and `exercise` is what
+                # establishes one. A version this could not read is left
+                # blank rather than guessed.
                 try:
                     run.version = str(version())
                 except Exception:
                     run.version = ""
-                exercise(run, backend, work, run.platform, args.verbose)
             except Exception as exc:
                 if args.verbose:
                     traceback.print_exc()

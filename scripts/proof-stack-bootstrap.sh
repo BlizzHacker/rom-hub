@@ -173,10 +173,13 @@ JSON"
     echo "Retrom: config.json installed (SINGLE_FILE_GAME at $RETROM_LIBRARY); restarted"
 fi
 
-# After a restart the port answers before the gRPC services are mounted, so
-# a scan fired immediately is simply dropped.
+# After a restart the port answers well before the gRPC services are
+# mounted, so a scan fired at the first successful connect is accepted and
+# dropped -- and the only symptom is a platform that never appears. The
+# wait is generous for that reason. If it is still not there, re-run this
+# script: it is idempotent, and the second pass costs seconds.
 wait_for Retrom "${RETROM_URL:-http://127.0.0.1:5102}/" || true
-sleep 5
+sleep 20
 
 # Owned by `retrom`, not root: the service writes uploads here as its own
 # user, and a root-owned directory turns every WebDAV PUT into a 403 that

@@ -228,11 +228,26 @@ An entry must:
 On Windows and macOS the live tests need `ROM_HUB_ALLOW_UNSANDBOXED=1`, for the
 same reason the CLI does.
 
+Every push and pull request runs the same suite on Linux and Windows, on Python
+3.12 and 3.13 — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+Two things there will fail a build that pytest itself would call green, and
+both are deliberate:
+
+- **On Linux the seccomp tests must pass, not skip.** `scripts/ci_gate.py`
+  requires each of them by name against the junit report. If you rename or move
+  one, update the workflow in the same commit; the gate failing loudly is the
+  intended behaviour, not an obstacle.
+- **A new skip is a failure.** Each platform declares which skip *reasons* are
+  legitimate there. If you add a skip, add its reason to the matching job with
+  a note saying why, rather than widening the pattern until it matches
+  anything.
+
 A few standing rules, each of which exists because breaking it broke something:
 
 - **No test may reach the network unless it is marked `live`.** The default
   suite is offline, which is why the plugins have a development copy in
-  `plugins-dev/` — see [`plugins-dev/README.md`](plugins-dev/README.md).
+  `plugins-dev/` — see [`plugins-dev/README.md`](plugins-dev/README.md). CI
+  proves the deselection still holds rather than trusting `addopts`.
 - **`docs/PLUGINS.md` is generated.** Change `catalog/plugins.json` and re-run
   `scripts/render_directory.py`.
 - **Do not weaken `sandbox.py`'s denylist**, and never call `sandbox.install()`
