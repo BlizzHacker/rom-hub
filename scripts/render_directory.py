@@ -119,9 +119,13 @@ backend's — so it cannot drift out of step with either.
 
 ## Every plugin listed here is published
 
-Each of the seven below lives in its own public repository, and every
-`repository`, `install` and `download` URL on this page resolves. Nothing here
-is a placeholder any more.
+Each entry below names its own public repository. Every `repository`, `install`
+and `download` URL on this page is a real address rather than a placeholder —
+but three of them are **new and not yet created**: `aminet`,
+`libretro-content` and `scummvm-freeware` were added in this repository first,
+and their repositories have to be published and tagged `v0.1.0` before
+`rom-hub plugin install <slug>` will work for them. `pytest -m live` is the
+check that says which.
 
 They also have a **development copy** in this repository's `plugins-dev/`
 directory, which is what the offline test suite runs against. The published

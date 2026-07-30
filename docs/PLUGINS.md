@@ -98,9 +98,13 @@ backend's — so it cannot drift out of step with either.
 
 ## Every plugin listed here is published
 
-Each of the seven below lives in its own public repository, and every
-`repository`, `install` and `download` URL on this page resolves. Nothing here
-is a placeholder any more.
+Each entry below names its own public repository. Every `repository`, `install`
+and `download` URL on this page is a real address rather than a placeholder —
+but three of them are **new and not yet created**: `aminet`,
+`libretro-content` and `scummvm-freeware` were added in this repository first,
+and their repositories have to be published and tagged `v0.1.0` before
+`rom-hub plugin install <slug>` will work for them. `pytest -m live` is the
+check that says which.
 
 They also have a **development copy** in this repository's `plugins-dev/`
 directory, which is what the offline test suite runs against. The published
@@ -134,6 +138,7 @@ and neither can this directory change it for you.
 
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Backends | Flags | Network |
 |---|---|---|---|---|---|---|---|---|
+| ❗ [Aminet (Amiga)](https://github.com/BlizzHacker/rom-hub-aminet) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-aminet)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `aminet.net` |
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
@@ -150,6 +155,18 @@ and neither can this directory change it for you.
 **Reading the Backends column.** A plain name means everything this plugin declares works there. `*` means it all runs but an *extra* is skipped — a collection not created, a cover not stored — and the skip is reported in the outcome. `!` means one of its capabilities cannot run at all and is refused up front, while the rest still work. A struck-through name is a server the plugin is no use against. The per-plugin sections below name the capability and the reason in each case.
 
 The column is **derived** from what the plugin declares and what each backend declares. Nobody maintains it by hand, so it cannot disagree with either — and a backend that gains a capability changes this page on the next regeneration rather than leaving a stale promise behind.
+
+### ❗ Aminet (Amiga) — `aminet`
+
+Searches Aminet's 6,700-package game tree for Amiga games and imports the archive directly.
+
+**Source terms.** Freely distributable by admission rule, which is about as good as an archive's terms get. Aminet's uploading instructions open with “This site is intended for the distribution of any type of freely distributable software” and then refuse, first on the list, “Unlicensed copies of commercial software” and “Software with a license in conflict with Aminet's nature”. Freely distributable is not a description of the archive, it is the condition of being in it, moderated since 1992. What you reach is public-domain, freeware, shareware and open-source Amiga software its authors uploaded themselves; each package's own terms are in its `.readme`, which this plugin fetches on every import anyway. `game/demo` is “Demos of commercial games” and belongs here for the same reason the rest does — a publisher's playable demo was published *for* free distribution. `aminet.net` serves no robots.txt (its /robots.txt is the site's themed 404 page), so there is no crawl directive to observe.
+
+**Comments.** The caveat is the architecture, and it is the whole plugin. Aminet is not an Amiga archive — it is the archive for every system that grew out of the Amiga, and one `game/think` directory holds `abrick.lha` (AmigaOS 4 on PowerPC), `abandoned_bricks-mos.lha` (MorphOS) and `alleytris_68k.lha` (AmigaOS on 68k) under near-identical names. RomM has `amiga` and `amiga` means the Commodore machine, so exactly three architectures map — `m68k-amigaos`, plus `ppc-warpup` and `ppc-powerup`, which are accelerator cards *inside* an Amiga — and MorphOS, AmigaOS 4, AROS and Amithlon each refuse **by name**, saying which computer they actually are. Measured over a live `dir=game` search: 98 of 172 rows were `m68k-amigaos`. The rest still appear in search with no platform set, because hiding a game somebody can see on Aminet's own site would be worse than showing why it will not import. Four of the eighteen `game/` shelves — `data`, `edit`, `hint`, `patch` — hold data files, level editors, walkthroughs and patches; they are hidden by default and never import. Two traps for the next person: light and dark result rows are **different markup**, so a regex anchored on the opening tag finds exactly half the results; and this host answers a missing path with HTTP **200** and an error body, so both parsers refuse a document that is not the shape they expect rather than reading zero rows out of it.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+
+**Network requested.** `aminet.net` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Archive.org — `archive-org`
 
