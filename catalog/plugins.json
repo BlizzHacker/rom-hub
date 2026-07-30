@@ -3,6 +3,32 @@
   "updated": "2026-07-29",
   "plugins": [
     {
+      "slug": "aminet",
+      "name": "Aminet (Amiga)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-aminet",
+      "install": "https://github.com/BlizzHacker/rom-hub-aminet",
+      "download": "https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer"
+      ],
+      "network": [
+        "aminet.net"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches Aminet's 6,700-package game tree for Amiga games and imports the archive directly.",
+      "terms": "Freely distributable by admission rule, which is about as good as an archive's terms get. Aminet's uploading instructions open with “This site is intended for the distribution of any type of freely distributable software” and then refuse, first on the list, “Unlicensed copies of commercial software” and “Software with a license in conflict with Aminet's nature”. Freely distributable is not a description of the archive, it is the condition of being in it, moderated since 1992. What you reach is public-domain, freeware, shareware and open-source Amiga software its authors uploaded themselves; each package's own terms are in its `.readme`, which this plugin fetches on every import anyway. `game/demo` is “Demos of commercial games” and belongs here for the same reason the rest does — a publisher's playable demo was published *for* free distribution. `aminet.net` serves no robots.txt (its /robots.txt is the site's themed 404 page), so there is no crawl directive to observe.",
+      "comments": "The caveat is the architecture, and it is the whole plugin. Aminet is not an Amiga archive — it is the archive for every system that grew out of the Amiga, and one `game/think` directory holds `abrick.lha` (AmigaOS 4 on PowerPC), `abandoned_bricks-mos.lha` (MorphOS) and `alleytris_68k.lha` (AmigaOS on 68k) under near-identical names. RomM has `amiga` and `amiga` means the Commodore machine, so exactly three architectures map — `m68k-amigaos`, plus `ppc-warpup` and `ppc-powerup`, which are accelerator cards *inside* an Amiga — and MorphOS, AmigaOS 4, AROS and Amithlon each refuse **by name**, saying which computer they actually are. Measured over a live `dir=game` search: 98 of 172 rows were `m68k-amigaos`. The rest still appear in search with no platform set, because hiding a game somebody can see on Aminet's own site would be worse than showing why it will not import. Four of the eighteen `game/` shelves — `data`, `edit`, `hint`, `patch` — hold data files, level editors, walkthroughs and patches; they are hidden by default and never import. Two traps for the next person: light and dark result rows are **different markup**, so a regex anchored on the opening tag finds exactly half the results; and this host answers a missing path with HTTP **200** and an error body, so both parsers refuse a document that is not the shape they expect rather than reading zero rows out of it."
+    },
+    {
       "slug": "archive-org",
       "name": "Archive.org",
       "author": "BlizzHacker",
@@ -111,6 +137,32 @@
       "description": "Finds free games on itch.io and proposes the developer's own title and cover art. It cannot import them, and never will as built — every import is refused by design.",
       "terms": "Consent by construction, within a boundary this plugin does not cross. itch.io is a storefront where the uploader is the rights holder, so anything listed free is offered free by the person entitled to offer it. But itch.io's robots.txt `Disallow`s `/search` and `/game/download/`, and its download URLs are issued only for a POST carrying the game page's csrf_token. This plugin reads only `/games/...` browse listings, which the same robots.txt permits, and it authenticates as nobody. Note that itch.io's \"free\" filter includes name-your-own-price titles; those are refused. The `metadata` capability reads only the public game page, which the same robots.txt permits, and the cover it names is the one itch.io itself serves as that page's og:image.",
       "comments": "The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes. `metadata` is what makes it worth installing: it cannot fetch the game, but it reads the developer's own title and cover off the game page, which is what a library is missing for a title it already has. `img.itch.zone` joins the allowlist for that alone — the host fetches the cover this plugin names, so an undeclared image host would fail every enrich as a policy violation. There is no lookup by name, deliberately: robots.txt disallows /search and the browse listings are a small popularity-ordered slice, so hunting one title through them would attach the wrong developer's cover more often than the right one. Pass --source-id."
+    },
+    {
+      "slug": "libretro-content",
+      "name": "libretro content (buildbot)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-libretro-content",
+      "install": "https://github.com/BlizzHacker/rom-hub-libretro-content",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer"
+      ],
+      "network": [
+        "buildbot.libretro.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches and imports the free game content libretro distributes for RetroArch — homebrew, demos and openly licensed ROMs across 29 RomM platforms.",
+      "terms": "Content libretro publishes for RetroArch to download, used the way it is meant to be used. These directories are the back end of RetroArch's own *Load Content → Download Content* menu, served unauthenticated so that software reads them. What is in them is homebrew and demos their authors gave libretro for distribution (`Alter Ego`, `Chrono Knight`, `Sheep It Up`), openly licensed technical software (`240p Test Suite`, MIT), and free game data for engine cores (Cave Story's freeware release, the Quake shareware episode). One directory needs its own sentence: the GCE Vectrex library is **not** public domain — Smith Engineering, which designed the Vectrex, granted permission in 1992 for its ROMs, manuals and overlays to be copied and distributed **as long as it is not for profit**. That is a real grant from the actual rights holder and also a condition: free to acquire and keep, not free to sell. `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing.",
+      "comments": "The broadest free-content source in this directory: 29 RomM platforms against `homebrew`'s four. There is no `.index-extended` here — the sibling `libretro-cores` plugin reads one for cores and the content tree has none (checked live: HTTP 404) — so the h5ai listing *is* the catalogue, and this plugin reads the plain `<table>` fallback h5ai ships for clients that run no JavaScript. The platform table is keyed on the directory names **this** server serves, not copied from the libretro thumbnail server, which spells two of the same machines differently (`Coleco - Colecovision` here against `Coleco - ColecoVision` there; `Nintendo - GameBoy` against `Nintendo - Game Boy`) — copying would have produced two silent 404s. An unmapped directory refuses with one of three different sentences, because “add a row” is right for only one of them: **needs mapping** for a real RomM platform, **not a platform** for `Images`/`Video`/`Utilities`, and **ambiguous** for `Nintendo - GameCube - Wii`, which is one directory holding two consoles RomM keeps separate. Search is one request when `--platform` is given and bounded by `max_systems` when it is not, because each listing is its own round trip against a 30-second host timeout. h5ai's size column is rounded (`40 KB`) and there is no byte count in the document, so it is carried as display text and never as `size_bytes`."
     },
     {
       "slug": "libretro-cores",
@@ -293,6 +345,32 @@
       "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, stored in clear text.",
       "terms": "An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.",
       "comments": "READ THIS BEFORE INSTALLING: the API key is stored in the Hub's plugin config **in clear text**. RPP v1 reserves a `secret` config type and this host rejects it — `manifest.py` raises \"reserved in RPP v1 but not implemented in Phase 1\" for any field declaring it (re-verified 2026-07-29) — so `api_key` is a plain `str` and there is no encrypted store to put it in. Treat it as a credential written to disk in the open. Without a key the plugin returns nothing; that is the missing key, not a fault."
+    },
+    {
+      "slug": "scummvm-freeware",
+      "name": "ScummVM freeware games",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware",
+      "install": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware",
+      "download": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer"
+      ],
+      "network": [
+        "downloads.scummvm.org"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Twelve complete adventure games the ScummVM project distributes free, because their rights holders released them.",
+      "terms": "The cleanest terms in this directory, and each one is attributable to a named person or company. Revolution Software released *Beneath a Steel Sky* and *Lure of the Temptress* as freeware in 2003; John Passfield and Steve Stamatiadis released *Flight of the Amazon Queen* in 2004; Neil Dodwell and David Dew of Creative Reality released *DreamWeb* in 2012; Alcachofa Soft released *Dráscula*; L.K. Avalon released *Sołtys* and *Sfinx*; Dynabyte released *Nippon Safes, Inc.*; Ken and Roberta Williams placed *Mystery House* in the public domain in 1987. *Broken Sword 2.5*, *The Griffon Legend* and *God of Thunder* are free releases by their own authors. Nothing here is abandonware and nothing is a dump of retail media — it is ScummVM-ready game data the project has hosted for years. On robots: `downloads.scummvm.org`, the only host this plugin requests, publishes **no** robots.txt (HTTP 404 for /robots.txt). `www.scummvm.org` is a different host whose robots.txt does `Disallow: /frs`, and this plugin never requests anything from it — it is absent from the manifest allowlist, so the broker would refuse. The twelve-game table was read once by a human from that site's robots-permitted `/games/` page and checked in; it is not fetched at runtime.",
+      "comments": "The game table is the safety model, not a convenience. `/frs/extras/` is one directory per title and only some of those titles are free games: `Blade Runner/` holds subtitles, `Toonstruck/` holds cutscene subtitles, `Elvira 2/` holds sound samples, `Broken Sword I and II/` holds a subtitle pack — all add-ons for games still on sale. So the twelve directories are an **allowlist**: a directory not in it is unreachable, and no code path can build a URL into it. `tests/fixtures/scummvm_freeware/blade_runner.html` is a real capture of one of those directories, checked in so a test can prove it. Filenames, by contrast, are read live rather than tabled, so a ScummVM re-release (`drascula-int-1.0.zip` became `1.1`) keeps working with no code change; the importer re-reads the listing, requires an exact match, and lists what the directory offers now when it refuses. Checksum sidecars and manuals are excluded by name; language and audio packs are kept, because unlike a manual they are part of playing the game. Each game states its own RomM platform — all twelve are `scummvm` today — rather than sharing a module constant, so a row added later for a DOS-only drop can say so without anyone noticing that a default stopped being true. Watch the directory names: Dráscula's is `Drascula_ The Vampire Strikes Back`, with an underscore where the title has a colon, and the server 404s a near miss rather than redirecting."
     }
   ]
 }

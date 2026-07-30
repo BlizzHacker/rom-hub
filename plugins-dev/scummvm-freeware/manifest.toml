@@ -1,0 +1,33 @@
+[plugin]
+slug        = "scummvm-freeware"
+name        = "ScummVM freeware games"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "scummvm_freeware.search:Search"
+importer = "scummvm_freeware.importer:Importer"
+
+# One host, and it is deliberately NOT `www.scummvm.org`.
+#
+# `downloads.scummvm.org` serves both the directory listings and the game
+# archives, with no redirect off it (verified 2026-07-29 -- `curl -w
+# %{num_redirects}` reports 0 for a real archive URL), and it publishes no
+# robots.txt at all (HTTP 404 for /robots.txt).
+#
+# `www.scummvm.org` is a different host with a different robots.txt, and
+# that one `Disallow`s `/frs` and `/downloads` for every user agent. This
+# plugin requests nothing from it -- not the games page, not the game
+# pages, nothing -- so it is absent from this allowlist and the broker
+# would refuse the request if a future version tried. The catalogue in
+# `games.py` was read from that site's robots-permitted `/games/` page by
+# a human, once, and checked in; it is not fetched at runtime.
+[permissions]
+network  = ["downloads.scummvm.org"]
+romm_api = []
+
+[config]
+# Each matched game is its own round trip and the host kills a plugin at 30s.
+max_games  = { type = "int", default = 6 }
+collection = { type = "str", default = "ScummVM freeware" }

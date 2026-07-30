@@ -98,9 +98,13 @@ backend's — so it cannot drift out of step with either.
 
 ## Every plugin listed here is published
 
-Each of the seven below lives in its own public repository, and every
-`repository`, `install` and `download` URL on this page resolves. Nothing here
-is a placeholder any more.
+Each entry below names its own public repository. Every `repository`, `install`
+and `download` URL on this page is a real address rather than a placeholder —
+but three of them are **new and not yet created**: `aminet`,
+`libretro-content` and `scummvm-freeware` were added in this repository first,
+and their repositories have to be published and tagged `v0.1.0` before
+`rom-hub plugin install <slug>` will work for them. `pytest -m live` is the
+check that says which.
 
 They also have a **development copy** in this repository's `plugins-dev/`
 directory, which is what the offline test suite runs against. The published
@@ -134,10 +138,12 @@ and neither can this directory change it for you.
 
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Backends | Flags | Network |
 |---|---|---|---|---|---|---|---|---|
+| ❗ [Aminet (Amiga)](https://github.com/BlizzHacker/rom-hub-aminet) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-aminet)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `aminet.net` |
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
 | ❗ [itch.io (free games) — NO IMPORT](https://github.com/BlizzHacker/rom-hub-itch-io) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-itch-io)) | 0.3.0 | 2026-07-29 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
+| ✔ [libretro content (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-content) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-content)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `buildbot.libretro.com` |
 | ✔ [libretro cores (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-cores) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cores)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cores/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | `buildbot.libretro.com` |
 | ✔ [libretro Database (DAT)](https://github.com/BlizzHacker/rom-hub-libretro-database) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-database)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-database/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `raw.githubusercontent.com` |
 | ✔ [libretro Thumbnails](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `thumbnails.libretro.com` |
@@ -145,10 +151,23 @@ and neither can this directory change it for you.
 | ✔ [Open BIOS](https://github.com/BlizzHacker/rom-hub-open-bios) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-open-bios)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.1.0.tar.gz) | `firmware` | Gaseous* · Retrom* · RomM | — | `raw.githubusercontent.com`, `github.com`, `release-assets.githubusercontent.com` |
 | ✔ [OpenVGDB](https://github.com/BlizzHacker/rom-hub-openvgdb) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-openvgdb)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `raw.githubusercontent.com`, `gamefaqs.gamespot.com`, `github.com`, `release-assets.githubusercontent.com` |
 | ❗ [RetroAchievements](https://github.com/BlizzHacker/rom-hub-retroachievements) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-retroachievements)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | **API key required** (stored in clear text) | `retroachievements.org` |
+| ✔ [ScummVM freeware games](https://github.com/BlizzHacker/rom-hub-scummvm-freeware) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-scummvm-freeware)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `downloads.scummvm.org` |
 
 **Reading the Backends column.** A plain name means everything this plugin declares works there. `*` means it all runs but an *extra* is skipped — a collection not created, a cover not stored — and the skip is reported in the outcome. `!` means one of its capabilities cannot run at all and is refused up front, while the rest still work. A struck-through name is a server the plugin is no use against. The per-plugin sections below name the capability and the reason in each case.
 
 The column is **derived** from what the plugin declares and what each backend declares. Nobody maintains it by hand, so it cannot disagree with either — and a backend that gains a capability changes this page on the next regeneration rather than leaving a stale promise behind.
+
+### ❗ Aminet (Amiga) — `aminet`
+
+Searches Aminet's 6,700-package game tree for Amiga games and imports the archive directly.
+
+**Source terms.** Freely distributable by admission rule, which is about as good as an archive's terms get. Aminet's uploading instructions open with “This site is intended for the distribution of any type of freely distributable software” and then refuse, first on the list, “Unlicensed copies of commercial software” and “Software with a license in conflict with Aminet's nature”. Freely distributable is not a description of the archive, it is the condition of being in it, moderated since 1992. What you reach is public-domain, freeware, shareware and open-source Amiga software its authors uploaded themselves; each package's own terms are in its `.readme`, which this plugin fetches on every import anyway. `game/demo` is “Demos of commercial games” and belongs here for the same reason the rest does — a publisher's playable demo was published *for* free distribution. `aminet.net` serves no robots.txt (its /robots.txt is the site's themed 404 page), so there is no crawl directive to observe.
+
+**Comments.** The caveat is the architecture, and it is the whole plugin. Aminet is not an Amiga archive — it is the archive for every system that grew out of the Amiga, and one `game/think` directory holds `abrick.lha` (AmigaOS 4 on PowerPC), `abandoned_bricks-mos.lha` (MorphOS) and `alleytris_68k.lha` (AmigaOS on 68k) under near-identical names. RomM has `amiga` and `amiga` means the Commodore machine, so exactly three architectures map — `m68k-amigaos`, plus `ppc-warpup` and `ppc-powerup`, which are accelerator cards *inside* an Amiga — and MorphOS, AmigaOS 4, AROS and Amithlon each refuse **by name**, saying which computer they actually are. Measured over a live `dir=game` search: 98 of 172 rows were `m68k-amigaos`. The rest still appear in search with no platform set, because hiding a game somebody can see on Aminet's own site would be worse than showing why it will not import. Four of the eighteen `game/` shelves — `data`, `edit`, `hint`, `patch` — hold data files, level editors, walkthroughs and patches; they are hidden by default and never import. Two traps for the next person: light and dark result rows are **different markup**, so a regex anchored on the opening tag finds exactly half the results; and this host answers a missing path with HTTP **200** and an error body, so both parsers refuse a document that is not the shape they expect rather than reading zero rows out of it.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+
+**Network requested.** `aminet.net` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Archive.org — `archive-org`
 
@@ -199,6 +218,18 @@ Finds free games on itch.io and proposes the developer's own title and cover art
 **Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
 
 **Network requested.** `itch.io`, `*.itch.io`, `img.itch.zone` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ libretro content (buildbot) — `libretro-content`
+
+Searches and imports the free game content libretro distributes for RetroArch — homebrew, demos and openly licensed ROMs across 29 RomM platforms.
+
+**Source terms.** Content libretro publishes for RetroArch to download, used the way it is meant to be used. These directories are the back end of RetroArch's own *Load Content → Download Content* menu, served unauthenticated so that software reads them. What is in them is homebrew and demos their authors gave libretro for distribution (`Alter Ego`, `Chrono Knight`, `Sheep It Up`), openly licensed technical software (`240p Test Suite`, MIT), and free game data for engine cores (Cave Story's freeware release, the Quake shareware episode). One directory needs its own sentence: the GCE Vectrex library is **not** public domain — Smith Engineering, which designed the Vectrex, granted permission in 1992 for its ROMs, manuals and overlays to be copied and distributed **as long as it is not for profit**. That is a real grant from the actual rights holder and also a condition: free to acquire and keep, not free to sell. `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing.
+
+**Comments.** The broadest free-content source in this directory: 29 RomM platforms against `homebrew`'s four. There is no `.index-extended` here — the sibling `libretro-cores` plugin reads one for cores and the content tree has none (checked live: HTTP 404) — so the h5ai listing *is* the catalogue, and this plugin reads the plain `<table>` fallback h5ai ships for clients that run no JavaScript. The platform table is keyed on the directory names **this** server serves, not copied from the libretro thumbnail server, which spells two of the same machines differently (`Coleco - Colecovision` here against `Coleco - ColecoVision` there; `Nintendo - GameBoy` against `Nintendo - Game Boy`) — copying would have produced two silent 404s. An unmapped directory refuses with one of three different sentences, because “add a row” is right for only one of them: **needs mapping** for a real RomM platform, **not a platform** for `Images`/`Video`/`Utilities`, and **ambiguous** for `Nintendo - GameCube - Wii`, which is one directory holding two consoles RomM keeps separate. Search is one request when `--platform` is given and bounded by `max_systems` when it is not, because each listing is its own round trip against a 30-second host timeout. h5ai's size column is rounded (`40 KB`) and there is no byte count in the document, so it is carried as display text and never as `size_bytes`.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+
+**Network requested.** `buildbot.libretro.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ libretro cores (buildbot) — `libretro-cores`
 
@@ -285,6 +316,18 @@ Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your R
 **Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
 
 **Network requested.** `retroachievements.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ ScummVM freeware games — `scummvm-freeware`
+
+Twelve complete adventure games the ScummVM project distributes free, because their rights holders released them.
+
+**Source terms.** The cleanest terms in this directory, and each one is attributable to a named person or company. Revolution Software released *Beneath a Steel Sky* and *Lure of the Temptress* as freeware in 2003; John Passfield and Steve Stamatiadis released *Flight of the Amazon Queen* in 2004; Neil Dodwell and David Dew of Creative Reality released *DreamWeb* in 2012; Alcachofa Soft released *Dráscula*; L.K. Avalon released *Sołtys* and *Sfinx*; Dynabyte released *Nippon Safes, Inc.*; Ken and Roberta Williams placed *Mystery House* in the public domain in 1987. *Broken Sword 2.5*, *The Griffon Legend* and *God of Thunder* are free releases by their own authors. Nothing here is abandonware and nothing is a dump of retail media — it is ScummVM-ready game data the project has hosted for years. On robots: `downloads.scummvm.org`, the only host this plugin requests, publishes **no** robots.txt (HTTP 404 for /robots.txt). `www.scummvm.org` is a different host whose robots.txt does `Disallow: /frs`, and this plugin never requests anything from it — it is absent from the manifest allowlist, so the broker would refuse. The twelve-game table was read once by a human from that site's robots-permitted `/games/` page and checked in; it is not fetched at runtime.
+
+**Comments.** The game table is the safety model, not a convenience. `/frs/extras/` is one directory per title and only some of those titles are free games: `Blade Runner/` holds subtitles, `Toonstruck/` holds cutscene subtitles, `Elvira 2/` holds sound samples, `Broken Sword I and II/` holds a subtitle pack — all add-ons for games still on sale. So the twelve directories are an **allowlist**: a directory not in it is unreachable, and no code path can build a URL into it. `tests/fixtures/scummvm_freeware/blade_runner.html` is a real capture of one of those directories, checked in so a test can prove it. Filenames, by contrast, are read live rather than tabled, so a ScummVM re-release (`drascula-int-1.0.zip` became `1.1`) keeps working with no code change; the importer re-reads the listing, requires an exact match, and lists what the directory offers now when it refuses. Checksum sidecars and manuals are excluded by name; language and audio packs are kept, because unlike a manual they are part of playing the game. Each game states its own RomM platform — all twelve are `scummvm` today — rather than sharing a module constant, so a row added later for a DOS-only drop can say so without anyone noticing that a default stopped being true. Watch the directory names: Dráscula's is `Drascula_ The Vampire Strikes Back`, with an underscore where the title has a colon, and the server 404s a near miss rather than redirecting.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+
+**Network requested.** `downloads.scummvm.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ## Adding your plugin
 
