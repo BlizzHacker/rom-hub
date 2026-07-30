@@ -56,8 +56,9 @@ network  = ["example.org", "*.example.org"]
 romm_api = []
 
 [config]
-# Operator-settable. Types: str, int, bool, list[str].
+# Operator-settable. Types: str, int, bool, list[str], secret.
 max_pages = { type = "int", default = 3 }
+api_key   = { type = "secret" }   # a credential; no default permitted
 ```
 
 Notes that have each cost somebody time:
@@ -67,13 +68,24 @@ Notes that have each cost somebody time:
 - **`license` is yours, not this repository's.** Your plugin is a separate
   work; put a `LICENSE` file beside the manifest. The seven listed plugins are
   MIT, and so is the Hub, but nothing requires you to match.
-- **`secret` is not a usable config type.** RPP v1 reserves it and *this host
-  rejects it* — a field declaring `type = "secret"` fails to install with
-  "reserved in RPP v1 but not implemented in Phase 1". So a plugin needing an
-  API key stores it as a plain `str`, **in clear text in the Hub's config**.
-  If yours needs a credential, say so in your README in those words, and set
-  `key_required` in your catalog entry. `retroachievements` is the worked
-  example.
+- **Use `secret` for a credential, and never `str`.** The type is implemented
+  (`rom_hub/secrets.py`): the value is kept out of the Hub's plain config,
+  redacted from every command's output and from any error the host builds, and
+  handed to your subprocess in the `init` frame — so `ctx.config["api_key"]`
+  reads exactly as a `str` would. Operators set it with `rom-hub plugin secret
+  set <slug> <key>`, which prompts rather than taking an argument.
+  - **A `secret` may not declare a `default`.** Your manifest is a public file
+    in a git repo; the parser refuses one for that reason.
+  - **An unset secret arrives as `""`**, not as a missing key, so *your*
+    refusal message fires rather than a `KeyError` from inside your code.
+  - **Do not print it.** The host scrubs its own output and your stderr, but it
+    cannot un-send a value you put in a returned title or a URL.
+  - **Do not overstate the protection in your README.** What the store actually
+    gives depends on the host and is printed by `rom-hub plugin secret list`;
+    on a headless box the default is an encrypted file whose key sits next to
+    it, which is obfuscation rather than secrecy. Point at that command instead
+    of making a claim you cannot check. Still set `key_required` in your
+    catalog entry. `retroachievements` is the worked example.
 - **`romm_api` is reserved.** It parses; nothing grants a plugin library access
   in RPP v1.
 

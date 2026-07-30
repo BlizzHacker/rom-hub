@@ -16,10 +16,12 @@ one is active and what it can do.
 """
 
 import argparse
+import getpass
+import os
 import sys
 from pathlib import Path
 
-from . import backends, emuassets, env
+from . import backends, emuassets, env, secrets
 from .assets import (
     DATA_DIR_NAME,
     AssetError,
@@ -49,6 +51,7 @@ from .manifest import ManifestError
 from .metadata import EnrichError, rom_ref_from, run_enrich
 from .registry import Registry, RegistryError
 from .sandbox import probe
+from .secrets import SecretError
 from .types import KNOWN_ASSET_KINDS, SearchResult
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
@@ -201,6 +204,48 @@ def prepare_assets(plugin, root: Path | None = None) -> dict[str, str]:
     )
 
 
+def secret_store(root: Path | None = None):
+    """The store behind `secret`-typed config fields.
+
+    Built at call time, like every other setting, so `ROM_HUB_SECRET_STORE`
+    and `ROM_HUB_SECRET_KEY` can be flipped by a shell.
+    """
+    return secrets.open_store(Path(root or default_root()))
+
+
+def _announce_secret(message: str) -> None:
+    """Where a secret-store notice goes. stderr, and never with a value."""
+    print(f"note: {message}", file=sys.stderr)
+
+
+def prepare_secrets(plugin, root: Path | None = None) -> dict[str, str]:
+    """This plugin's `secret` config values, ready for the `init` frame.
+
+    Called at every site that starts a plugin subprocess, immediately before
+    it starts, so a secret exists as a string in host memory for as short a
+    time as the call takes and is never written to `state.json` on the way.
+
+    It is also where a pre-`secret` plaintext value is migrated out of the
+    plain config, because this is the one path every capability command
+    shares -- an operator who never reinstalls still gets moved over, and is
+    told, once, on stderr.
+
+    Costs nothing for the nine plugins that declare no secrets: the schema
+    is checked first and the store is never opened.
+    """
+    if not secrets.secret_fields(plugin.manifest):
+        return {}
+    root = Path(root or default_root())
+    store = secret_store(root)
+    secrets.migrate_plaintext(Registry(root), plugin, store, announce=_announce_secret)
+    resolved = {}
+    for key in secrets.secret_fields(plugin.manifest):
+        value = store.get(plugin.slug, key)
+        if value:
+            resolved[key] = value
+    return resolved
+
+
 def cores_dir(root: Path | None = None) -> Path:
     """Where installed emulator cores land.
 
@@ -347,6 +392,7 @@ def _cmd_plugin_install(args) -> int:
     # learn while deciding whether to install rather than halfway through a
     # search. The same lines are available later from `plugin assets`.
     _print_declared_assets(plugin.manifest, indent="  ")
+    _print_declared_secrets(plugin, indent="  ")
     # An operator approving an install must be told exactly how much of that
     # allowlist is a boundary and how much is a declaration of intent, and the
     # answer depends on whether this host can confine the subprocess at all.
@@ -367,6 +413,26 @@ def _cmd_plugin_install(args) -> int:
         print("        trust.")
         print(f"        reason: {reason}")
     return 0
+
+
+def _print_declared_secrets(plugin, indent: str = "") -> None:
+    """The credentials this plugin will need, and the command that sets them.
+
+    Printed at install for the same reason the asset sizes are: "this needs
+    an API key" is a thing to learn while deciding, not halfway through the
+    first enrich that refuses.
+    """
+    fields = secrets.secret_fields(plugin.manifest)
+    if not fields:
+        return
+    print(f"{indent}needs {len(fields)} secret(s): {', '.join(fields)}")
+    for key in fields:
+        print(f"{indent}  rom-hub plugin secret set {plugin.slug} {key}")
+    print(
+        f"{indent}  kept out of the Hub's plain config and redacted from every "
+        f"command's output;"
+    )
+    print(f"{indent}  'rom-hub plugin secret list' says where it is stored")
 
 
 def _print_declared_assets(manifest, indent: str = "") -> None:
@@ -443,6 +509,190 @@ def _cmd_plugin_list(args) -> int:
     return 0
 
 
+def _cmd_plugin_config(args) -> int:
+    """Dump one plugin's settings, with every secret redacted.
+
+    The command that exists so "where do I check what this is set to?" has
+    an answer that is safe to screenshot. A `secret`-typed field is never
+    printed, whatever it holds -- including a legacy plaintext value that
+    has not been migrated yet.
+    """
+    plugin = Registry(default_root()).get(args.slug)
+    schema = plugin.manifest.config_schema or {}
+    secret_keys = set(secrets.secret_fields(plugin.manifest))
+    if not schema:
+        print(f"plugin {plugin.slug!r} declares no config")
+        return EXIT_OK
+
+    shown = secrets.redact_config(plugin.manifest, plugin.config)
+    print(f"{'KEY':<24} {'TYPE':<10} VALUE")
+    for key, spec in schema.items():
+        declared = spec.get("type", "?") if isinstance(spec, dict) else "?"
+        if key in secret_keys:
+            value = secrets.REDACTED if _secret_is_set(plugin, key) else "(not set)"
+        else:
+            value = shown.get(key, spec.get("default") if isinstance(spec, dict) else "")
+        print(f"{key:<24} {declared:<10} {value}")
+    if secret_keys:
+        print()
+        print(
+            "secret values are never printed here; see 'rom-hub plugin secret "
+            "list' for where they are stored"
+        )
+    return EXIT_OK
+
+
+def _secret_is_set(plugin, key: str) -> bool:
+    """Whether a value exists for `key`, without ever returning it.
+
+    A legacy plaintext value still sitting in `state.json` counts as set:
+    the field *is* configured, it is simply not migrated yet, and reporting
+    "(not set)" for a plugin that works would be the wrong answer.
+    """
+    if str((plugin.config or {}).get(key) or "").strip():
+        return True
+    try:
+        return bool(secret_store().get(plugin.slug, key))
+    except SecretError:
+        return False
+
+
+def _read_secret_value(args) -> str:
+    """The value for `plugin secret set`, from wherever it was offered.
+
+    Deliberately four routes, because "do not put it in your shell history"
+    only works if there is somewhere else to put it:
+
+    * a TTY prompt (the default), which echoes nothing and asks twice;
+    * `--stdin`, or a pipe, for `pass show x | rom-hub ...`;
+    * `--env VAR`, for a systemd unit or a CI runner;
+    * `--value`, which works and **warns**, because it is already in the
+      history by the time this runs and pretending otherwise helps nobody.
+    """
+    if args.value is not None:
+        print(
+            "warning: the value was passed as a command-line argument, so it "
+            "is now in your shell history and in this machine's process list. "
+            "Clear it (history -d, or your shell's equivalent) and consider "
+            "the key compromised enough to rotate. Next time, run "
+            "'rom-hub plugin secret set <slug> <key>' with no value and type "
+            "it at the prompt, or pipe it in with --stdin.",
+            file=sys.stderr,
+        )
+        return args.value
+    if args.env:
+        value = os.environ.get(args.env, "")
+        if not value:
+            raise SecretError(
+                f"--env {args.env} was given but ${args.env} is unset or empty"
+            )
+        return value
+    if args.stdin or not sys.stdin.isatty():
+        if not args.stdin:
+            print("note: stdin is not a terminal; reading the value from it",
+                  file=sys.stderr)
+        return sys.stdin.read().strip("\r\n")
+    first = getpass.getpass("value (not echoed): ")
+    again = getpass.getpass("again: ")
+    if first != again:
+        raise SecretError("the two values did not match; nothing was stored")
+    return first
+
+
+def _cmd_plugin_secret_set(args) -> int:
+    plugin = Registry(default_root()).get(args.slug)
+    fields = secrets.secret_fields(plugin.manifest)
+    if args.key not in fields:
+        declared = ", ".join(fields) or "(none)"
+        print(
+            f"error: plugin {plugin.slug!r} declares no secret named "
+            f"{args.key!r} (it declares: {declared})",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+
+    value = _read_secret_value(args)
+    if not value.strip():
+        print("error: an empty value is not a secret; nothing was stored",
+              file=sys.stderr)
+        return EXIT_ERROR
+
+    store = secret_store()
+    store.set(plugin.slug, args.key, value)
+    info = store.info()
+    # The name, never the value -- this line is the one most likely to end
+    # up in a terminal recording.
+    print(f"stored {args.key} for {plugin.slug} in the {info.kind} store")
+    print(f"  {info.detail}")
+    print(f"  {info.protection}")
+    return EXIT_OK
+
+
+def _cmd_plugin_secret_clear(args) -> int:
+    plugin = Registry(default_root()).get(args.slug)
+    removed = secret_store().delete(plugin.slug, args.key)
+    # Also drop any un-migrated plaintext, or "cleared" would be a lie for
+    # exactly the operator most likely to be running this.
+    config = dict(plugin.config or {})
+    if config.pop(args.key, None) is not None:
+        Registry(default_root()).set_config(plugin.slug, config)
+        removed = True
+    print(
+        f"cleared {args.key} for {plugin.slug}"
+        if removed
+        else f"{args.key} was not set for {plugin.slug}"
+    )
+    return EXIT_OK
+
+
+def _cmd_plugin_secret_list(args) -> int:
+    """Which secrets are set, where they live, and what that protects.
+
+    Never a value and never a hash of one: a fingerprint would let anyone
+    holding this output confirm a guess. The character count is printed
+    because "did my paste get truncated" is a real question and a length is
+    not a verifier.
+    """
+    store = secret_store()
+    info = store.info()
+    print(f"{'store':<12} {info.kind}")
+    print(f"{'location':<12} {info.detail}")
+    print(f"{'protects':<12} {info.protection}")
+    if not info.at_rest_secret:
+        print(
+            f"{'':<12} (so: safe against a config dump, a screenshot or a "
+            f"commit -- not against someone who can read the directory)"
+        )
+    print()
+
+    plugins = Registry(default_root()).installed()
+    if args.slug:
+        plugins = [p for p in plugins if p.slug == args.slug]
+    rows = []
+    for plugin in plugins:
+        for key in secrets.secret_fields(plugin.manifest):
+            plaintext = str((plugin.config or {}).get(key) or "")
+            value = plaintext or (store.get(plugin.slug, key) or "")
+            if not value:
+                status = "not set"
+            elif plaintext:
+                status = (
+                    f"set ({len(value)} characters) -- STILL IN PLAIN CONFIG, "
+                    f"moved on next use"
+                )
+            else:
+                status = f"set ({len(value)} characters)"
+            rows.append((plugin.slug, key, status))
+
+    if not rows:
+        print("no installed plugin declares a secret")
+        return EXIT_OK
+    print(f"{'PLUGIN':<22} {'FIELD':<20} STATUS")
+    for slug, key, status in rows:
+        print(f"{slug:<22} {key:<20} {status}")
+    return EXIT_OK
+
+
 def _cmd_plugin_enable(args) -> int:
     Registry(default_root()).set_enabled(args.slug, True)
     print(f"enabled {args.slug}")
@@ -472,6 +722,7 @@ def _cmd_search(args) -> int:
             limit=args.limit,
             allow_unsandboxed=allow_unsandboxed(),
             assets_for=prepare_assets,
+            secrets_for=prepare_secrets,
         )
     finally:
         fetcher.close()
@@ -588,6 +839,7 @@ def _cmd_import(args) -> int:
                 fetcher=fetcher,
                 allow_unsandboxed=allow_unsandboxed(),
                 data_assets=data_assets,
+                secrets=prepare_secrets(plugin, root),
             ) as proc,
         ):
             outcome = run_import(
@@ -656,6 +908,7 @@ def _cmd_enrich(args) -> int:
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
             data_assets=data_assets,
+            secrets=prepare_secrets(plugin, root),
         ) as proc:
             rom = backend.get_rom(args.rom_id)
             result = run_enrich(
@@ -703,6 +956,7 @@ def _cmd_stream(args) -> int:
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
             data_assets=data_assets,
+            secrets=prepare_secrets(plugin),
         ) as proc:
             target = proc.resolve_stream(result)
     finally:
@@ -741,6 +995,7 @@ def _with_cores_plugin(args, action):
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
             data_assets=data_assets,
+            secrets=prepare_secrets(plugin),
         ) as proc:
             return action(proc)
     finally:
@@ -822,6 +1077,7 @@ def _with_firmware_plugin(args, action):
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
             data_assets=data_assets,
+            secrets=prepare_secrets(plugin),
         ) as proc:
             return action(proc)
     finally:
@@ -1163,6 +1419,69 @@ def build_parser() -> argparse.ArgumentParser:
     )
     assets.set_defaults(func=_cmd_plugin_assets)
 
+    config = psub.add_parser(
+        "config", help="show a plugin's settings (secrets redacted)"
+    )
+    config.add_argument("slug", help="slug of an installed plugin")
+    config.set_defaults(func=_cmd_plugin_config)
+
+    secret = psub.add_parser(
+        "secret",
+        help="set, clear and inspect a plugin's `secret` config fields",
+        description=(
+            "A config field declared `type = \"secret\"` is kept out of the "
+            "Hub's plain config and redacted from every command's output. "
+            "'secret list' says where it is actually stored and what that "
+            "does and does not protect."
+        ),
+    )
+    ssub = secret.add_subparsers(dest="secret_command", required=True)
+
+    secret_set = ssub.add_parser(
+        "set",
+        help="store one secret (prompts on a terminal; nothing is echoed)",
+        description=(
+            "With no source flag this prompts on a terminal and reads stdin "
+            "otherwise, so the value never has to appear in your shell "
+            "history."
+        ),
+    )
+    secret_set.add_argument("slug", help="slug of an installed plugin")
+    secret_set.add_argument("key", help="the config field, from 'plugin config'")
+    source = secret_set.add_mutually_exclusive_group()
+    source.add_argument(
+        "--stdin", action="store_true", help="read the value from standard input"
+    )
+    source.add_argument(
+        "--env",
+        metavar="VAR",
+        default=None,
+        help="read the value from this environment variable",
+    )
+    source.add_argument(
+        "--value",
+        default=None,
+        help=(
+            "the value itself -- NOT RECOMMENDED: it lands in your shell "
+            "history and this machine's process list, and the command warns "
+            "you when you use it"
+        ),
+    )
+    secret_set.set_defaults(func=_cmd_plugin_secret_set)
+
+    secret_clear = ssub.add_parser("clear", help="remove one stored secret")
+    secret_clear.add_argument("slug")
+    secret_clear.add_argument("key")
+    secret_clear.set_defaults(func=_cmd_plugin_secret_clear)
+
+    secret_list = ssub.add_parser(
+        "list", help="which secrets are set, and what the store protects"
+    )
+    secret_list.add_argument(
+        "slug", nargs="?", default=None, help="only this plugin (default: all)"
+    )
+    secret_list.set_defaults(func=_cmd_plugin_secret_list)
+
     search = sub.add_parser("search", help="search across enabled plugins")
     search.add_argument("query")
     search.add_argument("--platform", default=None)
@@ -1342,6 +1661,7 @@ def main(argv: list[str] | None = None) -> int:
         EnrichError,
         AssetError,
         BackendError,
+        SecretError,
         OSError,
     ) as exc:
         # ManifestError escapes a bad manifest on an otherwise clean install,
@@ -1358,7 +1678,11 @@ def main(argv: list[str] | None = None) -> int:
         # BackendNotConfigured and CapabilityUnsupported. AssetError is the
         # data-asset equivalent, and its most important case -- a declared
         # sha256 that does not match what arrived -- is a refusal an
-        # operator must be able to read, not a stack trace.
+        # operator must be able to read, not a stack trace. SecretError is
+        # the same shape for the credential store -- "the stored secret did
+        # not authenticate", "ROM_HUB_SECRET_STORE=keyring but there is no
+        # keyring here", "the two values did not match" -- refusals with a
+        # next step in them.
         #
         # AssetInstallError is the *other* kind of asset failure and the two
         # are not the same thing despite the names: AssetError is a plugin's
