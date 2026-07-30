@@ -1,0 +1,56 @@
+[plugin]
+slug        = "demozoo"
+name        = "Demozoo (demoscene)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "demozoo.search:Search"
+importer = "demozoo.importer:Importer"
+
+# Three hosts, reached on three different steps, and the third is the one
+# that is easy to forget.
+#
+#   demozoo.org        the public JSON API -- the index, and nothing else
+#   files.scene.org    scene.org's download entry point
+#   archive.scene.org  where files.scene.org's `get:nl-https` mirror 302s to
+#   fujiology.org      serves its files directly, no redirect
+#
+# Demozoo hosts no files. Every download is on somebody else's archive, so
+# the archive has to be declared -- and so does the mirror its redirect
+# lands on, because the host re-checks the allowlist on **every hop**.
+# Verified live 2026-07-29:
+#
+#   files.scene.org/get/<p>          -> http://http.us.scene.org/...   (http!)
+#   files.scene.org/get:nl-https/<p> -> https://archive.scene.org/pub/... (200)
+#
+# `rom_hub.netpolicy.ALLOWED_SCHEMES` is `{"https"}`, so the default
+# `/get/` form cannot work whatever is declared here. The plugin pins the
+# https mirror; see demozoo/links.py.
+#
+# Hosts deliberately NOT here, though Demozoo links to them: `csdb.dk`
+# (robots.txt disallows ClaudeBot and anthropic-ai outright),
+# `ftp.amigascne.org` (robots.txt is Disallow: / for everyone, and its
+# links are http), `files.zxdemo.org` (403 on its own root). See
+# demozoo/links.py -- each is refused by name rather than silently missing.
+[permissions]
+network  = [
+  "demozoo.org",
+  "files.scene.org",
+  "archive.scene.org",
+  "fujiology.org",
+]
+romm_api = []
+
+[config]
+# The RomM collection everything from here lands in.
+collection      = { type = "str", default = "Demozoo" }
+# Narrow a browse to one production type -- "Cracktro", "Demo",
+# "64K Intro". Empty means every type this plugin imports. A type it does
+# not import is refused by name rather than accepted and then filtered.
+production_type = { type = "str", default = "" }
+# Requests one search may make, across platform ids and pages. RomM's
+# `amiga` is three Demozoo platforms, so a platform browse costs three
+# streams before any paging.
+max_requests    = { type = "int", default = 6 }
