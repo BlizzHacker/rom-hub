@@ -20,6 +20,13 @@ import sys
 from pathlib import Path
 
 from . import backends, env
+from .assets import (
+    DATA_DIR_NAME,
+    AssetError,
+    describe as describe_assets,
+    ensure_assets,
+    human_bytes,
+)
 from .backends import (
     COLLECTIONS,
     IMPORT,
@@ -144,6 +151,54 @@ def artwork_dir(root: Path | None = None) -> Path:
     return Path(root or default_root()) / "var" / "artwork"
 
 
+def plugin_data_root(root: Path | None = None) -> Path:
+    """Where a plugin's declared data assets are cached.
+
+    Under `var/` beside the job queue, for the same reason: it is runtime
+    state that grows -- OpenVGDB alone unpacks to 42 MiB -- so it must not
+    land in the repo, and on a workstation it must not land on the system
+    drive by default either. Never inside the plugin's own directory: that
+    is a git checkout the registry deletes and replaces on every reinstall.
+    """
+    return Path(root or default_root()) / "var" / DATA_DIR_NAME
+
+
+def allow_asset_fetch() -> bool:
+    """Whether the Hub may download a declared data asset when one is missing.
+
+    On by default, because a plugin that cannot get its dataset cannot do
+    its job. `ROM_HUB_NO_ASSET_FETCH=1` is the veto for a metered link: a
+    missing asset then refuses and names `rom-hub plugin assets <slug>
+    --fetch`, rather than pulling megabytes mid-command.
+    """
+    return env.get("ROM_HUB_NO_ASSET_FETCH") != "1"
+
+
+def _announce_asset(message: str) -> None:
+    """Where a data-asset notice goes.
+
+    stderr, so `rom-hub search x > out.txt` keeps its results clean, and
+    unconditionally, because a multi-megabyte download nobody was told
+    about is the exact surprise this mechanism exists to avoid.
+    """
+    print(f"note: {message}", file=sys.stderr)
+
+
+def prepare_assets(plugin, root: Path | None = None) -> dict[str, str]:
+    """Resolve a plugin's declared data assets to verified local paths.
+
+    Called before the subprocess starts, at every site that starts one, so
+    a plugin is never handed a path to bytes the host has not verified.
+    Costs nothing for the ten plugins that declare no assets.
+    """
+    return ensure_assets(
+        plugin.manifest,
+        plugin_data_root(root),
+        announce=_announce_asset,
+        allow_fetch=allow_asset_fetch(),
+    )
+
+
 def cores_dir(root: Path | None = None) -> Path:
     """Where installed emulator cores land.
 
@@ -236,6 +291,11 @@ def _cmd_plugin_install(args) -> int:
     print(f"installed {plugin.slug} {plugin.manifest.version} (capabilities: {caps})")
     print(f"  pinned commit: {plugin.commit or '(unknown)'}")
     print(f"  declared network allowlist: {plugin.manifest.network or '(none)'}")
+    # Printed at install, before the first command that would trigger it,
+    # because "this plugin will pull 8.7 MiB from github.com" is a thing to
+    # learn while deciding whether to install rather than halfway through a
+    # search. The same lines are available later from `plugin assets`.
+    _print_declared_assets(plugin.manifest, indent="  ")
     # An operator approving an install must be told exactly how much of that
     # allowlist is a boundary and how much is a declaration of intent, and the
     # answer depends on whether this host can confine the subprocess at all.
@@ -256,6 +316,68 @@ def _cmd_plugin_install(args) -> int:
         print("        trust.")
         print(f"        reason: {reason}")
     return 0
+
+
+def _print_declared_assets(manifest, indent: str = "") -> None:
+    """The datasets a manifest declares, in the form an operator judges.
+
+    Size and origin first, because those are the two facts that decide
+    whether the download is acceptable; the digest after, because it is
+    what makes the download safe to accept at all.
+    """
+    if not manifest.data_assets:
+        return
+    total = sum(a.size_bytes or 0 for a in manifest.data_assets)
+    print(
+        f"{indent}declares {len(manifest.data_assets)} data asset(s), "
+        f"{human_bytes(total) if total else 'size undeclared'} to download:"
+    )
+    for asset in manifest.data_assets:
+        unpacked = f", unpacked from {asset.archive}" if asset.archive else ""
+        print(
+            f"{indent}  {asset.name}  {human_bytes(asset.size_bytes)} "
+            f"from {asset.host}{unpacked}"
+        )
+        print(f"{indent}    {asset.url}")
+        print(f"{indent}    sha256 {asset.sha256}")
+        if asset.description:
+            print(f"{indent}    {asset.description}")
+    print(
+        f"{indent}  fetched on first use, verified against the sha256 above, "
+        f"and cached"
+    )
+    print(f"{indent}  in {plugin_data_root() / manifest.slug}")
+
+
+def _cmd_plugin_assets(args) -> int:
+    """Show a plugin's declared data assets and whether they are cached.
+
+    `--fetch` is the pre-fetch: the same code path a capability command
+    takes, run deliberately and on its own, so the download happens when
+    the operator chose it rather than in the middle of something else.
+    """
+    plugin = Registry(default_root()).get(args.slug)
+    if not plugin.manifest.data_assets:
+        print(f"plugin {plugin.slug!r} declares no data assets")
+        return EXIT_OK
+
+    _print_declared_assets(plugin.manifest)
+    print()
+    if args.fetch:
+        # Deliberately not `allow_asset_fetch()`: the operator typed
+        # --fetch, which is a more specific instruction than the standing
+        # "do not download during ordinary commands" setting.
+        ensure_assets(
+            plugin.manifest,
+            plugin_data_root(),
+            announce=_announce_asset,
+            allow_fetch=True,
+        )
+
+    for state in describe_assets(plugin.manifest, plugin_data_root()):
+        mark = "ok" if state.ready else "--"
+        print(f"{mark:<3}{state.asset.name:<24} {state.detail}")
+    return EXIT_OK
 
 
 def _cmd_plugin_list(args) -> int:
@@ -298,6 +420,7 @@ def _cmd_search(args) -> int:
             platform=args.platform,
             limit=args.limit,
             allow_unsandboxed=allow_unsandboxed(),
+            assets_for=prepare_assets,
         )
     finally:
         fetcher.close()
@@ -402,6 +525,7 @@ def _cmd_import(args) -> int:
     )
 
     root = default_root()
+    data_assets = prepare_assets(plugin, root)
     fetcher = HttpxFetcher()
     try:
         with (
@@ -412,6 +536,7 @@ def _cmd_import(args) -> int:
                 config=plugin.config,
                 fetcher=fetcher,
                 allow_unsandboxed=allow_unsandboxed(),
+                data_assets=data_assets,
             ) as proc,
         ):
             outcome = run_import(
@@ -468,6 +593,9 @@ def _cmd_enrich(args) -> int:
     require(backend, METADATA, "enriching a rom's metadata")
 
     root = default_root()
+    # Before the subprocess, before the backend call: a plugin whose
+    # dataset cannot be fetched or verified should cost neither.
+    data_assets = prepare_assets(plugin, root)
     fetcher = HttpxFetcher()
     try:
         with PluginProcess(
@@ -476,6 +604,7 @@ def _cmd_enrich(args) -> int:
             config=plugin.config,
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
         ) as proc:
             rom = backend.get_rom(args.rom_id)
             result = run_enrich(
@@ -513,6 +642,7 @@ def _cmd_stream(args) -> int:
         plugin=plugin.slug,
     )
 
+    data_assets = prepare_assets(plugin)
     fetcher = HttpxFetcher()
     try:
         with PluginProcess(
@@ -521,6 +651,7 @@ def _cmd_stream(args) -> int:
             config=plugin.config,
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
         ) as proc:
             target = proc.resolve_stream(result)
     finally:
@@ -549,6 +680,7 @@ def _with_cores_plugin(args, action):
         print(f"error: {refusal}", file=sys.stderr)
         return EXIT_ERROR
 
+    data_assets = prepare_assets(plugin)
     fetcher = HttpxFetcher()
     try:
         with PluginProcess(
@@ -557,6 +689,7 @@ def _with_cores_plugin(args, action):
             config=plugin.config,
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
         ) as proc:
             return action(proc)
     finally:
@@ -745,6 +878,21 @@ def build_parser() -> argparse.ArgumentParser:
     disable.add_argument("slug")
     disable.set_defaults(func=_cmd_plugin_disable)
 
+    assets = psub.add_parser(
+        "assets",
+        help="show the data assets a plugin declares, and fetch them",
+    )
+    assets.add_argument("slug", help="slug of an installed plugin")
+    assets.add_argument(
+        "--fetch",
+        action="store_true",
+        help=(
+            "download and verify any that are missing now, instead of on "
+            "the next command that needs them"
+        ),
+    )
+    assets.set_defaults(func=_cmd_plugin_assets)
+
     search = sub.add_parser("search", help="search across enabled plugins")
     search.add_argument("query")
     search.add_argument("--platform", default=None)
@@ -855,6 +1003,7 @@ def main(argv: list[str] | None = None) -> int:
         PluginCallError,
         CoreError,
         EnrichError,
+        AssetError,
         BackendError,
         OSError,
     ) as exc:
@@ -869,7 +1018,10 @@ def main(argv: list[str] | None = None) -> int:
         # into, so its failures reach the operator only here. BackendError is
         # one name for every backend's failures, including RomM's RommError
         # and the three refusals that keep this honest -- UnknownBackend,
-        # BackendNotConfigured and CapabilityUnsupported. None of these
+        # BackendNotConfigured and CapabilityUnsupported. AssetError is the
+        # data-asset equivalent, and its most important case -- a declared
+        # sha256 that does not match what arrived -- is a refusal an
+        # operator must be able to read, not a stack trace.  None of these
         # deserve a traceback.
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR

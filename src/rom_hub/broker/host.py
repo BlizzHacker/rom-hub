@@ -21,6 +21,13 @@ There is also a path that leads *in*: the subprocess environment. Popen
 copies the parent's by default, so every secret the operator's shell
 happens to hold would arrive inside the plugin for free. That one is
 default-deny too — see `SAFE_ENV_VARS`.
+
+And one path that leads in *by design*: `data_assets`. A plugin whose
+source is a file rather than a service declares it in the manifest, and
+the caller (`rom_hub.assets.ensure_assets`) fetches, hash-verifies and
+caches it *before* this process is started. What arrives here is a
+`{name: path}` mapping for bytes that already match a declared sha256 —
+this class never fetches one, and never accepts a path the plugin named.
 """
 
 import collections
@@ -154,6 +161,7 @@ class PluginProcess:
         fetcher: Fetcher,
         timeout: float = 30.0,
         allow_unsandboxed: bool = False,
+        data_assets: dict[str, str] | None = None,
     ):
         self.plugin_dir = Path(plugin_dir)
         self.manifest = manifest
@@ -161,6 +169,11 @@ class PluginProcess:
         self.fetcher = fetcher
         self.timeout = timeout
         self.allow_unsandboxed = allow_unsandboxed
+        # Resolved and verified by the caller. Absent is legal and means
+        # "this plugin gets no assets" -- a capability that needs one then
+        # refuses with its own message, which is better than this class
+        # guessing that a fetch would have been wanted here.
+        self.data_assets = dict(data_assets or {})
         self.sandboxed = False
         self.sandbox_reason = "not started"
         self._proc: subprocess.Popen | None = None
@@ -211,6 +224,7 @@ class PluginProcess:
                 "plugin_dir": str(self.plugin_dir),
                 "entrypoints": self.manifest.capabilities,
                 "config": self.config,
+                "data_assets": self.data_assets,
             },
         )
         self.sandboxed = bool(reply.get("sandboxed", False))

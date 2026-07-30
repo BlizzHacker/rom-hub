@@ -220,9 +220,9 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-openvgdb",
       "install": "https://github.com/BlizzHacker/rom-hub-openvgdb",
-      "download": "https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
+      "download": "https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
       "updated": "2026-07-29",
       "rpp_version": "1",
       "capabilities": [
@@ -230,15 +230,17 @@
       ],
       "network": [
         "raw.githubusercontent.com",
-        "gamefaqs.gamespot.com"
+        "gamefaqs.gamespot.com",
+        "github.com",
+        "release-assets.githubusercontent.com"
       ],
-      "status": "caveat",
+      "status": "ok",
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Proposes a curated title — `Tetris`, not `Tetris (World) (Rev A)` — and a cover, from a local copy of the Open Video Game Database.",
+      "description": "Proposes a curated title — `Tetris`, not `Tetris (World) (Rev A)` — and a cover, from the Open Video Game Database, which the Hub fetches and verifies for it.",
       "terms": "Read this one carefully, because the honest answer is in two halves. OpenVGDB is published as a public GitHub release and is bundled or downloaded by a long list of emulator frontends, OpenEmu and Provenance among them — but its repository declares no licence file and GitHub reports no licence for it, so \"freely redistributable in practice\" is accurate where \"licensed for redistribution\" would not be. The hash and filename tables are catalogue facts about dumps. The cover art is not in the database at all: it stores URLs to GameFAQs and to community projects, and the images at the other end are the publishers' copyright, hosted rather than licensed to you. Fetching one to illustrate your own library is what the database is for; republishing a library built that way is your call. `art.gametdb.com` covers are never proposed, because that host's robots.txt disallows everything.",
-      "comments": "**Needs a one-time 8.7 MB download you perform yourself**, and `db_path` set to the unpacked `openvgdb.sqlite`; a plugin cannot fetch it, for four independent reasons the README sets out (the zip is over `ctx.http`'s 4 MiB cap, `HttpResponse` carries text and not bytes, the GitHub asset 302s to a host the fetcher will not follow to, and a plugin subprocess has nowhere to cache anything). OpenVGDB publishes no API, so there is nothing to query instead. The database is opened read-only through a `file:...?mode=ro` URI, because `sqlite3.connect` on a plain path creates an empty database and a typo would otherwise answer \"no match\" forever. Matching is by hash, serial, or an exact filename — never a prefix — always scoped to one system; two matches refuse rather than choose. Covers are probed before they are proposed, so a 403 on an image costs the art and not the title. Sets no provider ids: OpenVGDB's row numbers are meaningful to nothing outside your own copy. The data stops at 2021 and at OpenEmu's 43 consoles, so there is no DOS, no Amiga and nothing after the PSP. Expect titles more often than covers: measured with the Hub's own user agent, `gamefaqs.gamespot.com` (31,235 of the 43,801 covers) answers 403 behind Cloudflare while `raw.githubusercontent.com` (10,777, all arcade) answers 200 — robots permits the fetch, the site declines to serve it, and the probe turns that into a missing cover rather than a failed enrich."
+      "comments": "**Install and go.** OpenVGDB publishes no API — the whole project is one 8.7 MB release asset — so this plugin declares that file as a data asset in its manifest and the Hub fetches it: the redirect to `release-assets.githubusercontent.com` is re-validated hop by hop, the one declared member is unpacked, the 40.3 MiB `openvgdb.sqlite` is checked against the sha256 in the manifest before the plugin is told where it is, and it is cached and re-verified on every later run. The download is announced at install and again before it happens; `ROM_HUB_NO_ASSET_FETCH=1` refuses it and `rom-hub plugin assets openvgdb --fetch` performs it deliberately. `db_path` still overrides everything, for a copy you already have or one you pinned yourself. The database is opened read-only through a `file:...?mode=ro` URI, because `sqlite3.connect` on a plain path creates an empty database and a typo would otherwise answer \"no match\" forever — and because a plugin that wrote to the Hub's cached copy would fail its own integrity check next run. Matching is by hash, serial, or an exact filename — never a prefix — always scoped to one system; two matches refuse rather than choose. Covers are probed before they are proposed, so a 403 on an image costs the art and not the title. Sets no provider ids: OpenVGDB's row numbers are meaningful to nothing outside your own copy. The data stops at 2021 and at OpenEmu's 43 consoles, so there is no DOS, no Amiga and nothing after the PSP. Expect titles more often than covers: measured with the Hub's own user agent, `gamefaqs.gamespot.com` (31,235 of the 43,801 covers) answers 403 behind Cloudflare while `raw.githubusercontent.com` (10,777, all arcade) answers 200 — robots permits the fetch, the site declines to serve it, and the probe turns that into a missing cover rather than a failed enrich."
     },
     {
       "slug": "retroachievements",

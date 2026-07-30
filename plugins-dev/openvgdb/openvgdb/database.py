@@ -3,16 +3,22 @@
 There is no OpenVGDB API. The project publishes one artefact -- a SQLite
 database attached to a GitHub release -- and its repository holds a
 `.gitignore` and a 28-byte `README.md` and nothing else. So this module
-opens a local file, and `metadata.py`'s docstring explains why the plugin
-cannot fetch that file for you.
+opens a local file. Which file, and where it came from, is `metadata.py`'s
+question: normally the Hub fetched and verified it from the manifest's
+`[[data_assets]]` declaration, and `db_path` overrides that with a copy the
+operator already has.
 
-**Opened read-only, through a URI, deliberately.** `sqlite3.connect` on a
-plain path *creates* an empty database when the path does not exist, so a
-typo in `db_path` would otherwise produce a valid connection to a
-zero-table file and a stream of "no match" answers that look like data.
-`file:...?mode=ro` fails instead, which is the answer an operator can act
-on. It also guarantees this plugin never writes to a database the
-operator may be sharing with OpenEmu.
+**Opened read-only, through a URI, deliberately.** Three reasons now, not
+two. `sqlite3.connect` on a plain path *creates* an empty database when the
+path does not exist, so a typo in `db_path` would otherwise produce a valid
+connection to a zero-table file and a stream of "no match" answers that
+look like data; `file:...?mode=ro` fails instead, which is the answer an
+operator can act on. It guarantees this plugin never writes to a database
+the operator may be sharing with OpenEmu. And when the file is the Hub's
+own cached data asset, read-only is what keeps it *verifiable*: the host
+re-checks that copy against the declared sha256 on every run, so a plugin
+that wrote so much as a journal into it would fail its own integrity check
+the next time round.
 
 **The schema is checked before it is trusted.** Four tables, named here,
 because "you pointed me at some other SQLite file" is a much more likely
@@ -62,13 +68,19 @@ class Rom:
 def open_database(path: str) -> sqlite3.Connection:
     """Open an OpenVGDB read-only, or say precisely what is wrong."""
     if not path:
+        # Reachable only when the host resolved no data asset *and* no
+        # `db_path` was set -- an old host, or a plugin directory whose
+        # manifest predates the declaration. Both are fixed by reinstalling,
+        # so that is what this says.
         raise DatabaseUnavailable(
-            "openvgdb needs a local copy of openvgdb.sqlite and has none: set "
-            "`db_path` in the plugin's config. The Hub cannot fetch it for "
-            "this plugin -- see the plugin's README, 'Why the database is not "
-            "downloaded'. Get it from "
-            "https://github.com/OpenVGDB/OpenVGDB/releases/latest "
-            "(openvgdb.zip, 8.7 MiB; 40 MiB unpacked) and unzip it anywhere."
+            "openvgdb has no openvgdb.sqlite to read. The Hub normally "
+            "fetches and verifies it from this plugin's manifest "
+            "([[data_assets]]); run 'rom-hub plugin assets openvgdb --fetch' "
+            "to do that now, or reinstall the plugin if its manifest is older "
+            "than the declaration. To use a copy you already have instead, "
+            "set `db_path` in the plugin's config -- it is "
+            "https://github.com/OpenVGDB/OpenVGDB/releases/tag/v29.0 "
+            "(openvgdb.zip, 8.7 MiB; 40.3 MiB unpacked)."
         )
 
     resolved = Path(path).expanduser()

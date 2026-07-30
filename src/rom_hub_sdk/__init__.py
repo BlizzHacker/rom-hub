@@ -15,9 +15,10 @@ from .capabilities import (
     SearchProvider,
     StreamProvider,
 )
-from .context import HttpResponse, PluginContext
+from .context import DataAssetUnavailable, HttpResponse, PluginContext
 
 __all__ = [
+    "DataAssetUnavailable",
     "SearchResult",
     "SearchProvider",
     "ImportProvider",

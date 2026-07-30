@@ -1,3 +1,4 @@
+import hashlib
 import io
 import subprocess
 import sys
@@ -805,3 +806,116 @@ def test_stderr_is_covered_too(tmp_path, monkeypatch):
     stream.flush()
     degraded = "ソ".encode("cp1252", "backslashreplace").decode("cp1252")
     assert degraded in raw.getvalue().decode("cp1252")
+
+
+# -- data assets ---------------------------------------------------------
+#
+# The CLI's half of the contract: a plugin's declared dataset is announced
+# before it is fetched, inspectable on demand, and vetoable. The mechanics
+# of fetching and verifying live in `test_data_assets.py`; what is tested
+# here is what an operator sees and can decide.
+
+ASSET_BODY = b"a stand-in dataset" * 8
+ASSET_SHA = hashlib.sha256(ASSET_BODY).hexdigest()
+
+ASSET_MANIFEST = f"""
+[plugin]
+slug = "dataful"
+name = "Dataful"
+version = "0.1.0"
+rpp_version = "1"
+
+[capabilities]
+search = "demo:Search"
+
+[permissions]
+network = ["dataset.example"]
+romm_api = []
+
+[[data_assets]]
+name = "corpus.bin"
+url = "https://dataset.example/corpus.bin"
+sha256 = "{ASSET_SHA}"
+size_bytes = {len(ASSET_BODY)}
+description = "the dataset this plugin is"
+"""
+
+
+@pytest.fixture
+def asset_source_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "dataful-plugin"
+    repo.mkdir()
+    (repo / "manifest.toml").write_text(ASSET_MANIFEST, encoding="utf-8")
+    (repo / "demo.py").write_text(PLUGIN, encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "i"],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def test_install_announces_the_download_the_plugin_will_want(
+    tmp_path, asset_source_repo, monkeypatch, capsys
+):
+    """Before the decision, not halfway through the first search."""
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["plugin", "install", str(asset_source_repo)]) == 0
+    out = capsys.readouterr().out
+    assert "1 data asset(s)" in out
+    assert "corpus.bin" in out
+    assert "dataset.example" in out
+    assert ASSET_SHA in out
+    assert "fetched on first use" in out
+
+
+def test_plugin_assets_reports_state_without_fetching(
+    tmp_path, asset_source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(asset_source_repo)])
+    capsys.readouterr()
+    assert main(["plugin", "assets", "dataful"]) == 0
+    out = capsys.readouterr().out
+    assert "not cached yet" in out
+
+
+def test_plugin_assets_on_a_plugin_that_declares_none(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    capsys.readouterr()
+    assert main(["plugin", "assets", "demo"]) == 0
+    assert "declares no data assets" in capsys.readouterr().out
+
+
+def test_the_operator_can_refuse_the_download_and_be_told_how_to_get_it(
+    tmp_path, asset_source_repo, monkeypatch, capsys
+):
+    """A metered link is a real thing. The veto must name its own undo."""
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_NO_ASSET_FETCH", "1")
+    main(["plugin", "install", str(asset_source_repo)])
+    capsys.readouterr()
+    # `search` isolates a failing plugin rather than aborting, so the
+    # refusal arrives as that plugin's status.
+    assert main(["search", "anything"]) == 0
+    combined = capsys.readouterr()
+    assert "plugin assets dataful --fetch" in (combined.out + combined.err)
+
+
+def test_the_data_directory_is_under_the_hub_home_and_not_the_plugin(
+    tmp_path, monkeypatch
+):
+    """A plugin directory is a git checkout the registry deletes and
+    replaces on every reinstall; a 42 MiB cache must not live there."""
+    from rom_hub.cli import default_root, plugin_data_root
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("ROM_HUB_HOME", str(home))
+    assert plugin_data_root() == home / "var" / "plugin-data"
+    assert default_root() == home

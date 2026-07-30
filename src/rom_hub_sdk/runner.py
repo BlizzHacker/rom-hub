@@ -79,8 +79,17 @@ def run_plugin(stdin, stdout) -> None:
             if method == "init":
                 sys.path.insert(0, params["plugin_dir"])
                 entrypoints = params["entrypoints"]
+                # `data_assets` is host-resolved: every path in it points
+                # at bytes the host already verified against the sha256 in
+                # this plugin's own manifest. A host that predates data
+                # assets sends none, and the plugin sees an empty mapping.
+                assets = params.get("data_assets")
+                if not isinstance(assets, dict):
+                    assets = {}
                 ctx = PluginContext(
-                    config=params.get("config") or {}, http=HttpClient(channel)
+                    config=params.get("config") or {},
+                    http=HttpClient(channel),
+                    data_assets={str(k): str(v) for k, v in assets.items()},
                 )
                 # Confine BEFORE any plugin code can be imported by _load().
                 result: Any = {"ok": True, **_sandbox_state()}

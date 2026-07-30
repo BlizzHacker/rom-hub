@@ -1,24 +1,61 @@
 [plugin]
 slug        = "openvgdb"
 name        = "OpenVGDB"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 metadata = "openvgdb.metadata:Metadata"
 
-# The database itself is read from disk, not fetched -- see README.md, "Why
-# the database is not downloaded". These two hosts are here only because a
-# cover URL out of OpenVGDB points at one of them, and the *host* fetches
-# that URL after checking it against this list.
+# Four hosts, two jobs, and they are worth telling apart before approving
+# this install.
+#
+# `raw.githubusercontent.com` and `gamefaqs.gamespot.com` are COVER hosts: a
+# `releaseCoverFront` URL out of the database points at one of them, and the
+# *host* fetches that URL after checking it against this list.
+#
+# `github.com` and `release-assets.githubusercontent.com` are for the
+# DATABASE, declared below under [[data_assets]]. Two entries for one
+# download because the release asset answers 302 and the Hub re-checks every
+# redirect hop against this list rather than following it blindly -- so the
+# host it lands on has to be declared too, or the fetch stops at the hop.
 #
 # `art.gametdb.com` is deliberately absent even though 1,789 GameCube and
 # Wii covers point there: it serves `robots.txt` with `User-agent: *` /
 # `Disallow: *.*`, so those covers are never probed and never proposed.
 [permissions]
-network  = ["raw.githubusercontent.com", "gamefaqs.gamespot.com"]
+network = [
+    "raw.githubusercontent.com",
+    "gamefaqs.gamespot.com",
+    "github.com",
+    "release-assets.githubusercontent.com",
+]
 romm_api = []
+
+# The database itself. OpenVGDB publishes no API -- the whole project is one
+# release asset, last published 2021-11-11 -- so the source of this plugin is
+# a *file*, and RPP v1 originally gave a plugin no way to obtain one. It now
+# declares the file and the host fetches it: see docs/DESIGN.md, "Data
+# assets".
+#
+# `sha256` is the digest of `openvgdb.sqlite` itself, not of the zip: it is
+# the file this plugin opens, so it is the file whose bytes have to be the
+# ones that were reviewed. The host verifies before this plugin is told the
+# path, and re-verifies the cached copy on every run.
+#
+# Pinned to v29.0 rather than `releases/latest/download/`, because a declared
+# hash and a floating URL cannot both be right -- `latest` would start
+# failing verification the day OpenVGDB publishes v30, which is precisely
+# when a human should look at it.
+[[data_assets]]
+name        = "openvgdb.sqlite"
+url         = "https://github.com/OpenVGDB/OpenVGDB/releases/download/v29.0/openvgdb.zip"
+sha256      = "a6df8311ff188d4136605b68bd74e171cfe110441c9c57e97053b650e075b601"
+size_bytes  = 9118645
+archive     = "zip"
+member      = "openvgdb.sqlite"
+description = "OpenVGDB v29.0: 51,742 roms and 53,871 releases across 43 systems (40.3 MiB unpacked)"
 
 [config]
 db_path  = { type = "str", default = "" }

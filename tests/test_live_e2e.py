@@ -106,3 +106,71 @@ def test_real_stream_only_item_is_refused(installed_registry):
     with pytest.raises(PluginCallError) as exc:
         _planned(installed_registry, "msdos_Oregon_Trail_The_1990")
     assert "stream-only" in str(exc.value).lower()
+
+
+@pytest.mark.live
+def test_the_real_openvgdb_data_asset_downloads_verifies_and_caches(tmp_path):
+    """The proof, reproducible: 9,118,645 real bytes from GitHub.
+
+    Everything a mocked test cannot establish. The release asset genuinely
+    answers `302` to `release-assets.githubusercontent.com`, so this is the
+    redirect re-validation running against a real redirect rather than a
+    MockTransport; the zip is a real zip carrying a `__MACOSX` resource
+    fork beside the member, so it is the exact-name lookup that picks the
+    right one; and the 42,288,128-byte database that comes out either
+    matches the sha256 in the shipped manifest or it does not.
+
+    Second call asserts the cache: it must re-verify and fetch nothing.
+    """
+    from rom_hub.assets import ensure_assets
+    from rom_hub.importer import HttpDownloader
+    from rom_hub.manifest import MAX_DATA_ASSET_BYTES, load_manifest
+
+    openvgdb = PLUGIN_ROOT.parent / "openvgdb"
+    manifest = load_manifest(openvgdb / "manifest.toml")
+    (asset,) = manifest.data_assets
+
+    class Counting(HttpDownloader):
+        requests = 0
+
+        def download(self, url, dest, expected_size=None):
+            type(self).requests += 1
+            return super().download(url, dest, expected_size=expected_size)
+
+    downloader = Counting(
+        allowlist=list(manifest.network), max_bytes=MAX_DATA_ASSET_BYTES
+    )
+    try:
+        resolved = ensure_assets(manifest, tmp_path, downloader=downloader)
+        assert Counting.requests == 1
+        # Re-verified from disk, not refetched.
+        again = ensure_assets(manifest, tmp_path, downloader=downloader)
+    finally:
+        downloader.close()
+
+    assert again == resolved
+    assert Counting.requests == 1, "a cached asset was fetched a second time"
+
+    database = Path(resolved[asset.name])
+    assert database.stat().st_size == 42_288_128
+    # The archive is not kept: 9 MB of zip beside 42 MB of database is the
+    # operator's disk paying twice for one dataset.
+    assert [p.name for p in database.parent.iterdir()] == [asset.name]
+
+    # And it is the database it claims to be, opened the way the plugin
+    # opens it.
+    import sqlite3
+
+    connection = sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+        assert {"ROMs", "RELEASES", "SYSTEMS", "REGIONS"} <= tables
+        (count,) = connection.execute("SELECT COUNT(*) FROM ROMs").fetchone()
+        assert count == 51_742
+    finally:
+        connection.close()

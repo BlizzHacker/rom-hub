@@ -9,10 +9,16 @@ works: the subprocess confines itself with a seccomp filter before any plugin
 module is imported, so `import socket` yields a PermissionError rather than a
 connection. File reads are still unconfined -- seccomp cannot filter on a path.
 See "Security: the broker model" in docs/DESIGN.md.
+
+`ctx.data_assets` is the one thing here that is not an RPC. A plugin whose
+source is a *file* rather than a service declares it in `[[data_assets]]`,
+and the host fetches, verifies and caches it before this process starts --
+so what arrives is a path to bytes that already match a declared sha256.
+Open it read-only; it is a shared cache, not scratch space.
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 
@@ -53,7 +59,33 @@ class HttpClient:
         return HttpResponse(status_code=result["status_code"], text=result["text"])
 
 
+class DataAssetUnavailable(Exception):
+    """A declared data asset is not among the ones the host resolved."""
+
+
 @dataclass
 class PluginContext:
     config: dict
     http: HttpClient | None
+    #: `{name: absolute path}` for every `[[data_assets]]` entry, already
+    #: fetched and hash-verified by the host. Empty for a plugin that
+    #: declares none -- and empty is not something to work around: a
+    #: capability that needs an asset it was not given should say so.
+    data_assets: dict[str, str] = field(default_factory=dict)
+
+    def data_asset(self, name: str) -> str:
+        """The verified path for one declared asset, or a legible refusal.
+
+        Preferred over indexing `data_assets` directly, because the KeyError
+        that would otherwise reach the operator says only the name.
+        """
+        path = self.data_assets.get(name)
+        if not path:
+            available = sorted(self.data_assets) or "(none)"
+            raise DataAssetUnavailable(
+                f"the data asset {name!r} was not provided by the host; it "
+                f"resolved {available}. Declare it in manifest.toml under "
+                f"[[data_assets]] -- with its url, sha256 and size_bytes -- "
+                f"and reinstall the plugin so the new manifest is read."
+            )
+        return path

@@ -10,44 +10,51 @@ distinction `libretro-thumbnails` refused to blur when it declined to
 write a No-Intro filename into a library as a game name. A title is not a
 filename, and this plugin only ever writes the title.
 
-## Why the database is not downloaded
+## Where the database comes from
 
-Because a plugin cannot download it, and pretending otherwise would make
-the failure appear at the worst possible moment. Four host facts, each
-independent, each fatal on its own:
+It is a **declared data asset**, and the host fetches it. The plugin
+still cannot -- `ctx.http` caps a response at 4 MiB, carries `text`
+decoded with `errors="replace"` rather than bytes, and follows no
+redirect, so a 9,118,645-byte zip behind a 302 was unreachable four
+different ways, and a per-command subprocess had nowhere to cache it
+anyway. That is unchanged. What changed is that the plugin no longer has
+to reach it: `manifest.toml` declares the URL, the size and the sha256 of
+the unpacked `openvgdb.sqlite`, and the Hub downloads it, re-validates
+the redirect hop against this plugin's own allowlist, unpacks the one
+declared member, verifies the digest, caches it, and hands this plugin a
+path. `ctx.data_asset("openvgdb.sqlite")` is that path.
 
-1. **Size.** `openvgdb.zip` is 9,118,645 bytes. `ctx.http` refuses
-   anything over `MAX_RESPONSE_BYTES`, which is 4 MiB.
-2. **Encoding.** An `HttpResponse` carries `text`, decoded with
-   `errors="replace"`. A ZIP that survived the size cap would arrive as
-   irrecoverably mangled text; there is no byte channel.
-3. **Redirects.** The asset lives behind
-   `github.com/.../releases/download/...`, which answers `302` to
-   `release-assets.githubusercontent.com` (checked 2026-07-29 -- note it
-   is no longer `objects.githubusercontent.com`). The host fetcher sets
-   `follow_redirects=False`, and `HttpResponse` exposes no headers, so a
-   plugin sees `302` and cannot learn where to.
-4. **Nowhere to cache it.** `PluginContext` is `config` and `http`. A
-   plugin subprocess is started per command and exits with it, so "cache
-   it after the first run" has no storage to use.
+Everything about the arrangement is deliberate:
 
-And there is nothing to query instead: OpenVGDB publishes no API. Its
+* **The plugin gets a path, not bytes.** 40 MiB will not cross an 8 MiB
+  JSON frame, and SQLite could not mmap it if it did.
+* **The digest is not optional.** A 9 MB blob off the network feeding a
+  library's names and covers is a supply chain; the host refuses on
+  mismatch and re-verifies the cached copy every run.
+* **It is announced.** `rom-hub plugin install` prints the size and the
+  origin, and the fetch itself says so on stderr before the request goes
+  out. Nobody discovers 9 MB of traffic afterwards.
+
+`db_path` still works and is still honoured first, for an operator who
+already has the file, keeps it on a NAS, or shares one copy with OpenEmu.
+It is simply no longer *required*.
+
+There is still nothing to query instead: OpenVGDB publishes no API. Its
 repository contains a `.gitignore` and a 28-byte `README.md`; the whole
 project is one release asset, last published 2021-11-11.
 
-So the operator downloads the file once and points `db_path` at it. That
-is announced -- a missing `db_path` refuses with the URL, the size and
-the unpacked size in the message -- and it is bounded, because it happens
-once and never during an enrich.
-
 ## What the network permission is for
 
-Not the database. The cover: `releaseCoverFront` is a URL on a third
-party, and the **host** fetches it after checking it against this
-plugin's allowlist. The plugin probes the candidate first (a plain GET,
-status only) so that a dead or blocked cover becomes "no artwork" instead
-of a failed enrich -- the name is the valuable half and should not be
-lost to a 403 on an image.
+Two different things, and the manifest says which is which. The database
+(`github.com`, plus `release-assets.githubusercontent.com` because the
+release asset 302s there and the Hub re-checks each hop instead of
+following it blindly), and the covers.
+
+A cover is a `releaseCoverFront` URL on a third party, and the **host**
+fetches it after checking it against this plugin's allowlist. The plugin
+probes the candidate first (a plain GET, status only) so that a dead or
+blocked cover becomes "no artwork" instead of a failed enrich -- the name
+is the valuable half and should not be lost to a 403 on an image.
 
 `art.gametdb.com` is never probed and never proposed, even though 1,789
 GameCube and Wii covers point there, because it serves a `robots.txt` of
@@ -83,9 +90,16 @@ HASH_BY_LENGTH: dict[int, str] = {8: "crc", 32: "md5", 40: "sha1"}
 # Strongest first.
 HASH_ORDER: tuple[str, ...] = ("sha1", "md5", "crc")
 
-# Cover hosts this plugin will name. Exactly the manifest's allowlist, and
-# the reason `art.gametdb.com` is in neither is its robots.txt.
+# Cover hosts this plugin will name. A *subset* of the manifest's
+# allowlist, which also carries the two hosts the database download needs
+# -- a cover must never be proposed on those, so this set stays separate
+# from `manifest.network` rather than being derived from it. The reason
+# `art.gametdb.com` is in neither is its robots.txt.
 COVER_HOSTS = frozenset({"raw.githubusercontent.com", "gamefaqs.gamespot.com"})
+
+# The `[[data_assets]]` entry the host resolves for us. Matching the
+# manifest's `name` by construction: `test_openvgdb` fails if they drift.
+DATA_ASSET = "openvgdb.sqlite"
 
 _IMAGE_EXTENSIONS = frozenset({"jpg", "jpeg", "png", "gif", "webp"})
 
@@ -102,7 +116,7 @@ class NoMatch(Exception):
 class Metadata(MetadataProvider):
     def enrich(self, rom: RomRef) -> MetadataPatch:
         system = system_for(rom.platform)
-        connection = open_database(str(self.ctx.config.get("db_path") or "").strip())
+        connection = open_database(self._database_path())
         try:
             matches, how = self._find(connection, system, rom)
             if not matches:
@@ -131,6 +145,27 @@ class Metadata(MetadataProvider):
             return self._patch(release, rom)
         finally:
             connection.close()
+
+    def _database_path(self) -> str:
+        """Which `openvgdb.sqlite` to read.
+
+        `db_path` wins when it is set. It is an override, not a fallback,
+        and that direction is the only one that behaves: an operator who
+        pinned a specific copy -- an older release, a shared NAS file, one
+        they audited themselves -- has said something more specific than
+        the manifest's default, and silently preferring the Hub's cache
+        would quietly ignore it.
+
+        Otherwise the host's verified data asset, whose bytes match the
+        sha256 in this plugin's own manifest. Nothing here checks that: by
+        the time a path arrives in `ctx.data_assets` the host has already
+        hashed the file, and a second opinion computed inside an untrusted
+        subprocess would not be worth the 40 MiB it read.
+        """
+        override = str(self.ctx.config.get("db_path") or "").strip()
+        if override:
+            return override
+        return self.ctx.data_assets.get(DATA_ASSET, "")
 
     # -- finding the rom -------------------------------------------------
 

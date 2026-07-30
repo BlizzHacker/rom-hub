@@ -8,37 +8,57 @@ systems.
 
 | Capability | Source | Does |
 |---|---|---|
-| `metadata` | a local `openvgdb.sqlite` | proposes `name` from `RELEASES.releaseTitleName`, and `artwork_url` from `releaseCoverFront` |
+| `metadata` | `openvgdb.sqlite`, fetched and verified by the Hub | proposes `name` from `RELEASES.releaseTitleName`, and `artwork_url` from `releaseCoverFront` |
 
-**No API key**, and no account. The database is a file.
+**No API key**, and no account. The database is a file — declared in the manifest, fetched and hash-verified by the Hub, and cached once.
 
 ## Install
 
     rom-hub plugin install ./plugins-dev/openvgdb
+    rom-hub enrich openvgdb 42
 
-Then get the database, once:
+That is the whole setup. The database is a **declared data asset**: the
+manifest names the release, its size and the sha256 of the unpacked
+`openvgdb.sqlite`, and the Hub fetches it the first time the plugin is used,
+verifies it, and caches it under `$ROM_HUB_HOME/var/plugin-data/openvgdb/`.
+Every later run re-verifies that cached copy and fetches nothing.
 
-    curl -LO https://github.com/OpenVGDB/OpenVGDB/releases/latest/download/openvgdb.zip
-    unzip openvgdb.zip
+The download is **announced twice** before it ever happens — once by
+`plugin install`, which prints the size, the origin and the digest, and again
+on stderr immediately before the request:
 
-`openvgdb.zip` is 9,118,645 bytes and unpacks to a 40 MiB `openvgdb.sqlite`.
-Put it anywhere and point the plugin at it:
+    note: openvgdb: fetching data asset 'openvgdb.sqlite' -- 8.7 MiB from
+      https://github.com/OpenVGDB/OpenVGDB/releases/download/v29.0/openvgdb.zip
+      (sha256 a6df8311ff18...). It is verified on arrival and cached [...]
 
-    rom-hub enrich openvgdb 42     # after setting db_path in the plugin config
+If you would rather it did not happen on its own:
+
+    ROM_HUB_NO_ASSET_FETCH=1 rom-hub enrich openvgdb 42   # refuses, says how
+    rom-hub plugin assets openvgdb                        # what it wants, and whether it has it
+    rom-hub plugin assets openvgdb --fetch                # get it now, deliberately
 
 ## Config
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `db_path` | `str` | `""` | path to `openvgdb.sqlite`. **Required** |
+| `db_path` | `str` | `""` | a copy of `openvgdb.sqlite` to use **instead** of the fetched one. Optional |
 | `artwork` | `bool` | `true` | propose a cover as well as a title |
 | `set_name` | `bool` | `true` | propose OpenVGDB's title |
 | `region` | `str` | `""` | prefer this region's release (`USA`, `Europe`, `Japan`, `World`, …) |
 
-## Why the database is not downloaded
+`db_path` is an **override, not a fallback**: when it is set it wins outright.
+An operator who pinned a specific copy — an older release, a file on a NAS,
+one shared with OpenEmu, one they audited themselves — has said something
+more specific than the manifest's default, and being quietly overruled by a
+cache is not what they asked for. It is simply no longer *required*.
 
-This was the design question, and the answer is that a plugin **cannot**
-download it. Four host facts, each independent and each fatal on its own:
+    curl -LO https://github.com/OpenVGDB/OpenVGDB/releases/download/v29.0/openvgdb.zip
+    unzip openvgdb.zip     # 9,118,645 bytes in, a 40.3 MiB openvgdb.sqlite out
+
+## Why the plugin still cannot fetch this itself
+
+It cannot, and nothing here pretends otherwise — what changed is that it no
+longer has to. Four host facts, each independent and each still true:
 
 1. **Size.** `openvgdb.zip` is 9,118,645 bytes. `ctx.http` refuses any response
    over `MAX_RESPONSE_BYTES`, which is 4 MiB, and it refuses it on
@@ -53,26 +73,58 @@ download it. Four host facts, each independent and each fatal on its own:
    host fetcher runs `follow_redirects=False` deliberately, so a redirect
    cannot escape an allowlist, and `HttpResponse` exposes no headers. A plugin
    sees `302` and cannot learn where to.
-4. **Nowhere to cache it.** `PluginContext` is `config` and `http`. A plugin
-   subprocess is started per command and dies with it, so "download it once and
-   cache it" has no storage to use — RPP v1 gives a plugin no writable path,
-   by design.
+4. **Nowhere to cache it.** A plugin subprocess is started per command and dies
+   with it, so "download it once and cache it" had no storage to use.
+
+So the **host** does all four things instead, and the plugin declares what it
+wants rather than asking at runtime:
+
+- the size cap is a separate, larger, explicit 128 MiB budget that applies to
+  assets only — `ctx.http`'s 4 MiB is untouched, because that body is
+  buffered in memory and JSON-escaped into a reply frame, which an asset never
+  is;
+- the bytes land on disk and the plugin is handed a **path**, so nothing
+  crosses the JSON channel and SQLite can mmap the file properly;
+- the 302 is followed but **re-validated hop by hop** against this plugin's own
+  allowlist, which is why `release-assets.githubusercontent.com` appears in it
+  — an undeclared hop ends the download;
+- and the cache is the Hub's, under `$ROM_HUB_HOME/var/`, never this plugin's
+  directory (which the registry deletes and replaces on every reinstall).
+
+**The digest is the part that matters most.** A 9 MB blob off the network,
+feeding the names and covers written into your library, is a supply chain. The
+Hub verifies `openvgdb.sqlite` against the sha256 in this manifest *before*
+telling the plugin where it is, refuses on mismatch without caching anything,
+and re-verifies the cached copy on every later run rather than trusting that
+it is still the file it fetched.
+
+**On GitHub's robots.txt.** `github.com/robots.txt` carries
+`Disallow: /*/download` for `User-agent: *`, and that pattern does cover a
+release-asset path. It is worth saying plainly rather than leaving unmentioned,
+because this plugin refuses `art.gametdb.com` covers on exactly those grounds.
+The two are not the same act. `art.gametdb.com` serves `Disallow: *.*` —
+everything, unconditionally — and proposing covers from it would mean
+programmatically harvesting many URLs across a site, which is crawling.
+This is one fetch, of one artefact, named in advance in a manifest a human
+approved, triggered by an operator running a command, announced before it
+happens, and cached so it happens once: the same request the `curl -LO` line
+above makes, moved from your shell into the Hub. Nothing is discovered, nothing
+is traversed, and nothing recurs. If you disagree with that reading,
+`ROM_HUB_NO_ASSET_FETCH=1` plus `db_path` is the arrangement this plugin
+shipped with and it still works exactly as before.
 
 **And there is nothing to query instead.** OpenVGDB publishes no API. Its
 repository holds a `.gitignore` and a 28-byte `README.md`; the entire project
 is one release asset, last published 2021-11-11. There is no endpoint to ask.
 
-So the operator downloads it once. That is *announced* — a missing `db_path`
-refuses with the URL, the download size and the unpacked size in the message —
-and it is *bounded*, because it happens once, out of band, and never during an
-enrich. Nothing here silently pulls 9 MB through a 4 MiB pipe and fails halfway.
-
 The file is opened **read-only** through a `file:...?mode=ro` URI. That is not
-decoration: `sqlite3.connect` on a plain path *creates* an empty database when
-the path does not exist, so a typo in `db_path` would otherwise give a valid
-connection to a zero-table file and a stream of "no match" answers that look
-like real data. It also guarantees this plugin never writes to a database you
-may be sharing with OpenEmu.
+decoration, and it now has three reasons rather than two: `sqlite3.connect` on
+a plain path *creates* an empty database when the path does not exist, so a
+typo in `db_path` would otherwise give a valid connection to a zero-table file
+and a stream of "no match" answers that look like real data; it guarantees this
+plugin never writes to a database you may be sharing with OpenEmu; and when the
+file is the Hub's cached data asset, a plugin that wrote so much as a journal
+into it would fail the integrity check on the very next run.
 
 ## How a ROM is matched
 
@@ -117,7 +169,7 @@ RomM alone".
 
 ## Artwork, and the host that is missing from the allowlist
 
-Cover URLs in OpenVGDB point at three hosts, and this plugin declares two:
+Cover URLs in OpenVGDB point at three hosts, and this plugin declares two of them for covers (its other two allowlist entries are for the database download and are never proposed as a cover):
 
 | Host | Covers | Declared |
 |---|---|---|

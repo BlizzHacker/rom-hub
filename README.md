@@ -377,8 +377,32 @@ the environment, never from a file in the repo:
 
 All three are required; both commands name whichever are missing and stop
 before opening any connection. `ROM_HUB_HOME` (default `~/.rom-hub`) decides
-where plugins, the job database, downloads, artwork and cores live;
-`ROM_HUB_CORES_DIR` moves just the cores.
+where plugins, the job database, downloads, artwork, cores and plugin data
+assets live; `ROM_HUB_CORES_DIR` moves just the cores.
+
+### Plugin data assets
+
+Some sources are a *file*, not a service: OpenVGDB publishes no API at all —
+the whole project is one 8.7 MB SQLite database attached to a GitHub release.
+A plugin cannot fetch that for itself (`ctx.http` caps at 4 MiB, carries text
+rather than bytes, and follows no redirect), so it **declares** it in
+`manifest.toml` under `[[data_assets]]` and the host fetches it: the same
+downloader an import uses, so every redirect hop is re-checked against the
+plugin's own allowlist, then a **mandatory `sha256`** verified before the
+plugin is told where the file is, then cached under
+`$ROM_HUB_HOME/var/plugin-data/<slug>/` and re-verified on every later run.
+The plugin gets a **path** and opens the file itself, read-only.
+
+Nothing about that is silent:
+
+    rom-hub plugin install ./plugins-dev/openvgdb   # prints size, origin, digest
+    rom-hub plugin assets openvgdb                  # what it wants; is it cached?
+    rom-hub plugin assets openvgdb --fetch          # get it now, deliberately
+    ROM_HUB_NO_ASSET_FETCH=1 rom-hub enrich ...     # refuse, and say how to get it
+
+The fetch itself announces its size, its full URL and its digest on stderr
+before the request goes out. See `docs/DESIGN.md`, *Data assets*, for why the
+mechanism is declaration-based and why the integrity check is not optional.
 
 **The plugin never sees any of this.** The token, the upload, the artwork
 fetch, the metadata write and the collection call are all host-side; a
