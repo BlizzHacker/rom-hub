@@ -409,6 +409,44 @@ fetch, the metadata write and the collection call are all host-side; a
 plugin's whole involvement is returning a description. See the security model
 below.
 
+### Plugin credentials — the `secret` config type
+
+Some sources need an API key. A plugin declares that field as
+`type = "secret"`, and the Hub then keeps it **out of `state.json`** — the
+plain-config file that gets opened, dumped, screenshotted and committed —
+redacts it from `plugin list`, `plugin config`, `plugin secret list`, `browse`,
+`backend info`, `jobs` and `--help`, and scrubs it out of any error message it
+builds, including the plugin's own stderr.
+
+    rom-hub plugin secret set retroachievements api_key   # prompts; nothing echoed
+    pass show ra | rom-hub plugin secret set retroachievements api_key --stdin
+    rom-hub plugin secret set retroachievements api_key --env RA_KEY
+    rom-hub plugin secret list                            # what is set, and where
+    rom-hub plugin config retroachievements               # safe to screenshot
+
+**Read `plugin secret list` before trusting it.** What the storage protects
+depends on the host and the command prints the honest answer:
+
+| Store | What it protects |
+|---|---|
+| OS keyring | Whatever your OS gives — a locked login keychain is a real boundary; a keyring unlocked at login is not |
+| file + `ROM_HUB_SECRET_KEY` | Real encryption at rest: the key is supplied from outside the box and never written to disk |
+| file, generated key (**the default**) | **Obfuscation, not secrecy** — the key sits beside the ciphertext. It keeps the value out of `state.json` and out of every command's output; it does not survive somebody reading the directory |
+
+A headless Docker deployment gets the third row unless `ROM_HUB_SECRET_KEY` is
+set, which is why the fallback exists at all: a keyring-only design would not
+work on this Hub's primary platform.
+
+**What is not claimed.** The plugin *receives* the value — it needs it to make
+its request, and it already runs arbitrary code. The threat this addresses is
+accidental disclosure, not a malicious plugin. The value is handed over in the
+`init` frame down the stdin pipe and **never through the environment**, which
+is the one channel the allowlist above exists to keep closed.
+
+An `api_key` set before this type existed is migrated out of `state.json` on
+the next command that runs the plugin, with one notice on stderr; rotate it
+anyway if that file was ever committed or backed up.
+
 ## Tests
 
     python -m pytest          # offline; live tests deselected

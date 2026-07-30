@@ -438,7 +438,7 @@ member     = "catalogue.sqlite"             # required when `archive` is set
 
 [config]                                    # user-editable schema
 collections = { type = "list[str]", default = ["softwarelibrary"] }
-api_key     = { type = "secret" }           # never logged, never in git
+api_key     = { type = "secret" }           # never in state.json; no default allowed
 ```
 
 ### Capabilities
@@ -628,10 +628,93 @@ bytes, and one covers the case that exists.
 
 ### `secret` config type
 
-Config fields typed `secret` are stored encrypted in the Hub DB, redacted from
-logs and API responses, and passed to the plugin subprocess only at call time.
-Required by sub-project C (per-peer credentials); specified in v1 so peer
-support does not force a contract revision.
+**Implemented.** Specified in RPP v1 from the start and rejected by
+`manifest.py` through Phase 1 — "reserved in RPP v1 but not implemented in
+Phase 1" — because half-implemented credential storage is worse than none.
+The store landed in `rom_hub/secrets.py`; this section describes what it does
+and, more importantly, what it does not.
+
+**The promise.** A config field declared `type = "secret"` is never written to
+the Hub's plain config. `state.json` is the file an operator opens,
+screenshots, pastes into an issue and sweeps up with `git add -A`; a credential
+in it is a credential in all of those. So a secret goes elsewhere, and the CLI,
+the job queue and every error message the host builds redact it on the way out.
+
+**The threat model, stated before the mechanism.** It is *accidental
+disclosure*: a log line, a screenshot, a config file in a public repo, a
+support paste, a backup that travels. It is **not** a plugin stealing its own
+key — a plugin already runs arbitrary code and is handed the value because it
+needs it to make its request. And it is not an attacker with a shell as the
+operator; nothing a user-level process can reach is secret from a user-level
+process. Saying that first matters more than the cipher does.
+
+**Where it lives.** Two stores, selected by `ROM_HUB_SECRET_STORE`
+(`auto` by default, or `keyring` / `file`):
+
+| Store | When | What it actually protects |
+|---|---|---|
+| OS keyring | `keyring` is installed **and** reports a backend with a usable priority | Whatever the OS gives. A locked login keychain is a real boundary; a desktop keyring unlocked at login is readable by anything running as you. |
+| file, `ROM_HUB_SECRET_KEY` set | the variable is supplied from outside the box — a Docker secret, a systemd credential | Real encryption at rest. The ciphertext is unreadable without a key that was never written to disk. |
+| file, generated key | **the default**, and what a headless Docker deployment gets | **Obfuscation, not secrecy.** `secrets.json` is encrypted and `secret.key` sits beside it; whoever can read one can read the other. What it buys is that the value is not in `state.json`, so it is not in the file that gets dumped, screenshotted or committed. |
+
+The third row is the one that must not be oversold, and the code does not
+oversell it: `StoreInfo.protection` contains the word "obfuscation", a test
+asserts that it does, and `rom-hub plugin secret list` prints it verbatim so
+an operator reads it before trusting it.
+
+A keyring-only design was rejected outright. This Hub's primary deployment is
+headless in Docker on Linux, where there is no keyring at all — the fallback is
+the main path, not a courtesy. A `keyring` package present with a *fail* or
+*null* backend is treated as no keyring, because writing a credential into one
+of those reports success and stores nothing.
+
+**The cipher, and why it is stdlib.** scrypt for the KDF, an HMAC-SHA256
+counter-mode keystream, and an encrypt-then-MAC HMAC-SHA256 tag under an
+independent key. No `cryptography` dependency is taken, because it would not
+change the honest answer above: in the default configuration the key is next to
+the ciphertext, and no cipher fixes that. Where the key *is* supplied from
+outside, this construction is sound for the job — authenticated encryption of a
+short value at rest — and a tampered or wrong-key entry is refused rather than
+decrypted to garbage.
+
+**Reaching the plugin.** Merged into the `init` frame's config, down the stdin
+pipe. **Never through the environment**: `SAFE_ENV_VARS` is built from `{}`
+upward precisely so nothing credential-shaped can arrive that way, and routing
+one through it would undo the fix that allowlist exists to be.
+
+**Coming back out.** The host knows exactly which strings it handed over, so it
+removes them from anything it prints — the plugin's stderr tail, and every
+error message built from plugin-controlled text (including the pydantic
+validation errors that quote whatever the plugin returned). Every
+`PluginCallError` in `broker/host.py` is constructed through one `_fail()`
+choke point so a new raise site cannot bypass this, and a test reads the source
+to keep it that way. Redaction covers *host-generated output*; a plugin that
+deliberately puts its own key into a returned title has disclosed it itself,
+which is outside what the host can or claims to prevent.
+
+**Setting one.** `rom-hub plugin secret set <slug> <key>` prompts on a terminal
+(nothing echoed, asked twice) and reads stdin when there is no terminal;
+`--env VAR` covers automation. `--value` works and warns, because by the time
+the command runs the value is already in the shell history and the process
+list, and refusing it would only teach the operator to use a redirect and learn
+nothing.
+
+**Migration.** Anyone who configured `retroachievements` before this existed
+has a plaintext `api_key` in `state.json`. The next command that starts the
+plugin moves it into the store, removes it from the plain config, and says so
+once on stderr — naming the field, never the value, and advising rotation
+because moving a credential out of a file does not move it out of the backups.
+Nothing breaks, and in the window before migration the value is still redacted
+everywhere and flagged in `plugin secret list`.
+
+**`rpp_version` stays `"1"`.** The contract did not break. A manifest declaring
+`secret` was previously *refused*, so no installed plugin can be affected by it
+now being accepted, and the other nine parse and run untouched. A version bump
+would force every plugin to re-declare something that did not change — the same
+reasoning `[[data_assets]]` was held to.
+
+Sub-project C (per-peer credentials) named this as its one required contract
+addition. It is no longer a prerequisite.
 
 ---
 
