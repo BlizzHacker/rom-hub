@@ -41,7 +41,7 @@ class SearchOutcome:
 
 
 def _default_factory(
-    plugin, fetcher, timeout, allow_unsandboxed=False, data_assets=None
+    plugin, fetcher, timeout, allow_unsandboxed=False, data_assets=None, secrets=None
 ) -> PluginProcess:
     return PluginProcess(
         plugin_dir=plugin.path,
@@ -51,6 +51,7 @@ def _default_factory(
         timeout=timeout,
         allow_unsandboxed=allow_unsandboxed,
         data_assets=data_assets,
+        secrets=secrets,
     )
 
 
@@ -64,6 +65,7 @@ def search_all(
     process_factory=None,
     allow_unsandboxed: bool = False,
     assets_for=None,
+    secrets_for=None,
 ) -> SearchOutcome:
     # The sandbox policy is bound to the default factory here rather than
     # added to the factory signature: an injected factory stays a plain
@@ -85,6 +87,12 @@ def search_all(
             kwargs = {}
             if assets_for is not None and process_factory is None:
                 kwargs["data_assets"] = assets_for(plugin)
+            # Same isolation, same reason: a plugin whose secret store
+            # cannot be read costs its own results and nothing else. Also
+            # inside `run`, so a secret is read as late as possible and
+            # only for a plugin that is actually about to be started.
+            if secrets_for is not None and process_factory is None:
+                kwargs["secrets"] = secrets_for(plugin)
             with factory(plugin, fetcher, timeout, **kwargs) as proc:
                 results = proc.search(query, platform, limit)
             return PluginStatus(plugin.slug, True, len(results)), results

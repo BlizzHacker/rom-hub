@@ -14,12 +14,15 @@ the message distinguishes the two reasons a miss happens (see
 `consoles.WHOLE_FILE_MD5`: for most consoles RA's hash is *not* the file's
 md5).
 
-**The key is stored in the clear, and the README says so.** RPP v1
-reserves a `secret` config type and this host rejects it outright --
-`manifest.py` raises "reserved in RPP v1 but not implemented in Phase 1"
-for any field declaring it. The alternative to a plain `str` was to
-pretend, which is worse: an operator who believes a credential is
-protected treats it differently from one who knows it is not.
+**The key is a `secret`, and the README says exactly what that buys.**
+`api_key` is declared `type = "secret"`, so the Hub keeps it out of its
+plain config, redacts it from every command's output, and hands it to
+this process in the `init` frame. What the storage itself protects
+depends on the host -- an OS keyring, or an encrypted file whose key may
+be sitting next to it -- and the README states the weak case in those
+words rather than implying otherwise. An operator who believes a
+credential is protected treats it differently from one who knows how
+much.
 
 **A missing key fails before anything else happens.** Not as a 401 out of
 RA, not as a KeyError -- as a sentence naming the config key and where to
@@ -95,11 +98,13 @@ class Metadata(MetadataProvider):
             raise NotConfigured(
                 "retroachievements needs a RetroAchievements web API key and "
                 "none is configured. Get one from your RA profile under "
-                "Settings -> Keys (it is per-account and can be reset there at "
-                "any time), then set `api_key` in this plugin's config. Note "
-                "that the Hub stores it in plain text -- RPP v1 reserves a "
-                "`secret` config type but this host does not implement it -- "
-                "so use a key you are willing to rotate"
+                "Settings -> Keys (it is per-account, read-only and can be "
+                "reset there at any time), then store it with `rom-hub plugin "
+                "secret set retroachievements api_key`, which prompts rather "
+                "than taking it as an argument. `api_key` is a `secret`, so "
+                "the Hub keeps it out of its plain config and redacts it from "
+                "command output; run `rom-hub plugin secret list` to see what "
+                "the store on your host actually protects"
             )
         return key
 
