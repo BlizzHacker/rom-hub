@@ -98,17 +98,17 @@ _GAMES_PAGE_SIZE = 200
 # and the implicit `RequiredAttribute` only ever tests for null.
 #
 # That rule, applied to the two shipped declarations, gives two different
-# required sets:
+# required sets. Declared type on the left of each column, what validation
+# then does with it on the right:
 #
-# | property            | 1.7.14                  | 2.0.0-rc.3          |
-# |---------------------|-------------------------|---------------------|
-# | `Name`              | `string`     -> required| `string`  -> required
-# | `Platform`          | `List<string>` -> required| `List<string>?` -> optional
-# | `Genre`             | `List<string>` -> required| `List<string>?` -> optional
-# | `GameMode`          | `List<string>` -> required| `List<string>?` -> optional
-# | `PlayerPerspective` | `List<string>` -> required| `List<string>?` -> optional
-# | `Theme`             | `List<string>` -> required| `List<string>?` -> optional
-# | `Sorting`           | `= new ...`  -> optional| no initializer -> **required**
+#                        1.7.14                       2.0.0-rc.3
+#   Name                 string         REQUIRED      string          REQUIRED
+#   Platform             List<string>   REQUIRED      List<string>?   optional
+#   Genre                List<string>   REQUIRED      List<string>?   optional
+#   GameMode             List<string>   REQUIRED      List<string>?   optional
+#   PlayerPerspective    List<string>   REQUIRED      List<string>?   optional
+#   Theme                List<string>   REQUIRED      List<string>?   optional
+#   Sorting              = new ...      optional      no initializer  REQUIRED
 #
 # So neither line's minimal body is accepted by the other, and this client
 # used to send 2.0's. Measured, on `:latest` (1.7.14.0) and on

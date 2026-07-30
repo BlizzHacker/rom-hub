@@ -130,9 +130,13 @@ services:
       - igdbclientid=${PROOF_IGDB_CLIENT_ID:-}
       - igdbclientsecret=${PROOF_IGDB_CLIENT_SECRET:-}
     volumes:
-      # The image runs as root and keeps its data under /root, not
-      # /home/gaseous; a volume at the latter persists nothing.
-      - gaseous_data:/root/.gaseous-server
+      # Where the data lives moved between the two generations, and a
+      # volume on the wrong one persists *nothing* while looking mounted:
+      # 1.7.x runs as root and keeps everything under `/root`, 2.0 uses
+      # `/home/gaseous` (both directories exist in the 2.0 image, and the
+      # `/root` one is empty, which is why this has to be checked rather
+      # than assumed). Matches the pinned image above.
+      - gaseous_data:/home/gaseous/.gaseous-server
 
   gaseous-db:
     image: mariadb:11

@@ -119,8 +119,49 @@ setup="$(curl -s -m 30 -X POST "$GASEOUS_URL/api/v1.1/FirstSetup/0" \
         "$GASEOUS_USER" "$GASEOUS_USER" "$GASEOUS_PASSWORD" "$GASEOUS_PASSWORD")")"
 case "$setup" in
     *'"succeeded":true'*) echo "Gaseous: created $GASEOUS_USER" ;;
-    *) echo "Gaseous: FirstSetup answered $setup (already set up is fine)" ;;
+    *) echo "Gaseous: FirstSetup/0 answered $setup (already set up is fine)" ;;
 esac
+
+# Step *one* of first-run setup, and on Gaseous 2.0 it is not optional.
+#
+# `FirstSetup/0` creates the admin account and leaves `FirstRunStatus` at
+# 1. Every background task -- `ImportQueueProcessor` included -- stays at
+# `NeverStarted` until `FirstSetup/1` moves it to 2. On the 1.7.x line
+# that did not matter, because `POST /Roms` imported the file inside the
+# request; 2.0 only *queues* it, so without this an upload sits at
+# `Pending` for ever and the matrix's import row fails after a 900s wait
+# with a message about a queue that is not running. It is the exact
+# failure `backends/gaseous/imports.py` warns about, and this is the other
+# half of that warning.
+#
+# The body is whatever the server already believes: `GET
+# /System/Settings/System` is the same document the setup wizard renders,
+# so posting it straight back accepts the defaults without this script
+# inventing a datasource configuration it has no business choosing.
+gaseous_jar="$(mktemp)"
+curl -fsS -m 30 -c "$gaseous_jar" -o /dev/null \
+    -X POST "$GASEOUS_URL/api/v1.1/Account/Login" \
+    -H 'Content-Type: application/json' \
+    -d "$(printf '{"Email":"%s","Password":"%s","RememberMe":true}' \
+        "$GASEOUS_USER" "$GASEOUS_PASSWORD")" 2>/dev/null || true
+
+settings="$(curl -fsS -m 30 -b "$gaseous_jar" \
+    "$GASEOUS_URL/api/v1.1/System/Settings/System" 2>/dev/null)"
+if [[ -n "$settings" ]]; then
+    code="$(curl -s -m 60 -b "$gaseous_jar" -o /dev/null -w '%{http_code}' \
+        -X POST "$GASEOUS_URL/api/v1.1/FirstSetup/1" \
+        -H 'Content-Type: application/json' -d "$settings")"
+    case "$code" in
+        200) echo "Gaseous: datasources accepted; background tasks started" ;;
+        404) echo "Gaseous: FirstSetup/1 not applicable (already past it)" ;;
+        *)   echo "Gaseous: FirstSetup/1 answered HTTP $code" >&2 ;;
+    esac
+else
+    # 1.7.x has no /System/Settings/System. Not an error there: nothing on
+    # that line needs the queue running to import.
+    echo "Gaseous: no system settings endpoint; skipping FirstSetup/1"
+fi
+rm -f "$gaseous_jar"
 
 # Gaseous' platform list is the hardest of the three, and what it means
 # changed between the two API generations. The compose file is pinned to
@@ -143,10 +184,21 @@ esac
 # The seed below is kept anyway, so the listing has something in it before
 # the matrix imports, and so this script still does something useful if
 # somebody re-pins the image.
-docker exec proofgaseous sh -c \
-    'printf "NES\032\001\001" > "/root/.gaseous-server/Data/Import/proof-seed.nes"' \
-    2>/dev/null || echo "Gaseous: could not write the import seed"
-echo "Gaseous: seeded an import; its ImportQueueProcessor runs on a timer"
+# The data directory moved between the generations -- 1.7.x under /root,
+# 2.0 under /home/gaseous -- and both paths exist in the 2.0 image, so the
+# one that is actually in use has to be found rather than named.
+docker exec proofgaseous sh -c '
+    for base in /home/gaseous/.gaseous-server /root/.gaseous-server; do
+        if [ -d "$base/Data/Import" ]; then
+            printf "NES\032\001\001" > "$base/Data/Import/proof-seed.nes"
+            echo "$base"
+            exit 0
+        fi
+    done
+    exit 1
+' 2>/dev/null | sed 's/^/Gaseous: seeded an import under /' \
+    || echo "Gaseous: could not write the import seed"
+echo "Gaseous: its ImportQueueProcessor runs on a timer"
 
 # -- Retrom ---------------------------------------------------------------
 #

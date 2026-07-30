@@ -665,10 +665,28 @@ def _gaseous(args):
         # unless the session cookie is present, so this goes through the
         # client's own authorized request rather than a bare GET. Read-only,
         # and asked for after the run, so it cannot perturb anything.
+        #
+        # The body's *shape* changed between generations and the text alone
+        # is not the version: 1.7.x answers a bare quoted string
+        # (`"1.7.14.0"`), 2.0 answers the whole system document, whose
+        # `AppVersion` is the field this column wants. Taking `.text` for
+        # both put a 2 KB JSON blob in a published table -- so the object
+        # form is read as an object.
+        import json as _json
+
         resp = backend.client._authorized_request(
             "GET", f"{args.gaseous_url.rstrip('/')}/api/v1.1/System/Version"
         )
-        return resp.text.strip().strip('"')
+        text = resp.text.strip()
+        try:
+            payload = _json.loads(text)
+        except ValueError:
+            return text.strip('"')
+        if isinstance(payload, dict):
+            # Missing rather than guessed: a version this could not read is
+            # left blank by the caller, which is better than a wrong pin.
+            return str(payload.get("AppVersion") or "")
+        return str(payload)
 
     return backend, version
 
