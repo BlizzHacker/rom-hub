@@ -14,10 +14,12 @@
 # would be both a data hazard and a fake result. If any of these collide
 # on your host, change them here and pass the matching --*-url flags.
 #
-# Versions float on :latest for Gaseous and Retrom because neither
-# publishes usable version tags; the matrix records the digest and the
-# server-reported version it actually ran against, so a PROOF.md is still
-# pinned to something specific after the fact.
+# Retrom floats on :latest because it publishes no usable version tags;
+# the matrix records the digest and the server-reported version it
+# actually ran against, so a PROOF.md is still pinned to something
+# specific after the fact. Gaseous used to float too and no longer does --
+# see the comment on that service, which is the longest one in this file
+# for a reason.
 
 name: proofmatrix
 
@@ -73,8 +75,44 @@ services:
     container_name: proofromm-redis
 
   # -- Gaseous ------------------------------------------------------------
+  #
+  # Pinned, not `:latest`, and the pin is the load-bearing part.
+  #
+  # `:latest` is still the **1.7.x** line. 2.0.0-rc.x is pre-release, so
+  # the tag has not moved to it -- and the two are not the same API even
+  # though both answer `/api/v1.1`. `POST /Games` requires a different set
+  # of fields, a game is addressed by a `MetadataMapId` on 2.0 and by an
+  # IGDB `Id` on 1.7.x, `POST /Roms` takes a different multipart field
+  # name and only queues the import on 2.0, and `POST /Roms/Imports` does
+  # not exist before 2.0 at all. `backends/gaseous/` is written against
+  # 2.0 and says so.
+  #
+  # Floating on `:latest` therefore pointed the Gaseous column at a server
+  # generation this project does not claim to support, and the first
+  # symptom was the `POST /Games` 400 that the matrix caught. That request
+  # is now sent in a form **both** generations accept, and the 400 itself
+  # is pinned by a live recording in `tests/fixtures/gaseous/` -- which is
+  # the right place for it, because a matrix run proves one server and a
+  # recording proves the contract.
+  #
+  # The second reason is reproducibility, and it is the one that decides
+  # this. Gaseous 1.7.x holds no platform metadata of its own: it ingests
+  # it from IGDB, and without credentials it knows of no platforms and
+  # registers no ROMs at all. Measured on a fresh 1.7.14.0 with these
+  # variables empty: `GET /Platforms` answers `[]` and `Games_Roms` stays
+  # at 0 rows however long the import queue is given, so `platform_id()`
+  # has nothing to resolve and every row below it is NOT-RUN. A Gaseous
+  # column that only works for whoever has a Twitch developer account is
+  # not a proof anybody else can reproduce. 2.0 adds a `None` metadata
+  # source and ships the platform list locally -- 139 platforms on a fresh
+  # container, no credentials -- which is what makes this stack runnable
+  # by anyone.
+  #
+  # If you re-pin this: the matrix records the server-reported version, so
+  # docs/PROOF.md will say which generation it actually measured. Do not
+  # move it to `:latest` expecting the Gaseous column to stay green.
   gaseous:
-    image: ghcr.io/gaseous-project/gaseousserver:latest
+    image: ghcr.io/gaseous-project/gaseousserver:v2.0.0-rc.3
     container_name: proofgaseous
     depends_on: [gaseous-db]
     ports: ["8086:80"]
@@ -83,13 +121,12 @@ services:
       - dbhost=proofgaseous-db
       - dbuser=root
       - dbpass=proof
-      # Gaseous holds no platform metadata of its own -- it ingests it
-      # from IGDB. With these empty it authenticates and accepts an upload
-      # but knows of no platforms at all, so `platform_id("nes")` has
-      # nothing to match and every row below it fails for a reason that is
-      # this stack's configuration rather than the Hub's code. Supply your
-      # own (free, from https://dev.twitch.tv) in a `.env` beside this
-      # file. Ingestion takes a few minutes on first boot.
+      # Optional on 2.0, and left empty on purpose: the matrix proves the
+      # Hub's own writes land, and a third-party metadata provider would
+      # make the result depend on somebody else's uptime. Supply your own
+      # (free, from https://dev.twitch.tv) in a `.env` beside this file if
+      # you want real metadata; ingestion takes a few minutes on first
+      # boot. On 1.7.x these were not optional -- see above.
       - igdbclientid=${PROOF_IGDB_CLIENT_ID:-}
       - igdbclientsecret=${PROOF_IGDB_CLIENT_SECRET:-}
     volumes:

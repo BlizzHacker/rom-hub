@@ -122,20 +122,27 @@ case "$setup" in
     *) echo "Gaseous: FirstSetup answered $setup (already set up is fine)" ;;
 esac
 
-# Gaseous' platform list is the hardest of the three, and the reason the
-# matrix uses NES rather than DOS.
+# Gaseous' platform list is the hardest of the three, and what it means
+# changed between the two API generations. The compose file is pinned to
+# 2.0.0-rc.3 and that comment explains why; the short version is here
+# because it is what makes this seed optional rather than load-bearing.
 #
-# `GET /Platforms` does not list the platforms Gaseous *knows about* -- it
-# lists the ones already represented in the library. Gaseous decides a
-# file's platform from the file, so the only way to make a platform appear
-# is to give it a file it recognises as that platform. `.nes` is on the NES
-# entry's `supportedFileExtensions` in the built-in platform map; DOS' list
-# is empty, so no DOS platform can be conjured at all.
+# On **1.7.x**, `GET /Platforms` does not list the platforms Gaseous
+# *knows about* -- its SQL is `WHERE Id IN (SELECT DISTINCT PlatformId
+# FROM Games_Roms)`, so it lists only the ones already represented in the
+# library. Gaseous decides a file's platform from the file, so the only
+# way to make a platform appear is to give it a file it recognises. And
+# the metadata behind that lookup came from IGDB, so with no credentials
+# the list stayed empty no matter what was imported -- measured.
 #
-# The metadata behind that map comes from IGDB. Without
-# PROOF_IGDB_CLIENT_ID / PROOF_IGDB_CLIENT_SECRET in a `.env` beside the
-# compose file, Gaseous ingests no platform metadata and this seed cannot
-# resolve either.
+# On **2.0**, the platform list ships with the server (146 entries on a
+# fresh container, including `Unknown Platform` at id 0) and resolves with
+# no credentials at all. That is what the matrix's
+# `--gaseous-platform Unknown` matches.
+#
+# The seed below is kept anyway, so the listing has something in it before
+# the matrix imports, and so this script still does something useful if
+# somebody re-pins the image.
 docker exec proofgaseous sh -c \
     'printf "NES\032\001\001" > "/root/.gaseous-server/Data/Import/proof-seed.nes"' \
     2>/dev/null || echo "Gaseous: could not write the import seed"
