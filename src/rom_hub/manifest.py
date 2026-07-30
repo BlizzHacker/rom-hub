@@ -15,7 +15,7 @@ from .netpolicy import url_allowed
 from .types import bare_filename
 
 KNOWN_CAPABILITIES = frozenset(
-    {"search", "importer", "metadata", "stream", "cores", "firmware"}
+    {"search", "importer", "metadata", "stream", "cores", "firmware", "assets"}
 )
 RESERVED_CAPABILITIES = frozenset({"peer", "netplay"})
 # `secret` moved here from RESERVED_CONFIG_TYPES when the store behind it

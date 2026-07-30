@@ -888,6 +888,31 @@ def render(runs: list[BackendRun], command: str, started: datetime) -> str:
         "never attempted. Never a stand-in for FAIL. |"
     )
     add("")
+    add("## What this matrix cannot cover, and why that is not a gap")
+    add("")
+    add(
+        "Every row below is a thing the host asks a *library backend* to do. "
+        "Two plugin capabilities have no row here and never will, because "
+        "they touch no backend at all: **`cores`** and **`assets`** (shaders, "
+        "overlays, cheats, controller profiles). Both end with bytes in a "
+        "directory an emulator reads, and neither opens a library connection "
+        "-- `rom_hub.emuassets` does not import `rom_hub.backends`, and "
+        "`install_asset` takes no `backend` argument, both asserted by tests "
+        "rather than by inspection.\n\n"
+        "So for those two the question this matrix answers -- \"what does "
+        "each backend do about it?\" -- has no meaning, rather than an answer "
+        "of \"nothing\". A row of three UNSUPPORTED cells would be actively "
+        "misleading: it would read as three servers falling short of "
+        "something, when in fact `rom-hub cores install` and `rom-hub assets "
+        "install` work identically against RomM, Gaseous, Retrom, and against "
+        "no configured backend whatsoever. That last case is the useful one: "
+        "an operator with no library server at all can still install an "
+        "emulator core and a CRT bezel.\n\n"
+        "See `backends/base.BACKEND_INDEPENDENT_CAPABILITIES`, which names "
+        "this set so that \"absent from the matrix\" is a recorded decision "
+        "rather than an oversight."
+    )
+    add("")
     add("## The matrix")
     add("")
     header = "| Capability | " + " | ".join(run.label for run in runs) + " |"

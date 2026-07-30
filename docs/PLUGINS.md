@@ -143,14 +143,17 @@ and neither can this directory change it for you.
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
 | ❗ [itch.io (free games) — NO IMPORT](https://github.com/BlizzHacker/rom-hub-itch-io) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-itch-io)) | 0.3.0 | 2026-07-29 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
+| ✔ [libretro cheat files](https://github.com/BlizzHacker/rom-hub-libretro-cheats) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cheats)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.1.0.tar.gz) | `assets` | Gaseous · Retrom · RomM | — | `api.github.com`, `raw.githubusercontent.com` |
 | ✔ [libretro content (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-content) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-content)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `buildbot.libretro.com` |
 | ✔ [libretro cores (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-cores) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cores)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cores/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | `buildbot.libretro.com` |
 | ✔ [libretro Database (DAT)](https://github.com/BlizzHacker/rom-hub-libretro-database) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-database)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-database/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `raw.githubusercontent.com` |
+| ✔ [libretro overlays (bezels and gamepads)](https://github.com/BlizzHacker/rom-hub-libretro-overlays) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-overlays)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-overlays/archive/refs/tags/v0.1.0.tar.gz) | `assets` | Gaseous · Retrom · RomM | — | `api.github.com`, `raw.githubusercontent.com` |
 | ✔ [libretro Thumbnails](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `thumbnails.libretro.com` |
 | ❗ [No-Intro sets on Archive.org](https://github.com/BlizzHacker/rom-hub-nointro-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-nointro-archive)) | 0.2.1 | 2026-07-29 | [`v0.2.1` tarball](https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.2.1.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `archive.org`, `*.archive.org` |
 | ✔ [Open BIOS](https://github.com/BlizzHacker/rom-hub-open-bios) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-open-bios)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.1.0.tar.gz) | `firmware` | Gaseous* · Retrom* · RomM | — | `raw.githubusercontent.com`, `github.com`, `release-assets.githubusercontent.com` |
 | ✔ [OpenVGDB](https://github.com/BlizzHacker/rom-hub-openvgdb) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-openvgdb)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `raw.githubusercontent.com`, `gamefaqs.gamespot.com`, `github.com`, `release-assets.githubusercontent.com` |
 | ❗ [RetroAchievements](https://github.com/BlizzHacker/rom-hub-retroachievements) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-retroachievements)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | **API key required** (kept out of the Hub's plain config as a `secret`; `rom-hub plugin secret list` says what that protects on your host) | `retroachievements.org` |
+| ✔ [RetroArch controller profiles](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.1.0.tar.gz) | `assets` | Gaseous · Retrom · RomM | — | `api.github.com`, `raw.githubusercontent.com` |
 | ✔ [ScummVM freeware games](https://github.com/BlizzHacker/rom-hub-scummvm-freeware) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-scummvm-freeware)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `downloads.scummvm.org` |
 
 **Reading the Backends column.** A plain name means everything this plugin declares works there. `*` means it all runs but an *extra* is skipped — a collection not created, a cover not stored — and the skip is reported in the outcome. `!` means one of its capabilities cannot run at all and is refused up front, while the rest still work. A struck-through name is a server the plugin is no use against. The per-plugin sections below name the capability and the reason in each case.
@@ -219,6 +222,18 @@ Finds free games on itch.io and proposes the developer's own title and cover art
 
 **Network requested.** `itch.io`, `*.itch.io`, `img.itch.zone` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
+### ✔ libretro cheat files — `libretro-cheats`
+
+RetroArch cheat files from libretro-database's cht/ tree, for the systems you choose.
+
+**Source terms.** CC-BY-SA-4.0, verified by reading libretro-database's own LICENSE rather than a badge — the full Creative Commons Attribution-ShareAlike 4.0 text sits at the repository root and GitHub's detection agrees. ShareAlike is the live obligation: a redistributed derivative has to carry the same terms, which is the difference from the overlays plugin's plain CC-BY. One caveat is stated in the plugin's README rather than glossed: libretro-database's own README notes that much of the repository is imported from No-Intro, Redump, TOSEC and GameTDB without saying which upstream terms attach to which subtree. That caveat is about the DAT and metadata imports (dat/, metadat/, rdb/); this plugin touches only cht/, which is contributed directly and which the repository-level LICENSE covers with no carve-out naming it. Both hosts are public and unauthenticated and this plugin sends no credential.
+
+**Comments.** The source that makes the size problem real: libretro-database is 795 MB and its cht/ tree alone runs to tens of thousands of files across 44 systems. Nothing is cloned — a catalogue is one Git Trees API call per selected system and an install is one file of a few hundred bytes. The trap this plugin was built around is that GitHub's contents API truncates a directory listing at 1,000 entries with no error and no flag, so a contents-API implementation would have offered 1,000 of the NES tree's 2,265 files and looked like it was working; the Trees API returns all of them, sets a `truncated` boolean when it cannot, and is smaller on the wire because it carries no per-entry URL block. A truncated listing is refused outright rather than shown as though it were complete. Because every system at once is far past the 512 assets a plugin may return, the first run makes the one cheap call that enumerates the systems and names them in the refusal — an empty catalogue would have been technically true and useless.
+
+**Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
+
+**Network requested.** `api.github.com`, `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
 ### ✔ libretro content (buildbot) — `libretro-content`
 
 Searches and imports the free game content libretro distributes for RetroArch — homebrew, demos and openly licensed ROMs across 29 RomM platforms.
@@ -254,6 +269,18 @@ Resolves a ROM to its No-Intro or Redump catalogue entry by hash and proposes th
 **Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
 
 **Network requested.** `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ libretro overlays (bezels and gamepads) — `libretro-overlays`
+
+RetroArch bezels and on-screen gamepad overlays from libretro's common-overlays, CC-BY-4.0.
+
+**Source terms.** CC-BY-4.0, verified by reading common-overlays' own COPYING — the full Creative Commons Attribution 4.0 text — rather than taking GitHub's badge for it, though GitHub's detection agrees (SPDX CC-BY-4.0). Attribution is the live obligation and it travels with the overlay, not with this plugin: the Hub does not add attribution to files it downloads, so anyone redistributing one carries that themselves. Both hosts are public and unauthenticated and this plugin sends no credential.
+
+**Comments.** The plugin that had to say no to most of its own source, and the interesting entry in this set for that reason. A RetroArch overlay is a .cfg plus the images it references, and the .cfg names them relative to itself — overwhelmingly as a subdirectory (`img/dpad-left.png`). A FetchPlan cannot express that: every filename the host writes must be a bare name, which is the rule that keeps a plugin's downloads inside the directory chosen for them, and widening it to suit a file layout would trade a containment guarantee for a convenience. So the catalogue is filtered to the self-contained overlays only — 49 of the repository's 310 .cfg files, including the whole gamepads/lite/ pack — because listing an overlay that would fail to install is worse than not listing it. Making that filter cheap is the other half: reading 310 .cfg bodies would be 310 requests for a catalogue, so the tree itself is the predictor (an overlay is self-contained exactly when its own directory also holds images), and that heuristic was checked against the content of all 310 files with no false positives and no false negatives. plan() still fetches the chosen .cfg and re-reads its references, so the heuristic decides what to offer and the file decides what to install.
+
+**Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
+
+**Network requested.** `api.github.com`, `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ libretro Thumbnails — `libretro-thumbnails`
 
@@ -316,6 +343,18 @@ Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your R
 **Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
 
 **Network requested.** `retroachievements.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ RetroArch controller profiles — `retroarch-autoconfig`
+
+RetroArch controller autoconfiguration profiles, so a gamepad your emulator does not recognise gets a mapping somebody already wrote.
+
+**Source terms.** MIT, and this one needed checking rather than reading off a badge: GitHub reports retroarch-joypad-autoconfig as NOASSERTION, which invites the assumption that its terms are unclear. They are not. Its COPYING contains two licences, which is what defeats GitHub's single-licence detection — the MIT License (copyright 2019 The RetroArch team) covering the .cfg profiles this plugin offers, and the zlib-style SDL licence (copyright 1997-2025 Sam Lantinga) covering the bundled SDL gamecontrollerdb.cfg, which this plugin does not offer. Both halves were read from the repository itself. Both hosts are public and unauthenticated and this plugin sends no credential.
+
+**Comments.** The smallest source in this set and the one that solves a whole problem: a pad RetroArch does not recognise is a pad you remap by hand, and the fix is a 1.7 KB text file that already exists — 437 of them for the udev driver alone. The input driver is config and is never detected from the host OS, for the reason libretro-cores does not detect its build target: the Hub is routinely not running on the machine the pad is plugged into, and udev profiles handed to a Windows frontend are silently useless. An unknown driver is refused by name against the list that exists, before any request goes out. This plugin's repository is only 2.6 MB, so the Trees-API listing here is not strictly necessary — it is the same mechanism the overlays and cheats plugins need against 29 MB and 795 MB, kept identical so there is one way this plugin family reads a GitHub tree rather than three.
+
+**Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
+
+**Network requested.** `api.github.com`, `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ ScummVM freeware games — `scummvm-freeware`
 

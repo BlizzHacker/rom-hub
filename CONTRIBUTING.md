@@ -89,9 +89,9 @@ Notes that have each cost somebody time:
 - **`romm_api` is reserved.** It parses; nothing grants a plugin library access
   in RPP v1.
 
-## The five capabilities
+## The seven capabilities
 
-All five are implemented by the host. Import the interfaces from
+All seven are implemented by the host. Import the interfaces from
 `rom_hub_sdk`; each is an ABC taking `ctx` and implementing one or two methods.
 
 | Capability | Interface | You return | The host then |
@@ -101,6 +101,8 @@ All five are implemented by the host. Import the interfaces from
 | `metadata` | `MetadataProvider.enrich(rom)` | `MetadataPatch` | fetches the artwork and writes the fields |
 | `stream` | `StreamProvider.resolve(result)` | `StreamTarget` | validates the target and hands it on |
 | `cores` | `CoreProvider.list()` / `.plan(core)` | `list[CoreArtifact]` / `FetchPlan` | downloads the core to the operator's cores directory |
+| `firmware` | `FirmwareProvider.list()` / `.plan(firmware)` | `list[FirmwareArtifact]` / `FetchPlan` | downloads the BIOS to the operator's firmware directory, and files it in the library where the backend can hold firmware |
+| `assets` | `AssetProvider.list()` / `.plan(asset)` | `list[AssetArtifact]` / `FetchPlan` | downloads the shader, overlay, cheat file or controller profile into the directory configured for its `kind`. Never touches a library |
 
 ```python
 from rom_hub_sdk import SearchProvider, SearchResult

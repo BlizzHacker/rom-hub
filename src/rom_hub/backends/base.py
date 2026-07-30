@@ -205,6 +205,52 @@ OPTIONAL_CAPABILITIES = frozenset({COLLECTIONS, ARTWORK, FIRMWARE})
 #: why that failure is raised rather than noted.
 UNGATED_CAPABILITIES = frozenset({SCAN})
 
+#: **Plugin** capabilities (`manifest.KNOWN_CAPABILITIES`) that touch no
+#: backend at all, and therefore cannot appear in any of the three sets
+#: above -- those classify what a *backend* declares.
+#:
+#: This is a fourth answer to "essential or optional?", and `assets`
+#: forced it to be written down. Essential means refuse before doing work;
+#: optional means do the work and report the skip. Both presuppose a
+#: backend method that might be missing. `rom_hub.emuassets` calls none:
+#: `install_asset` takes no `backend` argument, opens no connection, and
+#: the module does not import this package. A bezel lands in a directory
+#: an emulator reads, and that is the entire operation. So the question
+#: "what does the backend not support here?" has *no answer*, rather than
+#: an answer of "nothing".
+#:
+#: The set divides in two, and the second half is the interesting one.
+#:
+#: * **`search` and `stream` install nothing.** A search returns rows and
+#:   a stream resolves a target; neither was ever going to touch a
+#:   library, so neither is remarkable.
+#: * **`cores` and `assets` install files and still touch no library.**
+#:   That is the notable property. Every other capability that puts bytes
+#:   on disk ends in a backend write -- `importer` uploads the ROM,
+#:   `firmware` files the BIOS when it can. These two end on the disk and
+#:   stop, which means an operator can install emulator cores, shaders,
+#:   bezels, cheats and controller profiles with no library server
+#:   configured at all: no RomM, no Gaseous, no Retrom, nothing.
+#:   `rom-hub assets install` is a command for which `rom-hub backend
+#:   info` is not merely uninteresting but inapplicable.
+#:
+#: `cores` was already in the second group and was never recorded, because
+#: a lone exception reads as an oversight. Two make a category worth
+#: naming -- and naming it is what stops "absent from all three sets
+#: above" being indistinguishable from "somebody forgot to classify it",
+#: which is the failure the catalog's classification test exists to catch.
+#: That test now asserts against this set rather than repeating its
+#: members, so the two cannot drift.
+#:
+#: Deliberately NOT unioned into `ALL_CAPABILITIES`: that set is the
+#: vocabulary of things a *backend* declares, and putting a plugin
+#: capability in it would make `rom-hub backend info` print `assets` under
+#: "cannot" for every backend ever written -- true only in the sense that
+#: a hammer cannot tell the time.
+BACKEND_INDEPENDENT_CAPABILITIES = frozenset(
+    {"search", "stream", "cores", "assets"}
+)
+
 #: One line each, for `rom-hub backend info`. A capability list is only
 #: useful to an operator who can tell which command each name governs.
 CAPABILITY_HELP = {
