@@ -1198,6 +1198,7 @@ def _with_assets_plugin(args, action):
             fetcher=fetcher,
             allow_unsandboxed=allow_unsandboxed(),
             data_assets=data_assets,
+            secrets=prepare_secrets(plugin),
         ) as proc:
             return action(proc)
     finally:
