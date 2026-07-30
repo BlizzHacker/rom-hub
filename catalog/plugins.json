@@ -58,6 +58,35 @@
       "comments": "Results carry `extra.stream_only` so a UI can route an item to streaming instead of offering an import that would be refused. `metadata.emulator` maps to a RomM platform through an exact-match table with no fallback: an unmapped emulator fails loudly as \"needs mapping\" rather than filing a ROM under a guessed system. Search terms are confined to the title field — a bare term used to go to Archive.org's default field, which returned `Die Hard` for `sonic`."
     },
     {
+      "slug": "demozoo",
+      "name": "Demozoo (demoscene)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-demozoo",
+      "install": "https://github.com/BlizzHacker/rom-hub-demozoo",
+      "download": "https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer"
+      ],
+      "network": [
+        "demozoo.org",
+        "files.scene.org",
+        "archive.scene.org",
+        "fujiology.org"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches Demozoo's 386,682-production demoscene catalogue for demos, intros and cracktros and imports them from scene.org.",
+      "terms": "Demoscene productions are released free by their authors for distribution — that is what the form is. A demo exists to be copied, and scene.org's entire purpose is copying them; the archives this plugin reaches are the ones the scene runs for itself. That is not a licence granted to anybody, and many productions carry no stated terms at all, but free circulation has been the condition of the whole culture since the 1980s. Cracktros are the one class where the original context was piracy: the intro itself is the group's own code and artwork, which is why it is the part that got archived, and the game it was attached to is not here. On robots: `demozoo.org/robots.txt` disallows `/search/`, `/account/` and `/beep-boop/` with `Crawl-delay: 10`, and this plugin uses only `/api/v1/`, which is not restricted — Demozoo's substring search lives behind that disallowed `/search/` and is therefore not used, which is why title matching is exact. `files.scene.org` and `fujiology.org` serve no robots.txt. Three archives Demozoo links to are refused outright: `csdb.dk` (its robots.txt is `Disallow: /` for ClaudeBot and anthropic-ai, and disallows `/release/download.php` for everyone), `ftp.amigascne.org` (`Disallow: /` for every user agent) and `files.zxdemo.org` (403 on its own root, unverifiable). csdb.dk alone would roughly double C64 coverage and it stays out.",
+      "comments": "Two traps, and both are the whole plugin. **The API silently ignores unknown parameters**: `?search=`, `?q=`, `?title__icontains=` and `?page_size=` all return HTTP 200 and the complete unfiltered 386,682-row listing, so a plugin that hopefully sent one would look like it was searching while handing back the alphabetical head of the database. Only `title`, `platform`, `production_type`, `supertype` and `page` are real, and `title` is an **exact** case-insensitive match — `title=crackt` returns zero. **And Demozoo hosts nothing**: `files.scene.org/get/<p>` 302s to `http://http.us.scene.org/...`, plain http, which `netpolicy` refuses outright whatever the allowlist says. The plugin pins `get:nl-https`, which resolves to exactly one https host, `archive.scene.org` — declared, because every redirect hop is re-checked. `Video` is the filter's reason for existing: its supertype is `production`, exactly like `Demo`, so a supertype-only rule keeps it, and its download links are usually a YouTube page. The whole `graphics` and `music` supertypes are out too, deliberately — `Executable Graphics` really is an executable, and forty thousand single-image entries beside the games would ruin the shelf. Platform absences come in three flavours with three different sentences: **needs mapping** for a real machine (`Acorn Archimedes`, `BBC Micro`), **not a library platform** for `Windows`/`Linux`/`Browser`/`Paper`, and **ambiguous** for `Neo Geo`, `Neo Geo Pocket / NGPC` and `Thomson`, each of which is one Demozoo platform over two RomM ones. Filename sanitising deliberately does **not** collapse runs of underscores: scene.org really does serve `2.8k_nuance__onslaught.zip`."
+    },
+    {
       "slug": "hasheous",
       "name": "Hasheous",
       "author": "BlizzHacker",
