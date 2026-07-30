@@ -16,8 +16,22 @@ from .types import bare_filename
 
 KNOWN_CAPABILITIES = frozenset({"search", "importer", "metadata", "stream", "cores"})
 RESERVED_CAPABILITIES = frozenset({"peer", "netplay"})
-SUPPORTED_CONFIG_TYPES = frozenset({"str", "int", "bool", "list[str]"})
-RESERVED_CONFIG_TYPES = frozenset({"secret"})
+# `secret` moved here from RESERVED_CONFIG_TYPES when the store behind it
+# landed (see `rom_hub.secrets`). It is a `str` to the plugin, which still
+# receives the value at call time because it needs it to make its request;
+# what changes is where the Hub keeps it and what the Hub prints.
+SUPPORTED_CONFIG_TYPES = frozenset({"str", "int", "bool", "list[str]", "secret"})
+
+# Nothing is reserved-but-unimplemented any more. Kept as a name because the
+# check below is the shape a future reservation goes back into, and because
+# an empty allowlist that still gets consulted is cheaper to re-fill than a
+# deleted one is to reconstruct.
+RESERVED_CONFIG_TYPES: frozenset[str] = frozenset()
+
+# A `secret` field's value never comes from the manifest. `default` on any
+# other type is a convenience; on a secret it would be a credential written
+# into a file that ships in a public plugin repo.
+_SECRET_TYPE = "secret"
 
 # -- data assets ---------------------------------------------------------
 #
@@ -176,10 +190,18 @@ def parse_manifest(text: str) -> Manifest:
         if declared in RESERVED_CONFIG_TYPES:
             raise ManifestError(
                 f"config field {key!r} uses type {declared!r}, which is reserved "
-                "in RPP v1 but not implemented in Phase 1"
+                "for a future RPP version but not implemented here"
             )
         if declared not in SUPPORTED_CONFIG_TYPES:
             raise ManifestError(f"config field {key!r} has unknown type {declared!r}")
+        if declared == _SECRET_TYPE and "default" in spec:
+            raise ManifestError(
+                f"config field {key!r} is a secret and must not declare a "
+                f"default: a manifest is a public file in a git repo, so a "
+                f"default value there is a credential published on purpose. "
+                f"An unset secret is simply absent, and your plugin should "
+                f"refuse with its own message when it sees one."
+            )
 
     return Manifest(
         slug=slug,

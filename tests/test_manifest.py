@@ -48,9 +48,41 @@ def test_reserved_capability_rejected():
         parse_manifest(bad)
 
 
-def test_secret_config_rejected_in_phase1():
-    bad = GOOD + '\napi_key = { type = "secret" }\n'
-    with pytest.raises(ManifestError, match="not implemented"):
+def test_secret_config_type_is_supported():
+    """Was `test_secret_config_rejected_in_phase1`, inverted deliberately.
+
+    RPP v1 always specified `secret`; Phase 1 rejected it rather than
+    half-implementing storage. The store landed (`rom_hub.secrets`), so the
+    refusal is gone and this is the test that says so. Kept as the *same*
+    assertion turned around rather than deleted, so the history shows the
+    contract moving rather than a check disappearing.
+    """
+    m = parse_manifest(GOOD + '\napi_key = { type = "secret" }\n')
+    assert m.config_schema["api_key"]["type"] == "secret"
+
+
+def test_nothing_is_reserved_but_unimplemented_any_more():
+    from rom_hub.manifest import RESERVED_CONFIG_TYPES, SUPPORTED_CONFIG_TYPES
+
+    assert "secret" in SUPPORTED_CONFIG_TYPES
+    assert RESERVED_CONFIG_TYPES == frozenset()
+
+
+def test_a_secret_may_not_carry_a_default():
+    """A manifest is a public file in a git repo.
+
+    `default = "sk-live-..."` in one is a credential published on purpose,
+    so the parser refuses it rather than trusting every plugin author to
+    notice.
+    """
+    bad = GOOD + '\napi_key = { type = "secret", default = "hunter2" }\n'
+    with pytest.raises(ManifestError, match="must not declare a default"):
+        parse_manifest(bad)
+
+
+def test_an_unknown_config_type_is_still_rejected():
+    bad = GOOD + '\napi_key = { type = "encrypted" }\n'
+    with pytest.raises(ManifestError, match="unknown type"):
         parse_manifest(bad)
 
 
