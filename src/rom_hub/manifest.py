@@ -14,7 +14,9 @@ from urllib.parse import urlsplit
 from .netpolicy import url_allowed
 from .types import bare_filename
 
-KNOWN_CAPABILITIES = frozenset({"search", "importer", "metadata", "stream", "cores"})
+KNOWN_CAPABILITIES = frozenset(
+    {"search", "importer", "metadata", "stream", "cores", "firmware"}
+)
 RESERVED_CAPABILITIES = frozenset({"peer", "netplay"})
 # `secret` moved here from RESERVED_CONFIG_TYPES when the store behind it
 # landed (see `rom_hub.secrets`). It is a `str` to the plugin, which still

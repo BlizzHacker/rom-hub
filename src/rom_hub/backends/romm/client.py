@@ -15,6 +15,8 @@ platform id, not a slug, so `platform_id()` resolves slug -> id via
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 
 from rom_hub.backends.base import BackendError
@@ -57,7 +59,15 @@ REQUIRED_SCOPES = (
     "me.read "
     "roms.read roms.write "
     "platforms.read platforms.write "
-    "collections.read collections.write"
+    "collections.read collections.write "
+    # `rom-hub firmware install` reads the platform's firmware list to
+    # avoid sending a second copy, then posts the files. Added when that
+    # caller appeared, not on the theory that a token might want them:
+    # `backend/endpoints/firmware.py` guards `get_platform_firmware` with
+    # Scope.FIRMWARE_READ and `add_firmware` with Scope.FIRMWARE_WRITE, so
+    # a token without these gets the same "valid, then 403 on every call"
+    # that omitting `scope` entirely produces.
+    "firmware.read firmware.write"
 )
 
 
@@ -377,6 +387,86 @@ class RommClient:
         resp = self._authorized_request("PUT", f"/api/roms/{rom_id}", **kwargs)
         if not resp.content:
             return {}
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+
+    # -- firmware -------------------------------------------------------------
+    #
+    # Read from RomM's own `backend/endpoints/firmware.py`, not inferred.
+    # Both routes hang off the `/firmware` prefix that `APIRouter` mounts
+    # under `/api`, and the shapes below are the decorated signatures:
+    #
+    #   @protected_route(router.get,  "", [Scope.FIRMWARE_READ])
+    #   def get_platform_firmware(request, platform_id: int | None = None)
+    #       -> list[FirmwareSchema]
+    #
+    #   @protected_route(router.post, "", [Scope.FIRMWARE_WRITE])
+    #   async def add_firmware(request, platform_id: int,
+    #                          files: list[UploadFile] = File(...))
+    #       -> AddFirmwareResponse
+    #
+    # Two things in those signatures decide the calls below. `platform_id`
+    # is a *query* parameter on both -- it is a bare `int` with no `Body`
+    # or `Form` marker, so FastAPI takes it from the query string even on
+    # the POST, and sending it as a form field is a 422. And `files` is
+    # `File(...)`, a repeated multipart part, so the whole set goes in one
+    # request rather than one request per file.
+
+    def list_firmware(self, platform_id: int) -> list[dict]:
+        """`GET /api/firmware?platform_id=` -> this platform's firmware.
+
+        A bare list, not a paginated envelope -- the endpoint's return type
+        is `list[FirmwareSchema]` and it does no paging at all, which is
+        the one way this differs from `list_roms` and the reason that
+        function's page-walking is not copied here.
+        """
+        payload = self._authorized_request(
+            "GET", "/api/firmware", params={"platform_id": platform_id}
+        ).json()
+        if not isinstance(payload, list):
+            raise RommError(
+                f"GET /api/firmware returned {type(payload).__name__}, "
+                f"expected a list"
+            )
+        return payload
+
+    def upload_firmware(self, paths: list[Path], platform_id: int) -> dict:
+        """`POST /api/firmware?platform_id=` -- store these files as firmware.
+
+        One request for the whole set. Each file is read into memory,
+        which is safe here in a way it would not be for a ROM: firmware is
+        kilobytes, and `rom_hub.firmware.MAX_FIRMWARE_BYTES` has already
+        bounded every one of these at download time.
+
+        Unlike a ROM, there is no scan afterwards. `add_firmware` writes
+        the file, runs `scan_firmware` and inserts the database row inside
+        the one request, so the firmware is queryable the moment this
+        returns -- which is why `rom-hub firmware install` can prove its
+        own work with `list_firmware`.
+        """
+        if not paths:
+            raise RommError("refusing to upload firmware: no files were given")
+        files = []
+        for path in paths:
+            path = Path(path)
+            try:
+                data = path.read_bytes()
+            except OSError as exc:
+                raise RommError(f"cannot read firmware file {path}: {exc}") from exc
+            if not data:
+                raise RommError(f"refusing to upload empty firmware file {path}")
+            # The part name is repeated, which is how `list[UploadFile]`
+            # is populated; httpx encodes a list of 2-tuples that way.
+            files.append(("files", (path.name, data, "application/octet-stream")))
+
+        resp = self._authorized_request(
+            "POST",
+            "/api/firmware",
+            params={"platform_id": platform_id},
+            files=files,
+        )
         try:
             return resp.json()
         except ValueError:

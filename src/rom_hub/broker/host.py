@@ -13,6 +13,8 @@ socket is opened:
     something a player will fetch, enforced in resolve_stream()
   * the `FetchPlan` returned by core_plan(), which is the import gate reused
     verbatim -- a core is a binary landing on disk, like a ROM
+  * the `FetchPlan` returned by firmware_plan(), the same gate again -- a
+    BIOS is a binary landing on disk *and* going into the library
 
 Adding another path without a check_url() on it would make the manifest's
 `network` declaration decorative.
@@ -59,8 +61,10 @@ from rom_hub.protocol import ProtocolError, read_message, write_message
 from rom_hub.secrets import scrub
 from rom_hub.types import (
     MAX_CORES_PER_PLUGIN,
+    MAX_FIRMWARE_PER_PLUGIN,
     CoreArtifact,
     FetchPlan,
+    FirmwareArtifact,
     MetadataPatch,
     RomRef,
     SearchResult,
@@ -545,6 +549,47 @@ class PluginProcess:
         every bit as privileged as a ROM is.
         """
         return self._gated_plan(self._call("plan_core", {"core": core.model_dump()}))
+
+    def firmware(self) -> list[FirmwareArtifact]:
+        """The BIOS/firmware this plugin offers. A catalogue, nothing more.
+
+        Nothing here is fetched: `firmware_plan()` is what turns one of
+        these into URLs, and that goes through the same gate a ROM import
+        does.
+        """
+        raw = self._call("list_firmware", {})
+        if not isinstance(raw, list):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
+                "expected a list of firmware"
+            )
+        if len(raw) > MAX_FIRMWARE_PER_PLUGIN:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} offered {len(raw)} firmware "
+                f"items, over the {MAX_FIRMWARE_PER_PLUGIN} limit"
+            )
+        items = []
+        for item in raw:
+            try:
+                items.append(FirmwareArtifact(**item))
+            except (ValidationError, TypeError) as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} returned an invalid firmware "
+                    f"artifact: {exc}"
+                ) from exc
+        return items
+
+    def firmware_plan(self, firmware: FirmwareArtifact) -> FetchPlan:
+        """Ask the plugin what to fetch for one firmware item. Host fetches.
+
+        Same type and same gate as an import plan and a core plan,
+        deliberately: a BIOS is a binary from the internet landing on the
+        operator's disk, and then going into their library, which is every
+        bit as privileged as a ROM.
+        """
+        return self._gated_plan(
+            self._call("plan_firmware", {"firmware": firmware.model_dump()})
+        )
 
     def enrich(self, rom: RomRef) -> MetadataPatch:
         """Ask the plugin what to change about a rom. The host changes it.

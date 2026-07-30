@@ -1,0 +1,27 @@
+[plugin]
+slug        = "libretro-content"
+name        = "libretro content (buildbot)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "libretro_content.search:Search"
+importer = "libretro_content.importer:Importer"
+
+# One host does both jobs: the directory listings and the files themselves
+# are served from `buildbot.libretro.com/assets/cores/`, with no redirect
+# off it -- verified 2026-07-29, `curl -w %{num_redirects}` reports 0 for
+# both a listing and a real ROM URL. No CDN hop to declare.
+[permissions]
+network  = ["buildbot.libretro.com"]
+romm_api = []
+
+[config]
+# RomM platform slugs to walk when the operator names no --platform. Empty
+# means the plugin's own default set. A slug this source has nothing for is
+# dropped rather than refused.
+systems     = { type = "list[str]", default = [] }
+# Each system is its own round trip and the host kills a plugin at 30s.
+max_systems = { type = "int", default = 8 }
+collection  = { type = "str", default = "libretro content" }

@@ -25,6 +25,7 @@ from rom_hub import backends
 from rom_hub.backends.base import (
     ARTWORK,
     COLLECTIONS,
+    FIRMWARE,
     IMPORT,
     METADATA,
     SCAN,
@@ -108,7 +109,7 @@ def test_retrom_satisfies_the_protocols_the_pipelines_use():
 # -- capabilities ----------------------------------------------------------
 
 
-def test_retrom_declares_four_of_five():
+def test_retrom_declares_four_of_six():
     """Measured against a real Retrom 0.8.4, not assumed."""
     assert capabilities_of(_backend()) == frozenset(
         {IMPORT, METADATA, ARTWORK, SCAN}
@@ -130,6 +131,26 @@ def test_reaching_the_collection_methods_anyway_gives_the_same_sentence():
     assert "no collections" in str(exc.value)
     with pytest.raises(CapabilityUnsupported):
         backend.add_to_collection(1, [1])
+
+
+def test_firmware_is_absent_because_retrom_has_no_such_concept():
+    """There is no BIOS or firmware message, service, column or directory
+    anywhere in the repository. The two matches for `bios` are EmulatorJS's
+    own `biosUrl?: string` config field in the web client -- a URL the
+    player is handed, not something Retrom stores."""
+    assert FIRMWARE not in capabilities_of(_backend())
+    with pytest.raises(CapabilityUnsupported) as exc:
+        require(_backend(), FIRMWARE, "installing a BIOS")
+    assert "retrom" in str(exc.value)
+
+
+def test_reaching_the_firmware_methods_anyway_gives_the_same_sentence():
+    backend = _backend()
+    with pytest.raises(CapabilityUnsupported) as exc:
+        backend.upload_firmware([pathlib.Path("dmg_boot.bin")], 7)
+    assert "no firmware concept" in str(exc.value)
+    with pytest.raises(CapabilityUnsupported):
+        backend.list_firmware(7)
 
 
 # -- delegation ------------------------------------------------------------
