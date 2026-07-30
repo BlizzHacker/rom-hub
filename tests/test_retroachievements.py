@@ -193,7 +193,11 @@ def test_no_api_key_is_an_actionable_refusal_before_any_request():
     message = str(exc.value)
     assert "api_key" in message
     assert "Settings -> Keys" in message, "it must say where to get one"
-    assert "plain text" in message, "and that the Hub does not protect it"
+    assert "plugin secret set" in message, "and the command that stores one"
+    assert "plain text" not in message, (
+        "the key is no longer stored in plain text; a refusal still saying so "
+        "would be the warning outliving the problem"
+    )
     assert http.calls == [], "an unconfigured plugin costs no request"
 
 
@@ -203,18 +207,35 @@ def test_a_whitespace_only_key_counts_as_no_key():
         provider.enrich(_ref())
 
 
-def test_the_secret_config_type_really_is_rejected_by_this_host():
-    """The README's claim, pinned. If a later phase implements `secret`,
-    this test fails and the README stops being true at the same moment."""
-    from rom_hub.manifest import ManifestError, parse_manifest
+def test_the_secret_config_type_really_is_accepted_by_this_host():
+    """Was `..._really_is_rejected_by_this_host`, inverted when `secret`
+    landed. It pinned the README's plain-text warning; it now pins the
+    README's replacement claim, which is that the key is not in the plain
+    config at all."""
+    from rom_hub.manifest import parse_manifest
 
     manifest = (
         '[plugin]\nslug="x"\nname="X"\nversion="1"\nrpp_version="1"\n'
         '[capabilities]\nmetadata="x:Y"\n'
         '[config]\napi_key = { type = "secret" }\n'
     )
-    with pytest.raises(ManifestError, match="reserved"):
-        parse_manifest(manifest)
+    assert parse_manifest(manifest).config_schema["api_key"]["type"] == "secret"
+
+
+def test_this_plugins_own_manifest_declares_the_key_as_a_secret():
+    """The conversion, checked against the file that ships."""
+    from pathlib import Path
+
+    from rom_hub.manifest import load_manifest
+    from rom_hub.secrets import secret_fields
+
+    manifest = load_manifest(
+        Path(__file__).resolve().parents[1]
+        / "plugins-dev"
+        / "retroachievements"
+        / "manifest.toml"
+    )
+    assert secret_fields(manifest) == ["api_key"]
 
 
 def test_a_key_rejected_by_ra_says_so_rather_than_leaking_a_401():

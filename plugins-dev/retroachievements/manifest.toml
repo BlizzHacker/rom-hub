@@ -15,13 +15,19 @@ metadata = "retroachievements.metadata:Metadata"
 network  = ["retroachievements.org"]
 romm_api = []
 
-# `api_key` is a `str`, not a `secret`. RPP v1 reserves the `secret` type
-# and THIS HOST REJECTS IT: manifest.py raises "reserved in RPP v1 but not
-# implemented in Phase 1" for any field declaring it. So the key is stored
-# in the Hub's plugin config in the clear, and the README says so in those
-# words rather than implying otherwise.
+# `api_key` is a `secret`. The type is implemented now (rom_hub.secrets),
+# so the key is kept out of the Hub's plain config, redacted from every
+# command's output, and handed to this plugin only in the `init` frame of
+# the subprocess that needs it. Set it with:
+#
+#     rom-hub plugin secret set retroachievements api_key
+#
+# A secret carries NO `default` -- a manifest is a public file in a git
+# repo, and the parser refuses one for exactly that reason. Anyone who set
+# this as a plain `str` before is migrated automatically on next use; see
+# the README.
 [config]
-api_key                = { type = "str", default = "" }
+api_key                = { type = "secret" }
 username               = { type = "str", default = "" }
 set_name               = { type = "bool", default = true }
 only_with_achievements = { type = "bool", default = true }

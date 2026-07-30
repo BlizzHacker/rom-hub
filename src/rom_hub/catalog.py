@@ -100,7 +100,16 @@ class CatalogEntry:
         if self.search_only:
             out.append("**cannot import** (every import is refused)")
         if self.key_required:
-            out.append("**API key required** (stored in clear text)")
+            # Was "(stored in clear text)", which was true until the `secret`
+            # config type was implemented. It is now the store's own honest
+            # description that carries the caveat -- `rom-hub plugin secret
+            # list` prints it, and it differs per host -- so this line points
+            # there rather than repeating a claim the directory cannot check.
+            out.append(
+                "**API key required** (kept out of the Hub's plain config as a "
+                "`secret`; `rom-hub plugin secret list` says what that protects "
+                "on your host)"
+            )
         return out
 
 

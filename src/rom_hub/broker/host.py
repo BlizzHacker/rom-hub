@@ -15,6 +15,9 @@ socket is opened:
     verbatim -- a core is a binary landing on disk, like a ROM
   * the `FetchPlan` returned by firmware_plan(), the same gate again -- a
     BIOS is a binary landing on disk *and* going into the library
+  * the `FetchPlan` returned by asset_plan(), the same gate once more -- a
+    shader, bezel, cheat file or controller profile is a file landing on
+    disk in a directory an emulator reads
 
 Adding another path without a check_url() on it would make the manifest's
 `network` declaration decorative.
@@ -30,6 +33,20 @@ the caller (`rom_hub.assets.ensure_assets`) fetches, hash-verifies and
 caches it *before* this process is started. What arrives here is a
 `{name: path}` mapping for bytes that already match a declared sha256 —
 this class never fetches one, and never accepts a path the plugin named.
+
+There is a second path in by design: `secrets`. A config field typed
+`secret` (see `rom_hub.secrets`) is read from the secret store by the
+caller and merged into the `init` frame's config, because a plugin needs
+its API key to make its request. It travels down the stdin pipe and
+**never through the environment** — the allowlist above is built from `{}`
+upward precisely so nothing credential-shaped can arrive that way.
+
+Because the host knows exactly which strings it handed over, it can take
+them back out of anything it prints: `_scrub` runs over the plugin's
+stderr tail and over every error message built from plugin-controlled
+text. A plugin can still leak its own key by making its own request — it
+has the value — but an accidental traceback carrying it does not reach the
+operator's terminal, their job queue, or their bug report.
 """
 
 import collections
@@ -44,9 +61,12 @@ from pydantic import ValidationError
 from rom_hub.manifest import Manifest
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.protocol import ProtocolError, read_message, write_message
+from rom_hub.secrets import scrub
 from rom_hub.types import (
+    MAX_ASSETS_PER_PLUGIN,
     MAX_CORES_PER_PLUGIN,
     MAX_FIRMWARE_PER_PLUGIN,
+    AssetArtifact,
     CoreArtifact,
     FetchPlan,
     FirmwareArtifact,
@@ -166,10 +186,20 @@ class PluginProcess:
         timeout: float = 30.0,
         allow_unsandboxed: bool = False,
         data_assets: dict[str, str] | None = None,
+        secrets: dict[str, str] | None = None,
     ):
         self.plugin_dir = Path(plugin_dir)
         self.manifest = manifest
         self.config = config
+        # Kept apart from `config` on purpose: anything that inspects a live
+        # PluginProcess's config -- a debugger, a repr, a future dump -- sees
+        # the plain settings. The merge happens once, into the `init` frame.
+        self.secrets = dict(secrets or {})
+        self._redactions = tuple(
+            value
+            for value in self.secrets.values()
+            if isinstance(value, str) and value
+        )
         self.fetcher = fetcher
         self.timeout = timeout
         self.allow_unsandboxed = allow_unsandboxed
@@ -200,6 +230,36 @@ class PluginProcess:
         self._counter += 1
         return f"h{self._counter}"
 
+    def _scrub(self, text: str) -> str:
+        """Take every secret this process was given back out of `text`.
+
+        Applied to everything built from plugin-controlled text before it
+        can reach an exception message, and therefore the terminal, the job
+        queue's `error` column, and whatever the operator pastes into an
+        issue.
+        """
+        return scrub(text, self._redactions)
+
+    def _fail(
+        self, message: str, kind: type[PluginCallError] = PluginCallError
+    ) -> PluginCallError:
+        """The only way this class builds a failure. Use it for every raise.
+
+        Every raise site goes through here so that adding a new one cannot
+        quietly bypass redaction -- the same "one choke point" reasoning
+        `paths.dest_in_job_dir` and `netpolicy.check_url` are built on.
+
+        `kind` exists so `SandboxRefused` is not a second, unscrubbed door:
+        its message is built from `sandbox_reason`, which arrives in the
+        subprocess's own `init` reply and is therefore peer-supplied like
+        everything else here.
+
+        `test_every_failure_this_class_reports_goes_through_the_scrubber`
+        reads this module's source and fails if a bare constructor appears,
+        which is how a new capability finds out about this rule.
+        """
+        return kind(self._scrub(message))
+
     def start(self) -> None:
         self._proc = subprocess.Popen(
             [sys.executable, "-m", "rom_hub_sdk.runner"],
@@ -227,7 +287,9 @@ class PluginProcess:
             {
                 "plugin_dir": str(self.plugin_dir),
                 "entrypoints": self.manifest.capabilities,
-                "config": self.config,
+                # The one place a secret is merged in. Down the stdin pipe,
+                # never through the environment.
+                "config": {**self.config, **self.secrets},
                 "data_assets": self.data_assets,
             },
         )
@@ -235,11 +297,12 @@ class PluginProcess:
         self.sandbox_reason = reply.get("sandbox_reason", "no reason reported")
         if not self.sandboxed and not self.allow_unsandboxed:
             self.close()
-            raise SandboxRefused(
+            raise self._fail(
                 f"refusing to run plugin {self.manifest.slug} unsandboxed: "
                 f"{self.sandbox_reason}. Its declared network allowlist cannot "
                 f"be enforced against a hostile plugin here. Set "
-                f"ROM_HUB_ALLOW_UNSANDBOXED=1 to override for development."
+                f"ROM_HUB_ALLOW_UNSANDBOXED=1 to override for development.",
+                SandboxRefused,
             )
 
     def _drain_stderr(self, stream) -> None:
@@ -254,7 +317,10 @@ class PluginProcess:
         """The tail of stderr, after giving the drain a moment to catch up."""
         if self._stderr_thread is not None:
             self._stderr_thread.join(timeout=1.0)
-        return "".join(self._stderr_tail)[-STDERR_TAIL_CHARS:].strip()
+        # Scrubbed here rather than at each use: a plugin that prints its own
+        # API key while crashing is the most likely accidental disclosure
+        # there is, and this is the one funnel every stderr byte passes.
+        return self._scrub("".join(self._stderr_tail)[-STDERR_TAIL_CHARS:].strip())
 
     def _mark_dead(self) -> None:
         """This process can serve no further calls; its pipes are unusable.
@@ -280,7 +346,7 @@ class PluginProcess:
             or self._proc.stdin is None
             or self._proc.stdout is None
         ):
-            raise PluginCallError("plugin process is not running")
+            raise self._fail("plugin process is not running")
 
         # A verdict from an earlier deadline is not evidence about this call.
         self._timed_out = False
@@ -291,7 +357,7 @@ class PluginProcess:
                 {"kind": "call", "id": call_id, "method": method, "params": params},
             )
         except (BrokenPipeError, OSError, ValueError) as exc:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug}: cannot send {method!r}: {exc}"
             ) from exc
 
@@ -312,7 +378,7 @@ class PluginProcess:
                     # mid-message, and there is no resyncing it -- see the
                     # size cap in protocol.py. The process is finished.
                     self._mark_dead()
-                    raise PluginCallError(
+                    raise self._fail(
                         f"plugin {self.manifest.slug}: {exc}"
                     ) from exc
 
@@ -332,7 +398,7 @@ class PluginProcess:
                     continue
 
                 if msg["kind"] == "error":
-                    raise PluginCallError(
+                    raise self._fail(
                         f"plugin {self.manifest.slug}: {msg['error']['message']}"
                     )
                 return msg["result"]
@@ -345,11 +411,11 @@ class PluginProcess:
         # Every path out of the loop is terminal for this process.
         self._mark_dead()
         if timed_out:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} timed out after {self.timeout}s "
                 f"during {method!r} and was killed"
             )
-        raise PluginCallError(
+        raise self._fail(
             f"plugin {self.manifest.slug} exited during {method!r}: "
             f"{self._stderr_snapshot() or 'no stderr'}"
         )
@@ -371,7 +437,7 @@ class PluginProcess:
         call_id = msg.get("id")
         try:
             if msg["method"] != "http.get":
-                raise PluginCallError(f"unsupported host method {msg['method']!r}")
+                raise self._fail(f"unsupported host method {msg['method']!r}")
             params = msg.get("params") or {}
             url = params["url"]
             # The enforcement point. Nothing below runs for a blocked URL.
@@ -403,7 +469,7 @@ class PluginProcess:
             "search", {"query": query, "platform": platform, "limit": limit}
         )
         if not isinstance(raw, list):
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
                 "expected a list"
             )
@@ -412,7 +478,7 @@ class PluginProcess:
             try:
                 result = SearchResult(**item)
             except (ValidationError, TypeError) as exc:
-                raise PluginCallError(
+                raise self._fail(
                     f"plugin {self.manifest.slug} returned an invalid result: {exc}"
                 ) from exc
             result.plugin = self.manifest.slug
@@ -432,23 +498,25 @@ class PluginProcess:
     def _gated_plan(self, raw) -> FetchPlan:
         """Re-establish a FetchPlan host-side and allowlist every URL in it.
 
-        Shared by `plan()` (a ROM) and `core_plan()` (an emulator core),
-        because those are the same privileged act with a different
-        destination: a plugin naming URLs the host will fetch. One
-        implementation, so a gate added to one is a gate on both.
+        Shared by `plan()` (a ROM), `core_plan()` (an emulator core),
+        `firmware_plan()` (a BIOS) and `asset_plan()` (a shader, bezel,
+        cheat file or controller profile), because those are the same
+        privileged act with a different destination: a plugin naming URLs
+        the host will fetch. One implementation, so a gate added to one is
+        a gate on all four.
         """
         # The plugin is under no obligation to have used FetchPlan to build
         # this; the runner only calls model_dump() on whatever it returned.
         # So the shape is re-established here, on the trusted side.
         if not isinstance(raw, dict):
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned an invalid FetchPlan: "
                 f"expected an object, got {type(raw).__name__}"
             )
         try:
             plan = FetchPlan(**raw)
         except (ValidationError, TypeError) as exc:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned an invalid FetchPlan: {exc}"
             ) from exc
         # Every file, not just the first: a plan whose opening entry is
@@ -459,7 +527,7 @@ class PluginProcess:
             try:
                 check_url(f.url, self.manifest.network)
             except PolicyViolation as exc:
-                raise PluginCallError(
+                raise self._fail(
                     f"plugin {self.manifest.slug} FetchPlan rejected "
                     f"(file {index}, {f.filename!r}): {exc}"
                 ) from exc
@@ -473,12 +541,12 @@ class PluginProcess:
         """
         raw = self._call("list_cores", {})
         if not isinstance(raw, list):
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
                 "expected a list of cores"
             )
         if len(raw) > MAX_CORES_PER_PLUGIN:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} offered {len(raw)} cores, over the "
                 f"{MAX_CORES_PER_PLUGIN} limit"
             )
@@ -487,7 +555,7 @@ class PluginProcess:
             try:
                 cores.append(CoreArtifact(**item))
             except (ValidationError, TypeError) as exc:
-                raise PluginCallError(
+                raise self._fail(
                     f"plugin {self.manifest.slug} returned an invalid core: {exc}"
                 ) from exc
         return cores
@@ -510,12 +578,12 @@ class PluginProcess:
         """
         raw = self._call("list_firmware", {})
         if not isinstance(raw, list):
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
                 "expected a list of firmware"
             )
         if len(raw) > MAX_FIRMWARE_PER_PLUGIN:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} offered {len(raw)} firmware "
                 f"items, over the {MAX_FIRMWARE_PER_PLUGIN} limit"
             )
@@ -524,7 +592,11 @@ class PluginProcess:
             try:
                 items.append(FirmwareArtifact(**item))
             except (ValidationError, TypeError) as exc:
-                raise PluginCallError(
+                # The one that actually mattered: a ValidationError quotes
+                # the offending input, and the input is whatever the plugin
+                # returned -- so an echoed credential would have landed in
+                # the operator's terminal verbatim.
+                raise self._fail(
                     f"plugin {self.manifest.slug} returned an invalid firmware "
                     f"artifact: {exc}"
                 ) from exc
@@ -542,6 +614,50 @@ class PluginProcess:
             self._call("plan_firmware", {"firmware": firmware.model_dump()})
         )
 
+    def assets(self) -> list[AssetArtifact]:
+        """The support files this plugin offers. A catalogue, nothing more.
+
+        Nothing here is fetched: `asset_plan()` is what turns one of these
+        into URLs, and that goes through the same gate a ROM import does.
+        """
+        raw = self._call("list_assets", {})
+        if not isinstance(raw, list):
+            raise self._fail(
+                f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
+                "expected a list of assets"
+            )
+        if len(raw) > MAX_ASSETS_PER_PLUGIN:
+            raise self._fail(
+                f"plugin {self.manifest.slug} offered {len(raw)} assets, over "
+                f"the {MAX_ASSETS_PER_PLUGIN} limit"
+            )
+        items = []
+        for item in raw:
+            try:
+                items.append(AssetArtifact(**item))
+            except (ValidationError, TypeError) as exc:
+                # Scrubbed, and this one is not a formality: a pydantic
+                # ValidationError quotes the offending input back, so an
+                # asset whose fields were built from a configured secret
+                # would otherwise echo it into the operator's terminal.
+                raise self._fail(
+                    f"plugin {self.manifest.slug} returned an invalid asset: "
+                    f"{exc}"
+                ) from exc
+        return items
+
+    def asset_plan(self, asset: AssetArtifact) -> FetchPlan:
+        """Ask the plugin what to fetch for one asset. The host fetches it.
+
+        Same type and same gate as an import plan, a core plan and a
+        firmware plan, deliberately: a shader or a bezel is a file from the
+        internet landing on the operator's disk, and the fact that it is
+        small and not executable is not a reason to check it less.
+        """
+        return self._gated_plan(
+            self._call("plan_asset", {"asset": asset.model_dump()})
+        )
+
     def enrich(self, rom: RomRef) -> MetadataPatch:
         """Ask the plugin what to change about a rom. The host changes it.
 
@@ -554,14 +670,14 @@ class PluginProcess:
         """
         raw = self._call("enrich", {"rom": rom.model_dump()})
         if not isinstance(raw, dict):
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned an invalid MetadataPatch: "
                 f"expected an object, got {type(raw).__name__}"
             )
         try:
             patch = MetadataPatch(**raw)
         except (ValidationError, TypeError) as exc:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned an invalid MetadataPatch: "
                 f"{exc}"
             ) from exc
@@ -569,7 +685,7 @@ class PluginProcess:
             try:
                 check_url(patch.artwork_url, self.manifest.network)
             except PolicyViolation as exc:
-                raise PluginCallError(
+                raise self._fail(
                     f"plugin {self.manifest.slug} MetadataPatch rejected "
                     f"(artwork_url): {exc}"
                 ) from exc
@@ -586,14 +702,14 @@ class PluginProcess:
         """
         raw = self._call("resolve", {"result": result.model_dump()})
         if not isinstance(raw, dict):
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned an invalid StreamTarget: "
                 f"expected an object, got {type(raw).__name__}"
             )
         try:
             target = StreamTarget(**raw)
         except (ValidationError, TypeError) as exc:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned an invalid StreamTarget: "
                 f"{exc}"
             ) from exc
@@ -601,7 +717,7 @@ class PluginProcess:
             try:
                 check_url(target.target, self.manifest.network)
             except PolicyViolation as exc:
-                raise PluginCallError(
+                raise self._fail(
                     f"plugin {self.manifest.slug} StreamTarget rejected: {exc}"
                 ) from exc
         return target

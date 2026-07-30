@@ -195,6 +195,32 @@
       "comments": "The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes. `metadata` is what makes it worth installing: it cannot fetch the game, but it reads the developer's own title and cover off the game page, which is what a library is missing for a title it already has. `img.itch.zone` joins the allowlist for that alone — the host fetches the cover this plugin names, so an undeclared image host would fail every enrich as a policy violation. There is no lookup by name, deliberately: robots.txt disallows /search and the browse listings are a small popularity-ordered slice, so hunting one title through them would attach the wrong developer's cover more often than the right one. Pass --source-id."
     },
     {
+      "slug": "libretro-cheats",
+      "name": "libretro cheat files",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-libretro-cheats",
+      "install": "https://github.com/BlizzHacker/rom-hub-libretro-cheats",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "assets"
+      ],
+      "network": [
+        "api.github.com",
+        "raw.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "RetroArch cheat files from libretro-database's cht/ tree, for the systems you choose.",
+      "terms": "CC-BY-SA-4.0, verified by reading libretro-database's own LICENSE rather than a badge — the full Creative Commons Attribution-ShareAlike 4.0 text sits at the repository root and GitHub's detection agrees. ShareAlike is the live obligation: a redistributed derivative has to carry the same terms, which is the difference from the overlays plugin's plain CC-BY. One caveat is stated in the plugin's README rather than glossed: libretro-database's own README notes that much of the repository is imported from No-Intro, Redump, TOSEC and GameTDB without saying which upstream terms attach to which subtree. That caveat is about the DAT and metadata imports (dat/, metadat/, rdb/); this plugin touches only cht/, which is contributed directly and which the repository-level LICENSE covers with no carve-out naming it. Both hosts are public and unauthenticated and this plugin sends no credential.",
+      "comments": "The source that makes the size problem real: libretro-database is 795 MB and its cht/ tree alone runs to tens of thousands of files across 44 systems. Nothing is cloned — a catalogue is one Git Trees API call per selected system and an install is one file of a few hundred bytes. The trap this plugin was built around is that GitHub's contents API truncates a directory listing at 1,000 entries with no error and no flag, so a contents-API implementation would have offered 1,000 of the NES tree's 2,265 files and looked like it was working; the Trees API returns all of them, sets a `truncated` boolean when it cannot, and is smaller on the wire because it carries no per-entry URL block. A truncated listing is refused outright rather than shown as though it were complete. Because every system at once is far past the 512 assets a plugin may return, the first run makes the one cheap call that enumerates the systems and names them in the refusal — an empty catalogue would have been technically true and useless."
+    },
+    {
       "slug": "libretro-content",
       "name": "libretro content (buildbot)",
       "author": "BlizzHacker",
@@ -269,6 +295,32 @@
       "description": "Resolves a ROM to its No-Intro or Redump catalogue entry by hash and proposes that entry's name.",
       "terms": "About as clean as a metadata source gets. `libretro/libretro-database` is a public repository whose DAT files exist to be read by programs like this one — it is what RetroArch itself does to build playlists. A DAT is a list of names, sizes and checksums: there is no game content in it, so no copyright is being routed around. The catalogues underneath are No-Intro's and Redump's, published openly by those projects and republished by libretro. `raw.githubusercontent.com` serves no robots.txt at all (HTTP 404), so there is no crawl directive to observe; the plugin fetches at most one file per configured set per ROM regardless.",
       "comments": "Writes the DAT's `game (name …)` and **never** its `rom (name …)`. Those differ in the real data — the Game Boy game titled `14 Juillet (World) (Fr)` has a rom file named `14 Juillet (World) (Fr) (Aftermarket) (Unl).gb` — and the parser keeps them in separate attributes so they cannot be confused, which is the mistake libretro-thumbnails documented rather than made. Matching is by CRC-32/MD5/SHA-1 first and by an exact filename second; a hash that misses does **not** fall back to the filename, because you named a specific dump. Sets no `libretro_id`: RomM's own handler defines that field as the SHA-1 of a libretro *thumbnail* filename, so a DAT-derived value there would collide with a field RomM maintains for something else. One DAT is fetched per lookup and no caching is possible, so note the headroom: `redump/Sony - PlayStation 2.dat` is 4,060,828 bytes against the Hub's 4,194,304-byte response ceiling — about 3% — and a size refusal is reported as exactly that rather than as a miss. Arcade, DOS and the 8-bit micros are absent: those catalogues live under different directories with different keys."
+    },
+    {
+      "slug": "libretro-overlays",
+      "name": "libretro overlays (bezels and gamepads)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-libretro-overlays",
+      "install": "https://github.com/BlizzHacker/rom-hub-libretro-overlays",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-overlays/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "assets"
+      ],
+      "network": [
+        "api.github.com",
+        "raw.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "RetroArch bezels and on-screen gamepad overlays from libretro's common-overlays, CC-BY-4.0.",
+      "terms": "CC-BY-4.0, verified by reading common-overlays' own COPYING — the full Creative Commons Attribution 4.0 text — rather than taking GitHub's badge for it, though GitHub's detection agrees (SPDX CC-BY-4.0). Attribution is the live obligation and it travels with the overlay, not with this plugin: the Hub does not add attribution to files it downloads, so anyone redistributing one carries that themselves. Both hosts are public and unauthenticated and this plugin sends no credential.",
+      "comments": "The plugin that had to say no to most of its own source, and the interesting entry in this set for that reason. A RetroArch overlay is a .cfg plus the images it references, and the .cfg names them relative to itself — overwhelmingly as a subdirectory (`img/dpad-left.png`). A FetchPlan cannot express that: every filename the host writes must be a bare name, which is the rule that keeps a plugin's downloads inside the directory chosen for them, and widening it to suit a file layout would trade a containment guarantee for a convenience. So the catalogue is filtered to the self-contained overlays only — 49 of the repository's 310 .cfg files, including the whole gamepads/lite/ pack — because listing an overlay that would fail to install is worse than not listing it. Making that filter cheap is the other half: reading 310 .cfg bodies would be 310 requests for a catalogue, so the tree itself is the predictor (an overlay is self-contained exactly when its own directory also holds images), and that heuristic was checked against the content of all 310 files with no false positives and no false negatives. plan() still fetches the chosen .cfg and re-reads its references, so the heuristic decides what to offer and the file decides what to install."
     },
     {
       "slug": "libretro-thumbnails",
@@ -398,9 +450,35 @@
       "search_only": false,
       "key_required": true,
       "in_tree": false,
-      "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, stored in clear text.",
+      "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, held as a `secret` so it stays out of the Hub's config and out of command output.",
       "terms": "An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.",
-      "comments": "READ THIS BEFORE INSTALLING: the API key is stored in the Hub's plugin config **in clear text**. RPP v1 reserves a `secret` config type and this host rejects it — `manifest.py` raises \"reserved in RPP v1 but not implemented in Phase 1\" for any field declaring it (re-verified 2026-07-29) — so `api_key` is a plain `str` and there is no encrypted store to put it in. Treat it as a credential written to disk in the open. Without a key the plugin returns nothing; that is the missing key, not a fault."
+      "comments": "Needs a RetroAchievements web API key. `api_key` is declared `type = \"secret\"`, so the Hub keeps it out of `state.json` and redacts it from every command's output; set it with `rom-hub plugin secret set retroachievements api_key`, which prompts rather than taking it as an argument. What the storage itself protects depends on your host and is printed by `rom-hub plugin secret list` — an OS keyring where there is one, otherwise an encrypted file whose key, by default, sits next to it, which is obfuscation rather than secrecy and is described that way. The key is per-account, read-only and resettable; rotate it if the machine changes hands. Without a key the plugin returns nothing; that is the missing key, not a fault."
+    },
+    {
+      "slug": "retroarch-autoconfig",
+      "name": "RetroArch controller profiles",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig",
+      "install": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig",
+      "download": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "assets"
+      ],
+      "network": [
+        "api.github.com",
+        "raw.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "RetroArch controller autoconfiguration profiles, so a gamepad your emulator does not recognise gets a mapping somebody already wrote.",
+      "terms": "MIT, and this one needed checking rather than reading off a badge: GitHub reports retroarch-joypad-autoconfig as NOASSERTION, which invites the assumption that its terms are unclear. They are not. Its COPYING contains two licences, which is what defeats GitHub's single-licence detection — the MIT License (copyright 2019 The RetroArch team) covering the .cfg profiles this plugin offers, and the zlib-style SDL licence (copyright 1997-2025 Sam Lantinga) covering the bundled SDL gamecontrollerdb.cfg, which this plugin does not offer. Both halves were read from the repository itself. Both hosts are public and unauthenticated and this plugin sends no credential.",
+      "comments": "The smallest source in this set and the one that solves a whole problem: a pad RetroArch does not recognise is a pad you remap by hand, and the fix is a 1.7 KB text file that already exists — 437 of them for the udev driver alone. The input driver is config and is never detected from the host OS, for the reason libretro-cores does not detect its build target: the Hub is routinely not running on the machine the pad is plugged into, and udev profiles handed to a Windows frontend are silently useless. An unknown driver is refused by name against the list that exists, before any request goes out. This plugin's repository is only 2.6 MB, so the Trees-API listing here is not strictly necessary — it is the same mechanism the overlays and cheats plugins need against 29 MB and 795 MB, kept identical so there is one way this plugin family reads a GitHub tree rather than three."
     },
     {
       "slug": "scummvm-freeware",

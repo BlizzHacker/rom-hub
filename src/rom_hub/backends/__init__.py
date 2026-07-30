@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from .base import (
     ALL_CAPABILITIES,
     ARTWORK,
+    BACKEND_INDEPENDENT_CAPABILITIES,
     CAPABILITY_HELP,
     COLLECTIONS,
     ESSENTIAL_CAPABILITIES,
@@ -118,6 +119,7 @@ def load(name: str, **kwargs) -> LibraryBackend:
 
 __all__ = [
     "ALL_CAPABILITIES",
+    "BACKEND_INDEPENDENT_CAPABILITIES",
     "ARTWORK",
     "CAPABILITY_HELP",
     "COLLECTIONS",

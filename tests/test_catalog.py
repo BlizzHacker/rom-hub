@@ -190,27 +190,42 @@ def test_search_only_and_key_required_are_surfaced_in_the_page():
     # be wrong where "cannot import" is exactly right.
     assert "cannot import" in md
     assert "search-only" not in md
-    # The clear-text storage is the part that must not be buried.
-    assert "clear text" in md.lower()
+    # The storage question is the part that must not be buried. It used to
+    # be "clear text"; now that `secret` is implemented the directory
+    # points at the command that prints the honest, per-host answer rather
+    # than repeating a claim it cannot check.
+    assert "clear text" not in md.lower()
+    assert "plugin secret list" in md
 
 
-def test_the_api_key_really_is_stored_in_clear_text():
-    """The directory says so; this checks the host has not quietly improved.
+def test_the_api_key_really_is_not_stored_in_clear_text_any_more():
+    """Was `test_the_api_key_really_is_stored_in_clear_text`, inverted.
 
-    RPP v1 reserves a `secret` config type and this host rejects it, so
-    `api_key` has to be a plain `str` on disk. If that ever changes, the
-    catalog's wording becomes a lie and this test is where it surfaces.
+    It existed to catch the host quietly improving while the directory
+    still warned about plain text. The host did improve -- `secret` is
+    implemented (`rom_hub.secrets`) -- so the same test now guards the
+    opposite drift: a catalog that goes back to promising plain text, or a
+    `secret` field that quietly becomes storable in `state.json`.
     """
-    from rom_hub.manifest import RESERVED_CONFIG_TYPES, ManifestError, parse_manifest
+    from rom_hub.manifest import (
+        RESERVED_CONFIG_TYPES,
+        SUPPORTED_CONFIG_TYPES,
+        parse_manifest,
+    )
+    from rom_hub.secrets import secret_fields
 
-    assert "secret" in RESERVED_CONFIG_TYPES
-    with pytest.raises(ManifestError, match="reserved in RPP v1"):
-        parse_manifest(
-            '[plugin]\nslug="x"\nname="X"\nversion="1"\nrpp_version="1"\n'
-            '[capabilities]\nmetadata="x.m:M"\n'
-            '[permissions]\nnetwork=[]\nromm_api=[]\n'
-            '[config]\napi_key={type="secret",default=""}\n'
-        )
+    assert "secret" in SUPPORTED_CONFIG_TYPES
+    assert "secret" not in RESERVED_CONFIG_TYPES
+    manifest = parse_manifest(
+        '[plugin]\nslug="x"\nname="X"\nversion="1"\nrpp_version="1"\n'
+        '[capabilities]\nmetadata="x.m:M"\n'
+        '[permissions]\nnetwork=[]\nromm_api=[]\n'
+        '[config]\napi_key={type="secret"}\n'
+    )
+    assert secret_fields(manifest) == ["api_key"]
+    # And the registry seeds `state.json` from schema defaults, so a type
+    # that may not carry one can never seed a credential into that file.
+    assert "default" not in manifest.config_schema["api_key"]
 
 
 def test_unsupported_catalog_version_rejected():
@@ -378,11 +393,16 @@ def test_every_capability_the_host_gates_on_is_classified_here():
 
     # And the ones that genuinely touch no backend at all are named, so
     # "absent from both tables" is a decision rather than an oversight.
-    assert KNOWN_CAPABILITIES - set(CAPABILITY_NEEDS) - set(CAPABILITY_EXTRAS) == {
-        "search",
-        "stream",
-        "cores",
-    }
+    # Asserted against the set the backends package declares rather than a
+    # list repeated here, so a capability cannot be backend-independent in
+    # one file and forgotten in the other.
+    from rom_hub.backends import BACKEND_INDEPENDENT_CAPABILITIES
+
+    assert KNOWN_CAPABILITIES - set(CAPABILITY_NEEDS) - set(
+        CAPABILITY_EXTRAS
+    ) == BACKEND_INDEPENDENT_CAPABILITIES
+    # Every name in it is a real plugin capability, not a backend one.
+    assert BACKEND_INDEPENDENT_CAPABILITIES <= KNOWN_CAPABILITIES
 
 
 def test_the_needs_and_extras_are_real_backend_capabilities():

@@ -1,0 +1,315 @@
+{
+  "sha": "37963b81fff0e70b8ccef6ecc33cbcaca587f832",
+  "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/37963b81fff0e70b8ccef6ecc33cbcaca587f832",
+  "tree": [
+    {
+      "path": "Amstrad - GX4000",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "217cc1b444db80a79bec1c601b96ad01e0a9b3a3",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/217cc1b444db80a79bec1c601b96ad01e0a9b3a3"
+    },
+    {
+      "path": "Atari - 2600",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1c5f149f6344d3e93e93b1bdf4492abfd0c60cf3",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/1c5f149f6344d3e93e93b1bdf4492abfd0c60cf3"
+    },
+    {
+      "path": "Atari - 5200",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0b1caa135a52a3dd7535281ab7b939d3dd799f58",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/0b1caa135a52a3dd7535281ab7b939d3dd799f58"
+    },
+    {
+      "path": "Atari - 7800",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a849ea893430ccc6435a76147f9aec39cc9a1865",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/a849ea893430ccc6435a76147f9aec39cc9a1865"
+    },
+    {
+      "path": "Atari - 8-bit Family",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6083759b26e4810b4be2f217567012a449465c05",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/6083759b26e4810b4be2f217567012a449465c05"
+    },
+    {
+      "path": "Atari - Jaguar",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2937c784eaf49fd9bddc93e54684a3fad4102f59",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/2937c784eaf49fd9bddc93e54684a3fad4102f59"
+    },
+    {
+      "path": "Atari - Lynx",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6f6222d14c45f37bb457b0f8749c6c8f01d33fd3",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/6f6222d14c45f37bb457b0f8749c6c8f01d33fd3"
+    },
+    {
+      "path": "ChaiLove",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "10ffaab1e30c453e56a5418c2e869b3204cd22d8",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/10ffaab1e30c453e56a5418c2e869b3204cd22d8"
+    },
+    {
+      "path": "Coleco - ColecoVision",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ef0309d962a5d52afa9b5e2bf4e5efae1ee51771",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/ef0309d962a5d52afa9b5e2bf4e5efae1ee51771"
+    },
+    {
+      "path": "DOS",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6c3f6ed93209a49e056a5dcaaf38c62cc0996528",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/6c3f6ed93209a49e056a5dcaaf38c62cc0996528"
+    },
+    {
+      "path": "FBNeo - Arcade Games",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e5140b6e11ad72b0245a881d027513406ab9c06c",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/e5140b6e11ad72b0245a881d027513406ab9c06c"
+    },
+    {
+      "path": "Mattel - Intellivision",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2069a1cdce90c1b05bd6feae34534460c95654c5",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/2069a1cdce90c1b05bd6feae34534460c95654c5"
+    },
+    {
+      "path": "Microsoft - MSX - MSX2 - MSX2P - MSX Turbo R (fMSX core)",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fadd62dbea1571bc9a144e9c743a642c166314c5",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/fadd62dbea1571bc9a144e9c743a642c166314c5"
+    },
+    {
+      "path": "Microsoft - MSX - MSX2 - MSX2P - MSX Turbo R",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7599e4ea9a2480245d6b83854b71a66ac537b140",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/7599e4ea9a2480245d6b83854b71a66ac537b140"
+    },
+    {
+      "path": "NEC - PC Engine - TurboGrafx 16",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b4128b164fff4217575ddccadcfc0b00eacdb32a",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/b4128b164fff4217575ddccadcfc0b00eacdb32a"
+    },
+    {
+      "path": "NEC - PC Engine CD - TurboGrafx-CD",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a3e6bb81cf223d448c81ae60b584c4e95b9bc398",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/a3e6bb81cf223d448c81ae60b584c4e95b9bc398"
+    },
+    {
+      "path": "NEC - PC Engine SuperGrafx",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "26a47aafff7700c0d2acc025b24932ce9a136f0e",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/26a47aafff7700c0d2acc025b24932ce9a136f0e"
+    },
+    {
+      "path": "Nintendo - Family Computer Disk System",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6fc5b18317d9d7da04c0ce037145279ea95dd9ae",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/6fc5b18317d9d7da04c0ce037145279ea95dd9ae"
+    },
+    {
+      "path": "Nintendo - Game Boy Advance",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f88856187a32884e2cfac0ee048bbcd3fa22cc52",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/f88856187a32884e2cfac0ee048bbcd3fa22cc52"
+    },
+    {
+      "path": "Nintendo - Game Boy Color",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "19fe0af2d9d478008e3729c5d139d6511700c5bf",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/19fe0af2d9d478008e3729c5d139d6511700c5bf"
+    },
+    {
+      "path": "Nintendo - Game Boy",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c5aaf5552111e5b53c583251c07224842fe2dec6",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/c5aaf5552111e5b53c583251c07224842fe2dec6"
+    },
+    {
+      "path": "Nintendo - Nintendo 64 (Aleck64)",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0c74b5b3993a94c6b2e4e37df58309d7fbabb755",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/0c74b5b3993a94c6b2e4e37df58309d7fbabb755"
+    },
+    {
+      "path": "Nintendo - Nintendo 64 (Unreleased)",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "31cd9c642f58dacc62efe4e03750ddb939601b68",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/31cd9c642f58dacc62efe4e03750ddb939601b68"
+    },
+    {
+      "path": "Nintendo - Nintendo 64 (iQue)",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1ab826f305734e7388bcd2be349e981290d6f3a6",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/1ab826f305734e7388bcd2be349e981290d6f3a6"
+    },
+    {
+      "path": "Nintendo - Nintendo 64",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e23e632db6b4c481e9b62bc84562e23ad97e475a",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/e23e632db6b4c481e9b62bc84562e23ad97e475a"
+    },
+    {
+      "path": "Nintendo - Nintendo DS",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8f65f041ddbdafa9f79baa1a8935c91865e00965",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/8f65f041ddbdafa9f79baa1a8935c91865e00965"
+    },
+    {
+      "path": "Nintendo - Nintendo Entertainment System",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "62802e76857d52bd3abea84cb318f812d99e83a7",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/62802e76857d52bd3abea84cb318f812d99e83a7"
+    },
+    {
+      "path": "Nintendo - Satellaview",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d0ebe5266a63552280ae5e0835c469f0ecb83458",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/d0ebe5266a63552280ae5e0835c469f0ecb83458"
+    },
+    {
+      "path": "Nintendo - Super Nintendo Entertainment System",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "93a6cfc964cedd1d77a51814f82ee8b90cb35d95",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/93a6cfc964cedd1d77a51814f82ee8b90cb35d95"
+    },
+    {
+      "path": "PrBoom",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d3ab20b0c36da94d08180c211fe7dfbd837e9bad",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/d3ab20b0c36da94d08180c211fe7dfbd837e9bad"
+    },
+    {
+      "path": "PuzzleScript",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "987fa719f5e5da3dc58b4d9e18117c09fb375136",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/987fa719f5e5da3dc58b4d9e18117c09fb375136"
+    },
+    {
+      "path": "Sega - 32X",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f3d898bed90e1ac729210610ae9ea8f5cdcef967",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/f3d898bed90e1ac729210610ae9ea8f5cdcef967"
+    },
+    {
+      "path": "Sega - Dreamcast",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6ed9a05979bfc8ec70c5ff72088ce4c712f90ca5",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/6ed9a05979bfc8ec70c5ff72088ce4c712f90ca5"
+    },
+    {
+      "path": "Sega - Game Gear",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "08cfbc225e4a12f921e81a596bcbc1c69fc501c1",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/08cfbc225e4a12f921e81a596bcbc1c69fc501c1"
+    },
+    {
+      "path": "Sega - Master System - Mark III",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d0bb229ec3a5e6b20a415eb66e45e6f22972d708",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/d0bb229ec3a5e6b20a415eb66e45e6f22972d708"
+    },
+    {
+      "path": "Sega - Mega Drive - Genesis",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "468af2621773cc7d2491fa80811de177f2f49ef9",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/468af2621773cc7d2491fa80811de177f2f49ef9"
+    },
+    {
+      "path": "Sega - Mega-CD - Sega CD",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b1cfa1ebc3a204b32ee9c5f4e164aca55298514c",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/b1cfa1ebc3a204b32ee9c5f4e164aca55298514c"
+    },
+    {
+      "path": "Sega - Saturn",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "180985487dd7b037fbf3e03fffcf24692bb9cd9b",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/180985487dd7b037fbf3e03fffcf24692bb9cd9b"
+    },
+    {
+      "path": "Sinclair - ZX Spectrum +3",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fb2f16b8975244843e82c9b3be0b5f5ee74d3a05",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/fb2f16b8975244843e82c9b3be0b5f5ee74d3a05"
+    },
+    {
+      "path": "Sony - PlayStation Portable",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ed35e4f19aa749f3dc4f21f10aa5164c27698872",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/ed35e4f19aa749f3dc4f21f10aa5164c27698872"
+    },
+    {
+      "path": "Sony - PlayStation",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "beb302f43bf335317822fc404c02261f865a5d0a",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/beb302f43bf335317822fc404c02261f865a5d0a"
+    },
+    {
+      "path": "TIC-80",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "12ec76d2bec477184a01458b73bf53bde97fe5a0",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/12ec76d2bec477184a01458b73bf53bde97fe5a0"
+    },
+    {
+      "path": "Thomson - MOTO",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "997d635090aee14c5161fcef9481d71163bdad76",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/997d635090aee14c5161fcef9481d71163bdad76"
+    },
+    {
+      "path": "Wolfenstein 3D",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e66dc854d30693d45f92db88aa9e1b163cdd83aa",
+      "url": "https://api.github.com/repos/libretro/libretro-database/git/trees/e66dc854d30693d45f92db88aa9e1b163cdd83aa"
+    }
+  ],
+  "truncated": false
+}

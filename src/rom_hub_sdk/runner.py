@@ -12,7 +12,13 @@ from typing import Any
 
 from rom_hub.protocol import read_message, write_message
 from rom_hub.sandbox import SandboxUnavailable, install as install_sandbox
-from rom_hub.types import CoreArtifact, FirmwareArtifact, RomRef, SearchResult
+from rom_hub.types import (
+    AssetArtifact,
+    CoreArtifact,
+    FirmwareArtifact,
+    RomRef,
+    SearchResult,
+)
 
 from .context import HttpClient, PluginContext
 
@@ -144,6 +150,23 @@ def run_plugin(stdin, stdout) -> None:
                 # Re-validated and re-gated host-side by the same code that
                 # gates an import plan and a core plan.
                 result = firmware_plan.model_dump()
+            elif method == "list_assets":
+                if ctx is None:
+                    raise RuntimeError("init must be called before list_assets")
+                if "assets" not in instances:
+                    instances["assets"] = _load(entrypoints["assets"], ctx)
+                result = [a.model_dump() for a in instances["assets"].list()]
+            elif method == "plan_asset":
+                if ctx is None:
+                    raise RuntimeError("init must be called before plan_asset")
+                if "assets" not in instances:
+                    instances["assets"] = _load(entrypoints["assets"], ctx)
+                asset_plan = instances["assets"].plan(
+                    AssetArtifact(**params["asset"])
+                )
+                # Re-validated and re-gated host-side by the same code that
+                # gates an import plan, a core plan and a firmware plan.
+                result = asset_plan.model_dump()
             elif method == "resolve":
                 if ctx is None:
                     raise RuntimeError("init must be called before resolve")

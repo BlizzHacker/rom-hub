@@ -631,3 +631,126 @@ class FirmwareArtifact(BaseModel):
                 f"host never has to decide what a zip was for"
             )
         return self
+
+
+# -- assets --------------------------------------------------------------
+
+#: An asset id is chosen by the plugin and typed by an operator
+#: (`rom-hub assets install <plugin> <asset_id>`). Compared, printed and
+#: logged; never a path component -- the files an asset installs are named
+#: by its FetchPlan, which validates them as filenames already.
+#:
+#: An asset id is a **path of bare filenames** within a source tree
+#: (`udev/8BitDo_ Wired_Xbox.cfg`, `cht/Nintendo - Game Boy/Tetris.cht`),
+#: so what it may contain is defined as exactly that: whatever a filename
+#: may contain, plus the separator that joins them.
+#:
+#: Derived from `_ALLOWED_PUNCTUATION` rather than spelled out again,
+#: because the two cannot be allowed to drift. A hand-written list here
+#: had already drifted once: it omitted `[` and `]`, which meant every
+#: GoodTools-named cheat file in libretro-database -- `Super Mario Land 4
+#: (J) [!].cht` -- was refused off the wire, and the catalogue would have
+#: been silently short of exactly the files people look for.
+#:
+#: Alphanumerics are tested with `str.isalnum` for the same reason
+#: `bare_filename` does: it is unicode-aware, and these repositories carry
+#: Japanese and accented titles that an ASCII allowlist would drop.
+#:
+#: The separator is safe to admit here precisely because an asset id is
+#: never joined onto a path: `install_asset` builds destinations only from
+#: `FetchPlan` filenames, each of which goes through `bare_filename` and
+#: then `dest_in_job_dir`. A separator in this field reaches no filesystem
+#: call. `..` is refused below all the same -- a value that cannot be a
+#: traversal should not be able to look like one in a log.
+_ASSET_ID_PUNCTUATION = _ALLOWED_PUNCTUATION | {"/"}
+_MAX_ASSET_ID_CHARS = 200
+
+#: A support-file catalogue, not a package index. Bounded like a core
+#: catalogue and for the same reason -- the host walks whatever it is
+#: given -- but larger, because these sources are naturally bigger: one
+#: platform's cheat directory in libretro-database holds 2,265 files. A
+#: plugin whose catalogue exceeds this is expected to say so and name the
+#: config key that narrows it, rather than truncating silently.
+MAX_ASSETS_PER_PLUGIN = 512
+
+#: What kinds of support file RPP v1 knows, and therefore what the host is
+#: able to choose an install directory for.
+#:
+#: This is the *host's* vocabulary, not a list of the plugins that happen
+#: to exist. `shader` is here with no plugin behind it in this release:
+#: the two libretro shader repositories were dropped on licensing (see
+#: `docs/DESIGN.md`), but a shader is still a thing RetroArch has a
+#: directory for, and a differently-licensed shader source should be able
+#: to ship as a plugin without the host learning a new word first.
+#:
+#: Closed rather than free-text because each kind is a directory the host
+#: picks. A plugin inventing `kind = "config"` would be asking the host to
+#: invent a destination for it, and "somewhere sensible" is not a
+#: destination anybody can audit.
+KNOWN_ASSET_KINDS = ("shader", "overlay", "cheat", "controller")
+
+
+class AssetArtifact(BaseModel):
+    """One installable emulator support file, as a plugin describes it.
+
+    A description only, exactly like `CoreArtifact` and `FirmwareArtifact`:
+    `AssetProvider.plan(asset)` turns the operator's choice into a
+    `FetchPlan`, and that is what the host acts on -- so the same allowlist
+    and the same filename rules apply to a shader, a bezel, a cheat file or
+    a controller profile as to a ROM download, by *reusing* the same type
+    rather than resembling it.
+
+    Two required fields carry the weight here.
+
+    **`kind`.** This is what the host maps to an install directory, and it
+    is the reason these four things are one capability instead of four.
+    Shaders, overlays, cheats and controller profiles differ in exactly one
+    respect that the Hub cares about -- which directory an emulator reads
+    them from -- and that is a lookup, not four code paths. A closed
+    vocabulary because the host must be able to choose a destination for
+    every value; see `KNOWN_ASSET_KINDS`.
+
+    **`license`.** Required, for the reason `FirmwareArtifact.license` is
+    required. Every source behind this capability is a community
+    repository of contributed files, which is precisely the situation
+    where "may I have this, and on what terms?" has a real answer that
+    varies -- and two of the five sources originally surveyed for this
+    capability were dropped because that answer could not be established.
+    A required field cannot make a plugin honest; it can make silence
+    impossible, and it puts the answer in a column the CLI prints.
+
+    `system` is optional and free text: the console or platform this asset
+    is for, when the plugin knows it. Unlike `FirmwareArtifact.platform` it
+    is never resolved against a library, because nothing here is ever filed
+    in one -- see `rom_hub.emuassets`.
+    """
+
+    asset_id: str = Field(min_length=1, max_length=_MAX_ASSET_ID_CHARS)
+    name: str = Field(min_length=1, max_length=200)
+    kind: Literal["shader", "overlay", "cheat", "controller"]
+    license: str = Field(min_length=1, max_length=_MAX_LICENSE_CHARS)
+    system: str | None = Field(default=None, max_length=100)
+    version: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=1000)
+    size_bytes: int | None = Field(default=None, ge=0)
+
+    @field_validator("asset_id")
+    @classmethod
+    def _identifier_only(cls, v: str) -> str:
+        bad = sorted(
+            {c for c in v if not (c.isalnum() or c in _ASSET_ID_PUNCTUATION)}
+        )
+        if bad:
+            raise ValueError(
+                f"asset_id contains characters that are not permitted in an "
+                f"asset identifier: {bad!r}"
+            )
+        # Not reachable as a filesystem write -- see `_ASSET_ID_CHARS` --
+        # but an id that cannot traverse should not read like one either,
+        # and this is the field an operator copies off a listing and types
+        # back into a command.
+        if ".." in v:
+            raise ValueError("asset_id must not contain '..'")
+        if v.startswith("/") or v.endswith("/"):
+            raise ValueError("asset_id must not start or end with '/'")
+        return v

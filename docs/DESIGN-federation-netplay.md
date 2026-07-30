@@ -22,7 +22,7 @@ are already folded into [DESIGN.md](DESIGN.md).
 
 | Change | Driven by | Status |
 |---|---|---|
-| `secret` config type | C — per-peer credentials | specified in v1 |
+| `secret` config type | C — per-peer credentials | specified in v1, **implemented** (`rom_hub/secrets.py`) |
 | Reserve capability name `peer` | C | reserved, unimplemented |
 | Reserve capability name `netplay` | D | reserved, unimplemented |
 
@@ -105,7 +105,12 @@ plugin cannot phone anywhere else.
 validation the RPP contract received: its first genuinely unforeseen use case
 fit without modification.
 
-What it *does* require is credential storage — hence the `secret` config type.
+What it *does* require is credential storage — hence the `secret` config type,
+which is no longer a prerequisite: it is implemented, and a per-peer token is
+a `secret`-typed config field on the peer plugin like any other credential.
+See *`secret` config type* in [DESIGN.md](DESIGN.md) for what the store does
+and does not protect — on a headless box the default is obfuscation rather
+than secrecy, which is a thing to know before pairing with a friend.
 
 ### The inbound half is a Hub feature, not a plugin
 
@@ -144,8 +149,9 @@ None of this is the difficult part. The difficult part is unchanged:
 4. Inbound peer endpoint, one paired friend, one explicitly shared collection.
 5. Per-peer scoping and revocation UI.
 
-Steps 2–3 need **no Hub changes beyond `secret` config**. Real value lands
-early, and the risky inbound work is isolated behind steps 4–5.
+Steps 2–3 need **no Hub changes at all** — this used to read "no Hub changes
+beyond `secret` config", and that one remaining change has since landed. Real
+value lands early, and the risky inbound work is isolated behind steps 4–5.
 
 ---
 

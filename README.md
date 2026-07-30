@@ -80,7 +80,7 @@ RomM's name, not the Hub's, and they configure one backend among several.
 
 ## Status
 
-**RPP v1 is fully implemented.** All six capabilities have a host
+**RPP v1 is fully implemented.** All seven capabilities have a host
 implementation and a CLI command:
 
 | Capability | Command | What it does |
@@ -91,6 +91,7 @@ implementation and a CLI command:
 | `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 | `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
+| `assets` | `rom-hub assets list\|install <plugin> [<asset>]` | lists a plugin's shaders, overlays, cheats and controller profiles **with each one's licence**, installs one to disk. No library involved |
 
 Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
 survives a restart. No web UI yet.
@@ -404,6 +405,63 @@ step is skipped, and the line you get back says so. That is the whole point of
 the capability declaration — see `docs/PROOF.md`, where the `firmware store`
 row reads PASS / UNSUPPORTED / UNSUPPORTED against three live servers.
 
+### Emulator support files: shaders, overlays, cheats, controller profiles
+
+`cores` gets you an emulator and `firmware` gets you a BIOS. Neither is why a
+game has black bars either side of it, why the pad you plugged in does
+nothing, or why you are typing Game Genie codes by hand. That is the `assets`
+capability.
+
+    rom-hub assets list retroarch-autoconfig --kind controller
+    rom-hub assets install retroarch-autoconfig "udev/8BitDo_ Wired_Xbox.cfg"
+
+`list` prints **each item's licence** in a column, for the reason `firmware
+list` does: these sources are community repositories of contributed files and
+the terms genuinely vary between them.
+
+Three plugins ship:
+
+| Plugin | Kind | Source | Licence |
+|---|---|---|---|
+| `retroarch-autoconfig` | `controller` | `libretro/retroarch-joypad-autoconfig` | MIT |
+| `libretro-overlays` | `overlay` | `libretro/common-overlays` | CC-BY-4.0 |
+| `libretro-cheats` | `cheat` | `libretro-database`, `cht/` | CC-BY-SA-4.0 |
+
+**Shaders are deliberately absent.** They are the most-wanted item on that
+list and neither `libretro/slang-shaders` nor `libretro/glsl-shaders` has a
+licence file at all — GitHub's licence endpoint returns 404 for both, and
+per-file headers range from public domain through GPL-2.0-or-later to nothing
+whatsoever. A file with no licence statement is not permissive by default, so
+there is no honest value to print in that column and the plugins were not
+built. `docs/DESIGN.md` records the evidence.
+
+**No library server is involved.** Unlike `firmware`, nothing here is ever
+filed in RomM, Gaseous or Retrom — an asset is a file in a directory an
+emulator reads, and that is the whole operation. `rom-hub assets install`
+works identically against any backend, and against no configured backend at
+all.
+
+Files land under `$ROM_HUB_HOME/var/assets/`, in a leaf directory chosen by
+the item's kind — `shaders`, `overlays`, `cheats`, `autoconfig`. Those are
+RetroArch's own names, so:
+
+    ROM_HUB_ASSETS_DIR=~/.config/retroarch rom-hub assets install ...
+
+puts every file exactly where RetroArch already looks. `ROM_HUB_SHADERS_DIR`,
+`ROM_HUB_OVERLAYS_DIR`, `ROM_HUB_CHEATS_DIR` and `ROM_HUB_CONTROLLERS_DIR`
+each override one kind outright, for a layout where they do not share a
+parent.
+
+The same gate as a ROM import, again: same allowlist check, same filename
+validation, same containment check.
+
+**Nothing clones a repository.** These sources are large — `libretro-database`
+is 795 MB — so a catalogue is one GitHub Git Trees API call per directory and
+an install is one `raw.githubusercontent.com` GET for the single file you
+chose. Some catalogues need narrowing before they fit: `libretro-cheats` holds
+tens of thousands of files across 44 systems, so its first run lists the
+systems and asks you to pick with its `systems` config key.
+
 ### RomM connection settings
 
 `import` and `enrich` need a RomM account permitted to upload. It is read from
@@ -418,8 +476,9 @@ the environment, never from a file in the repo:
 All three are required; both commands name whichever are missing and stop
 before opening any connection. `ROM_HUB_HOME` (default `~/.rom-hub`) decides
 where plugins, the job database, downloads, artwork, cores, firmware and
-plugin data assets live; `ROM_HUB_CORES_DIR` moves just the cores and
-`ROM_HUB_FIRMWARE_DIR` just the firmware.
+plugin data assets live; `ROM_HUB_CORES_DIR` moves just the cores,
+`ROM_HUB_FIRMWARE_DIR` just the firmware, and `ROM_HUB_ASSETS_DIR` the
+shaders, overlays, cheats and controller profiles.
 
 ### Plugin data assets
 
@@ -449,6 +508,44 @@ mechanism is declaration-based and why the integrity check is not optional.
 fetch, the metadata write and the collection call are all host-side; a
 plugin's whole involvement is returning a description. See the security model
 below.
+
+### Plugin credentials — the `secret` config type
+
+Some sources need an API key. A plugin declares that field as
+`type = "secret"`, and the Hub then keeps it **out of `state.json`** — the
+plain-config file that gets opened, dumped, screenshotted and committed —
+redacts it from `plugin list`, `plugin config`, `plugin secret list`, `browse`,
+`backend info`, `jobs` and `--help`, and scrubs it out of any error message it
+builds, including the plugin's own stderr.
+
+    rom-hub plugin secret set retroachievements api_key   # prompts; nothing echoed
+    pass show ra | rom-hub plugin secret set retroachievements api_key --stdin
+    rom-hub plugin secret set retroachievements api_key --env RA_KEY
+    rom-hub plugin secret list                            # what is set, and where
+    rom-hub plugin config retroachievements               # safe to screenshot
+
+**Read `plugin secret list` before trusting it.** What the storage protects
+depends on the host and the command prints the honest answer:
+
+| Store | What it protects |
+|---|---|
+| OS keyring | Whatever your OS gives — a locked login keychain is a real boundary; a keyring unlocked at login is not |
+| file + `ROM_HUB_SECRET_KEY` | Real encryption at rest: the key is supplied from outside the box and never written to disk |
+| file, generated key (**the default**) | **Obfuscation, not secrecy** — the key sits beside the ciphertext. It keeps the value out of `state.json` and out of every command's output; it does not survive somebody reading the directory |
+
+A headless Docker deployment gets the third row unless `ROM_HUB_SECRET_KEY` is
+set, which is why the fallback exists at all: a keyring-only design would not
+work on this Hub's primary platform.
+
+**What is not claimed.** The plugin *receives* the value — it needs it to make
+its request, and it already runs arbitrary code. The threat this addresses is
+accidental disclosure, not a malicious plugin. The value is handed over in the
+`init` frame down the stdin pipe and **never through the environment**, which
+is the one channel the allowlist above exists to keep closed.
+
+An `api_key` set before this type existed is migrated out of `state.json` on
+the next command that runs the plugin, with one notice on stderr; rotate it
+anyway if that file was ever committed or backed up.
 
 ## Tests
 
