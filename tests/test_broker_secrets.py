@@ -169,17 +169,55 @@ def test_with_no_secrets_the_scrubber_changes_nothing(plugin_dir):
     assert "***" not in str(exc.value)
 
 
+FIX_INSTRUCTIONS = """
+Redaction has one choke point in broker/host.py: `PluginProcess._fail()`.
+Every failure this class raises must be built there, or a secret appearing
+in that message reaches the operator's terminal, the job queue's `error`
+column, and whatever they paste into a bug report.
+
+    WRONG   raise PluginCallError(f"... {exc}")
+    RIGHT   raise self._fail(f"... {exc}")
+
+    WRONG   raise SandboxRefused("...")
+    RIGHT   raise self._fail("...", SandboxRefused)
+
+This bites hardest on a new capability's `list_*`/validation path, because
+a pydantic ValidationError quotes the input the plugin returned -- so an
+echoed credential lands in the message verbatim. `firmware()` was added on
+another branch and hit exactly this; see git log.
+"""
+
+
 def test_every_failure_this_class_reports_goes_through_the_scrubber():
-    """Structural, not behavioural.
+    """Structural, not behavioural, and deliberately whole-module.
 
     The redaction is only as good as its coverage, and coverage decays the
-    moment somebody adds a `raise PluginCallError(...)` by hand. So the
-    source is checked: `_fail` is the only constructor.
+    moment somebody adds a hand-rolled raise -- which is not hypothetical:
+    the `firmware` capability landed on master with three of them and this
+    test is what caught it when the branches met.
+
+    It reads the whole file rather than `inspect.getsource(PluginProcess)`
+    so a module-level helper cannot become a second unscrubbed door, and it
+    covers `SandboxRefused` as well as `PluginCallError` because both carry
+    peer-supplied text.
     """
-    import inspect
+    from pathlib import Path
 
     from rom_hub.broker import host
 
-    source = inspect.getsource(host.PluginProcess)
-    assert "raise PluginCallError(" not in source
-    assert source.count("raise self._fail(") > 10
+    source = Path(host.__file__).read_text(encoding="utf-8")
+    offenders = [
+        line.strip()
+        for line in source.splitlines()
+        if "raise PluginCallError(" in line or "raise SandboxRefused(" in line
+    ]
+    assert not offenders, (
+        f"{len(offenders)} failure(s) in broker/host.py bypass the secret "
+        f"scrubber: {offenders}\n{FIX_INSTRUCTIONS}"
+    )
+    # And the choke point is genuinely load-bearing rather than vestigial:
+    # if this count collapses, the raises went somewhere else.
+    assert source.count("raise self._fail(") > 10, (
+        "broker/host.py no longer routes its failures through _fail(); "
+        "redaction has been bypassed wholesale.\n" + FIX_INSTRUCTIONS
+    )

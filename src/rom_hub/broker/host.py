@@ -235,14 +235,25 @@ class PluginProcess:
         """
         return scrub(text, self._redactions)
 
-    def _fail(self, message: str) -> PluginCallError:
-        """The only way this class builds a PluginCallError.
+    def _fail(
+        self, message: str, kind: type[PluginCallError] = PluginCallError
+    ) -> PluginCallError:
+        """The only way this class builds a failure. Use it for every raise.
 
         Every raise site goes through here so that adding a new one cannot
         quietly bypass redaction -- the same "one choke point" reasoning
         `paths.dest_in_job_dir` and `netpolicy.check_url` are built on.
+
+        `kind` exists so `SandboxRefused` is not a second, unscrubbed door:
+        its message is built from `sandbox_reason`, which arrives in the
+        subprocess's own `init` reply and is therefore peer-supplied like
+        everything else here.
+
+        `test_every_failure_this_class_reports_goes_through_the_scrubber`
+        reads this module's source and fails if a bare constructor appears,
+        which is how a new capability finds out about this rule.
         """
-        return PluginCallError(self._scrub(message))
+        return kind(self._scrub(message))
 
     def start(self) -> None:
         self._proc = subprocess.Popen(
@@ -281,11 +292,12 @@ class PluginProcess:
         self.sandbox_reason = reply.get("sandbox_reason", "no reason reported")
         if not self.sandboxed and not self.allow_unsandboxed:
             self.close()
-            raise SandboxRefused(
+            raise self._fail(
                 f"refusing to run plugin {self.manifest.slug} unsandboxed: "
                 f"{self.sandbox_reason}. Its declared network allowlist cannot "
                 f"be enforced against a hostile plugin here. Set "
-                f"ROM_HUB_ALLOW_UNSANDBOXED=1 to override for development."
+                f"ROM_HUB_ALLOW_UNSANDBOXED=1 to override for development.",
+                SandboxRefused,
             )
 
     def _drain_stderr(self, stream) -> None:
@@ -559,12 +571,12 @@ class PluginProcess:
         """
         raw = self._call("list_firmware", {})
         if not isinstance(raw, list):
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
                 "expected a list of firmware"
             )
         if len(raw) > MAX_FIRMWARE_PER_PLUGIN:
-            raise PluginCallError(
+            raise self._fail(
                 f"plugin {self.manifest.slug} offered {len(raw)} firmware "
                 f"items, over the {MAX_FIRMWARE_PER_PLUGIN} limit"
             )
@@ -573,7 +585,11 @@ class PluginProcess:
             try:
                 items.append(FirmwareArtifact(**item))
             except (ValidationError, TypeError) as exc:
-                raise PluginCallError(
+                # The one that actually mattered: a ValidationError quotes
+                # the offending input, and the input is whatever the plugin
+                # returned -- so an echoed credential would have landed in
+                # the operator's terminal verbatim.
+                raise self._fail(
                     f"plugin {self.manifest.slug} returned an invalid firmware "
                     f"artifact: {exc}"
                 ) from exc

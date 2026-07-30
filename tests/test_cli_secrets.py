@@ -385,6 +385,39 @@ def test_secret_list_flags_un_migrated_plaintext(installed, capsys):
     assert "STILL IN PLAIN CONFIG" in out
 
 
+# -- every capability command, not just the ones that existed -------------
+
+
+def test_every_plugin_subprocess_is_started_with_its_secrets():
+    """The other half of the scrubber guard, and it caught a real gap.
+
+    A capability added on another branch (`firmware`) built its own
+    `PluginProcess(...)` without `secrets=`, so a firmware plugin needing
+    an API key would have been handed an empty one and refused for no
+    visible reason -- the failure mode is silent, which is why this is
+    checked structurally rather than left to whoever adds capability
+    number seven to remember.
+    """
+    import re
+    from pathlib import Path
+
+    from rom_hub import cli, dispatcher
+
+    missing = []
+    for module in (cli, dispatcher):
+        source = Path(module.__file__).read_text(encoding="utf-8")
+        for match in re.finditer(r"PluginProcess\(.*?\n\s*\)", source, re.S):
+            if "secrets=" not in match.group(0):
+                line = source[: match.start()].count("\n") + 1
+                missing.append(f"{Path(module.__file__).name}:{line}")
+    assert not missing, (
+        f"these PluginProcess call sites start a plugin without its secrets, "
+        f"so a `secret`-typed config field silently arrives empty there: "
+        f"{missing}. Pass `secrets=prepare_secrets(plugin)` (or thread a "
+        f"`secrets_for` callable through, as `search_all` does)."
+    )
+
+
 # -- install-time notice -------------------------------------------------
 
 
