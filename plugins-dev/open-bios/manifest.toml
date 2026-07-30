@@ -1,0 +1,44 @@
+[plugin]
+slug        = "open-bios"
+name        = "Open BIOS"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+firmware = "open_bios.firmware:Firmware"
+
+# Three hosts, and each one is needed for a reason that was measured rather
+# than assumed (2026-07-29, `curl -D -`):
+#
+#   raw.githubusercontent.com
+#       Cult-of-GBA commits its built `bios.bin` to the repository, so it is
+#       fetched at a pinned commit sha. Answers 200 directly -- no redirect,
+#       nothing else to declare.
+#
+#   github.com
+#       where a release asset URL starts.
+#
+#   release-assets.githubusercontent.com
+#       where it *ends*. A GitHub release download 302s here, and the Hub
+#       follows no redirect it has not been given permission for -- each hop
+#       is re-checked against this list. Verified: the SameBoy asset URL
+#       answers `302` with a `Location:` on exactly this host.
+#
+# Nothing here is an API. This plugin issues no request at all to list its
+# catalogue, and the host makes exactly one GET per install.
+[permissions]
+network  = [
+    "raw.githubusercontent.com",
+    "github.com",
+    "release-assets.githubusercontent.com",
+]
+romm_api = []
+
+[config]
+# Which SameBoy release the boot ROMs come out of. Pinned rather than
+# discovered, deliberately: firmware is bytes an emulator executes, and the
+# operator should get the release this plugin's README says it verified, not
+# whatever was tagged this morning. Point it at a newer tag when you want
+# one -- it is validated as a tag, never interpolated raw.
+sameboy_release = { type = "str", default = "v1.0.3" }
