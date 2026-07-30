@@ -4,10 +4,10 @@ that had to prove the seam was a seam rather than RomM with a wrapper.
 Everything Gaseous-specific lives under this package, exactly as
 everything RomM-specific lives under `backends/romm/`.
 
-## Capabilities: two of five, and why the other three are absent
+## Capabilities: two of six, and why the other four are absent
 
 `CAPABILITIES` is `{IMPORT, SCAN}`. That is not caution; each of the
-three omissions was checked against gaseous-server's source *and* against
+four omissions was checked against gaseous-server's source *and* against
 a running v2.0.0-rc.3, and declaring any of them would turn a legible
 up-front refusal into a 404 halfway through an import.
 
@@ -39,6 +39,12 @@ GlobalManual and similar); and it caps uploads at 50 MB. It attaches
 supplementary media to a metadata record. Cover art in Gaseous comes from
 the metadata provider and is served, never accepted, by
 `GET /Games/{id}/{source}/cover`.
+
+**FIRMWARE.** Gaseous knows about BIOS and will happily *serve* it --
+`BiosController` has four routes and all four are reads. It has no route
+that accepts one. Its only ingestion path is an MD5 allowlist of retail
+dumps, which a clean-room replacement cannot match by construction. See
+`upload_firmware` for the full account.
 
 ## What `IMPORT` and `SCAN` actually mean here
 
@@ -321,6 +327,58 @@ class GaseousBackend:
             f"Gaseous exposes only GET and DELETE on a rom, and models a "
             f"rom's fields as derived from its signature match rather than "
             f"as editable. Requested fields: {sorted(fields)}."
+        )
+
+    # -- firmware ----------------------------------------------------------
+
+    def list_firmware(self, platform_id: int) -> list[dict]:
+        """Not supported, and *not* because Gaseous has no BIOS support.
+
+        Gaseous has plenty -- it just does not accept any. See
+        `upload_firmware`; both halves of the `FIRMWARE` capability are
+        one declaration, so neither is implemented.
+        """
+        raise CapabilityUnsupported(
+            f"the 'gaseous' backend does not implement the 'firmware' "
+            f"capability, so it cannot list firmware for platform "
+            f"{platform_id}. See upload_firmware for why."
+        )
+
+    def upload_firmware(self, paths: list[Path], platform_id: int) -> None:
+        """Not supported: Gaseous' BIOS API is read-only, by an allowlist.
+
+        Verified in source rather than inferred, because the shape of the
+        refusal matters here. `Controllers/V1.0/BiosController.cs` carries
+        four routes and every one of them is a read: `GetBios()`,
+        `GetBios(PlatformId)`, `GetBiosCompressedAsync` (a zip of a
+        platform's BIOS) and `BiosFile` (one file). There is no POST, no
+        PUT and no upload form -- the settings page that lists firmware
+        (`wwwroot/pages/cards/settings/firmware.html`) is a table with two
+        filter checkboxes and no file input.
+
+        BIOS gets into Gaseous exactly one way, and it is not an API. A
+        file arriving through the ordinary import path is hashed, and
+        `ProcessQueue/Tasks/ImportQueueProcessor.cs` asks
+        `Bios.BiosHashSignatureLookup(md5)` *before* treating it as a rom;
+        a match moves the file into the firmware directory
+        (`Classes/Bios.cs`, `ImportBiosFile`). That lookup walks
+        `Support/PlatformMap.json`, a fixed table of MD5s belonging to
+        specific retail BIOS dumps.
+
+        Which makes this backend the wrong destination for this plugin's
+        content twice over. There is no endpoint to call, and even the
+        side door is an allowlist of *dumped* firmware hashes: a
+        clean-room replacement BIOS matches nothing in it by construction,
+        so it would be imported as a rom under "Unknown Platform" rather
+        than stored as firmware. Better an up-front skip than that.
+        """
+        raise CapabilityUnsupported(
+            f"the 'gaseous' backend cannot store firmware for platform "
+            f"{platform_id}: Gaseous' BiosController exposes only reads "
+            f"(GetBios, GetBios(PlatformId), the zip route and BiosFile), "
+            f"and its only BIOS ingestion is an MD5 allowlist of retail "
+            f"dumps in PlatformMap.json, which no clean-room replacement "
+            f"can match. {len(paths)} file(s) were not sent."
         )
 
     # -- collections -------------------------------------------------------

@@ -521,3 +521,113 @@ class CoreArtifact(BaseModel):
                 f"identifier: {bad!r}"
             )
         return v
+
+
+# -- firmware ------------------------------------------------------------
+
+# A firmware id is chosen by the plugin and typed by an operator
+# (`rom-hub firmware install <plugin> <firmware_id>`). Compared, printed
+# and logged; never a path component -- the files a firmware item installs
+# are named by its FetchPlan, which validates them as filenames already.
+_FIRMWARE_ID_CHARS = _CORE_ID_CHARS
+_MAX_FIRMWARE_ID_CHARS = 64
+
+# A BIOS shelf, not a package index. Bounded like a FetchPlan's file list
+# and a core catalogue, and for the same reason: the host walks whatever
+# it is given.
+MAX_FIRMWARE_PER_PLUGIN = 256
+
+# How many files one firmware item may unpack out of an archive. A console
+# generation's boot ROMs, not a filesystem.
+MAX_FIRMWARE_MEMBERS = 16
+
+# Nobody's licence statement is a paragraph, and this string is printed in
+# a column an operator reads while deciding what to install.
+_MAX_LICENSE_CHARS = 200
+
+
+class FirmwareArtifact(BaseModel):
+    """One installable BIOS/firmware file set, as a plugin describes it.
+
+    A description only, exactly like `CoreArtifact`:
+    `FirmwareProvider.plan(firmware)` turns the operator's choice into a
+    `FetchPlan`, and that is what the host acts on -- so the same allowlist
+    and the same filename rules apply to a BIOS download as to a ROM
+    download, by *reusing* the same type rather than resembling it.
+
+    Two fields are required here that are optional on a `CoreArtifact`,
+    and both are required because firmware is not a core.
+
+    **`platform`.** Firmware is keyed by platform: a PlayStation BIOS is
+    meaningless filed under Game Boy, and the backend upload needs an
+    actual platform id. A core, by contrast, is a shared library that the
+    operator points an emulator at; its `system` is a label. So this one
+    is mandatory, and a plugin that cannot name the platform for an item
+    must not offer that item.
+
+    **`license`.** The entire value of a firmware source is knowing what
+    you are allowed to have. Emulation firmware is the one artifact class
+    where "where did this come from" is the first question and the answer
+    is usually "a dumped console" -- so RPP makes the plugin *state* it,
+    on every item, in a field the CLI prints. A required field cannot make
+    a plugin honest; it can make silence impossible, which is the part a
+    type system can do.
+
+    `archive`/`members` exist because the open firmware that is actually
+    published is published inside zips. SameBoy's boot ROMs, for one, ship
+    only inside its emulator release. A plugin declares the members it
+    wants and the *host* unpacks exactly those, by full-name equality,
+    into destinations it chose itself -- see `rom_hub.firmware`.
+    """
+
+    firmware_id: str = Field(min_length=1, max_length=_MAX_FIRMWARE_ID_CHARS)
+    name: str = Field(min_length=1, max_length=200)
+    platform: str = Field(min_length=1, max_length=64)
+    license: str = Field(min_length=1, max_length=_MAX_LICENSE_CHARS)
+    version: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=1000)
+    archive: Literal["zip"] | None = None
+    members: list[str] = Field(default_factory=list, max_length=MAX_FIRMWARE_MEMBERS)
+
+    @field_validator("firmware_id")
+    @classmethod
+    def _identifier_only(cls, v: str) -> str:
+        bad = sorted(set(v) - _FIRMWARE_ID_CHARS)
+        if bad:
+            raise ValueError(
+                f"firmware_id contains characters that are not permitted in "
+                f"an identifier: {bad!r}"
+            )
+        return v
+
+    @field_validator("members")
+    @classmethod
+    def _bare_names_only(cls, v: list[str]) -> list[str]:
+        # Each of these becomes a file the host opens for writing, so it
+        # gets the validator a FetchPlan filename gets -- the same one, not
+        # a second copy of the rule.
+        for name in v:
+            bare_filename(name)
+        folded = [name.casefold() for name in v]
+        duplicated = sorted({n for n in folded if folded.count(n) > 1})
+        if duplicated:
+            raise ValueError(
+                f"every member of a firmware archive needs a distinct name; "
+                f"these are repeated: {duplicated!r}"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def _members_belong_to_an_archive(self) -> "FirmwareArtifact":
+        if self.archive is None and self.members:
+            raise ValueError(
+                "members were declared without an archive; a member only "
+                "means something inside one"
+            )
+        if self.archive is not None and not self.members:
+            raise ValueError(
+                f"archive = {self.archive!r} was declared with no members; "
+                f"name the files inside it that should be installed, so the "
+                f"host never has to decide what a zip was for"
+            )
+        return self

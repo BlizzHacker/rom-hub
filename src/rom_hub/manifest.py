@@ -14,7 +14,9 @@ from urllib.parse import urlsplit
 from .netpolicy import url_allowed
 from .types import bare_filename
 
-KNOWN_CAPABILITIES = frozenset({"search", "importer", "metadata", "stream", "cores"})
+KNOWN_CAPABILITIES = frozenset(
+    {"search", "importer", "metadata", "stream", "cores", "firmware"}
+)
 RESERVED_CAPABILITIES = frozenset({"peer", "netplay"})
 SUPPORTED_CONFIG_TYPES = frozenset({"str", "int", "bool", "list[str]"})
 RESERVED_CONFIG_TYPES = frozenset({"secret"})

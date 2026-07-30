@@ -670,6 +670,177 @@ def test_cores_install_of_an_unknown_core_is_an_error_not_a_traceback(
     assert "dosbox" in err
 
 
+# --- firmware -------------------------------------------------------------
+
+FIRMWARE_PLUGIN = '''
+from rom_hub_sdk import FetchFile, FetchPlan, FirmwareArtifact, FirmwareProvider
+
+
+class Firmware(FirmwareProvider):
+    def list(self):
+        return [
+            FirmwareArtifact(
+                firmware_id="gba-open",
+                name="Open GBA BIOS",
+                platform="gba",
+                license="MIT",
+            )
+        ]
+
+    def plan(self, firmware):
+        return FetchPlan(
+            files=[
+                FetchFile(
+                    url="https://demo.example/" + firmware.firmware_id + ".bin",
+                    filename=firmware.firmware_id + ".bin",
+                )
+            ],
+            platform=firmware.platform,
+        )
+'''
+
+
+def _install_firmware_plugin(tmp_path, source_repo):
+    """Install the demo plugin and give it a `firmware` capability."""
+    main(["plugin", "install", str(source_repo)])
+    installed = tmp_path / "home" / "plugins" / "demo"
+    (installed / "demo_firmware.py").write_text(FIRMWARE_PLUGIN, encoding="utf-8")
+    (installed / "manifest.toml").write_text(
+        MANIFEST.replace(
+            '[capabilities]\nsearch = "demo:Search"',
+            '[capabilities]\nsearch = "demo:Search"\n'
+            'firmware = "demo_firmware:Firmware"',
+        ),
+        encoding="utf-8",
+    )
+    return installed
+
+
+def test_firmware_from_a_plugin_without_the_capability_says_so(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    main(["plugin", "install", str(source_repo)])
+    assert main(["firmware", "list", "demo"]) != 0
+    assert "firmware" in capsys.readouterr().err
+
+
+def test_firmware_list_prints_the_licence_as_a_column(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """The licence is the whole reason to install a firmware plugin, so it
+    is a column an operator reads while choosing, not a footnote."""
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    _install_firmware_plugin(tmp_path, source_repo)
+    capsys.readouterr()  # discard the install chatter
+
+    assert main(["firmware", "list", "demo"]) == 0
+    out = capsys.readouterr().out
+    lines = [line for line in out.splitlines() if line.strip()]
+    header = lines[0]
+    assert "LICENCE" in header
+    assert "MIT" in lines[1]
+    # And in the same column the header names it.
+    at = header.index("LICENCE")
+    assert lines[1][at:].startswith("MIT")
+    assert "1 item(s)" in out
+
+
+def test_firmware_install_writes_into_the_configured_directory(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """The install path end to end with `--no-library`, which is what an
+    operator with no library server -- or a Hub pointed at one that cannot
+    store firmware -- actually runs. Only the downloader is stubbed."""
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_FIRMWARE_DIR", str(tmp_path / "bios"))
+    _install_firmware_plugin(tmp_path, source_repo)
+
+    import rom_hub.firmware as firmware_module
+
+    real_install = firmware_module.install_firmware
+
+    class FakeDownloader:
+        def download(self, url, dest, expected_size=None):
+            from pathlib import Path
+
+            dest = Path(dest)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(b"bios")
+            return dest
+
+        def close(self):
+            pass
+
+    def install(plugin, item, *, firmware_dir, backend=None, downloader=None):
+        return real_install(
+            plugin,
+            item,
+            firmware_dir=firmware_dir,
+            backend=backend,
+            downloader=FakeDownloader(),
+        )
+
+    monkeypatch.setattr("rom_hub.cli.install_firmware", install)
+
+    assert main(["firmware", "install", "demo", "gba-open", "--no-library"]) == 0
+    assert (tmp_path / "bios" / "demo" / "gba-open.bin").read_bytes() == b"bios"
+    out = capsys.readouterr().out
+    assert "gba-open" in out
+    assert "licence: MIT" in out
+
+
+def test_firmware_install_of_an_unknown_item_is_an_error_not_a_traceback(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_FIRMWARE_DIR", str(tmp_path / "bios"))
+    _install_firmware_plugin(tmp_path, source_repo)
+
+    assert main(["firmware", "install", "demo", "nonesuch", "--no-library"]) != 0
+    err = capsys.readouterr().err
+    assert "nonesuch" in err
+    # The message has to say what IS on offer, or it is a riddle.
+    assert "gba-open" in err
+
+
+def test_an_unconfigured_backend_names_the_way_to_install_anyway(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """Not a silent local-only install. `FIRMWARE` being optional describes
+    a backend that *cannot* store firmware, which the Hub can see and
+    report; a backend nobody configured is a question, and guessing costs
+    an operator the upload they were expecting."""
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    monkeypatch.setenv("ROM_HUB_FIRMWARE_DIR", str(tmp_path / "bios"))
+    for name in ("ROMM_URL", "ROMM_USER", "ROMM_PASSWORD"):
+        monkeypatch.delenv(name, raising=False)
+        monkeypatch.delenv(f"ROM_HUB_BACKEND_{name.split('_', 1)[1]}", raising=False)
+    _install_firmware_plugin(tmp_path, source_repo)
+    capsys.readouterr()
+
+    assert main(["firmware", "install", "demo", "gba-open"]) != 0
+    err = capsys.readouterr().err
+    assert "--no-library" in err
+    # And nothing was downloaded, because the check happens before the
+    # subprocess starts.
+    assert not (tmp_path / "bios").exists()
+
+
+def test_backend_info_lists_firmware_under_can_or_cannot(monkeypatch, capsys):
+    """A capability absent from a list reads as an oversight; one printed
+    under "cannot" is an answer."""
+    monkeypatch.setenv("ROM_HUB_BACKEND", "retrom")
+    assert main(["backend", "info"]) == 0
+    out = capsys.readouterr().out
+    cannot = out.split("cannot:")[1]
+    assert "firmware" in cannot
+
+
 def test_a_failed_job_shows_its_error(tmp_path, monkeypatch, capsys):
     from rom_hub.cli import jobs_db_path
     from rom_hub.jobs import JobQueue, JobState

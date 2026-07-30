@@ -215,6 +215,33 @@
       "comments": "Formerly `myrient`. Myrient (myrient.erista.me) shut down on 31 March 2026 and now answers HTTP 200 with the same 2,334-byte notice for every path — including paths it never served — so status codes cannot detect it. The plugin therefore checks that a page actually parsed as an index, which is the only thing standing between a dead source and an HTML page filed as a ROM. Its Myrient index parser and Wayback-captured fixture are retained in case a mirror reproduces that layout. MiNERVA, the successor, `Disallow`s `/browse/` and `/rom/` and is deliberately not used."
     },
     {
+      "slug": "open-bios",
+      "name": "Open BIOS",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-open-bios",
+      "install": "https://github.com/BlizzHacker/rom-hub-open-bios",
+      "download": "https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-29",
+      "rpp_version": "1",
+      "capabilities": [
+        "firmware"
+      ],
+      "network": [
+        "raw.githubusercontent.com",
+        "github.com",
+        "release-assets.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Clean-room, openly licensed BIOS replacements — Game Boy, Game Boy Color and Game Boy Advance — with each item's licence printed before you install it.",
+      "terms": "The only plugin here whose whole subject is what you are permitted to have, so nothing in it is a dump of a retail chip. Cult-of-GBA's `bios.bin` is MIT: its LICENSE is the Expat text, \"Copyright 2020 - 2021 DenSinH and fleroviux\", and GitHub reports the repository as MIT. SameBoy's boot ROMs are MIT (Expat) and that needed checking rather than reading off a badge — GitHub reports the repository as NOASSERTION because its LICENSE excepts the iOS and HexFiend directories, and `BootROMs/` is neither, so the boot ROMs are covered and the release archive ships that same LICENSE beside them. Both hosts are public and unauthenticated and this plugin sends no credential; it makes no request of its own at all, and the Hub makes one GET per install. The Hub cannot verify any of this — a dumped BIOS and a reimplemented one look identical on the wire — so it is a rule about what the catalogue may contain, enforced by review of `open_bios/catalogue.py`, where every claim sits beside its evidence.",
+      "comments": "The only plugin exercising `firmware`, and the first to use its archive support: SameBoy publishes no standalone boot-ROM asset, so the plugin declares `archive = \"zip\"` plus the members it wants and the host keeps exactly those, discarding the 1.6 MB emulator build they arrive in. `list()` opens no socket — the catalogue is static and pinned, because firmware is bytes an emulator executes and an operator should get the release the README says was verified rather than whatever was tagged this morning; `sameboy_release` is the escape hatch. Platforms come from an exact-match table with no fallback, which is stricter than the ROM-side equivalent on purpose: a ROM under the wrong system is visibly wrong, while a BIOS under the wrong system is invisible — the emulator just keeps reporting it has none. Four real candidates were left out and `catalogue.py` says why each: PCSX-ReDux OpenBIOS (no releases and no tags at all, so there is no binary to fetch), nds-bootstrap (a homebrew loader, not a BIOS), C-BIOS (source only), and SameBoy's Super Game Boy boot ROMs (no unambiguous platform for a SNES peripheral, and this plugin never guesses one)."
+    },
+    {
       "slug": "openvgdb",
       "name": "OpenVGDB",
       "author": "BlizzHacker",

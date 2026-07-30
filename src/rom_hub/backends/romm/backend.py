@@ -21,9 +21,16 @@ was expensive to find out and is worth reading on its own:
 
 ## Capabilities
 
-RomM 4.9.2 supports all five. That is not a rubber stamp -- each one was
+RomM supports all six. That is not a rubber stamp -- each one was
 exercised against a real server, which is exactly why the set is stated
 here as data rather than assumed by every caller.
+
+`FIRMWARE` is the newest, and the one no other backend here can currently
+match: `backend/endpoints/firmware.py` exposes a full read/write surface
+(`add_firmware`, `get_platform_firmware`, `get_firmware_identifiers`,
+`get_firmware`, `get_firmware_content`, `delete_firmware`) behind the
+`firmware.read` and `firmware.write` scopes. What the others can and
+cannot do with a BIOS is stated in their own packages.
 """
 
 from __future__ import annotations
@@ -176,6 +183,19 @@ class RommBackend:
         artwork: tuple[str, bytes, str] | None = None,
     ) -> dict:
         return self._client.update_rom(rom_id, fields, artwork=artwork)
+
+    # -- firmware ----------------------------------------------------------
+
+    def list_firmware(self, platform_id: int) -> list[dict]:
+        return self._client.list_firmware(platform_id)
+
+    def upload_firmware(self, paths: list[Path], platform_id: int) -> None:
+        # The return value is discarded here rather than at the call site.
+        # `add_firmware` answers with the platform's *entire* firmware
+        # listing, which is a fine thing to have and a terrible thing to
+        # hand back from a method named "upload": a caller would read it
+        # as "what I just sent". `list_firmware` is how to ask that.
+        self._client.upload_firmware(paths, platform_id)
 
     # -- collections -------------------------------------------------------
 

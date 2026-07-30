@@ -80,7 +80,7 @@ RomM's name, not the Hub's, and they configure one backend among several.
 
 ## Status
 
-**Phase 3 — RPP v1 is fully implemented.** All five capabilities have a host
+**RPP v1 is fully implemented.** All six capabilities have a host
 implementation and a CLI command:
 
 | Capability | Command | What it does |
@@ -90,6 +90,7 @@ implementation and a CLI command:
 | `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to the library |
 | `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
+| `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
 
 Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
 survives a restart. No web UI yet.
@@ -364,6 +365,45 @@ downloadable artifact, so implementing the capability there would mean
 inventing a URL — and a plugin that fabricates a download target is one whose
 refusals cannot be believed either.
 
+## BIOS and firmware
+
+    rom-hub firmware list <plugin>
+    rom-hub firmware install <plugin> <firmware> [--no-library]
+
+Every emulation setup needs BIOS files, and the real question about a BIOS is
+not where to find it but whether you are allowed to have it. So the listing
+prints the licence next to the platform:
+
+    FIRMWARE    PLATFORM LICENCE     NAME
+    cult-of-gba gba      MIT         Cult-of-GBA BIOS
+    sameboy-dmg gb       MIT (Expat) SameBoy Game Boy boot ROMs
+    sameboy-cgb gbc      MIT (Expat) SameBoy Game Boy Color boot ROMs
+
+`FirmwareArtifact.license` is a **required** field of the protocol — a plugin
+cannot list a BIOS without saying what it is. The Hub cannot verify the claim,
+because a dumped BIOS and a clean-room reimplementation are identical bytes on
+the wire, and it does not pretend to. What the contract can do is make silence
+impossible.
+
+Files land in `$ROM_HUB_HOME/var/firmware/<plugin>/` by default. Point them at
+the directory your emulator already reads and there is nothing to copy
+afterwards:
+
+    ROM_HUB_FIRMWARE_DIR=/opt/retroarch/system rom-hub firmware install ...
+
+The same gate as a ROM import, again: same allowlist check, same filename
+validation, same containment check. Where an item's files ship inside a zip —
+SameBoy publishes its boot ROMs only inside its emulator release — the plugin
+declares the members and the **host** unpacks exactly those and discards the
+rest.
+
+`install` also stores the files in your library. Only RomM can hold firmware
+(`POST /api/firmware`); Gaseous' BIOS API is read-only and Retrom has no
+firmware concept at all, so against those the download happens, the library
+step is skipped, and the line you get back says so. That is the whole point of
+the capability declaration — see `docs/PROOF.md`, where the `firmware store`
+row reads PASS / UNSUPPORTED / UNSUPPORTED against three live servers.
+
 ### RomM connection settings
 
 `import` and `enrich` need a RomM account permitted to upload. It is read from
@@ -377,8 +417,9 @@ the environment, never from a file in the repo:
 
 All three are required; both commands name whichever are missing and stop
 before opening any connection. `ROM_HUB_HOME` (default `~/.rom-hub`) decides
-where plugins, the job database, downloads, artwork, cores and plugin data
-assets live; `ROM_HUB_CORES_DIR` moves just the cores.
+where plugins, the job database, downloads, artwork, cores, firmware and
+plugin data assets live; `ROM_HUB_CORES_DIR` moves just the cores and
+`ROM_HUB_FIRMWARE_DIR` just the firmware.
 
 ### Plugin data assets
 
@@ -480,7 +521,8 @@ first way a plugin can make the Hub reach a host; a `FetchPlan` URL, a
 `MetadataPatch` artwork URL and a `StreamTarget` of kind `url` are the others,
 and each one passes `check_url` against the same allowlist before anything is
 fetched. Each is tested with an undeclared host, in `tests/test_broker_plan.py`,
-`tests/test_broker_enrich.py`, `tests/test_stream.py` and `tests/test_cores.py`.
+`tests/test_broker_enrich.py`, `tests/test_stream.py`, `tests/test_cores.py`
+and `tests/test_firmware.py`.
 A `stream` target of kind `handle` may not itself be a URL, so the
 discriminator cannot be lied about to skip the check.
 
@@ -554,10 +596,10 @@ Phase 2 is the point at which the Hub first holds RomM credentials, and
 `docs/DESIGN.md` named filesystem confinement a prerequisite for reaching it.
 **That prerequisite has not been met** — a mount namespace is what confining
 reads needs, and default Docker denies the `unshare` it is built on (measured;
-see above). Phase 2 shipped anyway, and Phase 3 adds three capabilities on top
-of the *same* token — `metadata` writes through it, `stream` and `cores` never
-touch RomM at all, and none of them puts a new secret anywhere a plugin could
-read. The exposure is unchanged, which is not the same as fixed. The honest
+see above). Phase 2 shipped anyway, and the capabilities added since sit on top
+of the *same* token — `metadata` and `firmware` write through it, `stream` and
+`cores` never touch the library at all, and none of them puts a new secret
+anywhere a plugin could read. The exposure is unchanged, which is not the same as fixed. The honest
 statement of where that leaves things:
 
 - The RomM token is **never given to a plugin**. It is created inside the host

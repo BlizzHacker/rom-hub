@@ -339,6 +339,7 @@ inherited leak.
 | `rom-hub enrich <plugin> <rom_id> [--source-id]` | enrich → fetch artwork → `PUT /api/roms/{id}` |
 | `rom-hub stream <plugin> <source_id>` | resolve one item to a validated stream target and print it |
 | `rom-hub cores list\|install <plugin> [<core>]` | list a plugin's cores, or download one into the configured cores directory |
+| `rom-hub firmware list\|install <plugin> [<firmware>] [--no-library]` | list a plugin's BIOS/firmware **with each item's licence**, or install one into the configured firmware directory and the library |
 | `rom-hub jobs [--state]` | the persisted import queue, with failure reasons |
 
 `--source-id` exists because RomM does not record which plugin an import came
@@ -366,6 +367,7 @@ the deployment target's own storage, never on a workstation system drive.
 | Plugin data assets | `$ROM_HUB_HOME/var/plugin-data/<slug>/` |
 | Imported ROMs | `/mnt/library/roms` (RomM's existing library) |
 | Harvested cores | `$ROM_HUB_HOME/var/cores/` by default; `ROM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
+| Installed firmware | `$ROM_HUB_HOME/var/firmware/<slug>/` by default; `ROM_HUB_FIRMWARE_DIR` points it at whatever `system/` or `bios/` directory the operator's emulator already reads |
 
 Plugin data assets are **not** in the plugin's own directory, and that is not
 a style choice: `plugins/<slug>/` is a git checkout the registry deletes and
@@ -423,6 +425,7 @@ importer = "archive_org.importer:Importer"
 metadata = "archive_org.metadata:Metadata"
 stream   = "archive_org.stream:Stream"
 cores    = "archive_org.cores:Cores"
+firmware = "open_bios.firmware:Firmware"     # clean-room BIOS, licence stated
 
 [permissions]
 network  = ["archive.org", "*.archive.org"]
@@ -450,9 +453,10 @@ api_key     = { type = "secret" }           # never logged, never in git
 | `metadata` | `enrich(rom_ref)` | `MetadataPatch` | fetches the artwork, `PUT /api/roms/{id}` |
 | `stream` | `resolve(result)` | `StreamTarget` | validates and returns it — nothing else |
 | `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` | downloads into the configured cores directory |
+| `firmware` | `list()` / `plan(firmware)` | `FirmwareArtifact[]` / `FetchPlan` | downloads into the configured firmware directory, unpacks the declared archive members, and stores the files in the library where the backend can hold firmware |
 
-**RPP v1 is fully implemented as of Phase 3.** All five capabilities have a
-host implementation, a CLI command and tests that exercise them through a real
+**RPP v1 is fully implemented.** All six capabilities have a host
+implementation, a CLI command and tests that exercise them through a real
 plugin subprocess.
 
 **Reserved, unimplemented in v1:** `peer`, `netplay`. Reserved so that
@@ -480,11 +484,12 @@ allowlist before the host fetches it.
 | `metadata` | `MetadataPatch` | `check_url` on `artwork_url` in `PluginProcess.enrich()` **and** again in `metadata.run_enrich()`; the artwork filename goes through the same `bare_filename` and `dest_in_job_dir`; the RomM form-field names are an allowlist |
 | `stream` | `StreamTarget` | `check_url` when `kind="url"`; a `kind="handle"` may not *be* a URL, so the discriminator cannot be lied about to skip the check |
 | `cores` | `CoreArtifact[]`, `FetchPlan` | the **same** `_gated_plan()` the importer uses — one implementation, so the two cannot drift |
+| `firmware` | `FirmwareArtifact[]`, `FetchPlan` | the same `_gated_plan()` again. Plus: every archive member goes through `bare_filename` on the *type*, and is matched against the zip by full-name equality and written to a destination the host built with `dest_in_job_dir` — an entry named `../../etc/passwd` is simply not one of the members, and is never joined onto a path |
 | *(any)* `[[data_assets]]` | nothing — it is a manifest declaration, not a return value | `check_url` at **parse** time against `permissions.network`, so a violating manifest cannot be installed; then `HttpDownloader`'s per-hop `check_url` at fetch time; then a mandatory `sha256` before the plugin is told the path |
 
 Three things about that table are deliberate.
 
-**`metadata` and `cores` were the same hole as `importer`.** An artwork URL and
+**`metadata`, `cores` and `firmware` were the same hole as `importer`.** An artwork URL and
 a core download URL are both "a string a plugin chose, which the host then
 fetches with its own network access". Adding either without a `check_url` on it
 would have made the manifest's `network` declaration decorative for that
@@ -510,6 +515,86 @@ carry no artwork part at all.
 integrating it is not this capability's job. The host validates the target and
 returns it, and the CLI prints it. Building a second streaming transport inside
 the Hub would be inventing infrastructure the deployment already has.
+
+### Firmware: the capability where the licence is the product
+
+Every emulation setup needs BIOS files, and the honest problem with BIOS
+files is not where to find them — it is whether you are allowed to have
+them. So `firmware` is shaped by that question rather than by the download.
+
+**`FirmwareArtifact.license` is a required field.** Not optional, not
+defaulted, not inferable. A plugin cannot list a BIOS without saying what
+it is, and `rom-hub firmware list` prints it as a column beside the
+platform. The Hub cannot check the claim — a dumped BIOS and a clean-room
+reimplementation are identical bytes on the wire — and does not pretend
+to. What a type system *can* do is make silence impossible, and that is
+what this does.
+
+**`FirmwareArtifact.platform` is required too**, where `CoreArtifact.system`
+is optional, because firmware is keyed by platform and the upload resolves
+it against the library's own platform list. The plugin-side rule is the
+same "needs mapping" rule the ROM path uses, and it is stricter here for a
+reason worth stating: a ROM under the wrong system is *visibly* wrong — it
+is in the library, under a heading that looks odd. A BIOS under the wrong
+system is *invisible*. The emulator that needed it goes on reporting that
+it has no BIOS, and nothing anywhere connects the two.
+
+**Why `FetchPlan` and not `[[data_assets]]`.** They look close: both are a
+host-performed, verified, cached download the plugin only describes. Four
+differences decide it, and they are all about who chooses.
+
+* A data asset is the *plugin's own* file. It lands in
+  `var/plugin-data/<slug>/` and the plugin is handed the path. Firmware is
+  for the operator's emulator and their library; the plugin never sees it.
+* A data asset is resolved before **every** command, `search` included. An
+  operator running a search should not be pulling BIOS files.
+* The set is fixed at install time, and `MAX_DATA_ASSETS` is 8. Firmware is
+  chosen one item at a time off a catalogue the operator just read — the
+  same shape as `cores install <plugin> <core>`.
+* The mandatory manifest `sha256` pins a plugin release to an upstream
+  release. Right for a dataset published once; wrong for firmware tracked
+  across upstream tags, and it leaves a plugin unable to answer "what is
+  available now".
+
+What data assets *did* contribute is their zip handling, reimplemented in
+`rom_hub.firmware` for a list of members rather than one. Archive support
+is not decoration: the open firmware that actually gets published is
+published inside zips. SameBoy's boot ROMs ship only inside its emulator
+release, so the plugin declares `archive = "zip"` plus the members it
+wants and the host keeps exactly those — matched by full-name equality,
+written to destinations it built itself, bounded against a bomb, and the
+archive deleted afterwards so nothing an emulator scans that directory has
+to ignore is left behind.
+
+**The library half is `OPTIONAL`, and that is the whole design.** A BIOS is
+installed the moment it is in a directory an emulator reads — which is why
+this capability is modelled on `cores`, and `cores` never touches a library
+at all. Filing it in RomM as well is a second home for bytes that are
+already installed. Refusing to fetch a legally-clean Game Boy boot ROM
+because the *library server* has no firmware table would be refusing the
+job over the garnish, in exactly the way `--collection` once refused every
+Gaseous import. So the download happens, the upload is skipped, and the
+line the operator reads says which.
+
+An **unconfigured** backend is a different thing and is treated differently:
+that is a question, not a limitation the Hub can see, so it refuses and
+names `--no-library`. Guessing "they meant local only" is how an operator
+ends up wondering why the library never got the file.
+
+**What each backend can actually do**, read out of their sources rather
+than assumed:
+
+| Backend | Firmware | Evidence |
+|---|---|---|
+| RomM | read **and** write | `backend/endpoints/firmware.py`: `add_firmware` (`POST`, `Scope.FIRMWARE_WRITE`, `files: list[UploadFile]`), `get_platform_firmware`, `get_firmware_identifiers`, `get_firmware`, `get_firmware_content`, `delete_firmware` |
+| Gaseous | read **only** | `Controllers/V1.0/BiosController.cs` — four routes, all reads. Its only ingestion is `ProcessQueue/Tasks/ImportQueueProcessor.cs` calling `Bios.BiosHashSignatureLookup(md5)` against a fixed table of retail-dump MD5s in `Support/PlatformMap.json`, which a clean-room replacement cannot match by construction |
+| Retrom | neither | no BIOS or firmware message, service, column or directory anywhere in the repository; the only `bios` matches are EmulatorJS's own `biosUrl?: string` in `packages/client-web/src/lib/emulatorjs/` |
+
+One measured detail worth knowing before it looks like a bug: RomM records
+a clean-room BIOS with `is_verified: false`. `Firmware.verify_file_hashes`
+compares against known **retail dump** hashes, so a replacement BIOS is
+correctly stored and correctly reported as not matching a dump. That is
+RomM answering a different question, not a failed upload.
 
 ### Data assets: a dataset the plugin cannot fetch itself
 
@@ -979,7 +1064,8 @@ RomM's `CONTRIBUTING.md` requires opening an issue and discussing on Discord
 |---|---|---|---|---|
 | 1 | Hub core + RPP v1 + broker + `search` + CLI | the contract is real | — | **done** |
 | 2 | `importer` + RomM adapter + job queue | it is actually useful | **filesystem confinement** | **done** |
-| 3 | `metadata`, `stream`, `cores` | **RPP v1 is fully implemented** | — | **done** |
+| 3 | `metadata`, `stream`, `cores` | the last three of the original five | — | **done** |
+| 3.1 | `firmware` | **the capability set is complete**, and the one gap both backends' APIs had left unserved is filled | — | **done** |
 | 4 | Web UI | it is pleasant | — | not started |
 | 5 | sub-projects C and D | *separate design pass* | — | not started |
 
