@@ -9,6 +9,7 @@ run offline.
 | `aminet` | <https://github.com/BlizzHacker/rom-hub-aminet> | `v0.1.0` |
 | `archive-org` | <https://github.com/BlizzHacker/rom-hub-archive-org> | `v0.2.0` |
 | `demozoo` | <https://github.com/BlizzHacker/rom-hub-demozoo> | `v0.1.0` |
+| `emulators` | <https://github.com/BlizzHacker/rom-hub-emulators> | `v0.1.0` |
 | `hasheous` | <https://github.com/BlizzHacker/rom-hub-hasheous> | `v0.1.0` |
 | `homebrew` | <https://github.com/BlizzHacker/rom-hub-homebrew> | `v0.2.0` |
 | `itch-io` | <https://github.com/BlizzHacker/rom-hub-itch-io> | `v0.3.0` |
@@ -21,10 +22,11 @@ run offline.
 | `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.1.0` |
 | `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.1.0` |
 
-**`aminet`, `demozoo`, `libretro-content` and `scummvm-freeware` are new and
-their repositories do not exist yet.** Everything else on this page resolves;
-those four have to be created and tagged `v0.1.0` before `rom-hub plugin
-install <slug>` will work for them, and `pytest -m live` is what will say so.
+**`aminet`, `demozoo`, `emulators`, `libretro-content` and
+`scummvm-freeware` are new and their repositories do not exist yet.**
+Everything else on this page resolves; those five have to be created and tagged
+`v0.1.0` before `rom-hub plugin install <slug>` will work for them, and
+`pytest -m live` is what will say so.
 
 `catalog/plugins.json` points at those repositories, pinned to those tags, and
 that is what `rom-hub plugin install <slug>` clones. **Nothing installs from

@@ -1,0 +1,49 @@
+[plugin]
+slug        = "emulators"
+name        = "Standalone emulators (GitHub releases)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+# `cores`, not a new capability. A standalone emulator is the same
+# privileged act a libretro core is -- a plugin names a binary, the host
+# fetches it into a configured local directory -- and RPP's `cores`
+# contract is written in exactly those terms. See emulators/cores.py for
+# the full argument, including why the `assets` capability would be the
+# wrong home for an executable.
+[capabilities]
+cores = "emulators.cores:Cores"
+
+# Three hosts, and each one is reached on a different step.
+#
+#   api.github.com                        the release catalogue (JSON)
+#   github.com                            the asset URL a release names
+#   release-assets.githubusercontent.com  where that URL 302s to
+#
+# The third is not optional and not decoration. A GitHub release asset
+# answers `302 Found` with a `Location` on release-assets.githubusercontent.com
+# (verified 2026-07-29 with `curl -sI` against a real mGBA asset: exactly
+# one hop), and the host re-checks the allowlist on **every hop**, so
+# leaving it out turns every install into a policy violation at the moment
+# the bytes would start arriving.
+#
+# `objects.githubusercontent.com` -- the host GitHub used to redirect to --
+# is deliberately absent. It is not in the chain today, and an allowlist
+# entry that exists "just in case" is a permission granted for no reason.
+[permissions]
+network  = [
+  "api.github.com",
+  "github.com",
+  "release-assets.githubusercontent.com",
+]
+romm_api = []
+
+[config]
+# Which machine the emulator has to run on. NOT detected from the host OS,
+# for the same reason `libretro-cores` refuses to detect it: the Hub is
+# routinely a Linux container while the emulator runs on somebody's
+# desktop. An unknown target is refused by name -- see emulators/targets.py.
+target = { type = "str", default = "linux/x86_64" }
+# Narrow the catalogue to these project ids. Empty means every project
+# that publishes something for the configured target.
+only   = { type = "list[str]", default = [] }
