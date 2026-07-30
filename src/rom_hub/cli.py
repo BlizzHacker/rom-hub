@@ -19,7 +19,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import backends, env
+from . import backends, emuassets, env
 from .assets import (
     DATA_DIR_NAME,
     AssetError,
@@ -41,6 +41,7 @@ from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
 from .cores import CoreError, find_core, install_core
 from .dispatcher import search_all
+from .emuassets import AssetInstallError, find_asset, install_asset
 from .firmware import FirmwareError, find_firmware, install_firmware
 from .importer import run_import
 from .jobs import JobQueue, JobState
@@ -48,7 +49,7 @@ from .manifest import ManifestError
 from .metadata import EnrichError, rom_ref_from, run_enrich
 from .registry import Registry, RegistryError
 from .sandbox import probe
-from .types import SearchResult
+from .types import KNOWN_ASSET_KINDS, SearchResult
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
 
@@ -233,6 +234,37 @@ def firmware_dir(root: Path | None = None) -> Path:
     if configured:
         return Path(configured)
     return Path(root or default_root()) / "var" / "firmware"
+
+
+def assets_dir(root: Path | None = None) -> Path:
+    """The root under which emulator support files land.
+
+    Configuration, not a constant, for exactly the reasons `cores_dir` and
+    `firmware_dir` give. `kind` picks a leaf directory beneath this one --
+    `shaders`, `overlays`, `cheats`, `autoconfig` -- and those names are
+    RetroArch's own, so `ROM_HUB_ASSETS_DIR=~/.config/retroarch` puts every
+    file exactly where RetroArch already looks for it.
+
+    Read at call time so a shell can flip it, like every other setting.
+    """
+    configured = env.get("ROM_HUB_ASSETS_DIR").strip()
+    if configured:
+        return Path(configured)
+    return Path(root or default_root()) / "var" / "assets"
+
+
+def asset_dir_overrides() -> dict[str, str]:
+    """Per-kind directory overrides, for a layout that is not one tree.
+
+    `ROM_HUB_ASSETS_DIR` assumes the four kinds share a parent, which is
+    true of a RetroArch install and need not be true of anything else --
+    an operator may keep cheats with their frontend and shaders with their
+    GPU profiles. Each of these names one kind's directory outright rather
+    than relative to the root; see `emuassets.directory_for`.
+    """
+    return {
+        kind: env.get(name) for kind, name in emuassets.KIND_ENV_VARS.items()
+    }
 
 
 def backend_name() -> str:
@@ -884,6 +916,107 @@ def _cmd_firmware_install(args) -> int:
             backend.close()
 
 
+def _with_assets_plugin(args, action):
+    """Start `args.plugin` for an assets call, or return the refusal.
+
+    The same three checks `_with_cores_plugin` makes -- installed, enabled,
+    declares the capability -- and, like that one, no backend anywhere near
+    it. Unlike `_with_firmware_plugin`, that is not a decision either
+    subcommand gets to revisit: an asset never goes into a library, so
+    there is nothing a backend could contribute to this command. See
+    `rom_hub.emuassets`.
+    """
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "assets")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    data_assets = prepare_assets(plugin)
+    fetcher = HttpxFetcher()
+    try:
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
+        ) as proc:
+            return action(proc)
+    finally:
+        fetcher.close()
+
+
+def _cmd_assets_list(args) -> int:
+    def show(proc) -> int:
+        items = proc.assets()
+        if args.kind:
+            items = [i for i in items if i.kind == args.kind]
+        if not items:
+            scope = f" of kind {args.kind!r}" if args.kind else ""
+            print(f"this plugin offers no assets{scope}")
+            return EXIT_OK
+
+        # LICENCE is a column here for the reason it is one in `firmware
+        # list`: every source behind this capability is a community
+        # repository of contributed files, the terms genuinely vary, and
+        # two candidate sources were dropped from this release because
+        # their terms could not be established at all. An operator should
+        # not have to leave the terminal to find that out.
+        #
+        # Widths come from the data, capped, for the reason `cores list`
+        # explains -- and the cap earns its keep here, because an asset id
+        # is a path within a source tree and runs far longer than a core id.
+        rows = [
+            (
+                item.asset_id,
+                item.kind,
+                item.system or "-",
+                item.license,
+                item.name,
+            )
+            for item in items
+        ]
+        headers = ("ASSET", "KIND", "SYSTEM", "LICENCE", "NAME")
+        widths = [
+            min(max([len(h), *(len(row[i]) for row in rows)]), 48)
+            for i, h in enumerate(headers)
+        ]
+        print(
+            f"{headers[0]:<{widths[0]}} {headers[1]:<{widths[1]}} "
+            f"{headers[2]:<{widths[2]}} {headers[3]:<{widths[3]}} {headers[4]}"
+        )
+        for asset_id, kind, system, license_name, name in rows:
+            print(
+                f"{asset_id:<{widths[0]}} {kind:<{widths[1]}} "
+                f"{system:<{widths[2]}} {license_name:<{widths[3]}} {name}"
+            )
+        print()
+        print(
+            f"{len(items)} asset(s). Install with: rom-hub assets install "
+            f"{args.plugin} <asset>"
+        )
+        return EXIT_OK
+
+    return _with_assets_plugin(args, show)
+
+
+def _cmd_assets_install(args) -> int:
+    def install(proc) -> int:
+        item = find_asset(proc.assets(), args.asset)
+        result = install_asset(
+            proc,
+            item,
+            assets_dir=assets_dir(),
+            overrides=asset_dir_overrides(),
+        )
+        print(result.message)
+        return EXIT_OK
+
+    return _with_assets_plugin(args, install)
+
+
 def _cmd_backend_info(args) -> int:
     """Which library server the Hub is pointed at, and what it can do.
 
@@ -1100,6 +1233,37 @@ def build_parser() -> argparse.ArgumentParser:
     cores_install.add_argument("core", help="the core id, from 'cores list'")
     cores_install.set_defaults(func=_cmd_cores_install)
 
+    assets = sub.add_parser(
+        "assets",
+        help=(
+            "list and install emulator support files: shaders, overlays, "
+            "cheats, controller profiles"
+        ),
+    )
+    asub = assets.add_subparsers(dest="assets_command", required=True)
+
+    assets_list = asub.add_parser(
+        "list", help="list the support files a plugin offers, with each licence"
+    )
+    assets_list.add_argument("plugin", help="slug of an installed assets plugin")
+    assets_list.add_argument(
+        "--kind",
+        choices=list(KNOWN_ASSET_KINDS),
+        help="show only this kind of support file",
+    )
+    assets_list.set_defaults(func=_cmd_assets_list)
+
+    assets_install = asub.add_parser(
+        "install",
+        help=(
+            "download one support file into the directory configured for "
+            "its kind (no library server is involved)"
+        ),
+    )
+    assets_install.add_argument("plugin", help="slug of an installed assets plugin")
+    assets_install.add_argument("asset", help="the asset id, from 'assets list'")
+    assets_install.set_defaults(func=_cmd_assets_install)
+
     firmware = sub.add_parser(
         "firmware", help="list and install BIOS/firmware a plugin offers"
     )
@@ -1174,6 +1338,7 @@ def main(argv: list[str] | None = None) -> int:
         PluginCallError,
         CoreError,
         FirmwareError,
+        AssetInstallError,
         EnrichError,
         AssetError,
         BackendError,
@@ -1193,8 +1358,16 @@ def main(argv: list[str] | None = None) -> int:
         # BackendNotConfigured and CapabilityUnsupported. AssetError is the
         # data-asset equivalent, and its most important case -- a declared
         # sha256 that does not match what arrived -- is a refusal an
-        # operator must be able to read, not a stack trace.  None of these
-        # deserve a traceback.
+        # operator must be able to read, not a stack trace.
+        #
+        # AssetInstallError is the *other* kind of asset failure and the two
+        # are not the same thing despite the names: AssetError is a plugin's
+        # own dataset going wrong, AssetInstallError is `rom-hub assets
+        # install` going wrong. See the header of `rom_hub.emuassets` for why
+        # both words are called "asset". Its commonest case is a mistyped id
+        # out of a catalogue thousands of items long, where the message
+        # carries the near-misses and would be useless underneath a
+        # traceback. None of these deserve one.
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 

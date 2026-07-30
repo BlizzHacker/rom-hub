@@ -15,6 +15,9 @@ socket is opened:
     verbatim -- a core is a binary landing on disk, like a ROM
   * the `FetchPlan` returned by firmware_plan(), the same gate again -- a
     BIOS is a binary landing on disk *and* going into the library
+  * the `FetchPlan` returned by asset_plan(), the same gate once more -- a
+    shader, bezel, cheat file or controller profile is a file landing on
+    disk in a directory an emulator reads
 
 Adding another path without a check_url() on it would make the manifest's
 `network` declaration decorative.
@@ -45,8 +48,10 @@ from rom_hub.manifest import Manifest
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.protocol import ProtocolError, read_message, write_message
 from rom_hub.types import (
+    MAX_ASSETS_PER_PLUGIN,
     MAX_CORES_PER_PLUGIN,
     MAX_FIRMWARE_PER_PLUGIN,
+    AssetArtifact,
     CoreArtifact,
     FetchPlan,
     FirmwareArtifact,
@@ -432,10 +437,12 @@ class PluginProcess:
     def _gated_plan(self, raw) -> FetchPlan:
         """Re-establish a FetchPlan host-side and allowlist every URL in it.
 
-        Shared by `plan()` (a ROM) and `core_plan()` (an emulator core),
-        because those are the same privileged act with a different
-        destination: a plugin naming URLs the host will fetch. One
-        implementation, so a gate added to one is a gate on both.
+        Shared by `plan()` (a ROM), `core_plan()` (an emulator core),
+        `firmware_plan()` (a BIOS) and `asset_plan()` (a shader, bezel,
+        cheat file or controller profile), because those are the same
+        privileged act with a different destination: a plugin naming URLs
+        the host will fetch. One implementation, so a gate added to one is
+        a gate on all four.
         """
         # The plugin is under no obligation to have used FetchPlan to build
         # this; the runner only calls model_dump() on whatever it returned.
@@ -540,6 +547,46 @@ class PluginProcess:
         """
         return self._gated_plan(
             self._call("plan_firmware", {"firmware": firmware.model_dump()})
+        )
+
+    def assets(self) -> list[AssetArtifact]:
+        """The support files this plugin offers. A catalogue, nothing more.
+
+        Nothing here is fetched: `asset_plan()` is what turns one of these
+        into URLs, and that goes through the same gate a ROM import does.
+        """
+        raw = self._call("list_assets", {})
+        if not isinstance(raw, list):
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
+                "expected a list of assets"
+            )
+        if len(raw) > MAX_ASSETS_PER_PLUGIN:
+            raise PluginCallError(
+                f"plugin {self.manifest.slug} offered {len(raw)} assets, over "
+                f"the {MAX_ASSETS_PER_PLUGIN} limit"
+            )
+        items = []
+        for item in raw:
+            try:
+                items.append(AssetArtifact(**item))
+            except (ValidationError, TypeError) as exc:
+                raise PluginCallError(
+                    f"plugin {self.manifest.slug} returned an invalid asset: "
+                    f"{exc}"
+                ) from exc
+        return items
+
+    def asset_plan(self, asset: AssetArtifact) -> FetchPlan:
+        """Ask the plugin what to fetch for one asset. The host fetches it.
+
+        Same type and same gate as an import plan, a core plan and a
+        firmware plan, deliberately: a shader or a bezel is a file from the
+        internet landing on the operator's disk, and the fact that it is
+        small and not executable is not a reason to check it less.
+        """
+        return self._gated_plan(
+            self._call("plan_asset", {"asset": asset.model_dump()})
         )
 
     def enrich(self, rom: RomRef) -> MetadataPatch:

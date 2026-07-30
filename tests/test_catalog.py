@@ -378,11 +378,16 @@ def test_every_capability_the_host_gates_on_is_classified_here():
 
     # And the ones that genuinely touch no backend at all are named, so
     # "absent from both tables" is a decision rather than an oversight.
-    assert KNOWN_CAPABILITIES - set(CAPABILITY_NEEDS) - set(CAPABILITY_EXTRAS) == {
-        "search",
-        "stream",
-        "cores",
-    }
+    # Asserted against the set the backends package declares rather than a
+    # list repeated here, so a capability cannot be backend-independent in
+    # one file and forgotten in the other.
+    from rom_hub.backends import BACKEND_INDEPENDENT_CAPABILITIES
+
+    assert KNOWN_CAPABILITIES - set(CAPABILITY_NEEDS) - set(
+        CAPABILITY_EXTRAS
+    ) == BACKEND_INDEPENDENT_CAPABILITIES
+    # Every name in it is a real plugin capability, not a backend one.
+    assert BACKEND_INDEPENDENT_CAPABILITIES <= KNOWN_CAPABILITIES
 
 
 def test_the_needs_and_extras_are_real_backend_capabilities():
