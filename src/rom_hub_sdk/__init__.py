@@ -2,6 +2,7 @@ from rom_hub.types import (
     CoreArtifact,
     FetchFile,
     FetchPlan,
+    FirmwareArtifact,
     MetadataPatch,
     RomRef,
     SearchResult,
@@ -10,6 +11,7 @@ from rom_hub.types import (
 
 from .capabilities import (
     CoreProvider,
+    FirmwareProvider,
     ImportProvider,
     MetadataProvider,
     SearchProvider,
@@ -23,6 +25,7 @@ __all__ = [
     "SearchProvider",
     "ImportProvider",
     "CoreProvider",
+    "FirmwareProvider",
     "MetadataProvider",
     "StreamProvider",
     "FetchFile",
@@ -31,6 +34,7 @@ __all__ = [
     "RomRef",
     "StreamTarget",
     "CoreArtifact",
+    "FirmwareArtifact",
     "PluginContext",
     "HttpResponse",
 ]

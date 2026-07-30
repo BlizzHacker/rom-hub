@@ -85,17 +85,26 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from rom_hub.backends import (  # noqa: E402
     ARTWORK,
     COLLECTIONS,
+    FIRMWARE,
     METADATA,
     CapabilityUnsupported,
     capabilities_of,
     degrade,
     require,
 )
+from rom_hub.firmware import install_firmware  # noqa: E402
 from rom_hub.importer import run_import  # noqa: E402
 from rom_hub.jobs import JobQueue, JobState  # noqa: E402
 from rom_hub.manifest import parse_manifest  # noqa: E402
 from rom_hub.metadata import run_enrich  # noqa: E402
-from rom_hub.types import FetchFile, FetchPlan, MetadataPatch, RomRef, SearchResult  # noqa: E402
+from rom_hub.types import (  # noqa: E402
+    FetchFile,
+    FetchPlan,
+    FirmwareArtifact,
+    MetadataPatch,
+    RomRef,
+    SearchResult,
+)
 
 PASS = "PASS"
 FAIL = "FAIL"
@@ -188,6 +197,17 @@ def _cover_png(size: int = 64) -> bytes:
 
 COVER_PNG = _cover_png()
 
+#: The firmware fixture. Stamped like the ROM so a library that already
+#: holds one from an earlier run does not turn the *upload* row into a
+#: failure that is really a stale library -- the same reasoning as
+#: `ROM_NAME`, and it matters more here because firmware dedup is by file
+#: name rather than by hash.
+FIRMWARE_NAME = f"rom-hub-proof-{RUN_ID}.bin"
+FIRMWARE_BYTES = (
+    f"rom-hub proof matrix firmware fixture {RUN_ID}. Not a BIOS. "
+    f"Safe to delete."
+).encode("ascii")
+
 #: Manifest for the stub plugin. Real enough to be parsed by the real
 #: parser -- an invalid one would be rejected exactly as a plugin's is.
 STUB_MANIFEST = """
@@ -238,6 +258,13 @@ class StubPlugin:
         self._patch = patch
 
     def plan(self, result: SearchResult) -> FetchPlan:
+        assert self._plan is not None
+        return self._plan
+
+    def firmware_plan(self, firmware) -> FetchPlan:
+        # `install_firmware` calls this the way `run_import` calls `plan`:
+        # structurally, on something with a `.manifest`. Same stub, same
+        # seam, and the download below is the same injected fixture.
         assert self._plan is not None
         return self._plan
 
@@ -307,6 +334,7 @@ STEPS: list[tuple[str, str]] = [
     ("collections", "collections"),
     ("metadata", "metadata write"),
     ("artwork", "cover art"),
+    ("firmware", "firmware store"),
 ]
 STEP_KEYS = [key for key, _ in STEPS]
 
@@ -340,6 +368,7 @@ def declared_cells(run: BackendRun, backend) -> None:
     for step, capability, what in (
         ("collections", COLLECTIONS, "the collection the plan named"),
         ("artwork", ARTWORK, "the cover art the patch proposed"),
+        ("firmware", FIRMWARE, "filing the BIOS in the library"),
     ):
         skip = degrade(backend, capability, what)
         if skip is not None:
@@ -536,6 +565,70 @@ def exercise(
     else:
         run.set("dedup", NOT_RUN, "nothing was imported to re-import")
     done("dedup")
+
+    # 7. firmware ----------------------------------------------------------
+    #
+    # Placed here, before the metadata block, because that block returns
+    # early on a backend without METADATA and firmware has nothing to do
+    # with enriching. `declared_cells` has already written the degrade()
+    # message for a backend that cannot store firmware, so this only runs
+    # for one that says it can.
+    #
+    # The proof is not "upload_firmware did not raise". It is the
+    # backend's own listing afterwards: `install_firmware` uploads, and
+    # then `list_firmware` is asked whether the file is there.
+    if FIRMWARE in run.declared:
+        try:
+            firmware_dir = work / f"{run.name}-firmware"
+            item = FirmwareArtifact(
+                firmware_id="proof-matrix",
+                name="ROM Hub proof matrix firmware",
+                platform=platform,
+                license="not a licence -- a fixture",
+            )
+            fixture_bin = work / FIRMWARE_NAME
+            fixture_bin.write_bytes(FIRMWARE_BYTES)
+            installed = install_firmware(
+                StubPlugin(
+                    plan=FetchPlan(
+                        files=[
+                            FetchFile(
+                                url=f"https://proof.invalid/{FIRMWARE_NAME}",
+                                filename=FIRMWARE_NAME,
+                            )
+                        ],
+                        platform=platform,
+                    )
+                ),
+                item,
+                firmware_dir=firmware_dir,
+                backend=backend,
+                downloader=FixtureDownloader(fixture_bin),
+            )
+            stored = {
+                str(row.get("file_name", ""))
+                for row in backend.list_firmware(backend.platform_id(platform))
+                if isinstance(row, dict)
+            }
+            if FIRMWARE_NAME in stored:
+                run.set(
+                    "firmware",
+                    PASS,
+                    f"{installed.uploaded} file(s) uploaded; the backend's own "
+                    f"firmware listing for {platform!r} now carries "
+                    f"{FIRMWARE_NAME}",
+                )
+            else:
+                run.set(
+                    "firmware",
+                    FAIL,
+                    f"upload reported {installed.uploaded} file(s) but the "
+                    f"backend's firmware listing does not contain "
+                    f"{FIRMWARE_NAME}; it has {sorted(stored)}",
+                )
+        except Exception as exc:
+            run.set("firmware", FAIL, _short(exc))
+    done("firmware")
 
     # 8/9. metadata and artwork -------------------------------------------
     #

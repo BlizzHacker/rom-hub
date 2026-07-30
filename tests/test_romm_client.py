@@ -109,6 +109,8 @@ def test_authenticate_requests_the_scopes_the_import_pipeline_needs():
         "platforms.write",
         "collections.read",
         "collections.write",
+        "firmware.read",
+        "firmware.write",
     }
     # The constant is what the rest of the codebase and the docs refer to;
     # it must be the thing actually sent, not a parallel literal.
@@ -117,8 +119,12 @@ def test_authenticate_requests_the_scopes_the_import_pipeline_needs():
 
 def test_required_scopes_asks_for_nothing_the_import_does_not_need():
     """Requesting users.* or tasks.run would hand the Hub's token authority
-    over other people's accounts and the server's task runner for no reason
-    -- import touches roms, platforms and collections only."""
+    over other people's accounts and the server's task runner for no reason.
+
+    The list grows only when a caller does. `firmware.*` is here because
+    `rom-hub firmware install` reads the platform's firmware and posts to
+    `/api/firmware`; before that command existed the scope was not asked
+    for, and `assets.*`, `devices.*` and `roms.user.*` still are not."""
     granted = REQUIRED_SCOPES.split()
     assert granted, "REQUIRED_SCOPES must not be empty"
     assert not [s for s in granted if s.startswith("users.")]
@@ -126,7 +132,8 @@ def test_required_scopes_asks_for_nothing_the_import_does_not_need():
     assert not [
         s
         for s in granted
-        if s.split(".")[0] not in {"me", "roms", "platforms", "collections"}
+        if s.split(".")[0]
+        not in {"me", "roms", "platforms", "collections", "firmware"}
     ]
 
 

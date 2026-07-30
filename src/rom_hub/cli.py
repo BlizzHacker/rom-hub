@@ -41,6 +41,7 @@ from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
 from .cores import CoreError, find_core, install_core
 from .dispatcher import search_all
+from .firmware import FirmwareError, find_firmware, install_firmware
 from .importer import run_import
 from .jobs import JobQueue, JobState
 from .manifest import ManifestError
@@ -214,6 +215,24 @@ def cores_dir(root: Path | None = None) -> Path:
     if configured:
         return Path(configured)
     return Path(root or default_root()) / "var" / "cores"
+
+
+def firmware_dir(root: Path | None = None) -> Path:
+    """Where installed BIOS/firmware lands.
+
+    Configuration, not a constant, for exactly the reasons `cores_dir`
+    gives -- and one more. An emulator is usually pointed at a `system` or
+    `bios` directory it already owns (RetroArch's `system/`, EmulationStation's
+    `bios/`), and `ROM_HUB_FIRMWARE_DIR` is how an operator says "put it
+    where the emulator already looks" instead of copying files by hand
+    afterwards.
+
+    Read at call time so a shell can flip it, like every other setting.
+    """
+    configured = env.get("ROM_HUB_FIRMWARE_DIR").strip()
+    if configured:
+        return Path(configured)
+    return Path(root or default_root()) / "var" / "firmware"
 
 
 def backend_name() -> str:
@@ -747,6 +766,124 @@ def _cmd_cores_install(args) -> int:
     return _with_cores_plugin(args, install)
 
 
+def _with_firmware_plugin(args, action):
+    """Start `args.plugin` for a firmware call, or return the refusal.
+
+    The same three checks `_with_cores_plugin` makes -- installed, enabled,
+    declares the capability -- and the same subprocess. What it does *not*
+    do is open a backend: `firmware list` never needs one, and `install`
+    decides for itself (see `_cmd_firmware_install`).
+    """
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "firmware")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    data_assets = prepare_assets(plugin)
+    fetcher = HttpxFetcher()
+    try:
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
+        ) as proc:
+            return action(proc)
+    finally:
+        fetcher.close()
+
+
+def _cmd_firmware_list(args) -> int:
+    def show(proc) -> int:
+        items = proc.firmware()
+        if not items:
+            print("this plugin offers no firmware")
+            return EXIT_OK
+        # LICENCE is a column, not a footnote. An operator choosing a BIOS
+        # is choosing on two axes -- does it fit my system, and am I
+        # allowed to have it -- and the second one is the whole reason a
+        # firmware plugin is worth installing. Widths come from the data,
+        # capped, for the reason `cores list` explains.
+        rows = [
+            (
+                item.firmware_id,
+                item.platform,
+                item.license,
+                item.name,
+            )
+            for item in items
+        ]
+        headers = ("FIRMWARE", "PLATFORM", "LICENCE", "NAME")
+        widths = [
+            min(max([len(h), *(len(row[i]) for row in rows)]), 48)
+            for i, h in enumerate(headers)
+        ]
+        print(
+            f"{headers[0]:<{widths[0]}} {headers[1]:<{widths[1]}} "
+            f"{headers[2]:<{widths[2]}} {headers[3]}"
+        )
+        for firmware_id, platform, license_name, name in rows:
+            print(
+                f"{firmware_id:<{widths[0]}} {platform:<{widths[1]}} "
+                f"{license_name:<{widths[2]}} {name}"
+            )
+        print()
+        print(
+            f"{len(items)} item(s). Install with: rom-hub firmware install "
+            f"{args.plugin} <firmware>"
+        )
+        return EXIT_OK
+
+    return _with_firmware_plugin(args, show)
+
+
+def _cmd_firmware_install(args) -> int:
+    """Download one firmware item, and file it in the library unless told not to.
+
+    The backend is opened *before* the plugin subprocess starts, so an
+    unconfigured Hub costs nothing -- and it is opened at all because the
+    common case is wanting the BIOS in both places.
+
+    `--no-library` is the opt-out, and an unconfigured backend without it
+    is an error rather than a silent local-only install. That is not a
+    contradiction of `FIRMWARE` being an *optional* capability: optional
+    describes a backend that genuinely cannot store firmware, which the
+    Hub can see and report. A backend nobody has configured is not a
+    backend that cannot; it is a question, and guessing "they meant local
+    only" is how an operator ends up wondering why RomM never got the
+    file.
+    """
+    backend = None
+    if not args.no_library:
+        try:
+            backend = open_backend()
+        except backends.BackendError as exc:
+            print(
+                f"error: {exc} Firmware still installs without a library -- "
+                f"re-run with --no-library to download it into "
+                f"{firmware_dir()} and stop there.",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+
+    def install(proc) -> int:
+        item = find_firmware(proc.firmware(), args.firmware)
+        result = install_firmware(
+            proc, item, firmware_dir=firmware_dir(), backend=backend
+        )
+        print(result.message)
+        return EXIT_OK
+
+    try:
+        return _with_firmware_plugin(args, install)
+    finally:
+        if backend is not None:
+            backend.close()
+
+
 def _cmd_backend_info(args) -> int:
     """Which library server the Hub is pointed at, and what it can do.
 
@@ -963,6 +1100,40 @@ def build_parser() -> argparse.ArgumentParser:
     cores_install.add_argument("core", help="the core id, from 'cores list'")
     cores_install.set_defaults(func=_cmd_cores_install)
 
+    firmware = sub.add_parser(
+        "firmware", help="list and install BIOS/firmware a plugin offers"
+    )
+    fsub = firmware.add_subparsers(dest="firmware_command", required=True)
+
+    firmware_list = fsub.add_parser(
+        "list", help="list the firmware a plugin offers, with each item's licence"
+    )
+    firmware_list.add_argument("plugin", help="slug of an installed firmware plugin")
+    firmware_list.set_defaults(func=_cmd_firmware_list)
+
+    firmware_install = fsub.add_parser(
+        "install",
+        help=(
+            "download one firmware item into the configured firmware "
+            "directory, and store it in the library too unless --no-library"
+        ),
+    )
+    firmware_install.add_argument(
+        "plugin", help="slug of an installed firmware plugin"
+    )
+    firmware_install.add_argument(
+        "firmware", help="the firmware id, from 'firmware list'"
+    )
+    firmware_install.add_argument(
+        "--no-library",
+        action="store_true",
+        help=(
+            "download the files and stop; do not open the library backend "
+            "at all"
+        ),
+    )
+    firmware_install.set_defaults(func=_cmd_firmware_install)
+
     jobs = sub.add_parser("jobs", help="list import jobs")
     jobs.add_argument(
         "--state",
@@ -1002,6 +1173,7 @@ def main(argv: list[str] | None = None) -> int:
         CatalogError,
         PluginCallError,
         CoreError,
+        FirmwareError,
         EnrichError,
         AssetError,
         BackendError,

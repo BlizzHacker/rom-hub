@@ -366,14 +366,19 @@ def test_every_capability_the_host_gates_on_is_classified_here():
     from rom_hub.catalog import CAPABILITY_EXTRAS, CAPABILITY_NEEDS
     from rom_hub.manifest import KNOWN_CAPABILITIES
 
-    # Every capability that needs something also appears in the manifest's
-    # vocabulary, and nothing is claimed for a capability that does not exist.
+    # Every capability that needs or gains something also appears in the
+    # manifest's vocabulary; nothing is claimed for one that does not exist.
     assert set(CAPABILITY_NEEDS) <= KNOWN_CAPABILITIES
-    assert set(CAPABILITY_EXTRAS) <= set(CAPABILITY_NEEDS)
+    assert set(CAPABILITY_EXTRAS) <= KNOWN_CAPABILITIES
 
-    # And the ones deliberately needing nothing are named, so "absent" is a
-    # decision rather than an oversight.
-    assert KNOWN_CAPABILITIES - set(CAPABILITY_NEEDS) == {
+    # An extra need not hang off a need. `firmware` needs nothing -- the
+    # BIOS is installed once it is on disk -- and still gains something
+    # from a backend that can store firmware.
+    assert set(CAPABILITY_EXTRAS) - set(CAPABILITY_NEEDS) == {"firmware"}
+
+    # And the ones that genuinely touch no backend at all are named, so
+    # "absent from both tables" is a decision rather than an oversight.
+    assert KNOWN_CAPABILITIES - set(CAPABILITY_NEEDS) - set(CAPABILITY_EXTRAS) == {
         "search",
         "stream",
         "cores",

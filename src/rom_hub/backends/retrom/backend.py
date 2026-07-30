@@ -18,7 +18,7 @@ establish from Retrom's source and is worth reading on its own:
   `/dav` is therefore the supported way to put a ROM where a scan will
   find it.
 
-## Capabilities: four of five
+## Capabilities: four of six
 
 `import`, `scan`, `metadata` and `artwork`. Each was exercised against a
 real Retrom 0.8.4, which is why the set is stated here as data rather than
@@ -30,6 +30,14 @@ collection message, service or column anywhere in
 entire schema is IGDB's own `collection` field in `igdbapi.proto`. So
 `rom-hub import --collection` is refused up front, before anything is
 downloaded, rather than after four gigabytes and a 404.
+
+**`firmware` is absent for the same reason, and even more plainly.**
+There is no BIOS or firmware message, service, column or directory
+anywhere in the repository. The word `bios` appears in exactly two files,
+both under `packages/client-web/src/lib/emulatorjs/` -- it is
+EmulatorJS's own optional `biosUrl?: string` config field, a URL the web
+player is handed, not a thing Retrom stores. So there is nothing to
+upload to and nothing to list.
 
 **`scan` is declared, and it is not a nicety.** A file written into a
 content directory has no database row: `GetGames` does not list it and no
@@ -250,6 +258,28 @@ class RetromBackend:
 
         return self._client.update_game_metadata(
             rom_id, fields, cover_url=cover_url
+        )
+
+    # -- firmware ----------------------------------------------------------
+    #
+    # Retrom has none either. Same reason these exist: a caller that got
+    # here past the capability check gets a sentence, not an
+    # AttributeError.
+
+    def list_firmware(self, platform_id: int) -> list[dict]:
+        raise CapabilityUnsupported(
+            f"the {BACKEND_NAME!r} backend cannot list firmware for platform "
+            f"{platform_id}: Retrom has no firmware concept. There is no "
+            f"BIOS or firmware message, service or column anywhere in its "
+            f"schema."
+        )
+
+    def upload_firmware(self, paths: list[Path], platform_id: int) -> None:
+        raise CapabilityUnsupported(
+            f"the {BACKEND_NAME!r} backend cannot store firmware: Retrom has "
+            f"no firmware concept, so there is nowhere for a BIOS to go and "
+            f"nothing that would index it. {len(paths)} file(s) were not "
+            f"sent."
         )
 
     # -- collections -------------------------------------------------------
