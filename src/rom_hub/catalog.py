@@ -208,10 +208,11 @@ def load_catalog(path: Path) -> list[CatalogEntry]:
 #: at all. `require()` is what refuses; this is the same rule stated for
 #: a reader deciding what to install.
 #:
-#: `search`, `stream` and `cores` map to nothing on purpose. None of them
-#: writes to the library: a search returns results, a stream resolves a
-#: target somebody else plays, and a core lands in the Hub's own cores
-#: directory. They work against every backend, including none at all.
+#: `search`, `stream`, `cores` and `firmware` map to nothing on purpose.
+#: None of them *needs* the library: a search returns results, a stream
+#: resolves a target somebody else plays, and a core or a BIOS lands in a
+#: directory of the Hub's own. They work against every backend, including
+#: none at all.
 CAPABILITY_NEEDS: dict[str, str] = {
     "importer": "import",
     "metadata": "metadata",
@@ -221,9 +222,17 @@ CAPABILITY_NEEDS: dict[str, str] = {
 #: absence costs only an extra. Mirrors `OPTIONAL_CAPABILITIES`: an import
 #: into a backend with no collections still imports, and a patch carrying
 #: a name and a cover still writes the name where no image can be stored.
+#:
+#: A key here need **not** appear in `CAPABILITY_NEEDS`, and `firmware` is
+#: the first one that does not. It needs nothing -- the BIOS is installed
+#: the moment it is on disk -- but a backend that can store firmware gets
+#: it into the library too, which is a real difference worth a `*` in the
+#: directory. Requiring an extra to hang off a need was a rule the two
+#: original rows happened to satisfy, not a property of extras.
 CAPABILITY_EXTRAS: dict[str, str] = {
     "importer": "collections",
     "metadata": "artwork",
+    "firmware": "firmware",
 }
 
 def backend_capabilities() -> dict[str, frozenset[str]]:
@@ -282,13 +291,19 @@ def backend_fit(entry: CatalogEntry, backends=None, labels=None) -> list[Backend
         blocked, reduced, unaffected = [], [], []
         for capability in entry.capabilities:
             needed = CAPABILITY_NEEDS.get(capability)
+            extra = CAPABILITY_EXTRAS.get(capability)
             if needed is None:
-                unaffected.append(capability)
+                # Nothing is required, but there may still be something to
+                # lose: `firmware` installs the BIOS either way and only
+                # reaches the library on a backend that stores firmware.
+                if extra and extra not in supported:
+                    reduced.append((capability, extra))
+                else:
+                    unaffected.append(capability)
                 continue
             if needed not in supported:
                 blocked.append(capability)
                 continue
-            extra = CAPABILITY_EXTRAS.get(capability)
             if extra and extra not in supported:
                 reduced.append((capability, extra))
         fits.append(

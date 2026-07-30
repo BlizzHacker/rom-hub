@@ -128,7 +128,17 @@ ARTWORK = "artwork"
 #: `scan_platform` as a no-op.
 SCAN = "scan"
 
-ALL_CAPABILITIES = frozenset({IMPORT, COLLECTIONS, METADATA, ARTWORK, SCAN})
+#: Store a platform's BIOS/firmware, and list what is already stored so a
+#: second copy is not sent. Separate from `IMPORT` because firmware is not
+#: a rom anywhere: RomM keeps it in its own table behind its own
+#: `firmware.read`/`firmware.write` scopes, and a backend can perfectly
+#: well accept roms while having no concept of firmware at all -- both of
+#: the other two do exactly that.
+FIRMWARE = "firmware"
+
+ALL_CAPABILITIES = frozenset(
+    {IMPORT, COLLECTIONS, METADATA, ARTWORK, SCAN, FIRMWARE}
+)
 
 
 # -- essential or optional -------------------------------------------------
@@ -168,7 +178,21 @@ ESSENTIAL_CAPABILITIES = frozenset({IMPORT, METADATA})
 #: (If a patch proposes nothing *but* a cover, there is no remainder to
 #: write and `run_enrich` says so rather than reporting a change it did
 #: not make.)
-OPTIONAL_CAPABILITIES = frozenset({COLLECTIONS, ARTWORK})
+#:
+#: **FIRMWARE** is the library half of `rom-hub firmware install`, and it
+#: is the half that can be missing without the command losing its point.
+#: The thing an operator wants from a BIOS is a *file*, in a directory an
+#: emulator reads -- which is why `firmware` is modelled on `cores`, and
+#: `cores` never touches a library at all. Filing it in RomM as well is
+#: what makes it reachable from RomM's own browser emulator; it is a
+#: second home for bytes that are already installed, not the install.
+#: Refusing to fetch a legally-clean Game Boy boot ROM onto the disk
+#: because the *library server* has no firmware table would be refusing
+#: the job over the garnish, in exactly the way `--collection` once
+#: refused every Gaseous import. So the download happens, the upload is
+#: skipped, and `FirmwareInstallResult.skipped` says so in the line the
+#: operator reads.
+OPTIONAL_CAPABILITIES = frozenset({COLLECTIONS, ARTWORK, FIRMWARE})
 
 #: Declared, never gated on.
 #:
@@ -189,6 +213,7 @@ CAPABILITY_HELP = {
     METADATA: "write a rom's metadata fields (rom-hub enrich)",
     ARTWORK: "attach cover art to a rom",
     SCAN: "needs an explicit registration step after an upload",
+    FIRMWARE: "store a platform's BIOS files (rom-hub firmware install)",
 }
 
 
@@ -270,6 +295,32 @@ class LibraryBackend(Protocol):
         express a partial update must refuse rather than approximate one.
 
         `artwork` is `(filename, bytes, content_type)`.
+        """
+        ...
+
+    # -- firmware ----------------------------------------------------------
+
+    def list_firmware(self, platform_id: int) -> list[dict]:
+        """Every firmware file stored for `platform_id`.
+
+        Read before an upload so a BIOS already in the library is not sent
+        a second time, and read after one as proof it landed -- the same
+        two jobs `list_roms` does. The dicts carry at least `file_name`;
+        `rom_hub.firmware` reads them defensively and treats an unknown
+        shape as "not there", never as an error.
+        """
+        ...
+
+    def upload_firmware(self, paths: list[Path], platform_id: int) -> None:
+        """Store these firmware files under `platform_id`.
+
+        A list rather than one path because firmware comes in sets -- a
+        Game Boy Color boot ROM ships beside the Game Boy one -- and
+        because RomM's own endpoint takes `files: list[UploadFile]` in a
+        single request. Returns nothing, for the same reason
+        `upload_rom` does: what comes back is a whole-platform listing,
+        not an id for what was just sent, and `list_firmware` is the
+        honest way to ask what landed.
         """
         ...
 

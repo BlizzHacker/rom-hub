@@ -11,12 +11,15 @@ capabilities instead of five -- satisfies the same protocol and degrades
 where it must.
 """
 
+import pathlib
+
 import httpx
 import pytest
 
 from rom_hub.backends.base import (
     ARTWORK,
     COLLECTIONS,
+    FIRMWARE,
     IMPORT,
     METADATA,
     SCAN,
@@ -123,7 +126,7 @@ def test_gaseous_declares_exactly_import_and_scan():
     assert capabilities_of(_backend([])) == frozenset({IMPORT, SCAN})
 
 
-@pytest.mark.parametrize("capability", [COLLECTIONS, METADATA, ARTWORK])
+@pytest.mark.parametrize("capability", [COLLECTIONS, METADATA, ARTWORK, FIRMWARE])
 def test_gaseous_does_not_claim_what_it_cannot_do(capability):
     """Each of these was checked against gaseous-server's source and a
     running v2.0.0-rc.3. An overclaim here becomes a 404 halfway through
@@ -166,6 +169,24 @@ def test_get_rom_refuses_because_gaseous_has_no_id_only_lookup():
     assert "7" in str(exc.value)
 
 
+def test_firmware_refuses_because_the_bios_api_is_read_only():
+    """`BiosController.cs` carries four routes -- GetBios(), GetBios(PlatformId),
+    the zip route and BiosFile -- and every one is a read. The only BIOS
+    ingestion is `ImportQueueProcessor` calling `Bios.BiosHashSignatureLookup`,
+    an MD5 allowlist of retail dumps in PlatformMap.json, which no clean-room
+    replacement can match. So this is the case the capability scheme exists
+    for: an up-front skip, not a call that fails."""
+    backend = _backend([])
+    with pytest.raises(CapabilityUnsupported) as exc:
+        backend.upload_firmware([pathlib.Path("dmg_boot.bin")], 7)
+    message = str(exc.value)
+    assert "BiosController" in message
+    assert "PlatformMap.json" in message
+
+    with pytest.raises(CapabilityUnsupported):
+        backend.list_firmware(7)
+
+
 def test_a_refusal_never_opens_a_connection():
     """The point of a declared capability is that it costs nothing to be
     refused."""
@@ -175,6 +196,8 @@ def test_a_refusal_never_opens_a_connection():
         lambda: backend.ensure_collection("x"),
         lambda: backend.update_rom(1, {"name": "x"}),
         lambda: backend.get_rom(1),
+        lambda: backend.list_firmware(1),
+        lambda: backend.upload_firmware([pathlib.Path("x.bin")], 1),
     ):
         with pytest.raises(CapabilityUnsupported):
             call()

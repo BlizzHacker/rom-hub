@@ -26,6 +26,7 @@ from rom_hub.backends.base import (
     ALL_CAPABILITIES,
     ARTWORK,
     COLLECTIONS,
+    FIRMWARE,
     IMPORT,
     METADATA,
     SCAN,
@@ -187,10 +188,10 @@ def test_romm_satisfies_the_scanner_protocol():
 
 
 def test_romm_declares_every_capability():
-    """Measured against a real RomM 4.9.2, not assumed -- which is exactly
-    why it is stated as data instead of taken for granted by callers."""
+    """Measured against a real RomM, not assumed -- which is exactly why it
+    is stated as data instead of taken for granted by callers."""
     assert capabilities_of(_backend()) == frozenset(
-        {IMPORT, COLLECTIONS, METADATA, ARTWORK, SCAN}
+        {IMPORT, COLLECTIONS, METADATA, ARTWORK, SCAN, FIRMWARE}
     )
 
 
