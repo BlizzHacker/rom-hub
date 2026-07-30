@@ -640,22 +640,29 @@ class FirmwareArtifact(BaseModel):
 #: logged; never a path component -- the files an asset installs are named
 #: by its FetchPlan, which validates them as filenames already.
 #:
-#: Wider than `_CORE_ID_CHARS` by exactly one character: `/`. A core id is
-#: a single token from a flat catalogue, but every asset source here is a
-#: *tree*, and the only id that is both stable and unique across it is the
-#: path within that tree (`udev/8BitDo_ Wired_Xbox.cfg`). Inventing a flat
-#: id would mean the plugin holding a mapping the operator cannot see, and
-#: two pads in different driver directories colliding under one name.
+#: An asset id is a **path of bare filenames** within a source tree
+#: (`udev/8BitDo_ Wired_Xbox.cfg`, `cht/Nintendo - Game Boy/Tetris.cht`),
+#: so what it may contain is defined as exactly that: whatever a filename
+#: may contain, plus the separator that joins them.
 #:
-#: The character is safe to admit here precisely because an asset id is
+#: Derived from `_ALLOWED_PUNCTUATION` rather than spelled out again,
+#: because the two cannot be allowed to drift. A hand-written list here
+#: had already drifted once: it omitted `[` and `]`, which meant every
+#: GoodTools-named cheat file in libretro-database -- `Super Mario Land 4
+#: (J) [!].cht` -- was refused off the wire, and the catalogue would have
+#: been silently short of exactly the files people look for.
+#:
+#: Alphanumerics are tested with `str.isalnum` for the same reason
+#: `bare_filename` does: it is unicode-aware, and these repositories carry
+#: Japanese and accented titles that an ASCII allowlist would drop.
+#:
+#: The separator is safe to admit here precisely because an asset id is
 #: never joined onto a path: `install_asset` builds destinations only from
 #: `FetchPlan` filenames, each of which goes through `bare_filename` and
 #: then `dest_in_job_dir`. A separator in this field reaches no filesystem
 #: call. `..` is refused below all the same -- a value that cannot be a
 #: traversal should not be able to look like one in a log.
-_ASSET_ID_CHARS = frozenset(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._- /()+,'&!"
-)
+_ASSET_ID_PUNCTUATION = _ALLOWED_PUNCTUATION | {"/"}
 _MAX_ASSET_ID_CHARS = 200
 
 #: A support-file catalogue, not a package index. Bounded like a core
@@ -730,7 +737,9 @@ class AssetArtifact(BaseModel):
     @field_validator("asset_id")
     @classmethod
     def _identifier_only(cls, v: str) -> str:
-        bad = sorted(set(v) - _ASSET_ID_CHARS)
+        bad = sorted(
+            {c for c in v if not (c.isalnum() or c in _ASSET_ID_PUNCTUATION)}
+        )
         if bad:
             raise ValueError(
                 f"asset_id contains characters that are not permitted in an "

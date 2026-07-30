@@ -1,0 +1,35 @@
+[plugin]
+slug        = "retroarch-autoconfig"
+name        = "RetroArch controller profiles"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+assets = "retroarch_autoconfig.assets:Assets"
+
+# Two hosts, and exactly two. `api.github.com` serves the Git Trees
+# listing this plugin catalogues from; `raw.githubusercontent.com` serves
+# the .cfg the host downloads. Neither redirects -- verified 2026-07-29
+# with `curl -w %{num_redirects}` against a real listing and a real
+# profile, which reports 0 for both -- so there is no CDN hop to declare
+# and nothing else belongs here.
+#
+# Note what is NOT here: github.com. The repository's web URLs are never
+# fetched, only the API and the raw host, and an allowlist should say what
+# is actually used rather than what is nearby.
+[permissions]
+network  = ["api.github.com", "raw.githubusercontent.com"]
+romm_api = []
+
+[config]
+# Which RetroArch input driver's profiles to offer. NOT detected from the
+# host OS: the Hub may be running somewhere other than the machine the pad
+# is plugged into. This is `input_driver` in retroarch.cfg. An
+# unrecognised value is refused by name against the list that exists --
+# see retroarch_autoconfig/assets.py.
+driver = { type = "str", default = "udev" }
+# Keep only profiles whose filename contains this string, case-insensitive.
+# Empty means all of them, which is what you want unless a driver
+# directory ever exceeds the 512 assets a plugin may return in one list.
+match  = { type = "str", default = "" }

@@ -1,0 +1,15 @@
+{
+  "sha": "1ab1aeb623488c32e43d2b1fe800b690f5f814a9",
+  "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/trees/1ab1aeb623488c32e43d2b1fe800b690f5f814a9",
+  "tree": [
+    {
+      "path": "MFi_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33a49e1e15acabfb460bdbb9655defc9470a491d",
+      "size": 1546,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/33a49e1e15acabfb460bdbb9655defc9470a491d"
+    }
+  ],
+  "truncated": false
+}

@@ -1,0 +1,3503 @@
+{
+  "sha": "94ab3603d471a4815fabef9e0977ea949954ddf8",
+  "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/trees/94ab3603d471a4815fabef9e0977ea949954ddf8",
+  "tree": [
+    {
+      "path": "2Axes11KeysGamePad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87782b6fab4a6159c83f30f70ddb3e66991b5b5d",
+      "size": 306,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/87782b6fab4a6159c83f30f70ddb3e66991b5b5d"
+    },
+    {
+      "path": "3H Dual Arcade.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9086e5a3fa6738b3f6b65e15228116923ebf5a34",
+      "size": 2586,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9086e5a3fa6738b3f6b65e15228116923ebf5a34"
+    },
+    {
+      "path": "7039RG.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "890a3027351b4b2b038697f8303ecf7d23d54a5c",
+      "size": 2782,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/890a3027351b4b2b038697f8303ecf7d23d54a5c"
+    },
+    {
+      "path": "8BitDo 8BitDo Pro 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35083dd2b754c258ca90dd41b30ba912ae28f403",
+      "size": 1697,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/35083dd2b754c258ca90dd41b30ba912ae28f403"
+    },
+    {
+      "path": "8BitDo_ Wired_Xbox.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1fc4cb6e65564d69899834bb2d1c5f729ea2df22",
+      "size": 1822,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1fc4cb6e65564d69899834bb2d1c5f729ea2df22"
+    },
+    {
+      "path": "8BitDo_8BitDo_Lite_2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "656856398b74c192db4ed2bf993be6a63d2e5890",
+      "size": 1371,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/656856398b74c192db4ed2bf993be6a63d2e5890"
+    },
+    {
+      "path": "8BitDo_M30.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b9eda095bea1dc0ae6e7d7d2306d242d8c75201",
+      "size": 2264,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7b9eda095bea1dc0ae6e7d7d2306d242d8c75201"
+    },
+    {
+      "path": "8BitDo_M30_BT_B.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "feed688751033f9bf5e82ba2d27dab7708f5874c",
+      "size": 2262,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/feed688751033f9bf5e82ba2d27dab7708f5874c"
+    },
+    {
+      "path": "8BitDo_M30_BT_X.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7d7feeeefc3d3043a94421f12b0c9c87550e9b04",
+      "size": 2198,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7d7feeeefc3d3043a94421f12b0c9c87550e9b04"
+    },
+    {
+      "path": "8BitDo_NEOGEO_24G.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "492e97f4a6fc06f8a1323cb404a345760ce2da48",
+      "size": 1093,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/492e97f4a6fc06f8a1323cb404a345760ce2da48"
+    },
+    {
+      "path": "8BitDo_NEOGEO_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8f2491446aaa55bf2970bf7006305a5da2df32e",
+      "size": 1039,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d8f2491446aaa55bf2970bf7006305a5da2df32e"
+    },
+    {
+      "path": "8BitDo_Pro2_BT_D.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c94a997b72333ac2cefd88f9436c43862c35b33a",
+      "size": 1779,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c94a997b72333ac2cefd88f9436c43862c35b33a"
+    },
+    {
+      "path": "8BitDo_Pro2_BT_X.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7feca40497c8a63bf105d4ce9629ddce37c31ce0",
+      "size": 1994,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7feca40497c8a63bf105d4ce9629ddce37c31ce0"
+    },
+    {
+      "path": "8BitDo_Pro2_N30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "705cedc861f77658f3c3c63de70dc910b880e273",
+      "size": 1936,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/705cedc861f77658f3c3c63de70dc910b880e273"
+    },
+    {
+      "path": "8BitDo_Pro2_N30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb18b1aa8e0dc9ab0857ea3fdb4123edc59bad06",
+      "size": 2195,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/bb18b1aa8e0dc9ab0857ea3fdb4123edc59bad06"
+    },
+    {
+      "path": "8BitDo_Pro_N30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "20b1e29758fd9c77e71c7649198fdd1eeecfa61f",
+      "size": 2223,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/20b1e29758fd9c77e71c7649198fdd1eeecfa61f"
+    },
+    {
+      "path": "8BitDo_SN30_Pro+_BT_B.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "de9edecd7b1bed73adeb0e1cbb3f2120ead585ac",
+      "size": 1890,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/de9edecd7b1bed73adeb0e1cbb3f2120ead585ac"
+    },
+    {
+      "path": "8BitDo_SN30_Pro+_BT_X.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "617a5220da61ccc84eeae2b73592e99b8eac8a15",
+      "size": 1880,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/617a5220da61ccc84eeae2b73592e99b8eac8a15"
+    },
+    {
+      "path": "8BitDo_SN30_Pro+_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "887ce274f6e22ac4a71ecd9d8916ede384e6247a",
+      "size": 2134,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/887ce274f6e22ac4a71ecd9d8916ede384e6247a"
+    },
+    {
+      "path": "8BitDo_Ultimate_2C_Wired_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b74739de4f437925c1e816f0f23076b9f0ad9b3",
+      "size": 1655,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7b74739de4f437925c1e816f0f23076b9f0ad9b3"
+    },
+    {
+      "path": "8BitDo_Ultimate_2C_Wireless_Controller_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f51a5e8be973c4af6220601517ab8fa88cd56a6",
+      "size": 1884,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5f51a5e8be973c4af6220601517ab8fa88cd56a6"
+    },
+    {
+      "path": "8BitDo_Ultimate_2C_Wireless_Controller_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39605563100f36feabe24ea46f5312aa3348618f",
+      "size": 1884,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/39605563100f36feabe24ea46f5312aa3348618f"
+    },
+    {
+      "path": "8BitDo_Ultimate_2_Wireless_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b1d1be736a892a1f863ee1f6293143176fc8b9b",
+      "size": 1848,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3b1d1be736a892a1f863ee1f6293143176fc8b9b"
+    },
+    {
+      "path": "8BitDo_Ultimate_2_Wireless_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e98b01ae2033c1451580db671fce75b6f35505ee",
+      "size": 1865,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e98b01ae2033c1451580db671fce75b6f35505ee"
+    },
+    {
+      "path": "8BitDo_Ultimate_3mode_Xbox.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f66456411fb7d619224ea86a8481cec6d77bd93",
+      "size": 1415,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9f66456411fb7d619224ea86a8481cec6d77bd93"
+    },
+    {
+      "path": "8BitDo_Ultimate_C_Wired_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "08daa2745c19a2cae0110f1bd33f4155c018d7a8",
+      "size": 2033,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/08daa2745c19a2cae0110f1bd33f4155c018d7a8"
+    },
+    {
+      "path": "8BitDo_Ultimate_C_Wired_Controller_DInput.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fec5e6b10d0ecb137288b749a512a15ca2746a27",
+      "size": 2372,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fec5e6b10d0ecb137288b749a512a15ca2746a27"
+    },
+    {
+      "path": "8BitDo_Ultimate_C_Wired_Controller_for_Xbox.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f89f7669e1bf3522e11c72d4ffe8e196d1dba50",
+      "size": 1613,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2f89f7669e1bf3522e11c72d4ffe8e196d1dba50"
+    },
+    {
+      "path": "8BitDo_Ultimate_Wired_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ce34e2a72ca145cda93c98c571b0635a3e10bdb",
+      "size": 1883,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3ce34e2a72ca145cda93c98c571b0635a3e10bdb"
+    },
+    {
+      "path": "8BitDo_Ultimate_Wired_Controller_for_Xbox.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eed467fa7b3af7ccd3e62434356444519e5e3c69",
+      "size": 1820,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/eed467fa7b3af7ccd3e62434356444519e5e3c69"
+    },
+    {
+      "path": "8BitDo_Ultimate_wireless_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bfb6fada78bcb547b2d8a8d3bcfcd15f2282c72d",
+      "size": 1899,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/bfb6fada78bcb547b2d8a8d3bcfcd15f2282c72d"
+    },
+    {
+      "path": "8BitDo_Zero2_gamepad_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ec93f1f8bd398a8d5c0192d97053ff949b891bbe",
+      "size": 1099,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ec93f1f8bd398a8d5c0192d97053ff949b891bbe"
+    },
+    {
+      "path": "8Bitdo_24G_SF30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "49bd8ac1ab4ef20966cd4305117c1a7534190c9e",
+      "size": 1191,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/49bd8ac1ab4ef20966cd4305117c1a7534190c9e"
+    },
+    {
+      "path": "8Bitdo_24G_SN30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eac2e7ed842a3c65c82e647891507c2e40ddc125",
+      "size": 1191,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/eac2e7ed842a3c65c82e647891507c2e40ddc125"
+    },
+    {
+      "path": "8Bitdo_64_Bluetooth_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c372e55268c46f8b81d9d322ca45e93ad00828a",
+      "size": 675,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9c372e55268c46f8b81d9d322ca45e93ad00828a"
+    },
+    {
+      "path": "8Bitdo_Arcade_F30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "21905e190437b79f3b529eba06b21d702dee9057",
+      "size": 1951,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/21905e190437b79f3b529eba06b21d702dee9057"
+    },
+    {
+      "path": "8Bitdo_Arcade_F30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b9b9d520c0a2c20d338a315e5d3a3ae9ddcfe3a",
+      "size": 1332,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9b9b9d520c0a2c20d338a315e5d3a3ae9ddcfe3a"
+    },
+    {
+      "path": "8Bitdo_Arcade_N30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "95ec331f609a248c16fec383b7bcb8737e3a677e",
+      "size": 2266,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/95ec331f609a248c16fec383b7bcb8737e3a677e"
+    },
+    {
+      "path": "8Bitdo_Arcade_N30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "feb32a96db7b149edb73054630f7b2a6d3495158",
+      "size": 1636,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/feb32a96db7b149edb73054630f7b2a6d3495158"
+    },
+    {
+      "path": "8Bitdo_F30_P1_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2c7f99819bf50e7ef39759f5d174ead10975f80",
+      "size": 1859,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d2c7f99819bf50e7ef39759f5d174ead10975f80"
+    },
+    {
+      "path": "8Bitdo_F30_P2_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67955349918d021d85220d0c89b6af32ed48425e",
+      "size": 1849,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/67955349918d021d85220d0c89b6af32ed48425e"
+    },
+    {
+      "path": "8Bitdo_F30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "204b995351281009fa88f566c6199ee43bf6dad4",
+      "size": 1224,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/204b995351281009fa88f566c6199ee43bf6dad4"
+    },
+    {
+      "path": "8Bitdo_N30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b09d0acde048415668d428d1beef1278ac8e8563",
+      "size": 1861,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b09d0acde048415668d428d1beef1278ac8e8563"
+    },
+    {
+      "path": "8Bitdo_N30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "19d56ac0d3edb93a6b9c4aed7f6f7dd23fb852ff",
+      "size": 1224,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/19d56ac0d3edb93a6b9c4aed7f6f7dd23fb852ff"
+    },
+    {
+      "path": "8Bitdo_P30_Modkit_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1752a3518e3f66a62de19b17b9862a5f25e8060",
+      "size": 1950,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b1752a3518e3f66a62de19b17b9862a5f25e8060"
+    },
+    {
+      "path": "8Bitdo_Pro_F30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6317271ebe795312daa0ddaf2383d39a5f2a50d1",
+      "size": 2590,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6317271ebe795312daa0ddaf2383d39a5f2a50d1"
+    },
+    {
+      "path": "8Bitdo_Pro_F30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e2e85b5059fe0a7f0a31288c16e9bdad49b9093",
+      "size": 2222,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3e2e85b5059fe0a7f0a31288c16e9bdad49b9093"
+    },
+    {
+      "path": "8Bitdo_Pro_N30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50a90e4bee50f70abb1783484e092a3b23411306",
+      "size": 2592,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/50a90e4bee50f70abb1783484e092a3b23411306"
+    },
+    {
+      "path": "8Bitdo_Pro_SF30_BT_B.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e82445dd661ba2936e8318f9ea9ff1c73c470f96",
+      "size": 2662,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e82445dd661ba2936e8318f9ea9ff1c73c470f96"
+    },
+    {
+      "path": "8Bitdo_Pro_SF30_BT_X.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4e1fa3cf69c03bfe3b99f84dc4fe7cd4e9e89454",
+      "size": 2659,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4e1fa3cf69c03bfe3b99f84dc4fe7cd4e9e89454"
+    },
+    {
+      "path": "8Bitdo_Pro_SF30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4fd37a810fe3f54971d202c302828af07dac1c05",
+      "size": 2293,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4fd37a810fe3f54971d202c302828af07dac1c05"
+    },
+    {
+      "path": "8Bitdo_Pro_SN30_BT_B.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25f23ac85293894864bd43fb7ed0ecbc952bf237",
+      "size": 2663,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/25f23ac85293894864bd43fb7ed0ecbc952bf237"
+    },
+    {
+      "path": "8Bitdo_Pro_SN30_BT_X.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d967cbeeda6dce3f0887ce002c19e917357ce78c",
+      "size": 2659,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d967cbeeda6dce3f0887ce002c19e917357ce78c"
+    },
+    {
+      "path": "8Bitdo_Pro_SN30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8c455b22b07065a2c74ff065fe479a687ace12fa",
+      "size": 2293,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8c455b22b07065a2c74ff065fe479a687ace12fa"
+    },
+    {
+      "path": "8Bitdo_S30_Modkit.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a3a4b45c050daeff1d9bd5f1a68befa60c71de9d",
+      "size": 993,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a3a4b45c050daeff1d9bd5f1a68befa60c71de9d"
+    },
+    {
+      "path": "8Bitdo_SF30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ebc1efe8e771a4b5612cbb19bcd8461d93f6a7e2",
+      "size": 1868,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ebc1efe8e771a4b5612cbb19bcd8461d93f6a7e2"
+    },
+    {
+      "path": "8Bitdo_SF30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ca65f8cd8a60fe5cc997108d9fd26720cc1f0256",
+      "size": 1231,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ca65f8cd8a60fe5cc997108d9fd26720cc1f0256"
+    },
+    {
+      "path": "8Bitdo_SN30_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3794482a384563d45b37f5dd7cf4e56e9c94cfdd",
+      "size": 1870,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3794482a384563d45b37f5dd7cf4e56e9c94cfdd"
+    },
+    {
+      "path": "8Bitdo_SN30_GP_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e4fda284e1c63220e4f3db1e8ac2268f07166b7",
+      "size": 1846,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3e4fda284e1c63220e4f3db1e8ac2268f07166b7"
+    },
+    {
+      "path": "8Bitdo_SN30_GP_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c59f5ced306d51e33068e3eae790e7ea47495821",
+      "size": 1859,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c59f5ced306d51e33068e3eae790e7ea47495821"
+    },
+    {
+      "path": "8Bitdo_SN30_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f18494d942c3d5d97724529c40bc89924ec7b13a",
+      "size": 1231,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f18494d942c3d5d97724529c40bc89924ec7b13a"
+    },
+    {
+      "path": "8Bitdo_Zero_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ab270d8d578a84c5c1db5751e91678ea06b7382",
+      "size": 2034,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3ab270d8d578a84c5c1db5751e91678ea06b7382"
+    },
+    {
+      "path": "ACRUX_QuanBa_Arcade_JoyStick_1008.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f1e6e798f00c4b9ff09cbac55964b41f6c6dd86",
+      "size": 1544,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3f1e6e798f00c4b9ff09cbac55964b41f6c6dd86"
+    },
+    {
+      "path": "ASUS Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed7280a6b048e89d347e901f447941df002af7a0",
+      "size": 608,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ed7280a6b048e89d347e901f447941df002af7a0"
+    },
+    {
+      "path": "ASUS ROG Ally X Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "374070c56083b1a90bfa8a8bb4ab55e129ae45e7",
+      "size": 769,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/374070c56083b1a90bfa8a8bb4ab55e129ae45e7"
+    },
+    {
+      "path": "Afterglow AX.1 Gamepad for Xbox 360.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "864631d0d5c99ed71bea1cc61a05c1ee586bfc2c",
+      "size": 1579,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/864631d0d5c99ed71bea1cc61a05c1ee586bfc2c"
+    },
+    {
+      "path": "Afterglow Gamepad for Xbox 360.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1ec5e590351fbfe1b17650700311f9524bd6d6b",
+      "size": 1838,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e1ec5e590351fbfe1b17650700311f9524bd6d6b"
+    },
+    {
+      "path": "Afterglow Prismatic Wired Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ab8bd7593275c7af5b3a6caf96e149dc00399a3",
+      "size": 682,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1ab8bd7593275c7af5b3a6caf96e149dc00399a3"
+    },
+    {
+      "path": "Afterglow controller for PS3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ec420968f03b01dc82ca22765f4a827658f3490",
+      "size": 730,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2ec420968f03b01dc82ca22765f4a827658f3490"
+    },
+    {
+      "path": "Akishop Customs PS360+ v1.66.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57ff28921fbe62c5b1a195d9537fad7639bead45",
+      "size": 908,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/57ff28921fbe62c5b1a195d9537fad7639bead45"
+    },
+    {
+      "path": "Amazon Game Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "467a38f534da1a11d7b552961dc2a14edcce8c8b",
+      "size": 1728,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/467a38f534da1a11d7b552961dc2a14edcce8c8b"
+    },
+    {
+      "path": "Arcade Pad (Mad Catz BrawlPad).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "edda15dd32c026df3859b5a82533d4406c1c66e7",
+      "size": 1570,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/edda15dd32c026df3859b5a82533d4406c1c66e7"
+    },
+    {
+      "path": "Arcade Pad (Mad Catz BrawlStick).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be0e043abf578161387db234e3d142d6d21f5ecc",
+      "size": 1572,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/be0e043abf578161387db234e3d142d6d21f5ecc"
+    },
+    {
+      "path": "Arcade Stick (MadCatz FightStick TE).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "185d79ad1d998698a2a348f2967d8bb8c94f29fe",
+      "size": 1576,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/185d79ad1d998698a2a348f2967d8bb8c94f29fe"
+    },
+    {
+      "path": "Arduino LLC Arduino Leonardo.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "019d22fe9c46716c39ce9ca207acc2da054cb88b",
+      "size": 1252,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/019d22fe9c46716c39ce9ca207acc2da054cb88b"
+    },
+    {
+      "path": "Astro city mini Arcade stick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2393370f38ddbed3c9c9db31ba80cabfbd2bf717",
+      "size": 827,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2393370f38ddbed3c9c9db31ba80cabfbd2bf717"
+    },
+    {
+      "path": "Atari VCS Modern Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "343e705dada57b1d86da92d827c8239018edcf81",
+      "size": 1579,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/343e705dada57b1d86da92d827c8239018edcf81"
+    },
+    {
+      "path": "Austgame_PS_to_USB_convert_cable.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c9a0071f984165a38a9cafd2d33a91854da73b70",
+      "size": 1475,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c9a0071f984165a38a9cafd2d33a91854da73b70"
+    },
+    {
+      "path": "BDA Pro Ex.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "945d547ff000b63fe1d55cf9379564987c5ef27e",
+      "size": 1575,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/945d547ff000b63fe1d55cf9379564987c5ef27e"
+    },
+    {
+      "path": "BETOP BETOP XF1 BFM DONGLE.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddc7b1c7981df08802598083ac26d9d1cd4c87c3",
+      "size": 705,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ddc7b1c7981df08802598083ac26d9d1cd4c87c3"
+    },
+    {
+      "path": "BETOP_AX1_BFM.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b22fcc4de495ac3b8086a7ef73e829c67cbb0bbd",
+      "size": 2192,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b22fcc4de495ac3b8086a7ef73e829c67cbb0bbd"
+    },
+    {
+      "path": "BUFFALO INC. BUFFALO BGC-FC801 USB Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "727badcfae5254bdbc57aa51944178429990c13c",
+      "size": 788,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/727badcfae5254bdbc57aa51944178429990c13c"
+    },
+    {
+      "path": "Bigben-Revolution-Pro.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "13ee753904f7154140d73bab743eeeeaf6bddb55",
+      "size": 1921,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/13ee753904f7154140d73bab743eeeeaf6bddb55"
+    },
+    {
+      "path": "Bliss-Box 4-Play ATARI Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ab01eeaa9481422e506c7893f335b922321b0e1",
+      "size": 1448,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6ab01eeaa9481422e506c7893f335b922321b0e1"
+    },
+    {
+      "path": "Bliss-Box 4-Play ATARI Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "de418dabbee93caf34500f6c60208928ea8ff9d9",
+      "size": 1448,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/de418dabbee93caf34500f6c60208928ea8ff9d9"
+    },
+    {
+      "path": "Bliss-Box 4-Play ATARI Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e5c2467b33cfd49998335acc1af81743fa21f8ae",
+      "size": 1448,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e5c2467b33cfd49998335acc1af81743fa21f8ae"
+    },
+    {
+      "path": "Bliss-Box 4-Play ATARI Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f070485d0adb6d43cd984bc9bfe544f738a4ef20",
+      "size": 1448,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f070485d0adb6d43cd984bc9bfe544f738a4ef20"
+    },
+    {
+      "path": "Bliss-Box 4-Play GC Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2cdf6d1faa54ded3cf80eba9b4d12d1d1d120fd8",
+      "size": 2404,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2cdf6d1faa54ded3cf80eba9b4d12d1d1d120fd8"
+    },
+    {
+      "path": "Bliss-Box 4-Play GC Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a5bbaf599aaa62922ca7865c90d986e97b21cde",
+      "size": 2404,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6a5bbaf599aaa62922ca7865c90d986e97b21cde"
+    },
+    {
+      "path": "Bliss-Box 4-Play GC Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64f55056c7b6cc03b342f3b90757f0817e5f569a",
+      "size": 2404,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/64f55056c7b6cc03b342f3b90757f0817e5f569a"
+    },
+    {
+      "path": "Bliss-Box 4-Play GC Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "faba563a256c33bce57925a06f0b56a0cdae901c",
+      "size": 2404,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/faba563a256c33bce57925a06f0b56a0cdae901c"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_3 Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "427fa5a8c95e280de5f0d2b2c3af7619569d8d0f",
+      "size": 1604,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/427fa5a8c95e280de5f0d2b2c3af7619569d8d0f"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_3 Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7fbfc91c3c9145eb99f9865fb011c665d1acdaaf",
+      "size": 1604,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7fbfc91c3c9145eb99f9865fb011c665d1acdaaf"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_3 Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1d8f1c7524104c9ef3797b399dbb124fd7a8d2a",
+      "size": 1604,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a1d8f1c7524104c9ef3797b399dbb124fd7a8d2a"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_3 Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db708699c469ade72c0f2369f88988edff409fb7",
+      "size": 1604,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/db708699c469ade72c0f2369f88988edff409fb7"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_6 Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bbb0c5457e737d9dbb3835dced58623e7cd39ce6",
+      "size": 1785,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/bbb0c5457e737d9dbb3835dced58623e7cd39ce6"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_6 Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8bf295b81e06772252358695bf8988972c3c7f3b",
+      "size": 1785,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8bf295b81e06772252358695bf8988972c3c7f3b"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_6 Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d65280447a13c87d14a026d3db5e2f2c6af4e76",
+      "size": 1785,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9d65280447a13c87d14a026d3db5e2f2c6af4e76"
+    },
+    {
+      "path": "Bliss-Box 4-Play GEN_6 Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1209650b65a5ae0886d4613ca080a85aca552b46",
+      "size": 1785,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1209650b65a5ae0886d4613ca080a85aca552b46"
+    },
+    {
+      "path": "Bliss-Box 4-Play N64 Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "136a2e0d6ac9dbcd7fb28bd63ad01fb5114f1c90",
+      "size": 2634,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/136a2e0d6ac9dbcd7fb28bd63ad01fb5114f1c90"
+    },
+    {
+      "path": "Bliss-Box 4-Play N64 Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b83a0f24638525893d3dc5175b609f932b00cbe2",
+      "size": 2634,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b83a0f24638525893d3dc5175b609f932b00cbe2"
+    },
+    {
+      "path": "Bliss-Box 4-Play N64 Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7f5425935981433494a875f3ce98c276cae3e354",
+      "size": 2634,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7f5425935981433494a875f3ce98c276cae3e354"
+    },
+    {
+      "path": "Bliss-Box 4-Play N64 Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e5edb3f5ff6c1cc375ff12355c35d7561ff3d02",
+      "size": 2634,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0e5edb3f5ff6c1cc375ff12355c35d7561ff3d02"
+    },
+    {
+      "path": "Bliss-Box 4-Play NES Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3254a32e2c8d88a382b7e759dee86492c7b47f77",
+      "size": 1618,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3254a32e2c8d88a382b7e759dee86492c7b47f77"
+    },
+    {
+      "path": "Bliss-Box 4-Play NES Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d5f6962d19d936f92fbe028d0dfea663db14920",
+      "size": 1618,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5d5f6962d19d936f92fbe028d0dfea663db14920"
+    },
+    {
+      "path": "Bliss-Box 4-Play NES Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b0bffb4e5ea9e1e151385f4b45d4fbe3285f2281",
+      "size": 1618,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b0bffb4e5ea9e1e151385f4b45d4fbe3285f2281"
+    },
+    {
+      "path": "Bliss-Box 4-Play NES Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "32dd735d622489a52813d2ec6fbdef33e7d79081",
+      "size": 1618,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/32dd735d622489a52813d2ec6fbdef33e7d79081"
+    },
+    {
+      "path": "Bliss-Box 4-Play PSX_DS2 Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "96d7effed85454bbff7ee29d5a15c6b6bfb2936a",
+      "size": 2655,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/96d7effed85454bbff7ee29d5a15c6b6bfb2936a"
+    },
+    {
+      "path": "Bliss-Box 4-Play PSX_DS2 Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "075e9d32a44ec8aaf2bc9153db192aa03bd3fb69",
+      "size": 2655,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/075e9d32a44ec8aaf2bc9153db192aa03bd3fb69"
+    },
+    {
+      "path": "Bliss-Box 4-Play PSX_DS2 Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c563a5901ca2e7507e017d60243c230c557de02e",
+      "size": 2655,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c563a5901ca2e7507e017d60243c230c557de02e"
+    },
+    {
+      "path": "Bliss-Box 4-Play PSX_DS2 Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78141261729375e8ba2be0a97d1e7071230cc244",
+      "size": 2655,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/78141261729375e8ba2be0a97d1e7071230cc244"
+    },
+    {
+      "path": "Bliss-Box 4-Play SATURN_DIGITAL Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4431580b93f8e9d3312dc3b386c16be20a1b78b4",
+      "size": 1861,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4431580b93f8e9d3312dc3b386c16be20a1b78b4"
+    },
+    {
+      "path": "Bliss-Box 4-Play SATURN_DIGITAL Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fc0397d696c795bf3ed01e613644f09e12882013",
+      "size": 1861,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fc0397d696c795bf3ed01e613644f09e12882013"
+    },
+    {
+      "path": "Bliss-Box 4-Play SATURN_DIGITAL Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e6d948b335c35199ad89c0f18cdb711c1bcdec2",
+      "size": 1861,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6e6d948b335c35199ad89c0f18cdb711c1bcdec2"
+    },
+    {
+      "path": "Bliss-Box 4-Play SATURN_DIGITAL Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0f386d344efd4621578ebba0d31129134987045c",
+      "size": 1861,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0f386d344efd4621578ebba0d31129134987045c"
+    },
+    {
+      "path": "Bliss-Box 4-Play SNES Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "44fb6d7ad4b324b1feb13da3c1972bb455042100",
+      "size": 1788,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/44fb6d7ad4b324b1feb13da3c1972bb455042100"
+    },
+    {
+      "path": "Bliss-Box 4-Play SNES Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f02377bccfb7d9cfc85fd5119f7dddc38e855a57",
+      "size": 1788,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f02377bccfb7d9cfc85fd5119f7dddc38e855a57"
+    },
+    {
+      "path": "Bliss-Box 4-Play SNES Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "34baef72e194231d75e9df9ee19fa640df28b4c7",
+      "size": 1788,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/34baef72e194231d75e9df9ee19fa640df28b4c7"
+    },
+    {
+      "path": "Bliss-Box 4-Play SNES Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3df1a206e57e019aa1c55244b478a934b4920afd",
+      "size": 1788,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3df1a206e57e019aa1c55244b478a934b4920afd"
+    },
+    {
+      "path": "Bliss-Box 4-Play WII_CLASSIC Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a428706240eeafe0d5dc3cbba844f587b152f64b",
+      "size": 2521,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a428706240eeafe0d5dc3cbba844f587b152f64b"
+    },
+    {
+      "path": "Bliss-Box 4-Play WII_CLASSIC Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa0ca1c4638b341e627bb78e1e5b52110cff1d32",
+      "size": 2521,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/aa0ca1c4638b341e627bb78e1e5b52110cff1d32"
+    },
+    {
+      "path": "Bliss-Box 4-Play WII_CLASSIC Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71cdd3030c6a325e4ffba7b1a370fbea37410099",
+      "size": 2521,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/71cdd3030c6a325e4ffba7b1a370fbea37410099"
+    },
+    {
+      "path": "Bliss-Box 4-Play WII_CLASSIC Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d7ab57da7878feb50ad151435e54ffad42a6623f",
+      "size": 2521,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d7ab57da7878feb50ad151435e54ffad42a6623f"
+    },
+    {
+      "path": "Bliss-Box-4play.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "05cbe73a14eb55f05e5b40faf300d71926b1e44f",
+      "size": 653,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/05cbe73a14eb55f05e5b40faf300d71926b1e44f"
+    },
+    {
+      "path": "CHA1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d0ca88165e73206b34d3746bf6f51c5159cd764",
+      "size": 793,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0d0ca88165e73206b34d3746bf6f51c5159cd764"
+    },
+    {
+      "path": "CHA2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9493cd4120dc28a7e78e8bca2e215d0c1018494b",
+      "size": 793,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9493cd4120dc28a7e78e8bca2e215d0c1018494b"
+    },
+    {
+      "path": "ControlBlockArcadeGamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7cd8fb10ef81dd61444cb9d5b33989eb8829e13b",
+      "size": 389,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7cd8fb10ef81dd61444cb9d5b33989eb8829e13b"
+    },
+    {
+      "path": "ControlBlockSNESGamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d3dbfe79db17ed92860d31b74813a3c5ba4bb4f",
+      "size": 309,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5d3dbfe79db17ed92860d31b74813a3c5ba4bb4f"
+    },
+    {
+      "path": "DIALOG_GP-A11.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1287a75fcc4ef098456ba8784aa595380752bde5",
+      "size": 2132,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1287a75fcc4ef098456ba8784aa595380752bde5"
+    },
+    {
+      "path": "Defender_Game_Master_Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1847677672271baf95bf607f612f3604bbaf19b",
+      "size": 653,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e1847677672271baf95bf607f612f3604bbaf19b"
+    },
+    {
+      "path": "DragonRise Inc. Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "092ddde4ec728e3541805e54d94f3830499a62ef",
+      "size": 1812,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/092ddde4ec728e3541805e54d94f3830499a62ef"
+    },
+    {
+      "path": "DragonRise Inc. NES.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e83d6ce5108d130cf624bbe51ce08330f9ba758",
+      "size": 469,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9e83d6ce5108d130cf624bbe51ce08330f9ba758"
+    },
+    {
+      "path": "DragonRise_Inc._PC_TWIN_SHOCK_Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "508d23a89605f10cc94c516dd883bb8cb646f0fa",
+      "size": 658,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/508d23a89605f10cc94c516dd883bb8cb646f0fa"
+    },
+    {
+      "path": "DragonRise_Inc.___Generic___USB__Joystick__.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6050b037422ac0f967ecab68997893aa6f108d00",
+      "size": 1584,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6050b037422ac0f967ecab68997893aa6f108d00"
+    },
+    {
+      "path": "DragonRise_N64.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d14263e73b1833afb0cb24b897c04445c091819",
+      "size": 1222,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4d14263e73b1833afb0cb24b897c04445c091819"
+    },
+    {
+      "path": "DragonRise_X-Box_Gamepad_with_Force_Feedback.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d065a10d473f4a0f663de5a6fad4780dd7bdc6a0",
+      "size": 2841,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d065a10d473f4a0f663de5a6fad4780dd7bdc6a0"
+    },
+    {
+      "path": "EA_SPORTS_PS3_Football_Club_Wired_Controller_PL-6416.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aaed298744c30f9596f22164b03a567333285c70",
+      "size": 1615,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/aaed298744c30f9596f22164b03a567333285c70"
+    },
+    {
+      "path": "ELECOM JC-U4113S DirectInput Mode.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dc8a01963ca84ba67d5b0c78b978de0f16399769",
+      "size": 1982,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/dc8a01963ca84ba67d5b0c78b978de0f16399769"
+    },
+    {
+      "path": "ELECOM JC-U4113S XInput Mode.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b4d1ca68cc0b6e47de4835228dc3eff8daee77e",
+      "size": 2128,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3b4d1ca68cc0b6e47de4835228dc3eff8daee77e"
+    },
+    {
+      "path": "EXEQ_PROACTION.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e577b4b6c6ff6a6f5f6352389bcb4ca5231b1b31",
+      "size": 1818,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e577b4b6c6ff6a6f5f6352389bcb4ca5231b1b31"
+    },
+    {
+      "path": "Flydigi Vader 2 Pro.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b272e8c4dc806848fd30af8b655eb708ec4fcb97",
+      "size": 2068,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b272e8c4dc806848fd30af8b655eb708ec4fcb97"
+    },
+    {
+      "path": "Flydigi Vader 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ca722db8337d1b52b3bcd2b84bfcb00a36ed14d",
+      "size": 2063,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6ca722db8337d1b52b3bcd2b84bfcb00a36ed14d"
+    },
+    {
+      "path": "GAMESAIKE USB GAME Controller .cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c46ed52dbefeb1f8f151e2df6bcc6903aa139a42",
+      "size": 1575,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c46ed52dbefeb1f8f151e2df6bcc6903aa139a42"
+    },
+    {
+      "path": "GEN GAME S3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "316ff148ee77b3d6ae7b9a6248e42b308117cdd1",
+      "size": 1455,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/316ff148ee77b3d6ae7b9a6248e42b308117cdd1"
+    },
+    {
+      "path": "GPD Win 2 X-Box Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a353ef68689558409e1d8a8ea6b3102685380033",
+      "size": 1596,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a353ef68689558409e1d8a8ea6b3102685380033"
+    },
+    {
+      "path": "GameSir Nova Lite.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe62b190f517cf8b72b1d16a0bed3e5e1fb20b90",
+      "size": 1675,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fe62b190f517cf8b72b1d16a0bed3e5e1fb20b90"
+    },
+    {
+      "path": "GameSir-G7 Pro XInput Mode.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "46172f6af9b29d6e3b65840d2db53d1dfa0d56ce",
+      "size": 1956,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/46172f6af9b29d6e3b65840d2db53d1dfa0d56ce"
+    },
+    {
+      "path": "GameSir-G7 Pro.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2be0a84178fee6276e5ff116332ab612388b501",
+      "size": 1942,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a2be0a84178fee6276e5ff116332ab612388b501"
+    },
+    {
+      "path": "GameStick Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b267b0e7fe19d4cbe64ae22ec125bdc7faa3bf3",
+      "size": 1921,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4b267b0e7fe19d4cbe64ae22ec125bdc7faa3bf3"
+    },
+    {
+      "path": "Gamegirl.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fbbf196d41392bef9b0b8dee8ddcf79bbae3fbcf",
+      "size": 341,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fbbf196d41392bef9b0b8dee8ddcf79bbae3fbcf"
+    },
+    {
+      "path": "Gamesir-T4 1.25.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b5adce83b15a058e5b07c3f86636926b888c32a",
+      "size": 1711,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3b5adce83b15a058e5b07c3f86636926b888c32a"
+    },
+    {
+      "path": "Gamester_Reflex_Arcade_Stick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9fdf21358339fc7c7034b77e762533394a4677d4",
+      "size": 1183,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9fdf21358339fc7c7034b77e762533394a4677d4"
+    },
+    {
+      "path": "Gametel.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59d248ee93dbf4d4d6f4b337a56ad4b8f63056c6",
+      "size": 1181,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/59d248ee93dbf4d4d6f4b337a56ad4b8f63056c6"
+    },
+    {
+      "path": "Gametel_Bluetooth_controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5c5de3963ad10ce4a50a2af9c3fa8ad80fefc0eb",
+      "size": 1707,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5c5de3963ad10ce4a50a2af9c3fa8ad80fefc0eb"
+    },
+    {
+      "path": "Gamtec.,Ltd_SmartJoy_PLUS_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5415e9a12fa9eeec006d3b6716a24c4d9309e8fe",
+      "size": 692,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5415e9a12fa9eeec006d3b6716a24c4d9309e8fe"
+    },
+    {
+      "path": "Gasia_PS_Gamepad_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58cf4576aea4a87f2c0378a491cdede79f2c33e4",
+      "size": 1646,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/58cf4576aea4a87f2c0378a491cdede79f2c33e4"
+    },
+    {
+      "path": "Gasia_PS_Gamepad_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1fc0160839b41064a0c6479db89fd5d6ceeb0818",
+      "size": 1783,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1fc0160839b41064a0c6479db89fd5d6ceeb0818"
+    },
+    {
+      "path": "Generic   USB  Joystick  .cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c004ea1e3384e4c459df0c94a20e445fc24e0988",
+      "size": 1295,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c004ea1e3384e4c459df0c94a20e445fc24e0988"
+    },
+    {
+      "path": "Generic X-Box pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "328c2f9c2cb433eaffe84b09ad1532c26c76380b",
+      "size": 729,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/328c2f9c2cb433eaffe84b09ad1532c26c76380b"
+    },
+    {
+      "path": "Generic_X-Box_pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fcc29fa88df133224314e2ed7435023aee8e334",
+      "size": 641,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5fcc29fa88df133224314e2ed7435023aee8e334"
+    },
+    {
+      "path": "Google LLC Stadia Controller rev. A.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4dfba8b7c1a5e33821893537a7080662ae2dac9",
+      "size": 1644,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c4dfba8b7c1a5e33821893537a7080662ae2dac9"
+    },
+    {
+      "path": "Gravis_Destroyer_Tiltpad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61b8a3521762e35bb7ff374b04518d05d8fa6af9",
+      "size": 640,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/61b8a3521762e35bb7ff374b04518d05d8fa6af9"
+    },
+    {
+      "path": "Gravis_GamePad_Pro_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e39fc61bddd0fd539678174a6a332fe10f548843",
+      "size": 822,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e39fc61bddd0fd539678174a6a332fe10f548843"
+    },
+    {
+      "path": "GreenAsia_USB_Joystick_1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "56ad7b95fb9e2981993dc42ba0284195c77167eb",
+      "size": 617,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/56ad7b95fb9e2981993dc42ba0284195c77167eb"
+    },
+    {
+      "path": "GreenAsia_USB_Joystick_2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5317ed5c18e32d0d551e4adc74098cdc1a4aa09a",
+      "size": 677,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5317ed5c18e32d0d551e4adc74098cdc1a4aa09a"
+    },
+    {
+      "path": "HJZ Mayflash WiiU Pro Game Controller Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4dd82483b364cce5ca90b258788d282537dde659",
+      "size": 688,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4dd82483b364cce5ca90b258788d282537dde659"
+    },
+    {
+      "path": "HOLTEK_Twin-Shock.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "274f2b7ed4fb4aac0ec4200a717f8908eae02292",
+      "size": 1736,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/274f2b7ed4fb4aac0ec4200a717f8908eae02292"
+    },
+    {
+      "path": "HORIPAD S.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7875c3ff37548fff48778547f184d79b8189f649",
+      "size": 1679,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7875c3ff37548fff48778547f184d79b8189f649"
+    },
+    {
+      "path": "HORI_Fighting_Commander_4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f2ae9a08c8b978ea75e3a2020b3abcf1c2090295",
+      "size": 1694,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f2ae9a08c8b978ea75e3a2020b3abcf1c2090295"
+    },
+    {
+      "path": "HORI_Fighting_Commander_PS4-044_3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d20b046896c0a76b0ac29f041c9d12b4719abe6f",
+      "size": 1953,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d20b046896c0a76b0ac29f041c9d12b4719abe6f"
+    },
+    {
+      "path": "HORI_Fighting_Commander_PS4-044_4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c88669056a68f50eab5be9f638bbd097b0f7d514",
+      "size": 1953,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c88669056a68f50eab5be9f638bbd097b0f7d514"
+    },
+    {
+      "path": "HORI_Fighting_Commander_PS4-044_PC.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cadafb10395aa36be31707c5ff9a25b884ebf7b9",
+      "size": 1944,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/cadafb10395aa36be31707c5ff9a25b884ebf7b9"
+    },
+    {
+      "path": "HORI_Fighting_Commander_for_Nintendo_Switch_1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "73b2c02f1cd954f9818d5135e97556970e430440",
+      "size": 1762,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/73b2c02f1cd954f9818d5135e97556970e430440"
+    },
+    {
+      "path": "HORI_Fighting_Commander_for_Nintendo_Switch_2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eae02d0cf3a0bc9bb62b6513d323beecf3378f48",
+      "size": 1677,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/eae02d0cf3a0bc9bb62b6513d323beecf3378f48"
+    },
+    {
+      "path": "HORI_Fighting_Stick_EX2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3bc54258fcdf7068a8273b7c2f15a0e8dee8abfd",
+      "size": 405,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3bc54258fcdf7068a8273b7c2f15a0e8dee8abfd"
+    },
+    {
+      "path": "HORI_Fighting_Stick_mini_4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be602dc215f8507da9796b1010d1d7351489f0dd",
+      "size": 912,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/be602dc215f8507da9796b1010d1d7351489f0dd"
+    },
+    {
+      "path": "HORI_Fighting_Stick_mini_Switch.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "874cdccbebcc25c13f0833690ec0805592239c02",
+      "size": 939,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/874cdccbebcc25c13f0833690ec0805592239c02"
+    },
+    {
+      "path": "HORI_HORIPAD_ONE.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8891979f04b45d8d7e53151943eb78d19b078723",
+      "size": 1550,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8891979f04b45d8d7e53151943eb78d19b078723"
+    },
+    {
+      "path": "HORI_HORIPAD_mini_PS4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60597ab782123a03c89ec028c4b72a1abee565d9",
+      "size": 1591,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/60597ab782123a03c89ec028c4b72a1abee565d9"
+    },
+    {
+      "path": "HORI_PAD_A.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4388292cf4f0946c70c508cb93e33ef21d2e5b1d",
+      "size": 661,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4388292cf4f0946c70c508cb93e33ef21d2e5b1d"
+    },
+    {
+      "path": "HORI_Real_Arcade_Pro_3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dfb4f53a6d8014196786b511c306f76f4a993bba",
+      "size": 997,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/dfb4f53a6d8014196786b511c306f76f4a993bba"
+    },
+    {
+      "path": "HORI_Real_Arcade_Pro_4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "17d6a744c3792a01492ec7fda1c3fa0aebc1da93",
+      "size": 1000,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/17d6a744c3792a01492ec7fda1c3fa0aebc1da93"
+    },
+    {
+      "path": "HORI_Real_Arcade_Pro_V.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "442b465af950c5f4dba104fd9e9a4ee490d5b96e",
+      "size": 1066,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/442b465af950c5f4dba104fd9e9a4ee490d5b96e"
+    },
+    {
+      "path": "Handheld Daemon Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66a225df589107898c19c3b59e3900de7dac3444",
+      "size": 671,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/66a225df589107898c19c3b59e3900de7dac3444"
+    },
+    {
+      "path": "HandyGCCS-Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f7c6cf5f25f93075ed4bfd40bc48c1a436d398f",
+      "size": 1608,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6f7c6cf5f25f93075ed4bfd40bc48c1a436d398f"
+    },
+    {
+      "path": "Harmonix Xbox 360 Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3f246afcf923df56f589876c90c9e46e0cc85b4",
+      "size": 1573,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b3f246afcf923df56f589876c90c9e46e0cc85b4"
+    },
+    {
+      "path": "Honey Bee QuasiCON.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "098b17f356ad3559d5c2385feb984616f6ec7c2e",
+      "size": 2374,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/098b17f356ad3559d5c2385feb984616f6ec7c2e"
+    },
+    {
+      "path": "HuiJia  JC-W01U.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1b460567d4c3810a263306b2a4055284ffc5382c",
+      "size": 1464,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1b460567d4c3810a263306b2a4055284ffc5382c"
+    },
+    {
+      "path": "HuiJia  USB GamePad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0de8ff72a477e9b5abfd6d8cc5e1f6d1c1f337b7",
+      "size": 1031,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0de8ff72a477e9b5abfd6d8cc5e1f6d1c1f337b7"
+    },
+    {
+      "path": "Hyperkin_DuchesS.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7526cac47f40479089fe788dc47cade0e5ad0852",
+      "size": 1705,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7526cac47f40479089fe788dc47cade0e5ad0852"
+    },
+    {
+      "path": "Hyperkin_Genesis_6_Button.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da8be2576ffcc70107ee60f6abfbca6910a7d7d1",
+      "size": 819,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/da8be2576ffcc70107ee60f6abfbca6910a7d7d1"
+    },
+    {
+      "path": "Hyperkin_Trooper_V2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b935afb5bc4503679201f30526981c96ae7bcf08",
+      "size": 841,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b935afb5bc4503679201f30526981c96ae7bcf08"
+    },
+    {
+      "path": "ION_iCade.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eaa790cd8c973f582ffeef92ad0b5b7193cc3f38",
+      "size": 408,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/eaa790cd8c973f582ffeef92ad0b5b7193cc3f38"
+    },
+    {
+      "path": "Jess_Tech_Colour_Rumble_Pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a15d47248d7f43f545dd6c1a3407b48ab5069fcb",
+      "size": 670,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a15d47248d7f43f545dd6c1a3407b48ab5069fcb"
+    },
+    {
+      "path": "Jess_Tech_Dual_Analog_Rumble_Pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d20b5d502875c614adfa9f2b31c26c814e647939",
+      "size": 675,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d20b5d502875c614adfa9f2b31c26c814e647939"
+    },
+    {
+      "path": "Logic3 Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a36833f5c1a4c0d5f453f5dbcc686d677a30ed7e",
+      "size": 1557,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a36833f5c1a4c0d5f453f5dbcc686d677a30ed7e"
+    },
+    {
+      "path": "Logitech_Chillstream.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d08df3f387099303a1fc154416f2dc59bc8edd7",
+      "size": 688,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9d08df3f387099303a1fc154416f2dc59bc8edd7"
+    },
+    {
+      "path": "Logitech_Chillstream_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6116c39a2a2f1a7c19eba4dd57fa4e618b9c58d9",
+      "size": 1563,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6116c39a2a2f1a7c19eba4dd57fa4e618b9c58d9"
+    },
+    {
+      "path": "Logitech_Cordless_RumblePad_2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c43b8182f705f2b57d444389f79f8d15fea0ec8",
+      "size": 1653,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4c43b8182f705f2b57d444389f79f8d15fea0ec8"
+    },
+    {
+      "path": "Logitech_Driving_Force_GT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6760ff7773a298e6295a81318b44fb5323bb1c9a",
+      "size": 1314,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6760ff7773a298e6295a81318b44fb5323bb1c9a"
+    },
+    {
+      "path": "Logitech_Dual_Action.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f7ad0d3035eeed902a00615661d84c42af2af6a0",
+      "size": 1510,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f7ad0d3035eeed902a00615661d84c42af2af6a0"
+    },
+    {
+      "path": "Logitech_G27_Racing_Wheel.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2b8b74ce94ad8035f6de3bcc7034aa1b2ec15b7",
+      "size": 765,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d2b8b74ce94ad8035f6de3bcc7034aa1b2ec15b7"
+    },
+    {
+      "path": "Logitech_Gamepad_F310.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0c360afd224ce94a1a92bfb36ea0149cadc3914",
+      "size": 1579,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d0c360afd224ce94a1a92bfb36ea0149cadc3914"
+    },
+    {
+      "path": "Logitech_Gamepad_F510.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "31b355e5232a6a92d0a3d4260c7afa95faff2604",
+      "size": 697,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/31b355e5232a6a92d0a3d4260c7afa95faff2604"
+    },
+    {
+      "path": "Logitech_Gamepad_F710.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76836d5a509a2e8526774e8ae4dfecf121cd0456",
+      "size": 1721,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/76836d5a509a2e8526774e8ae4dfecf121cd0456"
+    },
+    {
+      "path": "Logitech_Precision_Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c783f5c4fbc183763b01a9698e79250edcc883f0",
+      "size": 674,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c783f5c4fbc183763b01a9698e79250edcc883f0"
+    },
+    {
+      "path": "Logitech_RumblePad_2_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1fbd4e81b9142ec2b00e952f38b56392ba3352d",
+      "size": 1701,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a1fbd4e81b9142ec2b00e952f38b56392ba3352d"
+    },
+    {
+      "path": "Logitech_WingMan_Action_Pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ca80e6ec0890fd310f0cf130c39fc5e7288aa5c6",
+      "size": 1071,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ca80e6ec0890fd310f0cf130c39fc5e7288aa5c6"
+    },
+    {
+      "path": "Logitech_WingMan_RumblePad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35bc2fafcb3a8687ab6eb78a938cab19bf139484",
+      "size": 1289,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/35bc2fafcb3a8687ab6eb78a938cab19bf139484"
+    },
+    {
+      "path": "MAD CATZ ,Ltd. Mad Catz Game Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "34eff2c65a8949681fdfdbd84d25aea916905cbd",
+      "size": 1561,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/34eff2c65a8949681fdfdbd84d25aea916905cbd"
+    },
+    {
+      "path": "MAGIC-NS.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f669a1cb0626f027b3c1c7c0d435820a7d4a6a19",
+      "size": 1652,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f669a1cb0626f027b3c1c7c0d435820a7d4a6a19"
+    },
+    {
+      "path": "MAYFLASH N64 USB Adapter MF103.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3588978916eda61723e95b36ae5e1893d7dc9b1f",
+      "size": 1511,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3588978916eda61723e95b36ae5e1893d7dc9b1f"
+    },
+    {
+      "path": "MAYFLASH_GameCube_Controller_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "92c92b49f50a032797552d0caf41ef429a7afc4f",
+      "size": 1473,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/92c92b49f50a032797552d0caf41ef429a7afc4f"
+    },
+    {
+      "path": "MOSIC______SPEED-LINK_Competition_Pro_.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2cf83df9c3cfe4721ed94bab9f2dab8e747aba78",
+      "size": 631,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2cf83df9c3cfe4721ed94bab9f2dab8e747aba78"
+    },
+    {
+      "path": "MOSIC______USB_2A8K__GamePad__________.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2dd0c13de6bc01c92acd85a06ee715caecc4f2e",
+      "size": 374,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a2dd0c13de6bc01c92acd85a06ee715caecc4f2e"
+    },
+    {
+      "path": "MP-8800_Quad_USB_Joypad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a1db842be5b0d2ac2f37c213afd5c760d02c89c",
+      "size": 1479,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0a1db842be5b0d2ac2f37c213afd5c760d02c89c"
+    },
+    {
+      "path": "MP-8866_Dual_USB_Joypad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1e6e956fc936a158b1888dfb5269dc4ed577999",
+      "size": 1479,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d1e6e956fc936a158b1888dfb5269dc4ed577999"
+    },
+    {
+      "path": "MY-POWER_CO__LTD__2In1_USB_Joystick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e480d82d5a7e0e2c6e6618ca2c5b03e0c4faeecc",
+      "size": 676,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e480d82d5a7e0e2c6e6618ca2c5b03e0c4faeecc"
+    },
+    {
+      "path": "Mad Catz FightPad PRO PS3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e7ff22591b1b4dcf08eb22f302ef8d8795ee84fe",
+      "size": 1602,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e7ff22591b1b4dcf08eb22f302ef8d8795ee84fe"
+    },
+    {
+      "path": "Mad Catz FightPad PRO PS4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "baf7b1e9f07fef49cc88c4e048373fbc154d3e05",
+      "size": 1603,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/baf7b1e9f07fef49cc88c4e048373fbc154d3e05"
+    },
+    {
+      "path": "Mad Catz FightStick TE2+ PS3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63e1db28e71f9d2833a8a09fd10252fdad8f04da",
+      "size": 1000,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/63e1db28e71f9d2833a8a09fd10252fdad8f04da"
+    },
+    {
+      "path": "Mad Catz FightStick TE2+ PS4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cbde859130572147b892d2533d5004c8eb434398",
+      "size": 1000,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/cbde859130572147b892d2533d5004c8eb434398"
+    },
+    {
+      "path": "Mad Catz V.1 Stick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45cca7193b61023e3dd38e243592ebb0792b5efb",
+      "size": 1125,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/45cca7193b61023e3dd38e243592ebb0792b5efb"
+    },
+    {
+      "path": "Mad Catz Wired Xbox 360 Controller (SFIV).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eac87227adca4faee9f7e03b98a21b8fd556e96e",
+      "size": 1420,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/eac87227adca4faee9f7e03b98a21b8fd556e96e"
+    },
+    {
+      "path": "Mad Catz Xbox 360 Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "02184478e19a76f6f62e5473721403d922339119",
+      "size": 1600,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/02184478e19a76f6f62e5473721403d922339119"
+    },
+    {
+      "path": "Magicsee_R1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5ffa08cdf0dd5f699e7c4a9c23e12a70e031dd8",
+      "size": 1678,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f5ffa08cdf0dd5f699e7c4a9c23e12a70e031dd8"
+    },
+    {
+      "path": "Manba One BFM.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0ad34c31b7c2d97b2492c0a84e2b17e51a66d158",
+      "size": 1547,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0ad34c31b7c2d97b2492c0a84e2b17e51a66d158"
+    },
+    {
+      "path": "Mayflash Ltd Mayflash MD USB Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "24b7ec936d639592ea877aa735f204e0033c0d57",
+      "size": 720,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/24b7ec936d639592ea877aa735f204e0033c0d57"
+    },
+    {
+      "path": "Mayflash_Arcade_Fightstick_F101_DINPUT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff17e2284b53b8caf223c66489db42560083c123",
+      "size": 962,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ff17e2284b53b8caf223c66489db42560083c123"
+    },
+    {
+      "path": "Mayflash_Arcade_Fightstick_F101_XINPUT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b2689baeb81e5a603e8c70c3d130aacdd3072d07",
+      "size": 965,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b2689baeb81e5a603e8c70c3d130aacdd3072d07"
+    },
+    {
+      "path": "Mayflash_Arcade_Fightstick_F300_CONSOLE.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90e409f9372faafbd0a6d74c01213b2ad7798bb8",
+      "size": 763,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/90e409f9372faafbd0a6d74c01213b2ad7798bb8"
+    },
+    {
+      "path": "Mayflash_Arcade_Fightstick_F300_DINPUT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b451c884af32bc484a01befb411f2071bfb796b5",
+      "size": 595,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b451c884af32bc484a01befb411f2071bfb796b5"
+    },
+    {
+      "path": "Mayflash_GameCube_to_USB_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "674c3fbc61203b2da125b85786781e0b4fbbf4ea",
+      "size": 1411,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/674c3fbc61203b2da125b85786781e0b4fbbf4ea"
+    },
+    {
+      "path": "Mayflash_N64_Controller_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "912428b3c1fbb3d345c8337e0809f1b8bf1750fa",
+      "size": 1326,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/912428b3c1fbb3d345c8337e0809f1b8bf1750fa"
+    },
+    {
+      "path": "Mayflash_N64_to_USB_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "72dc34fb0dabebaa13e8268de28f1571c2d11a35",
+      "size": 1271,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/72dc34fb0dabebaa13e8268de28f1571c2d11a35"
+    },
+    {
+      "path": "Mayflash_Sega_Saturn_to_USB_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db57293b96012f3576c9fc0a7954f7b559d25235",
+      "size": 1253,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/db57293b96012f3576c9fc0a7954f7b559d25235"
+    },
+    {
+      "path": "Mayflash_Wiimote_PC_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "760096f863070681f671c5841ef686a28d42c0d7",
+      "size": 1407,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/760096f863070681f671c5841ef686a28d42c0d7"
+    },
+    {
+      "path": "Mega_World_Thrustmaster_dual_analog_3.2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea4511c20e8271147900eb5657dc4e7aaa29a293",
+      "size": 684,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ea4511c20e8271147900eb5657dc4e7aaa29a293"
+    },
+    {
+      "path": "Mega_World_USB_2-Axis_8-Button_Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e99c353422ea8e5caf3e7231d0bb40bbb30258f",
+      "size": 372,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9e99c353422ea8e5caf3e7231d0bb40bbb30258f"
+    },
+    {
+      "path": "Mega_World_USB_Game_Controllers.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71f066b314dc51bd3a0fadf4c1415c07463e15ff",
+      "size": 1524,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/71f066b314dc51bd3a0fadf4c1415c07463e15ff"
+    },
+    {
+      "path": "Microntek              USB Joystick          .cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09ccba000c74890e37addc6270b672f72046d00e",
+      "size": 1731,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/09ccba000c74890e37addc6270b672f72046d00e"
+    },
+    {
+      "path": "Microsoft X-Box 360 pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "beadd398dd80629725f6c532219f911d22f5c472",
+      "size": 1684,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/beadd398dd80629725f6c532219f911d22f5c472"
+    },
+    {
+      "path": "Microsoft X-Box pad (US).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e0b94c781c4830c3350e326208a45ae9f9dd8c6a",
+      "size": 1764,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e0b94c781c4830c3350e326208a45ae9f9dd8c6a"
+    },
+    {
+      "path": "Microsoft_SideWinder_Game_Pad_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38e7dd5574aa55a3817733f43d7cf4cef9441bcd",
+      "size": 873,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/38e7dd5574aa55a3817733f43d7cf4cef9441bcd"
+    },
+    {
+      "path": "Microsoft_SideWinder_Plug_Play_Game_Pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eb3932ab52ad01877118b5a07f8afdf45feadff9",
+      "size": 408,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/eb3932ab52ad01877118b5a07f8afdf45feadff9"
+    },
+    {
+      "path": "Microsoft_Sidewinder_Dual_Strike_USB_version_1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "95bf2fe436f41e9ad686e4ae3beb9f0fc3d7f0ed",
+      "size": 863,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/95bf2fe436f41e9ad686e4ae3beb9f0fc3d7f0ed"
+    },
+    {
+      "path": "Microsoft_X-Box_Elite_Series_2_pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90d078d0ffc97d247186ef2cbed68bf91597461f",
+      "size": 1833,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/90d078d0ffc97d247186ef2cbed68bf91597461f"
+    },
+    {
+      "path": "Microsoft_X-Box_One_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90f27a1b184870a08adb542f3879d6c84602cd76",
+      "size": 1697,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/90f27a1b184870a08adb542f3879d6c84602cd76"
+    },
+    {
+      "path": "Microsoft_X-Box_One_Elite_pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30dbdf0b0f8e30d5f079cb09c15438adb30a7e1a",
+      "size": 1642,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/30dbdf0b0f8e30d5f079cb09c15438adb30a7e1a"
+    },
+    {
+      "path": "Microsoft_X-Box_One_S_pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "36a75efd2e0bd4da384a362a9c1e31daed57cf6e",
+      "size": 1710,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/36a75efd2e0bd4da384a362a9c1e31daed57cf6e"
+    },
+    {
+      "path": "Microsoft_X-Box_One_S_pad_v2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d499ce0a66dad910c631fbb256466bc8668efc6e",
+      "size": 1613,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d499ce0a66dad910c631fbb256466bc8668efc6e"
+    },
+    {
+      "path": "Microsoft_X-Box_One_pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fd0b6020c036e0d4ed7dfdc7f41207d91169fb3d",
+      "size": 1630,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fd0b6020c036e0d4ed7dfdc7f41207d91169fb3d"
+    },
+    {
+      "path": "Microsoft_X-Box_One_pad_(Firmware_2015).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f56d20293f95d9dfaf81cb4c331e3b3c6ecb59b2",
+      "size": 1646,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f56d20293f95d9dfaf81cb4c331e3b3c6ecb59b2"
+    },
+    {
+      "path": "Microsoft_X-Box_Series_XS_pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5511402648a2c67a585f172264ca7f2a6ace1d6d",
+      "size": 1727,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5511402648a2c67a585f172264ca7f2a6ace1d6d"
+    },
+    {
+      "path": "Microsoft_X-Box_Series_XS_pad_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "97d66852023a8a8c3f27b61b24602d0cf91d2b08",
+      "size": 1743,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/97d66852023a8a8c3f27b61b24602d0cf91d2b08"
+    },
+    {
+      "path": "Microsoft_X-Box_pad_Japan.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6943fb19b8579982b4a5d193a8d8826545b00f1",
+      "size": 1812,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e6943fb19b8579982b4a5d193a8d8826545b00f1"
+    },
+    {
+      "path": "Mocute_Bluetooth_Remote.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e91d17fdd92710eb7a30b1bc8d5f6eb008a30f15",
+      "size": 637,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e91d17fdd92710eb7a30b1bc8d5f6eb008a30f15"
+    },
+    {
+      "path": "Moga Pro HID.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dee3b32afd8cd3beb5d613585e50fb5178ffa7fd",
+      "size": 1762,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/dee3b32afd8cd3beb5d613585e50fb5178ffa7fd"
+    },
+    {
+      "path": "NVIDIA Corporation NVIDIA Controller v01.04.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f630dbb7a81b7e41d029ab758e226d032941568e",
+      "size": 667,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f630dbb7a81b7e41d029ab758e226d032941568e"
+    },
+    {
+      "path": "NVIDIA_Controller_v01_03.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41d89dfd37d7ac584342bfc05384d64448c77d2b",
+      "size": 1548,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/41d89dfd37d7ac584342bfc05384d64448c77d2b"
+    },
+    {
+      "path": "Nintendo Switch - Mega Drive Genesis Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39e04be54c62a4c16367a17b78e90ef4c757911d",
+      "size": 1044,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/39e04be54c62a4c16367a17b78e90ef4c757911d"
+    },
+    {
+      "path": "Nintendo Switch - N64 Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "095d2613d3d0eb91e9544689d6aeaefb6098790b",
+      "size": 1407,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/095d2613d3d0eb91e9544689d6aeaefb6098790b"
+    },
+    {
+      "path": "Nintendo Switch - SNES Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f3d056fbb7e5fea016930dc4e3a593d254f7099",
+      "size": 966,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3f3d056fbb7e5fea016930dc4e3a593d254f7099"
+    },
+    {
+      "path": "Nintendo Switch Left Joy-Con.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0fd6fa2d5d165896de737a4ff7f656e5b659f9a1",
+      "size": 1252,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0fd6fa2d5d165896de737a4ff7f656e5b659f9a1"
+    },
+    {
+      "path": "Nintendo Switch Pro Controller (non-HID) (default-off).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fc11f4f2be2847638e8afc4f55664671210090b9",
+      "size": 1719,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fc11f4f2be2847638e8afc4f55664671210090b9"
+    },
+    {
+      "path": "Nintendo Switch Pro Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7f0e620b5e186c554e64e0f8783811eeb38d2584",
+      "size": 1808,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7f0e620b5e186c554e64e0f8783811eeb38d2584"
+    },
+    {
+      "path": "Nintendo Switch Right Joy-Con.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8cf70188f6b76f7b5e86504dc33b41f554f691b4",
+      "size": 1213,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8cf70188f6b76f7b5e86504dc33b41f554f691b4"
+    },
+    {
+      "path": "Nintendo-Switch-Online_NES-Controller_Left.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2886399164c2c1c9b8b146516553c79c38d859db",
+      "size": 656,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2886399164c2c1c9b8b146516553c79c38d859db"
+    },
+    {
+      "path": "Nintendo-Switch-Online_NES-Controller_Right.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39aff90ab74e1db0c5020dcebd2999bad5da20b6",
+      "size": 656,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/39aff90ab74e1db0c5020dcebd2999bad5da20b6"
+    },
+    {
+      "path": "Nintendo_Clovercon_-_controller1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e99138fb116d7b43ccde2de00cf77604208d4f6",
+      "size": 871,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7e99138fb116d7b43ccde2de00cf77604208d4f6"
+    },
+    {
+      "path": "Nintendo_Clovercon_-_controller2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "152a8365eca60e570510ee235dc208492d274341",
+      "size": 871,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/152a8365eca60e570510ee235dc208492d274341"
+    },
+    {
+      "path": "Nintendo_Wii_Pro_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab65cf30f4a20289b02be6a983851ee8c7393105",
+      "size": 1563,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ab65cf30f4a20289b02be6a983851ee8c7393105"
+    },
+    {
+      "path": "Nintendo_Wii_Remote.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5c37ed51f0d6a7a043a98464980b46f9e8c0a6e",
+      "size": 410,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d5c37ed51f0d6a7a043a98464980b46f9e8c0a6e"
+    },
+    {
+      "path": "Nintendo_Wii_Remote_Classic_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f84b63bdce8dd1bc17ee5685d89c6b4ae26a5d2",
+      "size": 667,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8f84b63bdce8dd1bc17ee5685d89c6b4ae26a5d2"
+    },
+    {
+      "path": "Nintendo_Wii_Remote_TR.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dc573b1e6ea408b8ab853c82fd8ca88477660d24",
+      "size": 419,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/dc573b1e6ea408b8ab853c82fd8ca88477660d24"
+    },
+    {
+      "path": "Nokia GC 5000.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab29c6d1dc3fbe824e229f5aadc89c222369cdc8",
+      "size": 1712,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ab29c6d1dc3fbe824e229f5aadc89c222369cdc8"
+    },
+    {
+      "path": "OUYA Game Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0162b9d0d5eccc73c74cc32994db2b4175c97c75",
+      "size": 1463,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0162b9d0d5eccc73c74cc32994db2b4175c97c75"
+    },
+    {
+      "path": "PDP Fight Pad Pro.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "68436adacbc27e370ba1b90d004433545302e0b5",
+      "size": 1664,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/68436adacbc27e370ba1b90d004433545302e0b5"
+    },
+    {
+      "path": "PDP Wired Controller for Xbox One - Camo Series.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93ebf90293d57ad4035bf13e7a68873a5f0a36b0",
+      "size": 1657,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/93ebf90293d57ad4035bf13e7a68873a5f0a36b0"
+    },
+    {
+      "path": "PDP Wired Controller for Xbox One - Stealth Series.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65769d4f72495bc2d2b8c10977c02a49a9bb8a87",
+      "size": 1660,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/65769d4f72495bc2d2b8c10977c02a49a9bb8a87"
+    },
+    {
+      "path": "PLAYSTATION(R)3Conteroller-PANHAI.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "620685efff64618872662c47fdd9119b511c0244",
+      "size": 1461,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/620685efff64618872662c47fdd9119b511c0244"
+    },
+    {
+      "path": "Padix_Co.,_Ltd_(Rockfire).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7cddab488ffb89c1933e5e88bef75d4276b32058",
+      "size": 674,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7cddab488ffb89c1933e5e88bef75d4276b32058"
+    },
+    {
+      "path": "PlayStation_Classic_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "148c8b1f6e3c4957a77dac91f2543fd5ace5eae1",
+      "size": 908,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/148c8b1f6e3c4957a77dac91f2543fd5ace5eae1"
+    },
+    {
+      "path": "Play_SEGA_USB_HL-F2412.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c48bb3db535fade44f804931526f52da10516196",
+      "size": 813,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c48bb3db535fade44f804931526f52da10516196"
+    },
+    {
+      "path": "Pokken Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dee037bbf507bae8f38fa83864b1afa1f9bc03e8",
+      "size": 1632,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/dee037bbf507bae8f38fa83864b1afa1f9bc03e8"
+    },
+    {
+      "path": "PowerA NSW wired controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "62e8289ec4973bdc21736b6c0c78f69b3f92e3cf",
+      "size": 1370,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/62e8289ec4973bdc21736b6c0c78f69b3f92e3cf"
+    },
+    {
+      "path": "PowerA_Enhanced_Wired_Controller_For_Xbox_Series_X_S_Blue_Hint-xone.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a795b367310300270f55d4875139f2a7f58d4d2",
+      "size": 1989,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1a795b367310300270f55d4875139f2a7f58d4d2"
+    },
+    {
+      "path": "PowerA_Enhanced_Wired_Controller_For_Xbox_Series_X_S_Blue_Hint.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8da29a9d2ed5e0003cc4235bbdd1cb5c268e1a9",
+      "size": 1877,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a8da29a9d2ed5e0003cc4235bbdd1cb5c268e1a9"
+    },
+    {
+      "path": "PowerA_Wired_Switch_Controller_-_BoTW_Edition.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef1481d91fa0515056c58a973a615f75dd33b5c9",
+      "size": 1453,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ef1481d91fa0515056c58a973a615f75dd33b5c9"
+    },
+    {
+      "path": "PowerA_Wireless_Controller_for_Nintendo_Switch.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81a319d6fe2336f43d22b8fc2a991598790955c1",
+      "size": 1834,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/81a319d6fe2336f43d22b8fc2a991598790955c1"
+    },
+    {
+      "path": "QanBa_Q4RAF_Arcade_Stick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c12ee1bca4fc22549b2fdf9c2faa5e528bb5d950",
+      "size": 1949,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c12ee1bca4fc22549b2fdf9c2faa5e528bb5d950"
+    },
+    {
+      "path": "Qnix_SNES_Replica.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6368066c089439af15e20dbc742d34ad2147c5a0",
+      "size": 650,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6368066c089439af15e20dbc742d34ad2147c5a0"
+    },
+    {
+      "path": "Razer Kishi.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb239163598a7b6abcd73330da5cc709b9770fa6",
+      "size": 1507,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/cb239163598a7b6abcd73330da5cc709b9770fa6"
+    },
+    {
+      "path": "Razer Raiju Tournament Edition Wired.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f3c99f6a135fce56a6c15f50b2f1926ff621c4d7",
+      "size": 1600,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f3c99f6a135fce56a6c15f50b2f1926ff621c4d7"
+    },
+    {
+      "path": "Razer Raiju Tournament Edition.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dbe4cf0946f29c37ccc9529880f7b9496bf9e8d9",
+      "size": 1588,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/dbe4cf0946f29c37ccc9529880f7b9496bf9e8d9"
+    },
+    {
+      "path": "Razer Serval.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "442c7bb8290733a7547f3f570d0a69ca605c4b30",
+      "size": 1451,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/442c7bb8290733a7547f3f570d0a69ca605c4b30"
+    },
+    {
+      "path": "RedOctane_Guitar_Hero_World_Tour_Controller_PS3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4aaf76b3a63172e50c1a43332148d14feebc09ba",
+      "size": 1208,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4aaf76b3a63172e50c1a43332148d14feebc09ba"
+    },
+    {
+      "path": "RedOctane_Guitar_Hero_World_Tour_Drum_Controller_PS3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a02220d141beb1b46da87b3fe08d53632c71563",
+      "size": 1067,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6a02220d141beb1b46da87b3fe08d53632c71563"
+    },
+    {
+      "path": "Retro-Bit_8Bitdo_RB8-64_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93fbefe18c199cd0a611dde1ab99d51607f17fc1",
+      "size": 2279,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/93fbefe18c199cd0a611dde1ab99d51607f17fc1"
+    },
+    {
+      "path": "Retro-Bit_8Bitdo_RB8-64_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c2a6e6c6d37e0d4cb6271716b51ee9ffd7625473",
+      "size": 1642,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c2a6e6c6d37e0d4cb6271716b51ee9ffd7625473"
+    },
+    {
+      "path": "Retro-Bit_Genesis_Saturn_8_Button_Arcade_Pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7205d1f886ebf548e80fd65f576a4506f64a8998",
+      "size": 878,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7205d1f886ebf548e80fd65f576a4506f64a8998"
+    },
+    {
+      "path": "RetroFlag_Classic_USB_Controller-M.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "84a46c7b43c76b2e0b263e5dcc0ce3e26342aa74",
+      "size": 928,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/84a46c7b43c76b2e0b263e5dcc0ce3e26342aa74"
+    },
+    {
+      "path": "RetroUSB-N64-RetroPort.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a117658354910a39b690371c1e0e1b3121be2242",
+      "size": 1380,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a117658354910a39b690371c1e0e1b3121be2242"
+    },
+    {
+      "path": "RetroUSB-NES-RetroPort-v2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f91976a2412c81b29c70558f05742071a81abb80",
+      "size": 603,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f91976a2412c81b29c70558f05742071a81abb80"
+    },
+    {
+      "path": "RetroUSB-RetroPad-NES.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5b9fe63f187625f57fc27cb042f2211cac8ca6c7",
+      "size": 543,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5b9fe63f187625f57fc27cb042f2211cac8ca6c7"
+    },
+    {
+      "path": "RetroUSB-RetroPort-NES.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e47944c21455e3ead63d6256c7a50f9b25cd5fa",
+      "size": 538,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8e47944c21455e3ead63d6256c7a50f9b25cd5fa"
+    },
+    {
+      "path": "RetroUSB.com SNES RetroPort.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b8a2a1370dff23051f7b5c85cb1f0d09bcccb44",
+      "size": 362,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4b8a2a1370dff23051f7b5c85cb1f0d09bcccb44"
+    },
+    {
+      "path": "Retrode Mega Drive _1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "044909ae9044bba64d9b0ef21717dba8c553ac43",
+      "size": 814,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/044909ae9044bba64d9b0ef21717dba8c553ac43"
+    },
+    {
+      "path": "Retrode Mega Drive _2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6cda17167d85288a164710685dda396745b26748",
+      "size": 814,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6cda17167d85288a164710685dda396745b26748"
+    },
+    {
+      "path": "Retrode SNES _ N64 _1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "040c64045f67fb8ce7eb7ef6fa14788f2845271f",
+      "size": 814,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/040c64045f67fb8ce7eb7ef6fa14788f2845271f"
+    },
+    {
+      "path": "Retrode SNES _ N64 _2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a1440b68f625e9e838fdc4d413ad70e75c6a90b",
+      "size": 814,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1a1440b68f625e9e838fdc4d413ad70e75c6a90b"
+    },
+    {
+      "path": "Retrolink_N64_USB_controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41682868a199dff7e45eafc9b33876ed0363a183",
+      "size": 1226,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/41682868a199dff7e45eafc9b33876ed0363a183"
+    },
+    {
+      "path": "Retrolink_Sega_Saturn_USB_GamePad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a631a7a118728dfac08982eff3f3cbfe625c6c68",
+      "size": 797,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a631a7a118728dfac08982eff3f3cbfe625c6c68"
+    },
+    {
+      "path": "Rock_Candy_Gamepad_for_PS3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e8bee3b4c2064c8fc109991889d9f6d527ec31b",
+      "size": 669,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8e8bee3b4c2064c8fc109991889d9f6d527ec31b"
+    },
+    {
+      "path": "SEGA Genesis Mini 3-button.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "864cb25ab737828a5a736e8b7b73865b7208d281",
+      "size": 576,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/864cb25ab737828a5a736e8b7b73865b7208d281"
+    },
+    {
+      "path": "SEGA_Mega_Drive_Mini_6B_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cfb2b2ee916d5a29718dde67e4a79bb26005c998",
+      "size": 760,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/cfb2b2ee916d5a29718dde67e4a79bb26005c998"
+    },
+    {
+      "path": "SHANWAN Android Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "743aeff1f750b52a5a6ce157b23421ab99451d5d",
+      "size": 1113,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/743aeff1f750b52a5a6ce157b23421ab99451d5d"
+    },
+    {
+      "path": "SHANWAN PC_PS3_Android Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1e986921f9cc0f55bd5417cf21adbfb01050393",
+      "size": 1541,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e1e986921f9cc0f55bd5417cf21adbfb01050393"
+    },
+    {
+      "path": "SHANWAN PS3 GamePad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f33908c05050e07aac52c4a7dcb9743b94feba76",
+      "size": 1723,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f33908c05050e07aac52c4a7dcb9743b94feba76"
+    },
+    {
+      "path": "SLS-Sega-Saturn-USB-Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c23660fed97e2aef2467f765281c1522d3420f54",
+      "size": 800,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c23660fed97e2aef2467f765281c1522d3420f54"
+    },
+    {
+      "path": "SNES PC Game Pad    SNES PC Game Pad   .cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4be1c02ff1d0a6baf49c7c4447cf5bc31edb5a23",
+      "size": 892,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4be1c02ff1d0a6baf49c7c4447cf5bc31edb5a23"
+    },
+    {
+      "path": "SNES-to-GamepadDevice.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf307d65fc90de61ec5913d6845b74a0871d4643",
+      "size": 306,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/cf307d65fc90de61ec5913d6845b74a0871d4643"
+    },
+    {
+      "path": "SPEEDLINK COMPETITION PRO Game Controller for Android .cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39d0b6637b316f58cbd7cc61338171acd07e6fb7",
+      "size": 795,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/39d0b6637b316f58cbd7cc61338171acd07e6fb7"
+    },
+    {
+      "path": "SPEEDLINK TORID.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6866fb8cd1a46648482b90d622e105ce33e5d584",
+      "size": 1572,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6866fb8cd1a46648482b90d622e105ce33e5d584"
+    },
+    {
+      "path": "STD AxisPad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1e486c3a0bdc63f1844b066058a10adffacd467",
+      "size": 1497,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a1e486c3a0bdc63f1844b066058a10adffacd467"
+    },
+    {
+      "path": "SWITCH CO.,LTD. Controller (Dinput).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d55545d63879096572ce741004988716484d6bcb",
+      "size": 1300,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d55545d63879096572ce741004988716484d6bcb"
+    },
+    {
+      "path": "SWITCH CO.,LTD. USB Gamepad .cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "377b605f1977ed93f5b078e7072b6bd41db5891b",
+      "size": 985,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/377b605f1977ed93f5b078e7072b6bd41db5891b"
+    },
+    {
+      "path": "SZMy-power LTD CO.  Dual Box WII.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aebd85175acc47b7f9dad22242c1af745cd8c9e7",
+      "size": 599,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/aebd85175acc47b7f9dad22242c1af745cd8c9e7"
+    },
+    {
+      "path": "Saitek Cyborg Rumble Pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7072173603ca8ed8566cbc7d0e3c431350dbdc85",
+      "size": 632,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7072173603ca8ed8566cbc7d0e3c431350dbdc85"
+    },
+    {
+      "path": "Saitek_P880.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06551f2a8ee4f54315ded72a90b78c95ad94db58",
+      "size": 1488,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/06551f2a8ee4f54315ded72a90b78c95ad94db58"
+    },
+    {
+      "path": "Saitek_P990.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8eda1f67f4f3f3e7028b3caa9889efbdc94ae0fb",
+      "size": 1606,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8eda1f67f4f3f3e7028b3caa9889efbdc94ae0fb"
+    },
+    {
+      "path": "Saitek_PLC_P2600_Rumble_Force_Pad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ab9e0e3fb50263e64d73b11d9db0d75719dd089",
+      "size": 645,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1ab9e0e3fb50263e64d73b11d9db0d75719dd089"
+    },
+    {
+      "path": "Saitek_X52_Flight_Control_System.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39df0a6ef724421a4c7e18846bba1c9c98f16c81",
+      "size": 675,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/39df0a6ef724421a4c7e18846bba1c9c98f16c81"
+    },
+    {
+      "path": "Samsung Game Pad EI-GP20.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93a7a292cd4df2117956aac62231dac99076c733",
+      "size": 2115,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/93a7a292cd4df2117956aac62231dac99076c733"
+    },
+    {
+      "path": "Sanmos JY-P62U Series ONLINE GRIP.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6b8f6cfd0ff0b5cfe63c0c4c3e7618bc24db13c",
+      "size": 1572,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e6b8f6cfd0ff0b5cfe63c0c4c3e7618bc24db13c"
+    },
+    {
+      "path": "ShanWan PC_PS3_Android.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ccfc77dff587ecb651d4ce2abc882afd872afab8",
+      "size": 1530,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ccfc77dff587ecb651d4ce2abc882afd872afab8"
+    },
+    {
+      "path": "Smartjoy Family Super Smartjoy 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b307566dc7ffc7f37d7ba93bd02c05c08e47d2d",
+      "size": 725,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/3b307566dc7ffc7f37d7ba93bd02c05c08e47d2d"
+    },
+    {
+      "path": "Sony DualShock 4 Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "568e7e7261842c2c377c22bd89dd84b5c6bbdf0b",
+      "size": 2382,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/568e7e7261842c2c377c22bd89dd84b5c6bbdf0b"
+    },
+    {
+      "path": "Sony Interactive Entertainment DUALSHOCK4 USB Wireless Adaptor.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8183522ae82694874442a3d84de0c287e0b91f96",
+      "size": 1635,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8183522ae82694874442a3d84de0c287e0b91f96"
+    },
+    {
+      "path": "Sony Interactive Entertainment DualSense Edge Wireless Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bbc4b23801bab821443bc274a2b7f0250d385c01",
+      "size": 1682,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/bbc4b23801bab821443bc274a2b7f0250d385c01"
+    },
+    {
+      "path": "Sony Interactive Entertainment DualSense Wireless Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c04404ef142d06bbf8e54022ae1451a4a0c924c2",
+      "size": 1790,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c04404ef142d06bbf8e54022ae1451a4a0c924c2"
+    },
+    {
+      "path": "Sony-PlayStation3-DualShock3-Controller-Bluetooth.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c3570cea12e9f76dfe5087fca8d8357af4ccebd",
+      "size": 1730,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7c3570cea12e9f76dfe5087fca8d8357af4ccebd"
+    },
+    {
+      "path": "Sony-PlayStation3-DualShock3-Controller-Bluez.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23d9402976e21d0c3a7338e02b79502cf7eae172",
+      "size": 1751,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/23d9402976e21d0c3a7338e02b79502cf7eae172"
+    },
+    {
+      "path": "Sony-PlayStation3-DualShock3-Controller-USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f2d1d02b4e84fc5a65393b65a98a48172539226",
+      "size": 1585,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6f2d1d02b4e84fc5a65393b65a98a48172539226"
+    },
+    {
+      "path": "Sony-PlayStation4-DualShock4v2-Wireless-Crystal-Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0c6ce430492719cedbb0ed459ac43d1a29d61aed",
+      "size": 1591,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0c6ce430492719cedbb0ed459ac43d1a29d61aed"
+    },
+    {
+      "path": "Spartan Gear Oplon Dinput.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f66428589bfe024965830713713fa3ae603fb210",
+      "size": 2225,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f66428589bfe024965830713713fa3ae603fb210"
+    },
+    {
+      "path": "Spartan Gear Oplon.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9bea336f97b2c40caeefe3c7f0981314d7b70faf",
+      "size": 2164,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9bea336f97b2c40caeefe3c7f0981314d7b70faf"
+    },
+    {
+      "path": "Steam Input x-box.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "947d747f98598cb098e539c99acfc1b223d29733",
+      "size": 1792,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/947d747f98598cb098e539c99acfc1b223d29733"
+    },
+    {
+      "path": "Steam_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a64b9a101fc8af53b6f73ee11a4398326423d489",
+      "size": 1638,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a64b9a101fc8af53b6f73ee11a4398326423d489"
+    },
+    {
+      "path": "SteelSeries Stratus Duo BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2570a49afd01a6be27b9755ca99ecbd8fc77c310",
+      "size": 1817,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2570a49afd01a6be27b9755ca99ecbd8fc77c310"
+    },
+    {
+      "path": "SteelSeries Stratus Duo.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a226820f9c2fab4abeb957f5aeaf8769a51c3371",
+      "size": 1849,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a226820f9c2fab4abeb957f5aeaf8769a51c3371"
+    },
+    {
+      "path": "Street Fighter IV FightPad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1e6771c38c4f5f8186be2466a4b261fe5226ceb1",
+      "size": 917,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1e6771c38c4f5f8186be2466a4b261fe5226ceb1"
+    },
+    {
+      "path": "TAITO Densha de Go! Plug _ Play (DC Two Handle mode).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d937f2a0148091764663ba7e34e0838e01a82340",
+      "size": 815,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d937f2a0148091764663ba7e34e0838e01a82340"
+    },
+    {
+      "path": "TAITO Densha de Go! Plug _ Play (N64 Two Handle mode).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1c62dac2bafd9491d0e6555fe5fc23de77dfe8b",
+      "size": 817,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a1c62dac2bafd9491d0e6555fe5fc23de77dfe8b"
+    },
+    {
+      "path": "TAITO Densha de Go! Plug _ Play (PS1 Two Handle mode).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a49dd6e92e4710a9c4601488186b616219cdfc93",
+      "size": 956,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a49dd6e92e4710a9c4601488186b616219cdfc93"
+    },
+    {
+      "path": "TAITO Densha de Go! Plug _ Play (SAT Two Handle mode).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1184c2965ab4c5c20bf5f928891febca5b2ae70",
+      "size": 819,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b1184c2965ab4c5c20bf5f928891febca5b2ae70"
+    },
+    {
+      "path": "TOMMO_NEOGEOX_Arcade_Stick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db1773cebf66a1d14839a3f39d3c5eaad027e8da",
+      "size": 337,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/db1773cebf66a1d14839a3f39d3c5eaad027e8da"
+    },
+    {
+      "path": "TRBot Joypad 0.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61aa2fb5c5d4bc2e54d3debd8f7d12a1fb112c90",
+      "size": 650,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/61aa2fb5c5d4bc2e54d3debd8f7d12a1fb112c90"
+    },
+    {
+      "path": "TRBot Joypad 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ef37cefb20bf4178dde12e12494c6a6808cc71a",
+      "size": 651,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2ef37cefb20bf4178dde12e12494c6a6808cc71a"
+    },
+    {
+      "path": "TRBot Joypad 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d5493325d814d9f49ab12db680840b1f01c3ee1",
+      "size": 651,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4d5493325d814d9f49ab12db680840b1f01c3ee1"
+    },
+    {
+      "path": "TRBot Joypad 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7982fefdaf7809b85b68e32e5585592865983845",
+      "size": 651,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/7982fefdaf7809b85b68e32e5585592865983845"
+    },
+    {
+      "path": "Thrustmaster FGT Rumble 3-in-1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e402efa47bfbc5c75fcfceb7f8c40c4754a1b564",
+      "size": 1607,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e402efa47bfbc5c75fcfceb7f8c40c4754a1b564"
+    },
+    {
+      "path": "Thrustmaster_Dual_Trigger_3-in-1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f92f5b937c0467f9175efb63d25b8aba694e7172",
+      "size": 677,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f92f5b937c0467f9175efb63d25b8aba694e7172"
+    },
+    {
+      "path": "Thrustmaster_FireStorm_Dual_Analog_2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b133e3d67288117408f6f28693bfa7d7285a4c99",
+      "size": 627,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b133e3d67288117408f6f28693bfa7d7285a4c99"
+    },
+    {
+      "path": "Thrustmaster_FireStorm_Dual_Power_2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fa167e7627fc945cf736a0b36bda049dd67b3ef9",
+      "size": 681,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fa167e7627fc945cf736a0b36bda049dd67b3ef9"
+    },
+    {
+      "path": "Thrustmaster_T_Mini_2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25f737c4d1b0d09e69ad9f2831b013254175cb6b",
+      "size": 664,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/25f737c4d1b0d09e69ad9f2831b013254175cb6b"
+    },
+    {
+      "path": "Thrustmaster_T_Mini_Wireless.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "12bfb037aaf4407b1d5cce3bd3d36335b5edd245",
+      "size": 650,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/12bfb037aaf4407b1d5cce3bd3d36335b5edd245"
+    },
+    {
+      "path": "Thrustmaster_Top_Gun_Fox_2_Pro.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b9e55160eb63ea3958ac910ef508f8ee4ce94c0",
+      "size": 528,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9b9e55160eb63ea3958ac910ef508f8ee4ce94c0"
+    },
+    {
+      "path": "Tomee_N64_USB_controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "212c70ea52d757d7a163505f5d6a86967bf6dfdc",
+      "size": 1277,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/212c70ea52d757d7a163505f5d6a86967bf6dfdc"
+    },
+    {
+      "path": "Tomee_NES_to_USB_Adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1cc8ca84ed36201575f9d1522b59566fc3672625",
+      "size": 467,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1cc8ca84ed36201575f9d1522b59566fc3672625"
+    },
+    {
+      "path": "Toodles 2008 ChImp PC_PS3 Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "56b61f5aed86204b774ddca9a44b260873958a66",
+      "size": 805,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/56b61f5aed86204b774ddca9a44b260873958a66"
+    },
+    {
+      "path": "Toodles 2008 Cthulhu Mult.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2eb0a62be61bacdfff7edee3303cb1c7c230954a",
+      "size": 900,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/2eb0a62be61bacdfff7edee3303cb1c7c230954a"
+    },
+    {
+      "path": "Twin_USB_Joystick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91db97381d00e7819cbc3870bde836cea7b0bbda",
+      "size": 647,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/91db97381d00e7819cbc3870bde836cea7b0bbda"
+    },
+    {
+      "path": "USB_Gamepad_.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a04aa1f563ea466837ff7dc9884c3da62c4fc849",
+      "size": 1108,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a04aa1f563ea466837ff7dc9884c3da62c4fc849"
+    },
+    {
+      "path": "USB_Joystick_.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58a0e7fab339d6e2c722c26b4c939a49f0a4adb3",
+      "size": 647,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/58a0e7fab339d6e2c722c26b4c939a49f0a4adb3"
+    },
+    {
+      "path": "USB_Vibration_Joystick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f26741d7d3462946286cc7a28037cba888b2571",
+      "size": 652,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5f26741d7d3462946286cc7a28037cba888b2571"
+    },
+    {
+      "path": "USB_gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f49626f456f36731a274f9ecff54a08db404bba2",
+      "size": 408,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f49626f456f36731a274f9ecff54a08db404bba2"
+    },
+    {
+      "path": "Ultimarc_J-PAC.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "54296bc1839fd10da6632c17be76047fc8dd4a56",
+      "size": 738,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/54296bc1839fd10da6632c17be76047fc8dd4a56"
+    },
+    {
+      "path": "VenomLimitedPS3PS4ArcadeJoystick.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "884dd753fb749fbc28aefcf09a2cc6a6220385d3",
+      "size": 985,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/884dd753fb749fbc28aefcf09a2cc6a6220385d3"
+    },
+    {
+      "path": "WeTek_Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15a4f212180258bd7b2e80d9deaee47eb3c26170",
+      "size": 1436,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/15a4f212180258bd7b2e80d9deaee47eb3c26170"
+    },
+    {
+      "path": "Wii U GameCube Adapter Port 1.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac040a04409b8201baed7646f657839536f280b1",
+      "size": 1231,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ac040a04409b8201baed7646f657839536f280b1"
+    },
+    {
+      "path": "Wii U GameCube Adapter Port 2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "55bb194cc4317e6ccbf3a05364a49dbd1f825d18",
+      "size": 1231,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/55bb194cc4317e6ccbf3a05364a49dbd1f825d18"
+    },
+    {
+      "path": "Wii U GameCube Adapter Port 3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33c505a3423b84369f2739574b433a1a9432f555",
+      "size": 1231,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/33c505a3423b84369f2739574b433a1a9432f555"
+    },
+    {
+      "path": "Wii U GameCube Adapter Port 4.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "987fdbbc8a34778fea15ff831cad88b405eb0c8b",
+      "size": 1231,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/987fdbbc8a34778fea15ff831cad88b405eb0c8b"
+    },
+    {
+      "path": "Wireless Steam Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e287de813e420d9a01fae18733bd4bda88e7fc2",
+      "size": 2883,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/6e287de813e420d9a01fae18733bd4bda88e7fc2"
+    },
+    {
+      "path": "XEOXPro.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33e335152c6481175316fbf5dd30aeb5f3e7bbd6",
+      "size": 2036,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/33e335152c6481175316fbf5dd30aeb5f3e7bbd6"
+    },
+    {
+      "path": "Xarcade-to-Gamepad-Device.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4e20c22d4242d1f9de21926dc5303187667a22c",
+      "size": 398,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e4e20c22d4242d1f9de21926dc5303187667a22c"
+    },
+    {
+      "path": "Xbox One S Wireless Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "373ccb237f2527b44da0abd9b6fd91dcb3c60fed",
+      "size": 1707,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/373ccb237f2527b44da0abd9b6fd91dcb3c60fed"
+    },
+    {
+      "path": "XboxGamepad(userspacedriver).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "575de0a6ed0a998d1f121813aa279f48021d9a41",
+      "size": 660,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/575de0a6ed0a998d1f121813aa279f48021d9a41"
+    },
+    {
+      "path": "Xbox_360_Wireless_RF_Module_RF01.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af7e41e98499d904f6658dc62f731bcf9a16f4ce",
+      "size": 1628,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/af7e41e98499d904f6658dc62f731bcf9a16f4ce"
+    },
+    {
+      "path": "Xbox_360_Wireless_RF_Module_Rev_VA.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6d9b078127f8ae27b14110ae845547cee33bd11",
+      "size": 1703,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e6d9b078127f8ae27b14110ae845547cee33bd11"
+    },
+    {
+      "path": "Xbox_360_Wireless_Receiver.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8fc8733a73bd1aa8593bd69e83770976e491e846",
+      "size": 1628,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/8fc8733a73bd1aa8593bd69e83770976e491e846"
+    },
+    {
+      "path": "Xbox_360_Wireless_Receiver_Chinese01.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b54458042dcbfff798e427d13252ecaf8d59155d",
+      "size": 1627,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b54458042dcbfff798e427d13252ecaf8d59155d"
+    },
+    {
+      "path": "Xbox_Wireless_Controller.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fbc201829771459ae0ee0b97165d50027e92e15f",
+      "size": 1773,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fbc201829771459ae0ee0b97165d50027e92e15f"
+    },
+    {
+      "path": "XiaoMi_Bluetooth_Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1fb027376ce67ea5c726095beb998f299fab280c",
+      "size": 1848,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1fb027376ce67ea5c726095beb998f299fab280c"
+    },
+    {
+      "path": "Xin-Mo Xin-Mo Dual Arcade.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3866b6a1b9723001f910a42d02296fe9722a78d",
+      "size": 508,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/d3866b6a1b9723001f910a42d02296fe9722a78d"
+    },
+    {
+      "path": "Xtreme_Morpheus.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "107b554069db041a2513b99a0cce8795d5f1bfeb",
+      "size": 724,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/107b554069db041a2513b99a0cce8795d5f1bfeb"
+    },
+    {
+      "path": "YSTEK MICREAL USB Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c33070e303dc62ef10ae57495a7e6c71afbe8cc6",
+      "size": 832,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c33070e303dc62ef10ae57495a7e6c71afbe8cc6"
+    },
+    {
+      "path": "Zeemote_SteelSeries_FREE.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67968cf9aa6a66dbd81599c0d93656d43f32a9f9",
+      "size": 622,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/67968cf9aa6a66dbd81599c0d93656d43f32a9f9"
+    },
+    {
+      "path": "Zeroplus_PS_Vibration_Feedback_Converter_.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc168bf7d8d02977c3443009596d2e3ace06dad5",
+      "size": 1522,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/cc168bf7d8d02977c3443009596d2e3ace06dad5"
+    },
+    {
+      "path": "ZhiXu_Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a934455d1b1ece99e51034102969a6c9d713870",
+      "size": 2756,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/0a934455d1b1ece99e51034102969a6c9d713870"
+    },
+    {
+      "path": "_S_NES_Atari_USB.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "362f6884dc37062bc088facbc86a54e6fc619f98",
+      "size": 1019,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/362f6884dc37062bc088facbc86a54e6fc619f98"
+    },
+    {
+      "path": "gioteck-vx2.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b44579c51f9703b168c8661cba1b35ec0ed0b13b",
+      "size": 780,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/b44579c51f9703b168c8661cba1b35ec0ed0b13b"
+    },
+    {
+      "path": "gioteck-vx3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "842ee3fd2a817671817ef3c916499d468025a17f",
+      "size": 817,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/842ee3fd2a817671817ef3c916499d468025a17f"
+    },
+    {
+      "path": "go_advance_gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40877bfd63ffcca9bf1855af51d163fb78632788",
+      "size": 935,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/40877bfd63ffcca9bf1855af51d163fb78632788"
+    },
+    {
+      "path": "go_advance_gamepad_v11.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67e7c3a223dfc3dd01e06b01979b508a2352066b",
+      "size": 1047,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/67e7c3a223dfc3dd01e06b01979b508a2352066b"
+    },
+    {
+      "path": "go_super_gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1471b571596e4eaeb225065151545a83dfb23bbc",
+      "size": 1163,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1471b571596e4eaeb225065151545a83dfb23bbc"
+    },
+    {
+      "path": "iBuffalo_BGCFC801.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22c987ad793b76b6d42bdc7fb98a033cdcc85a02",
+      "size": 848,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/22c987ad793b76b6d42bdc7fb98a033cdcc85a02"
+    },
+    {
+      "path": "iBuffalo_BSGP1601.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e1e2dde7e28c4a7c3e794252651ab8a36c79f5f",
+      "size": 1836,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5e1e2dde7e28c4a7c3e794252651ab8a36c79f5f"
+    },
+    {
+      "path": "iBuffalo_BSGP801.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c402c742e4e1e80a68ebe085272bdd732a74fe63",
+      "size": 1052,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c402c742e4e1e80a68ebe085272bdd732a74fe63"
+    },
+    {
+      "path": "iNNEXT SNES Gamepad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bc16431f713fadc230640cd1925b349f45aeb934",
+      "size": 435,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/bc16431f713fadc230640cd1925b349f45aeb934"
+    },
+    {
+      "path": "iNNEXT SNES remote.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1cdc51f502b8d49c878a579aabc21d2a2043d709",
+      "size": 745,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1cdc51f502b8d49c878a579aabc21d2a2043d709"
+    },
+    {
+      "path": "iPEGA_PG_9021_BT.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a5ee2b820f547bb74c63681a0ae7ee37e34c430d",
+      "size": 2190,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/a5ee2b820f547bb74c63681a0ae7ee37e34c430d"
+    },
+    {
+      "path": "iPEGA_PG_9068.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66ada7cb44f3665a1411c449f291eade59619d6a",
+      "size": 829,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/66ada7cb44f3665a1411c449f291eade59619d6a"
+    },
+    {
+      "path": "iPEGA_PG_9083S.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f0c9078cb5efe04007869735bb9fa19016e6bd2b",
+      "size": 1501,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/f0c9078cb5efe04007869735bb9fa19016e6bd2b"
+    },
+    {
+      "path": "iPEGA_PG_9087.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "80eb550901953088b6bafe17377ad8b73ab4e10b",
+      "size": 1960,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/80eb550901953088b6bafe17377ad8b73ab4e10b"
+    },
+    {
+      "path": "kadevice.com_KADE_-_Kick_Ass_Dynamic_Encoder.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9da32210399de3244ba99c0f673e6b2d7fbce3ab",
+      "size": 718,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9da32210399de3244ba99c0f673e6b2d7fbce3ab"
+    },
+    {
+      "path": "odroidgo2_joypad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9254dcf959d835ae9b16cc9d8230809d8fc871e4",
+      "size": 1019,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9254dcf959d835ae9b16cc9d8230809d8fc871e4"
+    },
+    {
+      "path": "odroidgo2_joypad_v11.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fde16c8a54883ba6b28194b44095e4dfe6ec7202",
+      "size": 1130,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/fde16c8a54883ba6b28194b44095e4dfe6ec7202"
+    },
+    {
+      "path": "odroidgo3_joypad.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae91c17b7c9c6088e4e004b30ab061dbe14ba455",
+      "size": 1100,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ae91c17b7c9c6088e4e004b30ab061dbe14ba455"
+    },
+    {
+      "path": "raphnet-tech_Dual_GC_N64_to_USB_Adapter_3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "36b451effa9c60fc4665dd6564683f2ca591889d",
+      "size": 546,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/36b451effa9c60fc4665dd6564683f2ca591889d"
+    },
+    {
+      "path": "raphnet-tech_Dual_SNES_to_USB_v2.1.x.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8163cfc90c927fe7f1a10b8de1ae8a1f06e93c7",
+      "size": 743,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/e8163cfc90c927fe7f1a10b8de1ae8a1f06e93c7"
+    },
+    {
+      "path": "raphnet-tech_SNES_to_USB_v2.0.x.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71f8401a2634af5a52d4cffaf72f08b685ea3d93",
+      "size": 733,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/71f8401a2634af5a52d4cffaf72f08b685ea3d93"
+    },
+    {
+      "path": "raphnet-tech_SNES_to_USB_v2.1.x.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c7ba186c642cb6b45dffd49d50a1792c4a763c73",
+      "size": 733,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c7ba186c642cb6b45dffd49d50a1792c4a763c73"
+    },
+    {
+      "path": "raphnet-tech_Sega_Saturn_to_USB_Adapter_2_0.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce067e99b7afac7a5b3f39510c5359b816db4795",
+      "size": 881,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/ce067e99b7afac7a5b3f39510c5359b816db4795"
+    },
+    {
+      "path": "raphnet.net_4nes4snes.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58aa93fae144cf4fd423b601a41a141ad3635d58",
+      "size": 715,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/58aa93fae144cf4fd423b601a41a141ad3635d58"
+    },
+    {
+      "path": "raphnet.net_GC_N64_to_USB_Adapter_2_3.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c66b2840c9bdf0bb4b2c9aa5f67ed5dea84f402",
+      "size": 730,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/9c66b2840c9bdf0bb4b2c9aa5f67ed5dea84f402"
+    },
+    {
+      "path": "retronicdesign.com_Sega_Joypad_Adapter_v3.0.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4280b5ef19b271f8245cf7dcc711d684f18c3b8d",
+      "size": 728,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/4280b5ef19b271f8245cf7dcc711d684f18c3b8d"
+    },
+    {
+      "path": "usb_gamepad___________(NES).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5bf1caa8ecbb7a8db7130c5889fed015bb268f3",
+      "size": 1143,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c5bf1caa8ecbb7a8db7130c5889fed015bb268f3"
+    },
+    {
+      "path": "usb_gamepad___________(PS1).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "99a042bc851b672481f41dd05d1bd9215ac94a01",
+      "size": 1093,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/99a042bc851b672481f41dd05d1bd9215ac94a01"
+    },
+    {
+      "path": "usb_gamepad___________(SEGA).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "003e906a36fc6ba7dde9a2af8a6de1e6be919e03",
+      "size": 1654,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/003e906a36fc6ba7dde9a2af8a6de1e6be919e03"
+    },
+    {
+      "path": "usb_gamepad___________(SNES).cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d3c67dfd22adefbc1953eab35770be20306f93d",
+      "size": 1314,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/5d3c67dfd22adefbc1953eab35770be20306f93d"
+    },
+    {
+      "path": "wisegroup_ltd_smartjoy_dual_plus_adapter.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "56b0d224c23da09128d05e04dff30b84a0e7d0f2",
+      "size": 1680,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/56b0d224c23da09128d05e04dff30b84a0e7d0f2"
+    },
+    {
+      "path": "xiaoji_GameSir_G3s.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "091f4d25d5e7e4246143d62e66dafc22cbc5dbe0",
+      "size": 1772,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/091f4d25d5e7e4246143d62e66dafc22cbc5dbe0"
+    },
+    {
+      "path": "xiaoji_GameSir_G3s_1_02.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c7b9bff16c3cbb0d6705ac06e23ee377ca4c945e",
+      "size": 1789,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/c7b9bff16c3cbb0d6705ac06e23ee377ca4c945e"
+    },
+    {
+      "path": "xiaoji_GameSir_G3v.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "10bc3fb3d494d98c8dab2737854b36ce92c3e9de",
+      "size": 1772,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/10bc3fb3d494d98c8dab2737854b36ce92c3e9de"
+    },
+    {
+      "path": "xiaoji_GameSir_G3v_1_00.cfg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ae55e02b613020e46523c491df1206d29e7d64b",
+      "size": 1789,
+      "url": "https://api.github.com/repos/libretro/retroarch-joypad-autoconfig/git/blobs/1ae55e02b613020e46523c491df1206d29e7d64b"
+    }
+  ],
+  "truncated": false
+}
