@@ -25,6 +25,14 @@ Backends it ran against:
 | **UNSUPPORTED** | The backend does not declare the capability *and* the host agreed: `require()` refused before doing any work, or `degrade()` returned a skip and the operation completed without it. Not a bug — and deliberately not spelled the same as FAIL, because conflating the two is how real breakage hides behind an expected gap. |
 | **NOT-RUN** | No server, or an earlier step failed so this one was never attempted. Never a stand-in for FAIL. |
 
+## What this matrix cannot cover, and why that is not a gap
+
+Every row below is a thing the host asks a *library backend* to do. Two plugin capabilities have no row here and never will, because they touch no backend at all: **`cores`** and **`assets`** (shaders, overlays, cheats, controller profiles). Both end with bytes in a directory an emulator reads, and neither opens a library connection -- `rom_hub.emuassets` does not import `rom_hub.backends`, and `install_asset` takes no `backend` argument, both asserted by tests rather than by inspection.
+
+So for those two the question this matrix answers -- "what does each backend do about it?" -- has no meaning, rather than an answer of "nothing". A row of three UNSUPPORTED cells would be actively misleading: it would read as three servers falling short of something, when in fact `rom-hub cores install` and `rom-hub assets install` work identically against RomM, Gaseous, Retrom, and against no configured backend whatsoever. That last case is the useful one: an operator with no library server at all can still install an emulator core and a CRT bezel.
+
+See `backends/base.BACKEND_INDEPENDENT_CAPABILITIES`, which names this set so that "absent from the matrix" is a recorded decision rather than an oversight.
+
 ## The matrix
 
 | Capability | RomM | Gaseous | Retrom |

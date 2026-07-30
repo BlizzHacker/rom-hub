@@ -340,6 +340,7 @@ inherited leak.
 | `rom-hub stream <plugin> <source_id>` | resolve one item to a validated stream target and print it |
 | `rom-hub cores list\|install <plugin> [<core>]` | list a plugin's cores, or download one into the configured cores directory |
 | `rom-hub firmware list\|install <plugin> [<firmware>] [--no-library]` | list a plugin's BIOS/firmware **with each item's licence**, or install one into the configured firmware directory and the library |
+| `rom-hub assets list|install <plugin> [<asset>] [--kind]` | list a plugin's support files **with each item's licence**, or download one into the directory configured for its kind. No library server is involved |
 | `rom-hub jobs [--state]` | the persisted import queue, with failure reasons |
 
 `--source-id` exists because RomM does not record which plugin an import came
@@ -368,6 +369,7 @@ the deployment target's own storage, never on a workstation system drive.
 | Imported ROMs | `/mnt/library/roms` (RomM's existing library) |
 | Harvested cores | `$ROM_HUB_HOME/var/cores/` by default; `ROM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
 | Installed firmware | `$ROM_HUB_HOME/var/firmware/<slug>/` by default; `ROM_HUB_FIRMWARE_DIR` points it at whatever `system/` or `bios/` directory the operator's emulator already reads |
+| Installed assets | `$ROM_HUB_HOME/var/assets/<kind dir>/<slug>/` by default, where the kind dirs are RetroArch's own names (`shaders`, `overlays`, `cheats`, `autoconfig`); `ROM_HUB_ASSETS_DIR` moves the root — point it at a RetroArch config directory and every file lands where RetroArch looks — and `ROM_HUB_{SHADERS,OVERLAYS,CHEATS,CONTROLLERS}_DIR` each move one kind outright |
 
 Plugin data assets are **not** in the plugin's own directory, and that is not
 a style choice: `plugins/<slug>/` is a git checkout the registry deletes and
@@ -454,8 +456,9 @@ api_key     = { type = "secret" }           # never in state.json; no default al
 | `stream` | `resolve(result)` | `StreamTarget` | validates and returns it — nothing else |
 | `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` | downloads into the configured cores directory |
 | `firmware` | `list()` / `plan(firmware)` | `FirmwareArtifact[]` / `FetchPlan` | downloads into the configured firmware directory, unpacks the declared archive members, and stores the files in the library where the backend can hold firmware |
+| `assets` | `list()` / `plan(asset)` | `AssetArtifact[]` / `FetchPlan` | downloads into the directory configured for the item's `kind` — shaders, overlays, cheats, controller profiles. Touches no library at all |
 
-**RPP v1 is fully implemented.** All six capabilities have a host
+**RPP v1 is fully implemented.** All seven capabilities have a host
 implementation, a CLI command and tests that exercise them through a real
 plugin subprocess.
 
@@ -464,10 +467,9 @@ sub-projects C and D cannot collide with a v1 name later.
 
 A minimal plugin implements `search` + `importer` only — the ~50-line
 community contribution that makes this worth building. Archive.org implements
-four of the five: `search`, `importer`, `metadata` and `stream`. It does
-**not** implement `cores`, and that is a correction to an earlier draft of
-this document rather than an omission — see [The Archive.org
-plugin](#the-archiveorg-plugin).
+four: `search`, `importer`, `metadata` and `stream`. It does **not** implement
+`cores`, and that is a correction to an earlier draft of this document rather
+than an omission — see [The Archive.org plugin](#the-archiveorg-plugin).
 
 ### Each capability's security gate
 
@@ -485,12 +487,13 @@ allowlist before the host fetches it.
 | `stream` | `StreamTarget` | `check_url` when `kind="url"`; a `kind="handle"` may not *be* a URL, so the discriminator cannot be lied about to skip the check |
 | `cores` | `CoreArtifact[]`, `FetchPlan` | the **same** `_gated_plan()` the importer uses — one implementation, so the two cannot drift |
 | `firmware` | `FirmwareArtifact[]`, `FetchPlan` | the same `_gated_plan()` again. Plus: every archive member goes through `bare_filename` on the *type*, and is matched against the zip by full-name equality and written to a destination the host built with `dest_in_job_dir` — an entry named `../../etc/passwd` is simply not one of the members, and is never joined onto a path |
+| `assets` | `AssetArtifact[]`, `FetchPlan` | the same `_gated_plan()` a third time. `kind` is a closed `Literal`, so the host can always choose a destination; the `asset_id` may contain `/` because it is a path *within the source tree* and is never joined onto a filesystem path — every write is built from a `FetchPlan` filename, which `bare_filename` and `dest_in_job_dir` still gate |
 | *(any)* `[[data_assets]]` | nothing — it is a manifest declaration, not a return value | `check_url` at **parse** time against `permissions.network`, so a violating manifest cannot be installed; then `HttpDownloader`'s per-hop `check_url` at fetch time; then a mandatory `sha256` before the plugin is told the path |
 
 Three things about that table are deliberate.
 
-**`metadata`, `cores` and `firmware` were the same hole as `importer`.** An artwork URL and
-a core download URL are both "a string a plugin chose, which the host then
+**`metadata`, `cores`, `firmware` and `assets` were the same hole as `importer`.** An artwork
+URL and a core download URL are both "a string a plugin chose, which the host then
 fetches with its own network access". Adding either without a `check_url` on it
 would have made the manifest's `network` declaration decorative for that
 capability, which is why the broker's module docstring enumerates the paths out
@@ -595,6 +598,145 @@ a clean-room BIOS with `is_verified: false`. `Firmware.verify_file_hashes`
 compares against known **retail dump** hashes, so a replacement BIOS is
 correctly stored and correctly reported as not matching a dump. That is
 RomM answering a different question, not a failed upload.
+
+### Assets: the rest of an emulation stack, and the first backend-free install
+
+`cores` gets you an emulator and `firmware` gets you a BIOS. Neither is why a
+twenty-year-old game looks wrong on a modern panel, why the screen has black
+bars either side of it, why the pad you plugged in does nothing, or why you
+are typing Game Genie codes by hand. That is shaders, overlays, controller
+profiles and cheat files — collectively the largest part of a working setup
+that the Hub did not serve.
+
+**One capability, not four.** These differ in exactly one respect the Hub
+cares about: which directory an emulator reads them from. That is a lookup,
+not four code paths. So `AssetArtifact` carries a `kind` — `shader`,
+`overlay`, `cheat`, `controller` — and the host maps it to a directory. The
+vocabulary is closed, because the host must be able to choose a destination
+for every value it accepts; a plugin inventing `kind = "config"` would be
+asking the host to invent a destination, and "somewhere sensible" is not a
+destination anybody can audit.
+
+`shader` is in that list with no plugin behind it, deliberately — see the
+licence findings below. It is a thing RetroArch has a directory for, and a
+differently-licensed shader source should be able to ship without the host
+learning a new word first.
+
+**Where the bytes go is configuration, with a default worth adopting.**
+`kind` selects a leaf directory under `ROM_HUB_ASSETS_DIR`
+(`$ROM_HUB_HOME/var/assets` by default), then one directory per plugin:
+
+    shader     -> <root>/shaders      overlay    -> <root>/overlays
+    cheat      -> <root>/cheats       controller -> <root>/autoconfig
+
+Those leaf names are RetroArch's own, so pointing `ROM_HUB_ASSETS_DIR` at an
+existing RetroArch configuration directory lands every file exactly where
+RetroArch already looks. That is a default an operator can adopt, not a path
+compiled in — and `ROM_HUB_SHADERS_DIR`, `ROM_HUB_OVERLAYS_DIR`,
+`ROM_HUB_CHEATS_DIR` and `ROM_HUB_CONTROLLERS_DIR` each override one kind
+outright, for the setup whose cheats and shaders do not share a parent.
+
+#### This is the first capability with no backend dimension at all
+
+`install_asset` takes no `backend` argument, opens no connection, and
+`rom_hub.emuassets` does not import `rom_hub.backends` — all three asserted by
+tests rather than by inspection. So the essential-vs-optional question has no
+answer here rather than an answer of "nothing": both halves of that scheme
+presuppose a backend method that might be missing.
+
+`backends/base.BACKEND_INDEPENDENT_CAPABILITIES` records the set, and the
+catalog's classification test asserts against it instead of repeating its
+members. `cores` was already in it and had never been written down, because a
+lone exception reads as an oversight; two make a category. The practical
+statement is that `rom-hub cores install` and `rom-hub assets install` work
+identically against RomM, Gaseous, Retrom **and against no configured backend
+at all** — an operator with no library server can still install a CRT bezel.
+This is also why neither appears in [the proof matrix](PROOF.md), which is
+about what backends do.
+
+#### Size was the design problem, and nothing clones a repository
+
+The candidate sources are enormous: `libretro-database` is 795 MB,
+`slang-shaders` 139 MB, `glsl-shaders` 56 MB, `common-overlays` 29 MB. The
+rule the three shipped plugins hold to is **list from an index, fetch one
+file**.
+
+That index is GitHub's Git Trees API, one directory at a time
+(`/git/trees/<ref>:<path>`), which answers with a compact JSON list carrying
+each blob's path and size. One 12 KB call enumerates libretro-database's 44
+cheat platforms; one 704 KB call enumerates all 2,265 NES cheat files; one
+732 KB recursive call classifies the entire overlay repository. An install is
+then a single `raw.githubusercontent.com` GET for a file of a few hundred
+bytes to a few kilobytes.
+
+**The contents API is the wrong endpoint and fails silently.** `/contents/`
+truncates a directory listing at 1,000 entries with no error and no flag — the
+NES cheat directory returns 1,000 of 2,265 files and answers `200`. A plugin
+built on it would have offered a third of the catalogue and looked like it was
+working. The Trees API returns all of them, sets `truncated` when it cannot,
+and is *smaller* on the wire (704 KB against 1.4 MB) because it carries no
+per-entry URL block. The plugins refuse a truncated listing outright rather
+than showing part of a catalogue as though it were all of it.
+
+**Why not `[[data_assets]]`?** For the four reasons `firmware` gives, each of
+which bites harder here: a data asset is the *plugin's* file and these are the
+operator's; it is fetched before every command, so `rom-hub search` would pull
+bezels; the set is fixed at install time and capped at 8, against catalogues
+of 437 and 2,265; and its mandatory sha256 pins the manifest to an upstream
+commit, which for repositories that take contributions continuously would mean
+a plugin release every time somebody upstreams a gamepad.
+
+#### Licensing decided the plugin set, and dropped the most-wanted one
+
+Every source was verified by reading the repository's own licence file, not
+GitHub's summary of it. Three shipped:
+
+| Source | Licence | How it was established |
+|---|---|---|
+| `common-overlays` | **CC-BY-4.0** | full CC-BY-4.0 text in `COPYING`; GitHub agrees |
+| `retroarch-joypad-autoconfig` | **MIT** | `COPYING` states MIT for the profiles; GitHub reports NOASSERTION only because that file *also* carries the zlib-style SDL licence for a bundled `gamecontrollerdb.cfg` this plugin does not offer |
+| `libretro-database` (`cht/`) | **CC-BY-SA-4.0** | full text in `LICENSE` at the repository root, no carve-out naming `cht/` |
+
+**`slang-shaders` and `glsl-shaders` were dropped**, and they were the single
+most-wanted item — CRT filters are the reason most people install shaders at
+all. Neither repository has a `LICENSE` or `COPYING` of any kind; GitHub's
+licence endpoint returns 404 for both, and the READMEs say nothing. Per-file
+headers are inconsistent where they exist at all: `crt-lottes.slang` is
+dedicated to the public domain by its author, `crt-geom.slang` and
+`crt-geom.glsl` are GPL-2.0-or-later, and `stock.slang`, `stock.glsl` and
+`handheld/shaders/lcd-cgwg/lcd-grid.slang` carry no statement whatsoever.
+Guix's packaging of the same tree enumerates fourteen distinct licences, which
+is the same finding reached independently from outside.
+
+A file with no licence statement is not permissive by default — it is "all
+rights reserved". `AssetArtifact.license` is a required field precisely so a
+plugin cannot stay silent on this, and there is no honest value to put in it
+for a tree where the answer varies per file and is frequently absent. So the
+shaders are not shipped, and this paragraph is why. That is the same call this
+project already made for BIOS projects and content sources, and an honest
+three-plugin set beats four with a question mark.
+
+#### The overlay format did not fit, and the rule won
+
+A RetroArch overlay is a `.cfg` plus the images it references, named relative
+to the `.cfg` — overwhelmingly as a subdirectory (`img/dpad-left.png`). A
+`FetchPlan` cannot express that: `FetchFile.filename` must be a bare name,
+which is the rule that keeps a plugin's downloads inside the directory chosen
+for them.
+
+Widening it would have traded a containment guarantee for a file layout, so
+the plugin narrowed instead: it offers only the **self-contained** overlays,
+49 of the repository's 310, including the whole `gamepads/lite/` pack. Listing
+an overlay that would fail to install is worse than not listing it.
+
+Making that filter cheap is the other half. Reading 310 `.cfg` bodies would be
+310 requests for a *catalogue*, so the tree itself is the predictor — an
+overlay is self-contained exactly when its own directory also holds images —
+and that heuristic was checked against the content of all 310 files, agreeing
+on every one with no false positives and no false negatives. `plan()` still
+fetches the chosen `.cfg` and re-reads its references before planning
+anything: the heuristic decides what to *offer*, the file decides what to
+*install*.
 
 ### Data assets: a dataset the plugin cannot fetch itself
 
