@@ -1,10 +1,31 @@
-"""HTTP client for Gaseous 2.0's REST API.
+"""HTTP client for Gaseous' REST API.
 
 Everything here was derived by reading gaseous-server's C# controllers and
-then measured against a real `ghcr.io/gaseous-project/gaseousserver:v2.0.0-rc.3`.
-Where the two disagreed, the running server won and the discrepancy is
-recorded in a comment -- that happened more than once, and it is why none
-of this is inferred from the OpenAPI document the server also publishes.
+then measured against a real Gaseous. Where the two disagreed, the running
+server won and the discrepancy is recorded in a comment -- that happened
+more than once, and it is why none of this is inferred from the OpenAPI
+document the server also publishes.
+
+## There are two Gaseous API generations, and `:latest` is the older one
+
+Both answer `/api/v1.1`, and the version in the path says nothing about
+which one you have reached:
+
+* **1.7.x** -- the current *stable* line, and what
+  `ghcr.io/gaseous-project/gaseousserver:latest` still resolves to.
+* **2.0.0-rc.x** -- pre-release, and what this client was originally
+  written against.
+
+They are not the same API. `POST /Games` demands a different set of fields
+(see `_MATCH_EVERYTHING`); a game is addressed by a `MetadataMapId` on 2.0
+and by an IGDB `Id` on 1.7.x; `POST /Roms` takes a different multipart
+field name, answers a different body, and only queues the import on 2.0;
+and `POST /Roms/Imports` does not exist at all before 2.0.
+
+Each call below says which of those it can and cannot span. Where one
+request satisfies both -- which is the case for the listing, and is worth
+more than a version switch because there is nothing to misdetect -- it
+sends the union and says so.
 
 ## Auth is a cookie, not a token
 
@@ -64,11 +85,63 @@ UNKNOWN_PLATFORM_ID = 0
 # How many games to ask for per `POST /Games` page.
 _GAMES_PAGE_SIZE = 200
 
-# `GameSearchModel` declares `Name` and `Sorting` as non-nullable, and
-# ASP.NET model validation rejects a body without them with 400 before the
-# controller runs. An empty `Name` is the "match everything" spelling.
+# The `POST /Games` body, and the one thing in this file that is a *union*
+# of two servers rather than a description of one.
+#
+# `GameSearchModel` (`Controllers/V1.1/GamesController.cs`) carries no
+# `[Required]` attribute anywhere. What makes a field mandatory is that
+# gaseous-server builds with `<Nullable>enable</Nullable>`, so ASP.NET's
+# `DataAnnotationsMetadataProvider` treats every **non-nullable reference
+# type** property as implicitly required -- and a property whose declared
+# type is non-nullable but which carries a member initializer survives
+# validation anyway, because binding leaves the initialized value in place
+# and the implicit `RequiredAttribute` only ever tests for null.
+#
+# That rule, applied to the two shipped declarations, gives two different
+# required sets. Declared type on the left of each column, what validation
+# then does with it on the right:
+#
+#                        1.7.14                       2.0.0-rc.3
+#   Name                 string         REQUIRED      string          REQUIRED
+#   Platform             List<string>   REQUIRED      List<string>?   optional
+#   Genre                List<string>   REQUIRED      List<string>?   optional
+#   GameMode             List<string>   REQUIRED      List<string>?   optional
+#   PlayerPerspective    List<string>   REQUIRED      List<string>?   optional
+#   Theme                List<string>   REQUIRED      List<string>?   optional
+#   Sorting              = new ...      optional      no initializer  REQUIRED
+#
+# So neither line's minimal body is accepted by the other, and this client
+# used to send 2.0's. Measured, on `:latest` (1.7.14.0) and on
+# `v2.0.0-rc.3`, and captured in `tests/fixtures/gaseous/`:
+#
+#     {"Name","Sorting"}      -> 400 on 1.7.14 (Genre, Theme, GameMode,
+#                                Platform, PlayerPerspective), 200 on 2.0
+#     the union below         -> 200 on both
+#
+# Two details that are not guesses either, because getting them wrong
+# reintroduces the 400 in a way that looks like it should work:
+#
+# * **`[]`, not `null`.** An explicit `"Genre": null` fails 1.7.14's
+#   validation exactly as an absent key does -- implicit-required tests
+#   the bound *value*. Measured: same 400, same five field names.
+# * **empty means "any", not "match nothing".** `GetGames` guards every
+#   one of these with `if (model.X.Count > 0)` (1.7.14) or
+#   `if (model.X != null)` then `.Count > 0` (2.0), so an empty list adds
+#   no `WHERE` clause at all. `Name` is guarded by `model.Name.Length > 0`
+#   the same way.
+#
+# Sending a field a server does not declare is safe in the other
+# direction: ASP.NET's System.Text.Json binding ignores unmapped members
+# by default, and an unknown extra property was measured to answer 200 on
+# both. That is what makes one body reasonable rather than a version
+# switch -- there is nothing here to detect.
 _MATCH_EVERYTHING = {
     "Name": "",
+    "Platform": [],
+    "Genre": [],
+    "GameMode": [],
+    "PlayerPerspective": [],
+    "Theme": [],
     "Sorting": {"SortBy": "NameThe", "SortAscending": True},
 }
 
@@ -79,6 +152,39 @@ class GaseousError(BackendError):
     A `BackendError` so a deliberately backend-agnostic caller --
     `rom_hub.cli.main` -- catches this and `RommError` with one name.
     """
+
+
+def _reject_1_7_upload_response(filename: str, body: str) -> None:
+    """Refuse a `POST /Roms` 200 that is 1.7.x's "I stored nothing".
+
+    Measured on `:latest` (1.7.14.0): a `file` part against the 1.7.x
+    `List<IFormFile> files` signature binds nothing, and the server
+    answers `200 {"count":0,"size":0}`. The alternative to noticing that
+    here is an import that reports success, waits on a session id which is
+    really a JSON blob, and leaves the operator looking for a ROM that was
+    never written.
+
+    Only a JSON *object* is rejected. 2.0 answers a bare GUID, and a
+    future version that quoted it or wrapped it in an array would still
+    not be an object, so this stays narrow on purpose: it is a guard
+    against one known-wrong shape, not a validator of the right one.
+    """
+    if not body.startswith("{"):
+        return
+    try:
+        parsed = json.loads(body)
+    except ValueError:
+        return
+    if not isinstance(parsed, dict) or "count" not in parsed:
+        return
+    raise GaseousError(
+        f"uploading {filename!r} reached a Gaseous that stored nothing: the "
+        f"server answered {body[:_EXCERPT_LIMIT]} instead of an import "
+        f"session id. That is the 1.7.x `POST /Roms`, whose multipart part "
+        f"is named 'files' and which imports inline; this Hub speaks the 2.0 "
+        f"upload ('file' + an import queue). Nothing was uploaded -- run "
+        f"Gaseous 2.0 or newer to import through the Hub."
+    )
 
 
 def _excerpt(resp: httpx.Response) -> str:
@@ -271,6 +377,12 @@ class GaseousClient:
         is 1-based: `pageNumber=0` means "no paging, return everything",
         which is fine for a small library and unwise for a real one, so
         this walks pages and stops on a short one.
+
+        The body is `_MATCH_EVERYTHING`, which is one request both API
+        generations accept -- read its comment before changing a field.
+        `returnSummary`/`returnGames` are 2.0-only query parameters and
+        are simply unbound on 1.7.x, which is why they are sent
+        unconditionally rather than gated on anything.
         """
         games: list[dict] = []
         page = 1
@@ -355,6 +467,20 @@ class GaseousClient:
         which is what makes that safe for large ROMs. (The 50 MB cap that
         exists in Gaseous belongs to `ContentManagerController`, which
         uploads *attachments*, not ROMs.)
+
+        **This is the 2.0 upload, and 1.7.x answers it with a lie.** The
+        1.7.x signature is `UploadRom(List<IFormFile> files, ...)` -- the
+        part is named `files`, plural -- and it imports inline rather than
+        queueing, so it returns `{"count": N, "size": N}` instead of a
+        session id. A `file` part binds to nothing there: the list comes
+        back empty, the `foreach` never runs, and the server answers
+        **200** with `{"count":0,"size":0}` having stored nothing. That
+        body is truthy, so it used to be accepted as a session id and the
+        import was reported as under way when no bytes had been kept.
+        `_reject_1_7_upload_response` is what turns that into a failure
+        with a sentence in it; supporting the 1.7.x upload outright is a
+        larger change than this, and is deliberately not attempted here
+        rather than attempted and left unproven.
         """
         path = Path(path)
         with path.open("rb") as handle:
@@ -371,6 +497,7 @@ class GaseousClient:
                 f"uploading {path.name!r} returned {resp.status_code} but no "
                 f"import session id, so the import cannot be tracked"
             )
+        _reject_1_7_upload_response(path.name, session)
         return session
 
     def import_states(self) -> list[dict]:

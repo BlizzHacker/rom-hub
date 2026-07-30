@@ -1,0 +1,304 @@
+{
+  "_": "Captured from live Gaseous servers. See tests/fixtures/gaseous/README for provenance.",
+  "generations": {
+    "1.7.14.0": {
+      "games.minimal-2.0-body": {
+        "status": 400,
+        "response": {
+          "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+          "title": "One or more validation errors occurred.",
+          "status": 400,
+          "errors": {
+            "Genre": [
+              "The Genre field is required."
+            ],
+            "Theme": [
+              "The Theme field is required."
+            ],
+            "GameMode": [
+              "The GameMode field is required."
+            ],
+            "Platform": [
+              "The Platform field is required."
+            ],
+            "PlayerPerspective": [
+              "The PlayerPerspective field is required."
+            ]
+          }
+        },
+        "request": {
+          "Name": "",
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          }
+        }
+      },
+      "games.union-body": {
+        "status": 200,
+        "response": {
+          "count": 0,
+          "games": [],
+          "alphaList": {}
+        },
+        "request": {
+          "Name": "",
+          "Platform": [],
+          "Genre": [],
+          "GameMode": [],
+          "PlayerPerspective": [],
+          "Theme": [],
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          }
+        }
+      },
+      "games.union-body-with-nulls": {
+        "status": 400,
+        "response": {
+          "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+          "title": "One or more validation errors occurred.",
+          "status": 400,
+          "errors": {
+            "Genre": [
+              "The Genre field is required."
+            ],
+            "Theme": [
+              "The Theme field is required."
+            ],
+            "GameMode": [
+              "The GameMode field is required."
+            ],
+            "Platform": [
+              "The Platform field is required."
+            ],
+            "PlayerPerspective": [
+              "The PlayerPerspective field is required."
+            ]
+          }
+        },
+        "request": {
+          "Name": "",
+          "Platform": null,
+          "Genre": null,
+          "GameMode": null,
+          "PlayerPerspective": null,
+          "Theme": null,
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          }
+        }
+      },
+      "games.union-body-plus-unknown-field": {
+        "status": 200,
+        "response": {
+          "count": 0,
+          "games": [],
+          "alphaList": {}
+        },
+        "request": {
+          "Name": "",
+          "Platform": [],
+          "Genre": [],
+          "GameMode": [],
+          "PlayerPerspective": [],
+          "Theme": [],
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          },
+          "NotAField": [
+            "x"
+          ]
+        }
+      },
+      "games.no-sorting": {
+        "status": 200,
+        "response": {
+          "count": 0,
+          "games": [],
+          "alphaList": {}
+        },
+        "request": {
+          "Name": "",
+          "Platform": [],
+          "Genre": [],
+          "GameMode": [],
+          "PlayerPerspective": [],
+          "Theme": []
+        }
+      },
+      "roms.multipart-field-file": {
+        "status": 200,
+        "response": {
+          "count": 0,
+          "size": 0
+        }
+      },
+      "roms.multipart-field-files": {
+        "status": 200,
+        "response": {
+          "count": 1,
+          "size": 24566
+        }
+      },
+      "roms.imports": {
+        "status": 404,
+        "response": ""
+      }
+    },
+    "2.0.0.0": {
+      "games.minimal-2.0-body": {
+        "status": 200,
+        "response": {
+          "games": []
+        },
+        "request": {
+          "Name": "",
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          }
+        }
+      },
+      "games.union-body": {
+        "status": 200,
+        "response": {
+          "games": []
+        },
+        "request": {
+          "Name": "",
+          "Platform": [],
+          "Genre": [],
+          "GameMode": [],
+          "PlayerPerspective": [],
+          "Theme": [],
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          }
+        }
+      },
+      "games.union-body-with-nulls": {
+        "status": 200,
+        "response": {
+          "games": []
+        },
+        "request": {
+          "Name": "",
+          "Platform": null,
+          "Genre": null,
+          "GameMode": null,
+          "PlayerPerspective": null,
+          "Theme": null,
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          }
+        }
+      },
+      "games.union-body-plus-unknown-field": {
+        "status": 200,
+        "response": {
+          "games": []
+        },
+        "request": {
+          "Name": "",
+          "Platform": [],
+          "Genre": [],
+          "GameMode": [],
+          "PlayerPerspective": [],
+          "Theme": [],
+          "Sorting": {
+            "SortBy": "NameThe",
+            "SortAscending": true
+          },
+          "NotAField": [
+            "x"
+          ]
+        }
+      },
+      "games.no-sorting": {
+        "status": 400,
+        "response": {
+          "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+          "title": "One or more validation errors occurred.",
+          "status": 400,
+          "errors": {
+            "Sorting": [
+              "The Sorting field is required."
+            ]
+          }
+        },
+        "request": {
+          "Name": "",
+          "Platform": [],
+          "Genre": [],
+          "GameMode": [],
+          "PlayerPerspective": [],
+          "Theme": []
+        }
+      },
+      "roms.multipart-field-file": {
+        "status": 200,
+        "response": "0d949915-b624-4a88-8094-91b8ed1dce90"
+      },
+      "roms.multipart-field-files": {
+        "status": 400,
+        "response": {
+          "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+          "title": "One or more validation errors occurred.",
+          "status": 400,
+          "errors": {
+            "file": [
+              "The file field is required."
+            ]
+          }
+        }
+      },
+      "roms.imports": {
+        "status": 200,
+        "response": [
+          {
+            "fileName": "<data>/Upload/7b1f51dc-0915-4525-a6a8-ad50685afd59/probe-seed.nes",
+            "state": "Pending",
+            "method": "WebUpload",
+            "type": "Unknown",
+            "userId": "<user-guid>",
+            "created": "2026-07-29T23:49:59.7129735Z",
+            "lastUpdated": "2026-07-29T23:49:59.7129736Z",
+            "processData": {},
+            "platformOverride": 0,
+            "sessionId": "7b1f51dc-0915-4525-a6a8-ad50685afd59"
+          },
+          {
+            "fileName": "<data>/Upload/8bd4191f-bbdd-41e9-a659-73f792eedc5e/cap-seed.nes",
+            "state": "Pending",
+            "method": "WebUpload",
+            "type": "Unknown",
+            "userId": "<user-guid>",
+            "created": "2026-07-30T00:06:32.5709851Z",
+            "lastUpdated": "2026-07-30T00:06:32.5709852Z",
+            "processData": {},
+            "platformOverride": 0,
+            "sessionId": "8bd4191f-bbdd-41e9-a659-73f792eedc5e"
+          },
+          {
+            "fileName": "<data>/Upload/0d949915-b624-4a88-8094-91b8ed1dce90/cap-seed.nes",
+            "state": "Pending",
+            "method": "WebUpload",
+            "type": "Unknown",
+            "userId": "<user-guid>",
+            "created": "2026-07-30T00:06:57.481619Z",
+            "lastUpdated": "2026-07-30T00:06:57.4816191Z",
+            "processData": {},
+            "platformOverride": 0,
+            "sessionId": "0d949915-b624-4a88-8094-91b8ed1dce90"
+          }
+        ]
+      }
+    }
+  }
+}
