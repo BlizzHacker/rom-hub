@@ -17,6 +17,13 @@ Two filters run client-side afterwards, and both are subtractive:
   platform this source has nothing for returns an empty list **without a
   request**.
 
+The walk stops at a **short page** -- fewer rows than Aminet's fixed 50 --
+rather than at an empty result list. Those are not the same thing, and the
+difference was paid for live: `steel sky` finds one package, that package
+is on the `game/hint` shelf, and the filters drop it, so a walk keyed on
+"nothing kept yet" asks for page 2 of a one-result search. That page is
+real and valid and has no result table on it at all.
+
 Results carry `platform=None` when the architecture does not map -- a
 MorphOS or AROS build, or a package with no icon at all. That is
 deliberate rather than an omission: the entry is real and findable, and
@@ -29,7 +36,7 @@ from pydantic import ValidationError
 
 from rom_hub_sdk import SearchProvider, SearchResult
 
-from .archive import SEARCH, AminetError, parse_results
+from .archive import PAGE_ROWS, SEARCH, AminetError, parse_results
 from .platforms import BY_PLATFORM, describe, holds_games, platform_for
 
 DEFAULT_MAX_PAGES = 2
@@ -60,8 +67,6 @@ class Search(SearchProvider):
             if len(results) >= limit:
                 break
             packages = self._page({**params, "page": page})
-            if not packages:
-                break
             for package in packages:
                 if len(results) >= limit:
                     break
@@ -98,6 +103,14 @@ class Search(SearchProvider):
                     # text in these fields. One bad row must not cost the
                     # page.
                     continue
+            # A short page is the last page. Checked on the *rows Aminet
+            # served*, never on the results kept: `steel sky` finds one
+            # package, it is on a `game/hint` shelf, and the filters drop
+            # it -- so "no results yet" would ask for page 2 of a
+            # one-result search. That page exists, is valid, and carries
+            # no table, which is exactly the shape a dead source has.
+            if len(packages) < PAGE_ROWS:
+                break
         return results
 
     def _max_pages(self) -> int:

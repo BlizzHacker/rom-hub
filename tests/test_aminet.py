@@ -52,6 +52,14 @@ def fixture(name: str) -> str:
 
 TETRIS = fixture("search_tetris_game.html")
 QUAKE = fixture("search_quake_game.html")
+#: `?query=steel+sky&dir=game` -- one match, and it is on `game/hint`, so
+#: every filter drops it and the plugin keeps nothing from a page that was
+#: perfectly fine.
+STEEL_SKY = fixture("search_steel_sky_game.html")
+#: "Found 0 matching packages": a real search page with no table.
+NO_MATCHES = fixture("search_no_matches.html")
+#: aminet.net/robots.txt -- HTTP 200 whose body is a themed error page.
+NOT_FOUND_200 = fixture("not_found_200.html")
 README_ABRICK = fixture("readme_abrick.txt")
 README_MOS = fixture("readme_abandondedbricks.txt")
 
@@ -70,9 +78,11 @@ class FakeHttp:
         self.calls.append((url, params))
         if url == SEARCH:
             page = int(params.get("page", 1))
+            # A page the test did not stock answers the way Aminet does
+            # when the results have run out: a real search page carrying
+            # "Found 0 matching packages" and no table.
             return HttpResponse(
-                status_code=self.status,
-                text=self.pages.get(page, "<html>no packages found</html>"),
+                status_code=self.status, text=self.pages.get(page, NO_MATCHES)
             )
         for path, body in self.readmes.items():
             if readme_url(path) == url:
@@ -141,16 +151,21 @@ def test_the_readme_path_is_a_stem_swap():
     assert entry.readme_path == "game/think/alleytris_68k.readme"
 
 
-def test_a_document_that_is_not_a_search_page_raises():
-    """Aminet answers a missing path with HTTP 200 and an error body."""
+def test_the_real_200_error_page_is_refused():
+    """`aminet.net/robots.txt` really is a 200 with a themed error body."""
     with pytest.raises(AminetError):
-        parse_results("<html><title>Directory '/' not found</title></html>")
+        parse_results(NOT_FOUND_200)
     with pytest.raises(AminetError):
         parse_results("")
 
 
-def test_an_empty_result_set_is_not_an_error():
-    assert parse_results("<html>Sorry, no packages found.</html>") == []
+def test_a_search_page_with_no_table_is_valid_and_empty():
+    """"Found 0 matching packages" is an answer, not a broken source.
+
+    Keyed on the count line rather than the result table, because a page
+    that legitimately carries no table is a real thing Aminet serves.
+    """
+    assert parse_results(NO_MATCHES) == []
 
 
 # ------------------------------------------------------------ readme parsing
@@ -281,6 +296,18 @@ def test_the_walk_is_bounded_by_max_pages():
     search, http = make_search(pages={1: TETRIS, 2: TETRIS}, config={"max_pages": 2})
     search.search("tetris", None, 500)
     assert [params.get("page") for _, params in http.calls] == [1, 2]
+
+
+def test_a_short_page_ends_the_walk_even_when_nothing_was_kept():
+    """The `steel sky` case, which took a live search down.
+
+    One match, on `game/hint`, so every filter drops it. A walk keyed on
+    "no results yet" would ask for page 2 -- a real, valid, tableless page
+    that a shape check keyed on the table would then call a dead source.
+    """
+    search, http = make_search(pages={1: STEEL_SKY}, config={"max_pages": 5})
+    assert search.search("steel sky", None, 25) == []
+    assert [params.get("page") for _, params in http.calls] == [1]
 
 
 def test_a_non_200_search_raises():

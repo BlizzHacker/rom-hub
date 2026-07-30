@@ -54,6 +54,13 @@ SEARCH = f"{BASE}/search"
 #: and `rows` were all tried against the live search and all ignored.
 PAGE_ROWS = 50
 
+#: The one string on every search page and on no other page Aminet
+#: serves. "Found 50 matching packages", "Found 1 matching package",
+#: "Found 0 matching packages" -- the count line is rendered even when the
+#: result table is not, which is what makes it a better shape check than
+#: the table. The themed 404 page carries neither.
+SEARCH_MARKER = "matching package"
+
 # One result row, anchored on the name cell rather than on the <tr>.
 _ROW = re.compile(
     r'class="name_col">.*?<a href="/(?P<path>[^"]+)"\s*>(?P<filename>[^<]*)</a>'
@@ -137,15 +144,21 @@ def parse_results(text: str) -> list[Package]:
     missing path with a 200 and a themed "not found" body -- its
     `/robots.txt` is one -- so a status code is not evidence and the
     parser has to be.
+
+    **The check is the count line, not the table**, and that distinction
+    was paid for live: `?query=steel+sky&dir=game` finds one package, so
+    page 2 of that search is a perfectly valid search page carrying "Found
+    1 matching package" and no table at all. A parser keyed on the table
+    calls that a dead source and takes the whole search down with it.
     """
     if not isinstance(text, str) or not text:
         raise AminetError("Aminet returned an empty document")
-    if "pkg_row" not in text and "no packages found" not in text.lower():
+    if SEARCH_MARKER not in text.lower():
         raise AminetError(
-            "Aminet's answer is not a search page (no result table and no "
-            "'no packages found'). Aminet answers a bad path with HTTP 200 "
-            "and a themed error body, so the status code cannot be trusted "
-            "and this check is what stands in for it."
+            "Aminet's answer is not a search page: it carries no "
+            f"{SEARCH_MARKER!r} count line. Aminet answers a bad path with "
+            "HTTP 200 and a themed error body, so the status code cannot be "
+            "trusted and this check is what stands in for it."
         )
 
     packages: list[Package] = []
