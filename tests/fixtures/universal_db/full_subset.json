@@ -1,0 +1,1850 @@
+[
+ {
+  "author": "Universal-Team",
+  "avatar": "https://avatars.githubusercontent.com/u/49733679?v=4",
+  "categories": [
+   "utility"
+  ],
+  "color": "#0b497b",
+  "color_bg": "#0b497b",
+  "created": "2019-10-31T02:19:37Z",
+  "description": "An easy to use app for installing and updating 3DS homebrew",
+  "download_page": "https://github.com/Universal-Team/Universal-Updater/releases",
+  "downloads": {
+   "Universal-Updater.3dsx": {
+    "size": 3002452,
+    "size_str": "2 MiB",
+    "url": "https://github.com/Universal-Team/Universal-Updater/releases/download/v3.4.1/Universal-Updater.3dsx"
+   },
+   "Universal-Updater.cia": {
+    "size": 2479040,
+    "size_str": "2 MiB",
+    "url": "https://github.com/Universal-Team/Universal-Updater/releases/download/v3.4.1/Universal-Updater.cia"
+   }
+  },
+  "github": "Universal-Team/Universal-Updater",
+  "icon": "https://raw.githubusercontent.com/Universal-Team/Universal-Updater/master/app/icon.png",
+  "icon_index": 224,
+  "image": "https://raw.githubusercontent.com/Universal-Team/Universal-Updater/master/resources/2d-banner.png",
+  "image_length": 24475,
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "no",
+  "long_description": "Universal-Updater is a homebrew application for the Nintendo 3DS with the intention to make downloading other homebrew simple and easy. No need to manually copy files or go through installation processes, as it does that all for you.\n\n### Features\n- A store format with a concept similar to the Cydia Repositories\n   - The default is [Universal-DB](https://db.universal-team.net)\n   - Want to add more? Go to settings, choose \"Select Unistore\", click the + icon and select one from the list, enter a URL, or scan a QR code\n- Customization in sorting and display\n   - Several sorting keys: \"Title\", \"Author\", and \"Last Updated\"\n   - Direction can be Ascending or Descending\n   - App display can be shown in either a grid or rows\n- Background installation so you can keep using the rest of the app while installing\n- Searching and markings to make finding apps easy\n- Viewing screenshots and release notes for apps\n- Shortcuts for easily updating frequently updated apps when using the Homebrew Launcher\n- Translations for users of many languages\n   - To contribute to translations, join our [Crowdin project](https://crwd.in/universal-updater)\n   - To request a new language, join our [Discord Server](https://universal-team.net/discord) or contact a project manager on Crowdin",
+  "nightly": {
+   "download_page": "https://github.com/Universal-Team/Universal-Updater/releases/tag/git",
+   "downloads": {
+    "Universal-Updater.3dsx": {
+     "size": 3007460,
+     "size_str": "2 MiB",
+     "url": "https://github.com/Universal-Team/Universal-Updater/releases/download/git/Universal-Updater.3dsx"
+    },
+    "Universal-Updater.cia": {
+     "size": 2474944,
+     "size_str": "2 MiB",
+     "url": "https://github.com/Universal-Team/Universal-Updater/releases/download/git/Universal-Updater.cia"
+    }
+   },
+   "qr": {
+    "Universal-Updater.cia": "https://db.universal-team.net/assets/images/qr/git/universal-updater-cia.png"
+   },
+   "update_notes": "<p dir=\"auto\">Pk11 - Remove nlohmann::json</p>\n<p dir=\"auto\">This is the conclusion(?) to <a class=\"issue-link js-issue-link\" data-error-text=\"Failed to load title\" data-id=\"4818171403\" data-permission-text=\"Title is private\" data-url=\"https://github.com/Universal-Team/Universal-Updater/issues/203\" data-hovercard-type=\"pull_request\" data-hovercard-url=\"/Universal-Team/Universal-Updater/pull/203/hovercard\" href=\"https://github.com/Universal-Team/Universal-Updater/pull/203\">#203</a>, <em>please</em> report any bugs you may find! I'm hopefully there's no regressions, but I just did a major refactor to the codebase.</p>",
+   "update_notes_md": "Pk11 - Remove nlohmann::json\n\nThis is the conclusion(?) to #203, *please* report any bugs you may find! I'm hopefully there's no regressions, but I just did a major refactor to the codebase.",
+   "updated": "2026-07-15T07:07:39Z",
+   "version": "git",
+   "version_title": "Continuous Build - 53e629e"
+  },
+  "qr": {
+   "Universal-Updater.cia": "https://db.universal-team.net/assets/images/qr/universal-updater-cia.png"
+  },
+  "screenshots": [
+   {
+    "description": "Auto update settings",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/auto-update-settings.png"
+   },
+   {
+    "description": "Credits",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/credits.png"
+   },
+   {
+    "description": "Directory selection",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/directory-selection.png"
+   },
+   {
+    "description": "Directory settings",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/directory-settings.png"
+   },
+   {
+    "description": "Download list",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/download-list.png"
+   },
+   {
+    "description": "Entry info",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/entry-info.png"
+   },
+   {
+    "description": "Gui settings",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/gui-settings.png"
+   },
+   {
+    "description": "Language selection",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/language-selection.png"
+   },
+   {
+    "description": "List style",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/list-style.png"
+   },
+   {
+    "description": "Mark menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/mark-menu.png"
+   },
+   {
+    "description": "Queue menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/queue-menu.png"
+   },
+   {
+    "description": "Recommended unistores",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/recommended-unistores.png"
+   },
+   {
+    "description": "Release notes",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/release-notes.png"
+   },
+   {
+    "description": "Screenshot",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/screenshot.png"
+   },
+   {
+    "description": "Search menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/search-menu.png"
+   },
+   {
+    "description": "Settings menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/settings-menu.png"
+   },
+   {
+    "description": "Sort menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/sort-menu.png"
+   },
+   {
+    "description": "Store selection",
+    "url": "https://db.universal-team.net/assets/images/screenshots/universal-updater/store-selection.png"
+   }
+  ],
+  "slug": "universal-updater",
+  "source": "https://github.com/Universal-Team/Universal-Updater",
+  "stars": 1270,
+  "systems": [
+   "3DS"
+  ],
+  "title": "Universal-Updater",
+  "unique_ids": [
+   276759
+  ],
+  "unistore_exclude": true,
+  "update_notes": "<p dir=\"auto\">This release fixes an odd bug from v3.4.0 where the metadata file (containing marks and the update status of apps) stopped saving, thanks <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/syndenbock/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/syndenbock\">@syndenbock</a> for the report! I also fixed a bug I'd noticed where Universal-Updater could crash if you exited while a thread was running. Italian and Russian translations have also been updated, thanks to everyone who's helped with translations!</p>\n<p dir=\"auto\">See <a href=\"https://github.com/Universal-Team/Universal-Updater/releases/tag/v3.4.0\">v3.4.0's Release notes</a> for full details on recent changes, the highlights were:</p>\n<ul dir=\"auto\">\n<li>Universal-Updater now tracks installed apps (displayed by an SD card icon) and this can be used for filtering!</li>\n<li>Added a \"NOT\" filtering option to invert the filter, most useful for filtering to only apps not installed</li>\n<li>The search menu now includes all app names in the word completion dictionary!</li>\n<li>Proxies are now properly supported!</li>\n<li>The SSL CA certificate bundle is now be loaded from the SD card instead of RomFS</li>\n</ul>",
+  "update_notes_md": "This release fixes an odd bug from v3.4.0 where the metadata file (containing marks and the update status of apps) stopped saving, thanks @syndenbock for the report! I also fixed a bug I'd noticed where Universal-Updater could crash if you exited while a thread was running. Italian and Russian translations have also been updated, thanks to everyone who's helped with translations!\n\nSee [v3.4.0's Release notes][v340] for full details on recent changes, the highlights were:\n\n- Universal-Updater now tracks installed apps (displayed by an SD card icon) and this can be used for filtering!\n- Added a \"NOT\" filtering option to invert the filter, most useful for filtering to only apps not installed\n- The search menu now includes all app names in the word completion dictionary!\n- Proxies are now properly supported!\n- The SSL CA certificate bundle is now be loaded from the SD card instead of RomFS\n\n[v340]: https://github.com/Universal-Team/Universal-Updater/releases/tag/v3.4.0",
+  "updated": "2026-06-20T17:08:42Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/universal-updater"
+  ],
+  "version": "v3.4.1",
+  "version_title": "Whoops",
+  "wiki": "https://github.com/Universal-Team/Universal-Updater/wiki"
+ },
+ {
+  "author": "StackZ",
+  "avatar": "https://avatars.githubusercontent.com/u/47382115?v=4",
+  "categories": [
+   "app"
+  ],
+  "color": "#90337d",
+  "color_bg": "#802d6f",
+  "created": "2019-12-02T01:37:45Z",
+  "description": "A Pokemon Shiny Encounter Tool.",
+  "download_page": "https://github.com/SuperSaiyajinStackZ/PKCount/releases",
+  "downloads": {
+   "PKCount.3dsx": {
+    "size": 767504,
+    "size_str": "749 KiB",
+    "url": "https://github.com/SuperSaiyajinStackZ/PKCount/releases/download/v0.0.2/PKCount.3dsx"
+   },
+   "PKCount.cia": {
+    "size": 582592,
+    "size_str": "568 KiB",
+    "url": "https://github.com/SuperSaiyajinStackZ/PKCount/releases/download/v0.0.2/PKCount.cia"
+   },
+   "PKCount.nds": {
+    "size": 719872,
+    "size_str": "703 KiB",
+    "url": "https://github.com/SuperSaiyajinStackZ/PKCount/releases/download/v0.0.2/PKCount.nds"
+   }
+  },
+  "github": "SuperSaiyajinStackZ/PKCount",
+  "icon": "https://raw.githubusercontent.com/SuperSaiyajinStackZ/PKCount/master/3DS/app/icon.png",
+  "icon_index": 190,
+  "image": "https://raw.githubusercontent.com/SuperSaiyajinStackZ/PKCount/master/3DS/app/banner.png",
+  "image_length": 9935,
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "no",
+  "qr": {
+   "PKCount.cia": "https://db.universal-team.net/assets/images/qr/pkcount-cia.png",
+   "PKCount.nds": "https://db.universal-team.net/assets/images/qr/pkcount-nds.png"
+  },
+  "screenshots": [
+   {
+    "description": "Encounter screen",
+    "url": "https://db.universal-team.net/assets/images/screenshots/pkcount/encounter-screen.png"
+   },
+   {
+    "description": "Help box",
+    "url": "https://db.universal-team.net/assets/images/screenshots/pkcount/help-box.png"
+   },
+   {
+    "description": "Main menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/pkcount/main-menu.png"
+   },
+   {
+    "description": "Settings",
+    "url": "https://db.universal-team.net/assets/images/screenshots/pkcount/settings.png"
+   },
+   {
+    "description": "The credits",
+    "url": "https://db.universal-team.net/assets/images/screenshots/pkcount/the-credits.png"
+   }
+  ],
+  "slug": "pkcount",
+  "source": "https://github.com/SuperSaiyajinStackZ/PKCount",
+  "stars": 6,
+  "systems": [
+   "DS",
+   "3DS"
+  ],
+  "title": "PKCount",
+  "unique_ids": [
+   275200
+  ],
+  "update_notes": "<p dir=\"auto\">What's new?</p>\n<ul dir=\"auto\">\n<li>A NDS Version has been developed! (Yeah, you can use it on DS(i) now as well!)</li>\n<li>[3DS] Add Music Playback (put a <code class=\"notranslate\">music.wav</code> to <code class=\"notranslate\">sdmc:/3ds/PKCount/</code>)</li>\n</ul>\n<p dir=\"auto\">Just try it out! :P  ~ StackZ.</p>",
+  "update_notes_md": "What's new?\n- A NDS Version has been developed! (Yeah, you can use it on DS(i) now as well!)\n- [3DS] Add Music Playback (put a `music.wav` to `sdmc:/3ds/PKCount/`)\n\nJust try it out! :P  ~ StackZ.",
+  "updated": "2019-12-27T20:44:30Z",
+  "urls": [
+   "https://db.universal-team.net/ds/pkcount",
+   "https://db.universal-team.net/3ds/pkcount"
+  ],
+  "version": "v0.0.2",
+  "version_title": "The second Release of PKCount!"
+ },
+ {
+  "archive": {
+   "SuperHaxagon-3DS-armhf.3dsx.zip": {
+    "SuperHaxagon.3dsx": [
+     "SuperHaxagon.3dsx"
+    ]
+   },
+   "SuperHaxagon-3DS-armhf.cia.zip": {
+    "SuperHaxagon.cia": [
+     "SuperHaxagon.cia"
+    ]
+   }
+  },
+  "author": "AJ Walter",
+  "avatar": "https://avatars.githubusercontent.com/u/6108605?v=4",
+  "categories": [
+   "game"
+  ],
+  "color": "#6d190a",
+  "color_bg": "#6d190a",
+  "created": "2016-06-11T03:45:12Z",
+  "description": "A Super Hexagon Clone",
+  "download_filter": "SuperHaxagon-3DS-armhf\\.(3dsx|cia)\\.zip",
+  "download_page": "https://github.com/RedTopper/Super-Haxagon/releases",
+  "downloads": {
+   "SuperHaxagon-3DS-armhf.3dsx.zip": {
+    "size": 20934515,
+    "size_str": "19 MiB",
+    "url": "https://github.com/RedTopper/Super-Haxagon/releases/download/3.9.1/SuperHaxagon-3DS-armhf.3dsx.zip"
+   },
+   "SuperHaxagon-3DS-armhf.cia.zip": {
+    "size": 21669131,
+    "size_str": "20 MiB",
+    "url": "https://github.com/RedTopper/Super-Haxagon/releases/download/3.9.1/SuperHaxagon-3DS-armhf.cia.zip"
+   }
+  },
+  "github": "RedTopper/Super-Haxagon",
+  "icon": "https://raw.githubusercontent.com/RedTopper/Super-Haxagon/master/media/icon-3ds.png",
+  "icon_index": 157,
+  "image": "https://raw.githubusercontent.com/RedTopper/Super-Haxagon/master/media/banner.png",
+  "image_length": 114192,
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "unknown",
+  "long_description": "SuperHaxagon, like the original game Super Hexagon by Terry Cavanagh, has only one goal. Survive as long as possible by avoiding the falling walls in a trippy, spinny frenzy!",
+  "screenshots": [
+   {
+    "description": "Gameplay 1",
+    "url": "https://db.universal-team.net/assets/images/screenshots/super-haxagon/gameplay-1.png"
+   },
+   {
+    "description": "Gameplay 2",
+    "url": "https://db.universal-team.net/assets/images/screenshots/super-haxagon/gameplay-2.png"
+   },
+   {
+    "description": "Gameplay 3",
+    "url": "https://db.universal-team.net/assets/images/screenshots/super-haxagon/gameplay-3.png"
+   },
+   {
+    "description": "Gameplay 4 horihd",
+    "url": "https://db.universal-team.net/assets/images/screenshots/super-haxagon/gameplay-4-horihd.png"
+   },
+   {
+    "description": "Gameplay 4",
+    "url": "https://db.universal-team.net/assets/images/screenshots/super-haxagon/gameplay-4.png"
+   }
+  ],
+  "scripts": {
+   "SuperHaxagon.3dsx": {
+    "script": [
+     {
+      "file": "https://github.com/RedTopper/Super-Haxagon/releases/download/3.9.1/SuperHaxagon-3DS-armhf.3dsx.zip",
+      "output": "/SuperHaxagon-3DS-armhf.3dsx.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/SuperHaxagon-3DS-armhf.3dsx.zip",
+      "input": "^SuperHaxagon.3dsx",
+      "output": "%3DSX%/SuperHaxagon.3dsx",
+      "type": "extractFile"
+     },
+     {
+      "file": "/SuperHaxagon-3DS-armhf.3dsx.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "19 MiB"
+   },
+   "SuperHaxagon.cia": {
+    "script": [
+     {
+      "file": "https://github.com/RedTopper/Super-Haxagon/releases/download/3.9.1/SuperHaxagon-3DS-armhf.cia.zip",
+      "output": "/SuperHaxagon-3DS-armhf.cia.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/SuperHaxagon-3DS-armhf.cia.zip",
+      "input": "^SuperHaxagon.cia",
+      "output": "/SuperHaxagon.cia",
+      "type": "extractFile"
+     },
+     {
+      "file": "/SuperHaxagon.cia",
+      "type": "installCia"
+     },
+     {
+      "file": "/SuperHaxagon.cia",
+      "type": "deleteFile"
+     },
+     {
+      "file": "/SuperHaxagon-3DS-armhf.cia.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "20 MiB"
+   }
+  },
+  "slug": "super-haxagon",
+  "source": "https://github.com/RedTopper/Super-Haxagon",
+  "stars": 160,
+  "systems": [
+   "3DS"
+  ],
+  "title": "Super-Haxagon",
+  "unique_ids": [
+   39338
+  ],
+  "update_notes": "<h1 dir=\"auto\">Documentation Update</h1>\n<p dir=\"auto\">This version is almost exactly the same as 3.9.0, except the downloads include two new files, outlined below. If you already have v3.9.0 and have installed it properly, there isn't much need to update. (And if you don't know what version you have, you should probably update!)</p>\n<h2 dir=\"auto\">Changelog</h2>\n<ul dir=\"auto\">\n<li>nspire: There are now at least two buttons to perform all basic actions, in case one of your keys is sticky.</li>\n<li>sdl2 and sfml: Drivers and downloads have been renamed to better show what back-end the driver is using.</li>\n<li>all: Downloads now have a <code class=\"notranslate\">README.md</code> that gives offline instructions on how to set up your platform, as well as a link back to this repo.</li>\n<li>all: Downloads now have a <code class=\"notranslate\">vX.X.X.txt</code> file that includes some metadata for the release, like which commit hash the download came from, version information, how it was built, and the time it was built.</li>\n</ul>\n<h2 dir=\"auto\">Install</h2>\n<p dir=\"auto\">Please see the <a href=\"https://github.com/RedTopper/Super-Haxagon/blob/master/README.md\">README.md</a> to install SuperHaxagon for your platform, or the <em>new</em> <code class=\"notranslate\">README.md</code> within the .zip file itself!</p>\n<h2 dir=\"auto\">Stores</h2>\n<p dir=\"auto\">PortMaster: <a href=\"https://portmaster.games/detail.html?name=superhaxagon\" rel=\"nofollow\">https://portmaster.games/detail.html?name=superhaxagon</a><br>\nUniversal DB (3DS): <a href=\"https://db.universal-team.net/3ds/super-haxagon\" rel=\"nofollow\">https://db.universal-team.net/3ds/super-haxagon</a><br>\nfortheusers (Switch): <a href=\"https://hb-app.store/switch/Super-Haxagon\" rel=\"nofollow\">https://hb-app.store/switch/Super-Haxagon</a></p>",
+  "update_notes_md": "# Documentation Update\n\nThis version is almost exactly the same as 3.9.0, except the downloads include two new files, outlined below. If you already have v3.9.0 and have installed it properly, there isn't much need to update. (And if you don't know what version you have, you should probably update!)\n\n## Changelog\n\n * nspire: There are now at least two buttons to perform all basic actions, in case one of your keys is sticky.\n * sdl2 and sfml: Drivers and downloads have been renamed to better show what back-end the driver is using.\n * all: Downloads now have a `README.md` that gives offline instructions on how to set up your platform, as well as a link back to this repo.\n * all: Downloads now have a `vX.X.X.txt` file that includes some metadata for the release, like which commit hash the download came from, version information, how it was built, and the time it was built. \n\n## Install\n\nPlease see the [README.md](https://github.com/RedTopper/Super-Haxagon/blob/master/README.md) to install SuperHaxagon for your platform, or the *new* `README.md` within the .zip file itself!\n\n## Stores\n\nPortMaster: https://portmaster.games/detail.html?name=superhaxagon\nUniversal DB (3DS): https://db.universal-team.net/3ds/super-haxagon\nfortheusers (Switch): https://hb-app.store/switch/Super-Haxagon\n",
+  "updated": "2025-04-23T00:23:28Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/super-haxagon"
+  ],
+  "version": "3.9.1",
+  "version_title": "SuperHaxagon v3.9.1"
+ },
+ {
+  "archive": {
+   "CrossCraft-3DS\\.zip": {
+    "CrossCraft-Classic.3dsx": [
+     "CrossCraft-Classic.3dsx",
+     "CrossCraft-Classic/"
+    ]
+   }
+  },
+  "author": "CrossCraft",
+  "avatar": "https://avatars.githubusercontent.com/u/75173998?v=4",
+  "categories": [
+   "game"
+  ],
+  "color": "#7d766a",
+  "color_bg": "#7d766a",
+  "created": "2020-11-28T19:01:37Z",
+  "description": "A C++ Minecraft Classic Client",
+  "download_page": "https://github.com/CrossCraft/CrossCraft-Classic/releases",
+  "downloads": {
+   "CrossCraft-3DS.zip": {
+    "size": 8230254,
+    "size_str": "7 MiB",
+    "url": "https://github.com/CrossCraft/CrossCraft-Classic/releases/download/v1.3/CrossCraft-3DS.zip"
+   },
+   "CrossCraft-Linux.zip": {
+    "size": 14946577,
+    "size_str": "14 MiB",
+    "url": "https://github.com/CrossCraft/CrossCraft-Classic/releases/download/v1.3/CrossCraft-Linux.zip"
+   },
+   "CrossCraft-Vita.zip": {
+    "size": 10028371,
+    "size_str": "9 MiB",
+    "url": "https://github.com/CrossCraft/CrossCraft-Classic/releases/download/v1.3/CrossCraft-Vita.zip"
+   },
+   "CrossCraft-Windows.zip": {
+    "size": 8831316,
+    "size_str": "8 MiB",
+    "url": "https://github.com/CrossCraft/CrossCraft-Classic/releases/download/v1.3/CrossCraft-Windows.zip"
+   }
+  },
+  "github": "CrossCraft/CrossCraft-Classic",
+  "icon_index": 41,
+  "image": "https://db.universal-team.net/assets/images/images/crosscraft-classic.png",
+  "image_length": 11793,
+  "license": "mpl-2.0",
+  "license_name": "Mozilla Public License 2.0",
+  "llm_generation": "no",
+  "long_description": "CrossCraft-Classic is a project that implements Minecraft Java Edition: Classic without looking at any of the source code of the original application and without using the original copyrighted assets. All knowledge is figured out with an understanding of in-game mechanics and is approximated to be as close as possible to the original. This project is NOT a clone of Minecraft, it is a fully implemented client.",
+  "screenshots": [
+   {
+    "description": "Gameplay",
+    "url": "https://db.universal-team.net/assets/images/screenshots/crosscraft-classic/gameplay.png"
+   },
+   {
+    "description": "Title screen",
+    "url": "https://db.universal-team.net/assets/images/screenshots/crosscraft-classic/title-screen.png"
+   }
+  ],
+  "scripts": {
+   "CrossCraft-Classic.3dsx": {
+    "script": [
+     {
+      "file": "https://github.com/CrossCraft/CrossCraft-Classic/releases/download/v1.3/CrossCraft-3DS.zip",
+      "output": "/CrossCraft-3DS.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/CrossCraft-3DS.zip",
+      "input": "^CrossCraft-Classic.3dsx",
+      "output": "%3DSX%/CrossCraft-Classic.3dsx",
+      "type": "extractFile"
+     },
+     {
+      "file": "/CrossCraft-3DS.zip",
+      "input": "^CrossCraft-Classic/",
+      "output": "/CrossCraft-Classic/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/CrossCraft-3DS.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "7 MiB"
+   }
+  },
+  "slug": "crosscraft-classic",
+  "source": "https://github.com/CrossCraft/CrossCraft-Classic",
+  "stars": 121,
+  "systems": [
+   "3DS"
+  ],
+  "title": "CrossCraft Classic",
+  "update_notes": "<p dir=\"auto\">This release will be the last major release of CrossCraft Classic for a reasonably long time. As such, it has implemented plenty of bug fixes alongside backporting features from Survival Test 4. Note on the Mac Release -- this has been removed for the time being until better testing can be done.</p>\n<p dir=\"auto\">Special Thanks to <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/masterfeizz/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/masterfeizz\">@masterfeizz</a> for helping with the 3DS Port and providing support with <a href=\"https://github.com/masterfeizz/picaGL\">picaGL</a></p>\n<h3 dir=\"auto\">New Features</h3>\n<ul dir=\"auto\">\n<li>3DS Support\n<ul dir=\"auto\">\n<li>PS2 Support is pushed to Indev</li>\n</ul>\n</li>\n<li>New Terrain Generator for \"Classic\" terrain</li>\n<li>Modding API</li>\n<li>Options Menu</li>\n<li>Customizable Controls</li>\n<li>Lava Implementation</li>\n<li>Steve Models in Multiplayer</li>\n<li>Music from Survival Test backported.</li>\n</ul>\n<h3 dir=\"auto\">Bug Fixes</h3>\n<ul dir=\"auto\">\n<li>Particles now face the player</li>\n<li>You can no longer break while paused</li>\n<li>PS Vita Crash Fix</li>\n</ul>\n<h3 dir=\"auto\">Known Issues</h3>\n<ul dir=\"auto\">\n<li>3DS has degraded performance stemming from a known issue which will be fixed in the future.</li>\n<li>3DS audio is disabled.</li>\n<li>MP / Transition from Menu Still does not have a loading screen</li>\n</ul>",
+  "update_notes_md": "This release will be the last major release of CrossCraft Classic for a reasonably long time. As such, it has implemented plenty of bug fixes alongside backporting features from Survival Test 4. Note on the Mac Release -- this has been removed for the time being until better testing can be done.\n\nSpecial Thanks to @masterfeizz for helping with the 3DS Port and providing support with [picaGL](https://github.com/masterfeizz/picaGL)\n\n### New Features\n- 3DS Support\n   - PS2 Support is pushed to Indev \n- New Terrain Generator for \"Classic\" terrain\n- Modding API\n- Options Menu\n- Customizable Controls\n- Lava Implementation\n- Steve Models in Multiplayer\n- Music from Survival Test backported.\n\n### Bug Fixes\n- Particles now face the player\n- You can no longer break while paused\n- PS Vita Crash Fix\n\n### Known Issues\n- 3DS has degraded performance stemming from a known issue which will be fixed in the future.\n- 3DS audio is disabled.\n- MP / Transition from Menu Still does not have a loading screen",
+  "updated": "2022-12-01T18:22:19Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/crosscraft-classic"
+  ],
+  "version": "v1.3",
+  "version_title": "[v1.3] End of the Line"
+ },
+ {
+  "archive": {
+   "thextech-3ds-.*\\.zip": {
+    "thextech.3dsx": [
+     "thextech-3ds/thextech.3dsx"
+    ]
+   }
+  },
+  "author": "TheXTech Developers",
+  "autogen_scripts": true,
+  "avatar": "https://avatars.githubusercontent.com/u/160427994?v=4",
+  "categories": [
+   "game"
+  ],
+  "color": "#5f6dc0",
+  "color_bg": "#3f4880",
+  "created": "2020-02-12T20:02:49Z",
+  "description": "The full port of the SMBX engine from VB6 into C++ and SDL2, FreeImage and MixerX",
+  "download_filter": "3ds",
+  "download_page": "https://github.com/TheXTech/TheXTech/releases",
+  "downloads": {
+   "thextech-3ds-assets-aod-v1.3.7.3.zip": {
+    "size": 60025376,
+    "size_str": "57 MiB",
+    "url": "https://github.com/TheXTech/TheXTech/releases/download/v1.3.7.3-1/thextech-3ds-assets-aod-v1.3.7.3.zip"
+   },
+   "thextech-3ds-assets-smbx13-v1.3.7.3.zip": {
+    "size": 48012828,
+    "size_str": "45 MiB",
+    "url": "https://github.com/TheXTech/TheXTech/releases/download/v1.3.7.3-1/thextech-3ds-assets-smbx13-v1.3.7.3.zip"
+   },
+   "thextech-3ds-v1.3.7.3.zip": {
+    "size": 4225243,
+    "size_str": "4 MiB",
+    "url": "https://github.com/TheXTech/TheXTech/releases/download/v1.3.7.3-1/thextech-3ds-v1.3.7.3.zip"
+   }
+  },
+  "github": "TheXTech/TheXTech",
+  "icon": "https://raw.githubusercontent.com/TheXTech/TheXTech/main/resources/icon/thextech_48.png",
+  "icon_index": 207,
+  "image": "https://raw.githubusercontent.com/TheXTech/TheXTech/main/resources/wiiu/wuhb-splash.png",
+  "image_length": 121515,
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "no",
+  "long_description": "This is a direct continuation of the SMBX 1.3 engine. Originally it was written in VB6 for Windows, and later, it got ported/rewritten into C++ and became a cross-platform engine. It completely reproduces the old SMBX 1.3 engine (aside from its Editor), includes many of its logical bugs (critical bugs that lead the game to crash or freeze got fixed), and also adds a lot of new updates and features. The original SMBX assets are not included, but a compatible preservation asset packs are available from wohlsoft.ru.",
+  "nightly": {
+   "downloads": {
+    "thextech-3ds-main.zip": {
+     "url": "https://builds.wohlsoft.ru/3ds/thextech-3ds-main.zip"
+    }
+   }
+  },
+  "screenshots": [
+   {
+    "description": "Editor",
+    "url": "https://db.universal-team.net/assets/images/screenshots/thextech/editor.png"
+   },
+   {
+    "description": "Loading",
+    "url": "https://db.universal-team.net/assets/images/screenshots/thextech/loading.png"
+   },
+   {
+    "description": "Smbx menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/thextech/smbx-menu.png"
+   },
+   {
+    "description": "Smbx title",
+    "url": "https://db.universal-team.net/assets/images/screenshots/thextech/smbx-title.png"
+   }
+  ],
+  "scripts": {
+   "[assets] Adventures of Demo": [
+    {
+     "file": "https://wohlsoft.ru/projects/TheXTech/_downloads/assets/thextech-adventure-of-demo-assets-full-3ds.zip",
+     "output": "/assets-aod-3ds.zip",
+     "type": "downloadFile"
+    },
+    {
+     "file": "/assets-aod-3ds.zip",
+     "input": "^thextech-adventure-of-demo-assets-full-3ds.romfs",
+     "output": "/3ds/thextech/assets-aod.romfs",
+     "type": "extractFile"
+    },
+    {
+     "file": "/assets-aod-3ds.zip",
+     "type": "deleteFile"
+    }
+   ],
+   "[git] thextech.3dsx": {
+    "script": [
+     {
+      "file": "https://builds.wohlsoft.ru/3ds/thextech-3ds-main.zip",
+      "output": "/thextech-3ds-main.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/thextech-3ds-main.zip",
+      "input": "^thextech-3ds/thextech.3dsx",
+      "output": "%3DSX%/thextech.3dsx",
+      "type": "extractFile"
+     },
+     {
+      "file": "/thextech-3ds-main.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "type": "git"
+   },
+   "thextech.3dsx": {
+    "script": [
+     {
+      "file": "https://github.com/TheXTech/TheXTech/releases/download/v1.3.7.3-1/thextech-3ds-v1.3.7.3.zip",
+      "output": "/thextech-3ds-v1.3.7.3.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/thextech-3ds-v1.3.7.3.zip",
+      "input": "^thextech-3ds/thextech.3dsx",
+      "output": "%3DSX%/thextech.3dsx",
+      "type": "extractFile"
+     },
+     {
+      "file": "/thextech-3ds-v1.3.7.3.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "4 MiB"
+   }
+  },
+  "slug": "thextech",
+  "source": "https://github.com/TheXTech/TheXTech",
+  "stars": 405,
+  "systems": [
+   "3DS"
+  ],
+  "title": "TheXTech",
+  "update_notes": "<p dir=\"auto\">This is a hotfix release for the 1.3.7.3 since there are serious bugs were been found and were been fixed.</p>\n<p dir=\"auto\">You can read details for the original release here: <a href=\"https://github.com/TheXTech/TheXTech/releases/tag/v1.3.7.3\">https://github.com/TheXTech/TheXTech/releases/tag/v1.3.7.3</a></p>\n<h2 dir=\"auto\">Hotfix changelog 1.3.7.3-hotfix1:</h2>\n<ul dir=\"auto\">\n<li>Adjusted the IME start logic to enable it when direct text input is enabled (<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/ds-sloth/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/ds-sloth\">@ds-sloth</a>)</li>\n<li>Fixed build on FreeBSD (<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/Wohlstand/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/Wohlstand\">@Wohlstand</a> and also contributed by <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/Renkoto/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/Renkoto\">@Renkoto</a>)</li>\n<li>Fixed behaviour of the MD5 algorithm on Big Endian hardware (<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/ds-sloth/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/ds-sloth\">@ds-sloth</a>)</li>\n<li><em>Fixed a critical bug of checkpoints being reset when re-entering normal level from the hub</em> (<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/Wohlstand/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/Wohlstand\">@Wohlstand</a>)</li>\n<li>Fixed TheXTech bug where medals were incorrectly saved after death in hub worlds (<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/ds-sloth/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/ds-sloth\">@ds-sloth</a>)</li>\n</ul>\n<hr>\n<p dir=\"auto\">All the downloads at the official site has been replaced with hotfix builds.</p>",
+  "update_notes_md": "This is a hotfix release for the 1.3.7.3 since there are serious bugs were been found and were been fixed.\n\nYou can read details for the original release here: https://github.com/TheXTech/TheXTech/releases/tag/v1.3.7.3\n\n## Hotfix changelog 1.3.7.3-hotfix1:\n- Adjusted the IME start logic to enable it when direct text input is enabled (@ds-sloth)\n- Fixed build on FreeBSD (@Wohlstand and also contributed by @Renkoto)\n- Fixed behaviour of the MD5 algorithm on Big Endian hardware (@ds-sloth)\n- _Fixed a critical bug of checkpoints being reset when re-entering normal level from the hub_ (@Wohlstand)\n- Fixed TheXTech bug where medals were incorrectly saved after death in hub worlds (@ds-sloth)\n\n---\nAll the downloads at the official site has been replaced with hotfix builds.",
+  "updated": "2026-06-22T20:49:35Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/thextech"
+  ],
+  "version": "v1.3.7.3-1",
+  "version_title": "TheXTech v1.3.7.3-1: A hotfix for 1.3.7.3 release",
+  "wiki": "https://github.com/TheXTech/TheXTech/wiki"
+ },
+ {
+  "author": "Mode8fx",
+  "avatar": "https://avatars.githubusercontent.com/u/57763469?v=4",
+  "categories": [
+   "game"
+  ],
+  "color": "#e65333",
+  "color_bg": "#802e1c",
+  "created": "2021-09-27T23:23:10Z",
+  "description": "Sudoku made with SDL2",
+  "download_page": "https://github.com/Mode8fx/SuDokuL/releases",
+  "downloads": {
+   "SuDokuL-v1.5-3ds-cia.zip": {
+    "size": 2692972,
+    "size_str": "2 MiB",
+    "url": "https://github.com/Mode8fx/SuDokuL/releases/download/v1.5/SuDokuL-v1.5-3ds-cia.zip"
+   },
+   "SuDokuL-v1.5-3ds.zip": {
+    "size": 2171732,
+    "size_str": "2 MiB",
+    "url": "https://github.com/Mode8fx/SuDokuL/releases/download/v1.5/SuDokuL-v1.5-3ds.zip"
+   },
+   "SuDokuL-v1.5-gamecube.zip": {
+    "size": 2538252,
+    "size_str": "2 MiB",
+    "url": "https://github.com/Mode8fx/SuDokuL/releases/download/v1.5/SuDokuL-v1.5-gamecube.zip"
+   },
+   "SuDokuL-v1.5-psp.zip": {
+    "size": 3100048,
+    "size_str": "2 MiB",
+    "url": "https://github.com/Mode8fx/SuDokuL/releases/download/v1.5/SuDokuL-v1.5-psp.zip"
+   },
+   "SuDokuL-v1.5-x64.zip": {
+    "size": 12220029,
+    "size_str": "11 MiB",
+    "url": "https://github.com/Mode8fx/SuDokuL/releases/download/v1.5/SuDokuL-v1.5-x64.zip"
+   },
+   "SuDokuL-v1.5-x86.zip": {
+    "size": 9045088,
+    "size_str": "8 MiB",
+    "url": "https://github.com/Mode8fx/SuDokuL/releases/download/v1.5/SuDokuL-v1.5-x86.zip"
+   }
+  },
+  "github": "Mode8fx/SuDokuL",
+  "icon": "https://github.com/Mode8fx/SuDokuL/raw/main/SuDokuLVS2019/3ds/logo_icon_3ds_48.png",
+  "icon_index": 120,
+  "image": "https://github.com/Mode8fx/SuDokuL/raw/main/SuDokuLVS2019/3ds/banner_3ds.png",
+  "image_length": 11596,
+  "installed_files": [
+   "%3DSX%/SuDokuL.3dsx"
+  ],
+  "license": "mit",
+  "license_name": "MIT License",
+  "llm_generation": "unknown",
+  "long_description": "A Sudoku game made with SDL2. Features 4 difficulty levels, 8 scrolling backgrounds, 8 MOD format songs, those mini numbers to help you keep track of harder puzzles, and optional auto-fill and erase-mistake cheats.",
+  "screenshots": [
+   {
+    "description": "Gameplay bottom",
+    "url": "https://db.universal-team.net/assets/images/screenshots/sudokul/gameplay-bottom.png"
+   },
+   {
+    "description": "Gameplay top",
+    "url": "https://db.universal-team.net/assets/images/screenshots/sudokul/gameplay-top.png"
+   }
+  ],
+  "scripts": {
+   "SuDokuL.3dsx": [
+    {
+     "file": "SuDokuL-v.*-3ds\\.zip",
+     "output": "/SuDokuL.zip",
+     "repo": "Mode8fx/SuDokuL",
+     "type": "downloadRelease"
+    },
+    {
+     "file": "/SuDokuL.zip",
+     "input": "^SuDokuL-3ds/3ds/SuDokuL/SuDokuL.3dsx",
+     "output": "%3DSX%/SuDokuL.3dsx",
+     "type": "extractFile"
+    },
+    {
+     "file": "/SuDokuL.zip",
+     "type": "deleteFile"
+    }
+   ],
+   "SuDokuL.cia": [
+    {
+     "file": "SuDokuL-v.*-3ds-cia\\.zip",
+     "output": "/SuDokuL.zip",
+     "repo": "Mode8fx/SuDokuL",
+     "type": "downloadRelease"
+    },
+    {
+     "file": "/SuDokuL.zip",
+     "input": "^SuDokuL-3ds-cia/cias/SuDokuL.cia",
+     "output": "/SuDokuL.cia",
+     "type": "extractFile"
+    },
+    {
+     "file": "/SuDokuL.cia",
+     "type": "installCia"
+    },
+    {
+     "file": "/SuDokuL.cia",
+     "type": "deleteFile"
+    },
+    {
+     "file": "/SuDokuL.zip",
+     "type": "deleteFile"
+    }
+   ]
+  },
+  "slug": "sudokul",
+  "source": "https://github.com/Mode8fx/SuDokuL",
+  "stars": 25,
+  "systems": [
+   "3DS"
+  ],
+  "title": "SuDokuL",
+  "unique_ids": [
+   932162
+  ],
+  "update_notes": "<p dir=\"auto\">I came back to fix a bug, but also added some more things.</p>\n<h3 dir=\"auto\">Changes</h3>\n<ul dir=\"auto\">\n<li>Added <strong>Music Mode</strong> setting. You can now play music in a fixed or shuffled order instead of looping a single song.</li>\n</ul>\n<h3 dir=\"auto\">Bug Fixes</h3>\n<ul dir=\"auto\">\n<li><strong>Fixed mini grid breaking</strong> after using the \"reveal cell\" cheat.</li>\n</ul>\n<h3 dir=\"auto\">Technical Improvements</h3>\n<ul dir=\"auto\">\n<li><strong>Updated SDL2 libraries</strong> on most systems.</li>\n<li>Limited save file writing when rapidly changing music track with L/R.</li>\n<li>[Gamecube, Wii] <strong>Upgraded to libogc2</strong>, which introduces a variety of improvements including <strong>save/load support for FlippyDrive</strong> (thanks <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/Extrems/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/Extrems\">@Extrems</a>!).</li>\n<li>[PSP] <strong>Big performance boost</strong> from upgrading PSPDEV, resulting in a steady 60 FPS.</li>\n</ul>\n<p dir=\"auto\">Enjoy!</p>",
+  "update_notes_md": "I came back to fix a bug, but also added some more things.\n\n### Changes\n- Added **Music Mode** setting. You can now play music in a fixed or shuffled order instead of looping a single song.\n\n### Bug Fixes\n- **Fixed mini grid breaking** after using the \"reveal cell\" cheat.\n\n### Technical Improvements\n- **Updated SDL2 libraries** on most systems.\n- Limited save file writing when rapidly changing music track with L/R.\n- [Gamecube, Wii] **Upgraded to libogc2**, which introduces a variety of improvements including **save/load support for FlippyDrive** (thanks @Extrems!).\n- [PSP] **Big performance boost** from upgrading PSPDEV, resulting in a steady 60 FPS.\n\nEnjoy!",
+  "updated": "2026-05-10T02:54:37Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/sudokul"
+  ],
+  "version": "v1.5",
+  "version_title": "v1.5"
+ },
+ {
+  "author": "Nawias",
+  "categories": [
+   "game"
+  ],
+  "color": "#b99660",
+  "color_bg": "#806742",
+  "created": "2023-09-01T00:00:00Z",
+  "description": "Join Taśman in his quest to wrap everything in TAŚMAN Sealed duct tape!",
+  "download_page": "https://nawias.itch.io/tasmanquest",
+  "downloads": {
+   "TasmanQuest.3dsx": {
+    "size": 10399904,
+    "size_str": "9 MiB",
+    "url": "http://nawiasdev.eu/tasmanquest/TasmanQuest.3dsx"
+   }
+  },
+  "icon": "http://nawiasdev.eu/tasmanquest/icon.png",
+  "icon_index": 198,
+  "image": "http://nawiasdev.eu/tasmanquest/logo.png",
+  "image_length": 13925,
+  "llm_generation": "unknown",
+  "long_description": "In this short, arcade-y game for your Nintendo 3DS explore the famous Lewiatan grocery store of Księżomierz and flex your tape-wrapping skills as the clock is ticking!\n\nYou play as Adam a.k.a. \"Taśman\". You came to the local Lewiatan of Księżomierz to promote your brand - TAŚMAN™ Sealed. But it's Kasia's shift today and she won't allow it! Wrap as many items in your duct tape and get back in Zakre's Seiac before the guards catch you!\n### Credits\nMost of the game assets come from [LimeZu's](https://limezu.itch.io/) packs: Modern Interiors, Modern Exteriors, Modern UI, Serene Village Revamped\n\n\nMIDI files used for soundtrack come from MuseScore:\n\nMenu Music - [Loch Lomond](https://musescore.com/user/24691996/scores/6908959)\n\nAction Music - [Break the Rules](https://musescore.com/user/15821421/scores/6878141)\n\nNintendo 3DS port of LÖVE - [LÖVE Potion](https://github.com/lovebrew/lovepotion) by TurtleP",
+  "screenshots": [
+   {
+    "description": "Screenshot 1",
+    "url": "https://db.universal-team.net/assets/images/screenshots/tasmanquest/screenshot-1.png"
+   },
+   {
+    "description": "Screenshot 2",
+    "url": "https://db.universal-team.net/assets/images/screenshots/tasmanquest/screenshot-2.png"
+   },
+   {
+    "description": "Screenshot 3",
+    "url": "https://db.universal-team.net/assets/images/screenshots/tasmanquest/screenshot-3.png"
+   }
+  ],
+  "slug": "tasmanquest",
+  "stars": 0,
+  "systems": [
+   "3DS"
+  ],
+  "title": "TasmanQuest",
+  "updated": "2023-09-13T00:00:00Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/tasmanquest"
+  ],
+  "version": "1.0.0",
+  "version_title": "Full Release",
+  "website": "https://nawias.itch.io/tasmanquest"
+ },
+ {
+  "author": "2b-zipper, cooolgamer, Rep, LumaTeam",
+  "avatar": "https://avatars.githubusercontent.com/u/119087427?v=4",
+  "categories": [
+   "utility",
+   "firm"
+  ],
+  "color": "#56a659",
+  "color_bg": "#428044",
+  "created": "2024-11-24T02:02:43Z",
+  "description": "Luma3DS fork with experimental features!",
+  "download_page": "https://github.com/2b-zipper/Nexus3DS/releases",
+  "github": "2b-zipper/Nexus3DS",
+  "icon": "https://github.com/2b-zipper/Nexus3DS/raw/master/img/logo_icon.png",
+  "icon_index": 3,
+  "image": "https://github.com/2b-zipper/Nexus3DS/raw/master/img/logo_1.png",
+  "image_length": 102768,
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "unknown",
+  "long_description": "Please refer to the README on the github repo for more info: https://github.com/2b-zipper/Nexus3DS/blob/master/README.md",
+  "preinstall_message": "This is a fork of Luma3DS. Using alternate forks of Luma3DS can cause system instability and other unexpected issues.\n\nIf you experience any issues please reinstall the normal \"Luma3DS\" before anything else.",
+  "prerelease": {
+   "download_page": "https://github.com/2b-zipper/Nexus3DS/releases/tag/0.3.0",
+   "downloads": {
+    "boot.firm": {
+     "size": 334848,
+     "size_str": "327 KiB",
+     "url": "https://github.com/2b-zipper/Nexus3DS/releases/download/0.3.0/boot.firm"
+    }
+   },
+   "update_notes": "<h1 dir=\"auto\">What's new?</h1>\n<ul dir=\"auto\">\n<li>Merged with the latest Luma3DS commits (custom home menu using layeredfs doesn't crash anymore!)</li>\n<li>Display Nexus3DS version in Rosalina menu</li>\n<li>Add customizable LCD backlight toggle (does not work on old 2DS)</li>\n<li>Add experimental fast boot time for big sd cards (may corrupt your sd card, this is an advanced option disabled by default)</li>\n<li>Removed advanced options from the config menu (refer to the readme for more info)</li>\n</ul>",
+   "update_notes_md": "# What's new?\n\n- Merged with the latest Luma3DS commits (custom home menu using layeredfs doesn't crash anymore!)\n- Display Nexus3DS version in Rosalina menu\n- Add customizable LCD backlight toggle (does not work on old 2DS)\n- Add experimental fast boot time for big sd cards (may corrupt your sd card, this is an advanced option disabled by default)\n- Removed advanced options from the config menu (refer to the readme for more info)",
+   "updated": "2026-03-16T16:44:14Z",
+   "version": "0.3.0",
+   "version_title": "Nexus3DS v0.3.0"
+  },
+  "screenshots": [
+   {
+    "description": "Config menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/nexus3ds/config-menu.png"
+   },
+   {
+    "description": "Rosalina menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/nexus3ds/rosalina-menu.png"
+   }
+  ],
+  "slug": "nexus3ds",
+  "source": "https://github.com/2b-zipper/Nexus3DS",
+  "stars": 79,
+  "systems": [
+   "3DS"
+  ],
+  "title": "Nexus3DS",
+  "update_notes": "<h1 dir=\"auto\">What's new?</h1>\n<ul dir=\"auto\">\n<li>Merged with the latest Luma3DS commits (custom home menu using layeredfs doesn't crash anymore!)</li>\n<li>Display Nexus3DS version in Rosalina menu</li>\n<li>Add customizable LCD backlight toggle (does not work on old 2DS)</li>\n<li>Add experimental fast boot time for big sd cards (may corrupt your sd card, this is an advanced option disabled by default)</li>\n<li>Removed advanced options from the config menu (refer to the readme for more info)</li>\n</ul>",
+  "update_notes_md": "# What's new?\n\n- Merged with the latest Luma3DS commits (custom home menu using layeredfs doesn't crash anymore!)\n- Display Nexus3DS version in Rosalina menu\n- Add customizable LCD backlight toggle (does not work on old 2DS)\n- Add experimental fast boot time for big sd cards (may corrupt your sd card, this is an advanced option disabled by default)\n- Removed advanced options from the config menu (refer to the readme for more info)",
+  "updated": "2026-03-16T16:44:14Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/nexus3ds"
+  ],
+  "version": "0.3.0",
+  "version_title": "Nexus3DS v0.3.0",
+  "website": "https://discord.gg/StUs5bsw2S"
+ },
+ {
+  "author": "CTGP-7 Team",
+  "avatar": "https://avatars.githubusercontent.com/u/46403089?s=200&v=4",
+  "categories": [
+   "game",
+   "plugin"
+  ],
+  "color": "#654547",
+  "color_bg": "#654547",
+  "created": "2015-01-01T00:00:00Z",
+  "description": "CTGP-7 modpack for Mario Kart 7.\nMore info: ctgp-7.github.io",
+  "download_page": "https://gamebanana.com/mods/50221",
+  "downloads": {
+   "CTGP-7_Downloader.cia": {
+    "url": "https://imaginye.ddns.net:7777/l/cia_downloader"
+   }
+  },
+  "icon": "https://db.universal-team.net/assets/images/icons/ctgp-7-downloader.png",
+  "icon_index": 26,
+  "image": "https://db.universal-team.net/assets/images/images/ctgp-7-downloader.png",
+  "image_length": 45424,
+  "llm_generation": "no",
+  "long_description": "CTGP-7 is a modpack for Mario Kart 7 which includes several custom tracks, characters and music, as well as extra features such as a speedometer, speed modifier, backwards camera, among others. More info in the [CTGP-7 website](https://ctgp-7.github.io/).",
+  "preinstall_message": "Note: Installing this will overwrite any existing install of\nCTGP-7, only install if you do not already have CTGP-7.",
+  "qr": {
+   "CTGP-7_Downloader.cia": "https://db.universal-team.net/assets/images/qr/ctgp-7_downloader-cia.png"
+  },
+  "screenshots": [
+   {
+    "description": "Character selection",
+    "url": "https://db.universal-team.net/assets/images/screenshots/ctgp-7-downloader/character-selection.png"
+   },
+   {
+    "description": "Extra features menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/ctgp-7-downloader/extra-features-menu.png"
+   },
+   {
+    "description": "Title & cup selection",
+    "url": "https://db.universal-team.net/assets/images/screenshots/ctgp-7-downloader/title-&-cup-selection.png"
+   }
+  ],
+  "slug": "ctgp-7-downloader",
+  "stars": 0,
+  "systems": [
+   "3DS"
+  ],
+  "title": "CTGP-7 Downloader",
+  "unique_ids": [
+   198412
+  ],
+  "updated": "2021-03-04T23:37:56Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/ctgp-7-downloader"
+  ],
+  "version": "Latest",
+  "website": "https://ctgp-7.github.io/",
+  "wiki": "http://mk7.tock.eu/index.php?title=CTGP-7"
+ },
+ {
+  "archive": {
+   "Angband-(.*)-3ds\\.zip": {
+    "Angband-{}.3dsx": [
+     "Angband-{}.3dsx",
+     "angband/"
+    ],
+    "Angband-{}.cia": [
+     "Angband-{}.cia",
+     "angband/"
+    ]
+   },
+   "Angband-(.*)-nds\\.zip": {
+    "Angband-{}.nds": [
+     "Angband-{}.nds",
+     "angband/"
+    ]
+   }
+  },
+  "author": "The Angband team",
+  "avatar": "https://avatars.githubusercontent.com/u/458884?v=4",
+  "categories": [
+   "game"
+  ],
+  "color": "#858585",
+  "color_bg": "#808080",
+  "created": "2010-10-29T01:17:48Z",
+  "description": "A free, single-player roguelike dungeon exploration game",
+  "download_filter": "-(3ds|nds)\\.zip",
+  "download_page": "https://github.com/angband/angband/releases",
+  "downloads": {},
+  "github": "angband/angband",
+  "icon": "https://github.com/angband.png?size=48",
+  "icon_index": 239,
+  "image": "https://github.com/angband.png",
+  "image_length": 3366,
+  "license": "gpl-2.0",
+  "license_name": "GNU General Public License v2.0",
+  "llm_generation": "unknown",
+  "long_description": "Angband is a graphical dungeon adventure game that uses textual characters to represent the walls and floors of a dungeon and the inhabitants therein, in the vein of games like NetHack and Rogue. If you need help in-game, press ?.",
+  "prerelease": {
+   "download_page": "https://github.com/angband/angband/releases/tag/4.2.6-166-gf0f6bd223",
+   "downloads": {
+    "Angband-4.2.6-166-gf0f6bd223-3ds.zip": {
+     "size": 24696299,
+     "size_str": "23 MiB",
+     "url": "https://github.com/angband/angband/releases/download/4.2.6-166-gf0f6bd223/Angband-4.2.6-166-gf0f6bd223-3ds.zip"
+    },
+    "Angband-4.2.6-166-gf0f6bd223-nds.zip": {
+     "size": 23330366,
+     "size_str": "22 MiB",
+     "url": "https://github.com/angband/angband/releases/download/4.2.6-166-gf0f6bd223/Angband-4.2.6-166-gf0f6bd223-nds.zip"
+    }
+   },
+   "update_notes": "<h2 dir=\"auto\">What's Changed</h2>\n<ul dir=\"auto\">\n<li>borg: fixed some spell use around detecting invisible by <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/agoodman00/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/agoodman00\">@agoodman00</a> in <a class=\"issue-link js-issue-link\" data-error-text=\"Failed to load title\" data-id=\"4931167244\" data-permission-text=\"Title is private\" data-url=\"https://github.com/angband/angband/issues/6673\" data-hovercard-type=\"pull_request\" data-hovercard-url=\"/angband/angband/pull/6673/hovercard\" href=\"https://github.com/angband/angband/pull/6673\">#6673</a></li>\n<li>On shape change, learn the shape's obvious flags by <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/backwardsEric/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/backwardsEric\">@backwardsEric</a> in <a class=\"issue-link js-issue-link\" data-error-text=\"Failed to load title\" data-id=\"4918232230\" data-permission-text=\"Title is private\" data-url=\"https://github.com/angband/angband/issues/6669\" data-hovercard-type=\"pull_request\" data-hovercard-url=\"/angband/angband/pull/6669/hovercard\" href=\"https://github.com/angband/angband/pull/6669\">#6669</a></li>\n<li>Avoid two discarded const warnings seen with WSL on Windows 11 by <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/backwardsEric/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/backwardsEric\">@backwardsEric</a> in <a class=\"issue-link js-issue-link\" data-error-text=\"Failed to load title\" data-id=\"4918257138\" data-permission-text=\"Title is private\" data-url=\"https://github.com/angband/angband/issues/6670\" data-hovercard-type=\"pull_request\" data-hovercard-url=\"/angband/angband/pull/6670/hovercard\" href=\"https://github.com/angband/angband/pull/6670\">#6670</a></li>\n<li>Projections: coerce blast radius to fit what dam_at_dist can handle by <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/backwardsEric/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/backwardsEric\">@backwardsEric</a> in <a class=\"issue-link js-issue-link\" data-error-text=\"Failed to load title\" data-id=\"4925270560\" data-permission-text=\"Title is private\" data-url=\"https://github.com/angband/angband/issues/6672\" data-hovercard-type=\"pull_request\" data-hovercard-url=\"/angband/angband/pull/6672/hovercard\" href=\"https://github.com/angband/angband/pull/6672\">#6672</a></li>\n<li>Correct spelling of Ossë by <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/fosskers/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/fosskers\">@fosskers</a> in <a class=\"issue-link js-issue-link\" data-error-text=\"Failed to load title\" data-id=\"4978641982\" data-permission-text=\"Title is private\" data-url=\"https://github.com/angband/angband/issues/6675\" data-hovercard-type=\"pull_request\" data-hovercard-url=\"/angband/angband/pull/6675/hovercard\" href=\"https://github.com/angband/angband/pull/6675\">#6675</a></li>\n</ul>\n<p dir=\"auto\"><strong>Full Changelog</strong>: <a class=\"commit-link\" href=\"https://github.com/angband/angband/compare/4.2.6-161-ge1e0b0530...4.2.6-166-gf0f6bd223\"><tt>4.2.6-161-ge1e0b0530...4.2.6-166-gf0f6bd223</tt></a></p>",
+   "update_notes_md": "## What's Changed\n* borg: fixed some spell use around detecting invisible by @agoodman00 in https://github.com/angband/angband/pull/6673\n* On shape change, learn the shape's obvious flags by @backwardsEric in https://github.com/angband/angband/pull/6669\n* Avoid two discarded const warnings seen with WSL on Windows 11 by @backwardsEric in https://github.com/angband/angband/pull/6670\n* Projections: coerce blast radius to fit what dam_at_dist can handle by @backwardsEric in https://github.com/angband/angband/pull/6672\n* Correct spelling of Ossë by @fosskers in https://github.com/angband/angband/pull/6675\n\n\n**Full Changelog**: https://github.com/angband/angband/compare/4.2.6-161-ge1e0b0530...4.2.6-166-gf0f6bd223",
+   "updated": "2026-07-28T12:16:26Z",
+   "version": "4.2.6-166-gf0f6bd223",
+   "version_title": "4.2.6-166-gf0f6bd223"
+  },
+  "scripts": {
+   "[prerelease] Angband-4.2.6-166-gf0f6bd223.3dsx": {
+    "script": [
+     {
+      "file": "https://github.com/angband/angband/releases/download/4.2.6-166-gf0f6bd223/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "output": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "input": "^Angband-4.2.6-166-gf0f6bd223.3dsx",
+      "output": "%3DSX%/Angband-4.2.6-166-gf0f6bd223.3dsx",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "input": "^angband/",
+      "output": "/angband/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "23 MiB",
+    "type": "prerelease"
+   },
+   "[prerelease] Angband-4.2.6-166-gf0f6bd223.cia": {
+    "script": [
+     {
+      "file": "https://github.com/angband/angband/releases/download/4.2.6-166-gf0f6bd223/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "output": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "input": "^Angband-4.2.6-166-gf0f6bd223.cia",
+      "output": "/Angband-4.2.6-166-gf0f6bd223.cia",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223.cia",
+      "type": "installCia"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223.cia",
+      "type": "deleteFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "input": "^angband/",
+      "output": "/angband/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-3ds.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "23 MiB",
+    "type": "prerelease"
+   },
+   "[prerelease] Angband-4.2.6-166-gf0f6bd223.nds": {
+    "script": [
+     {
+      "file": "https://github.com/angband/angband/releases/download/4.2.6-166-gf0f6bd223/Angband-4.2.6-166-gf0f6bd223-nds.zip",
+      "output": "/Angband-4.2.6-166-gf0f6bd223-nds.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-nds.zip",
+      "input": "^Angband-4.2.6-166-gf0f6bd223.nds",
+      "output": "%NDS%/Angband-4.2.6-166-gf0f6bd223.nds",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-nds.zip",
+      "input": "^angband/",
+      "output": "/angband/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Angband-4.2.6-166-gf0f6bd223-nds.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "22 MiB",
+    "type": "prerelease"
+   }
+  },
+  "slug": "angband",
+  "source": "https://github.com/angband/angband",
+  "stars": 1542,
+  "systems": [
+   "3DS",
+   "DS"
+  ],
+  "title": "Angband",
+  "unique_ids": [
+   399078
+  ],
+  "update_notes": "<p dir=\"auto\">This version includes changes to device activation, many corrections and improvements to the borg automatic player, and several bug fixes.  Changes affecting gameplay are:</p>\n<ul dir=\"auto\">\n<li>Like digging, failure to activate a magical device automatically retries the activation until successful or disturbed.  Make utility devices, elemental rings, and dragon armor easier to activate.  Devices to slow monsters, wands of fire balls and dragon's flame, rods of fire bolts, and rods of treasure location are now more difficult to activate.  Change the activation difficulties for artifacts so they are better aligned with the nature of the activation.  Change a constant in the failure rate calculation to tighten the transition from high to low failure rates:  effects that change a player's device skill will have more of an impact if the skill is close to the activation difficulty for the device.</li>\n<li>When following a precomputed path (moving to a grid designated by the mouse, targeting interface, or autoexplore commands) automatically open doors or clear impassable rubble and continue moving when the neighbors of the door or rubble are known.</li>\n<li>Object descriptions now include the effect of curses in the displayed hit, damage, and armor class values.</li>\n<li>Messages for detection now distinguish between gold on the floor and other objects (thanks to PowerDiver).</li>\n<li>Objects and spells that used SPOT effects with LIGHT_WEAK or DARK_WEAK now use SPHERE instead so they can not damage the player.</li>\n<li>Change the target handling for a druid's Lightning Strike:  do not require a known grid and target the player if the target is given as a direction or is not a passable grid in the line of sight.</li>\n<li>If a necromancer's Command spell is resisted, deduct mana and take a turn (thanks to RegalStar).</li>\n<li>Mithril arrows and shots weigh 50% less; mithril shots ignore acid and fire (thanks to edz314).</li>\n<li>Increase the curse removal power of staves of remove curse to distinguish them from scrolls of remove curse (thanks to Mitze).</li>\n<li>Increase the escorts for Grishnákh and Golfimbul:  both can also have cave orcs as escorts.</li>\n<li>Change the edges of the Cracks of Doom vault so magic mapping clearly identifies the entrances (thanks to Mikolaj).</li>\n<li>Change handling of keymaps so the keymap aborts when the next key does not correspond to a command, a command fails due to a missing prerequisite or to a player confirmation from an inscription check.  Rework how directions are extracted from a keymap.  Allow for a keymap trigger whose action starts with ESCAPE to break out of many prompts (thanks to PowerWyrm).</li>\n<li>Add an option, autoexplore_commands, to have 'p' move to the player to the nearest unexplored location and modify the existing '&gt;' and '&lt;' commands to move the player to the nearest staircase of the appropriate type when not on a staircase (thanks to memmaker).  Whether or not that option is set, add to the looking or targeting interface so '&gt;' or '&lt;' move the cursor to the nearest appropriate staircase from where the cursor was and 'x' moves the cursor to the nearest unexplored location to where the cursor was (thanks to Gwarl).</li>\n<li>The notifications shown when the show_damage option is on now include information about damage due to effects from spells or magic devices.  Notifications about damage to the player now take into account damage reduction and invulnerability.</li>\n</ul>\n<p dir=\"auto\">There are a handful of notable changes to the Windows front end (thanks to Klaas van Aarsen):</p>\n<ul dir=\"auto\">\n<li>With tiles, the map displayed by 'M' now uses the algorithm that Options-&gt;Map used.  Options-&gt;Map has been removed.</li>\n<li>Subwindows can have more than 256 rows or columns without drawing artifacts.</li>\n</ul>\n<p dir=\"auto\">The handling of the SDL2 frontend's menus has been rewritten.  Game controller events are now mapped to keystrokes to invoke commands in the game (thanks to Alberto Mardegan).</p>\n<p dir=\"auto\">The changes for the borg automatic player are too numerous to list individually.  They correct many crashes, instances where manual intervention was needed to allow the borg to make progress, jumping into lava, or cases where the borg misused a spell (thanks to Adam Goodman, Aodhlin, Jordan Philyaw, and NetBrian).</p>\n<p dir=\"auto\">There is one change that can break compatibility with a game in progress or prevent reuse of a randart file from earlier versions of 4.2:  the misnamed FIRE_BOLT72 activation is now FIRE_BALL72.  If a game in progress uses randarts and an artifact has that activation, the randart file will fail to load.  A workaround is to edit the randart file and replace FIRE_BOLT72 with FIRE_BALL72.</p>\n<p dir=\"auto\">Prebuilt binaries for NDS and 3ds are no longer available.  Patches to restore building Angband for those systems are welcome.</p>",
+  "update_notes_md": "This version includes changes to device activation, many corrections and improvements to the borg automatic player, and several bug fixes.  Changes affecting gameplay are:\n\n - Like digging, failure to activate a magical device automatically retries the activation until successful or disturbed.  Make utility devices, elemental rings, and dragon armor easier to activate.  Devices to slow monsters, wands of fire balls and dragon's flame, rods of fire bolts, and rods of treasure location are now more difficult to activate.  Change the activation difficulties for artifacts so they are better aligned with the nature of the activation.  Change a constant in the failure rate calculation to tighten the transition from high to low failure rates:  effects that change a player's device skill will have more of an impact if the skill is close to the activation difficulty for the device.\n - When following a precomputed path (moving to a grid designated by the mouse, targeting interface, or autoexplore commands) automatically open doors or clear impassable rubble and continue moving when the neighbors of the door or rubble are known.\n - Object descriptions now include the effect of curses in the displayed hit, damage, and armor class values.\n - Messages for detection now distinguish between gold on the floor and other objects (thanks to PowerDiver).\n - Objects and spells that used SPOT effects with LIGHT_WEAK or DARK_WEAK now use SPHERE instead so they can not damage the player.\n - Change the target handling for a druid's Lightning Strike:  do not require a known grid and target the player if the target is given as a direction or is not a passable grid in the line of sight.\n - If a necromancer's Command spell is resisted, deduct mana and take a turn (thanks to RegalStar).\n - Mithril arrows and shots weigh 50% less; mithril shots ignore acid and fire (thanks to edz314).\n - Increase the curse removal power of staves of remove curse to distinguish them from scrolls of remove curse (thanks to Mitze).\n - Increase the escorts for Grishnákh and Golfimbul:  both can also have cave orcs as escorts.\n - Change the edges of the Cracks of Doom vault so magic mapping clearly identifies the entrances (thanks to Mikolaj).\n - Change handling of keymaps so the keymap aborts when the next key does not correspond to a command, a command fails due to a missing prerequisite or to a player confirmation from an inscription check.  Rework how directions are extracted from a keymap.  Allow for a keymap trigger whose action starts with ESCAPE to break out of many prompts (thanks to PowerWyrm).\n - Add an option, autoexplore_commands, to have 'p' move to the player to the nearest unexplored location and modify the existing '>' and '<' commands to move the player to the nearest staircase of the appropriate type when not on a staircase (thanks to memmaker).  Whether or not that option is set, add to the looking or targeting interface so '>' or '<' move the cursor to the nearest appropriate staircase from where the cursor was and 'x' moves the cursor to the nearest unexplored location to where the cursor was (thanks to Gwarl).\n - The notifications shown when the show_damage option is on now include information about damage due to effects from spells or magic devices.  Notifications about damage to the player now take into account damage reduction and invulnerability.\n\nThere are a handful of notable changes to the Windows front end (thanks to Klaas van Aarsen):\n\n - With tiles, the map displayed by 'M' now uses the algorithm that Options->Map used.  Options->Map has been removed.\n - Subwindows can have more than 256 rows or columns without drawing artifacts.\n\nThe handling of the SDL2 frontend's menus has been rewritten.  Game controller events are now mapped to keystrokes to invoke commands in the game (thanks to Alberto Mardegan).\n\nThe changes for the borg automatic player are too numerous to list individually.  They correct many crashes, instances where manual intervention was needed to allow the borg to make progress, jumping into lava, or cases where the borg misused a spell (thanks to Adam Goodman, Aodhlin, Jordan Philyaw, and NetBrian).\n\nThere is one change that can break compatibility with a game in progress or prevent reuse of a randart file from earlier versions of 4.2:  the misnamed FIRE_BOLT72 activation is now FIRE_BALL72.  If a game in progress uses randarts and an artifact has that activation, the randart file will fail to load.  A workaround is to edit the randart file and replace FIRE_BOLT72 with FIRE_BALL72.\n\nPrebuilt binaries for NDS and 3ds are no longer available.  Patches to restore building Angband for those systems are welcome.",
+  "updated": "2025-12-16T06:19:40Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/angband",
+   "https://db.universal-team.net/ds/angband"
+  ],
+  "version": "4.2.6",
+  "version_title": "Release 4.2.6"
+ },
+ {
+  "Author": "cylin577",
+  "author": "cylin577",
+  "avatar": "https://avatars.githubusercontent.com/u/78150792?v=4",
+  "categories": [
+   "utility"
+  ],
+  "color": "#1f60b7",
+  "color_bg": "#164380",
+  "created": "2025-10-30T11:23:29Z",
+  "description": "Read 0x7 NFC/RFID tags!",
+  "download_page": "https://github.com/cylin577/Better-NFCReader/releases",
+  "downloads": {
+   "Better-NFCReader.3dsx": {
+    "size": 862360,
+    "size_str": "842 KiB",
+    "url": "https://github.com/cylin577/Better-NFCReader/releases/download/v2.3.0/Better-NFCReader.3dsx"
+   },
+   "Better-NFCReader.cia": {
+    "size": 607680,
+    "size_str": "593 KiB",
+    "url": "https://github.com/cylin577/Better-NFCReader/releases/download/v2.3.0/Better-NFCReader.cia"
+   }
+  },
+  "github": "cylin577/Better-NFCReader",
+  "icon": "https://raw.githubusercontent.com/cylin577/Better-NFCReader/master/resources/icon.png",
+  "icon_index": 270,
+  "image": "https://raw.githubusercontent.com/cylin577/Better-NFCReader/master/resources/banner.png",
+  "image_length": 7164,
+  "llm_generation": "unknown",
+  "long_description": "This is a really cool app based on MrJPGames' NFCReader, I updated it to citro2d and make it possible to scan 0x7 tags.",
+  "qr": {
+   "Better-NFCReader.cia": "https://db.universal-team.net/assets/images/qr/better-nfcreader-cia.png"
+  },
+  "slug": "better-nfcreader",
+  "source": "https://github.com/cylin577/Better-NFCReader",
+  "stars": 0,
+  "systems": [
+   "3DS"
+  ],
+  "title": "Better-NFCReader",
+  "unique_ids": [
+   771177
+  ],
+  "update_notes": "<p dir=\"auto\">I don't remember what changed, go read the diffs.</p>\n<p dir=\"auto\">Let's goooo! We're on Universal Updater!!!</p>",
+  "update_notes_md": "I don't remember what changed, go read the diffs.\n\n\nLet's goooo! We're on Universal Updater!!!",
+  "updated": "2025-11-08T09:34:49Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/better-nfcreader"
+  ],
+  "version": "v2.3.0",
+  "version_title": "v2.3.0"
+ },
+ {
+  "author": "UnknownShadow200",
+  "avatar": "https://avatars.githubusercontent.com/u/51250960?v=4",
+  "categories": [
+   "game"
+  ],
+  "color": "#c5c5c5",
+  "color_bg": "#808080",
+  "created": "2014-12-17T03:42:16Z",
+  "description": "Custom Minecraft Classic / ClassiCube client written in C  from scratch (formerly ClassicalSharp in C#)",
+  "download_page": "https://www.classicube.net/download/3ds",
+  "downloads": {
+   "ClassiCube-3ds.3dsx": {
+    "size": 783424,
+    "size_str": "765 KiB",
+    "url": "https://cdn.classicube.net/client/latest/ClassiCube-3ds.3dsx"
+   },
+   "ClassiCube-3ds.cia": {
+    "size": 632768,
+    "size_str": "617 KiB",
+    "url": "https://cdn.classicube.net/client/latest/ClassiCube-3ds.cia"
+   }
+  },
+  "github": "ClassiCube/ClassiCube",
+  "icon": "https://raw.githubusercontent.com/ClassiCube/ClassiCube/master/misc/3ds/icon.png",
+  "icon_index": 31,
+  "image": "https://raw.githubusercontent.com/ClassiCube/ClassiCube/master/misc/3ds/banner.png",
+  "image_length": 10600,
+  "license": "other",
+  "license_name": "Other",
+  "llm_generation": "unknown",
+  "long_description": "**ClassiCube** is a custom Minecraft Classic compatible client written in C from scratch.\n**It is not affiliated with (or supported by) Mojang AB, Minecraft, or Microsoft in any way.**\nKnown issues:\n- Switching to another app and back may freeze the game\n- Stereoscopic 3D may not work correctly",
+  "qr": {
+   "ClassiCube-3ds.cia": "https://db.universal-team.net/assets/images/qr/classicube-3ds-cia.png"
+  },
+  "slug": "classicube",
+  "source": "https://github.com/ClassiCube/ClassiCube",
+  "stars": 2019,
+  "systems": [
+   "3DS"
+  ],
+  "title": "ClassiCube",
+  "unique_ids": [
+   332125
+  ],
+  "update_notes": "<p dir=\"auto\">All:</p>\n<ul dir=\"auto\">\n<li>Added: NotifyAction CPE (Thanks Venk)</li>\n<li>Added: ToggleBlockList CPE (Thanks Venk)</li>\n<li>Added: Fixed point software renderer graphics backend (Thanks oorange32)</li>\n<li>Added: Flat minimal software renderer graphics backend</li>\n<li>Added: Hidden option for auto pause on focus lost</li>\n<li>Improved: Use BearSSL for SSL support on all backends</li>\n<li>Improved: Fallback native SSL certificate checking on Windows/macOS/Unix/ios/Android</li>\n<li>Improved: Added PushStrength to EntityProperty (Thanks Venk)</li>\n<li>Improved: Prefer visible block in auto rotate group when opening inventory (Thanks Goodlyay)</li>\n<li>Improved: Cancel queued skin download if no more entities are using the skin</li>\n<li>Improved: Mark all chunks as needing to be redrawn rather than immediately deleting when world state changes (e.g. sunlight changes, block properties updated)</li>\n<li>Improved: Performance of SoftGPU backend slightly improved</li>\n<li>Improved: Glass should have metal step sound like classic</li>\n<li>Improved: Make primary UI button smaller on small displays</li>\n<li>Improved: Log IP when opening a connection to a webserver</li>\n<li>Improved: Allow overriding LINKER executable in makefile (Thanks Izder456)</li>\n<li>Improved: Don't allow chat scrolling in pure classic mode</li>\n<li>Improved: Crash logging shows module relative addresses instead</li>\n<li>Improved: Allow using left/right for menu navigation in launcher</li>\n<li>Improved: Updates are now fetched over SSL</li>\n<li>Improved: Change crash message if possibly due to a third party plugin</li>\n<li>Improved: Defer audio/texpacks directory creation until actually needed</li>\n<li>Improved: Support very old systems without BGRA support in OpenGL 1 build</li>\n<li>Improved: Use flat button background colour based on current theme if gui texture missing</li>\n<li>Improved: Don't render clouds/sky in software renderer backends</li>\n<li>Improved: Show better error messages for when required symbols aren't found</li>\n<li>Improved: UI texture upload performance slightly on most systems</li>\n<li>Improved: Minorly increase performance on some GPUs in Modern OpenGL backend</li>\n<li>Fixed: OpenGL 1 build on big endian systems</li>\n<li>Fixed: .wavs accidentally being generated/read with wrong endian on big endian systems</li>\n<li>Fixed: Can't download from URLs that have raw IPv6 address as the hostname</li>\n<li>Fixed: Occasional crashes when handling redirected web requests</li>\n<li>Fixed: Can't overwrite existing map when saving without using mouse</li>\n<li>Fixed: Loading default texture pack twice if it isn't default.zip</li>\n<li>Fixed: Non-ASCII characters not parsed properly in server names</li>\n<li>Fixed: 8 bit grayscale without alpha PNGs not being decoded correctly</li>\n<li>Fixed: Colour code bleeding in URLs, partially</li>\n<li>Fixed: Ampersands being UTF8 converted in HTTP URLs</li>\n<li>Fixed: Save level button should not be enabled in pure classic mode (thanks Beyond5D)</li>\n<li>Fixed: Non power of two skins not rendering properly with humanoid models</li>\n<li>Fixed: Make sapling physics more accurate (thanks Beyond5D)</li>\n<li>Fixed: Better handle out of memory when downloading HTTP data</li>\n<li>Fixed: Random corruption on low stack memory systems (e.g. NDS, Saturn, etc)</li>\n<li>Fixed: Mipmaps level not being properly calculated for modern OpenGL build</li>\n<li>Fixed: Classic options menu not using proper layout</li>\n<li>Fixed: When opening inventory with no block selected, arrow input scrolls hotbar instead</li>\n<li>Fixed: Server list not immediately redrawing after new flag downloaded (Thanks CornerPin)</li>\n<li>Fixed: CinematicGui CPE state not properly reset (Thanks eoniiii)</li>\n<li>Fixed: Accidentally copying too much data for textures on 16bpp systems</li>\n<li>Fixed: Try to fix rarely rendering as a translucent window on some systems</li>\n<li>Fixed: GFX resource leak if server sends LevelFinalise without level chunks first</li>\n<li>Fixed: HTTP URL redirects not remapping hosts (excluding webclient)</li>\n<li>Fixed: Triangles not always being properly clipped in software renderer</li>\n<li>Fixed: Crash if a plugin calls Chat_Add multiple times with very long input</li>\n<li>Fixed: Properly prevent loading multiplayer maps over 2 GB in size</li>\n<li>Fixed: OpenGL 1.0 fallback on 64 bit systems</li>\n</ul>\n<p dir=\"auto\">Unix:</p>\n<ul dir=\"auto\">\n<li>Added: hp-ux support (Thanks tenox7)</li>\n<li>Added: Option for disabling xinput2 support at runtime</li>\n<li>Improved: Launcher on X11 now uses pure 2D visual instead of GLX visual</li>\n<li>Improved: When using EGL, try to ensure chosen config has same visual ID as X11 window</li>\n</ul>\n<p dir=\"auto\">Linux:</p>\n<ul dir=\"auto\">\n<li>Added: Support for compiling on Elbrus (Thanks a1batross)</li>\n<li>Improved: Flatpak comes with ClassiCube texture pack and audio (Thanks sungsphinx)</li>\n<li>Improved: Upgrade flatpak runtime (Thanks sungsphinx)</li>\n<li>Fixed: Always link lm in makefile to avoid 'undefined sqrtf` on some CPU architectures</li>\n</ul>\n<p dir=\"auto\">Windows:</p>\n<ul dir=\"auto\">\n<li>Improved: More specific crash messages for null pointer reads/writes</li>\n<li>Improved: Support versions of Direct3D 9 earlier than Direct3D 9.0c</li>\n<li>Improved: Compatibility with NT 3.5</li>\n<li>Improved: Better win32s compatibility</li>\n<li>Improved: Avoid linking to opengl32.dll directly in OpenGL build</li>\n<li>Fixed: Use proper backtrace on ARM/ARM64 platforms</li>\n<li>Fixed: OpenGL build not working with builtin 1.1 software renderer</li>\n<li>Fixed: Cinematic GUI with Direct3D 9</li>\n<li>Fixed: TinyC compilation</li>\n</ul>\n<p dir=\"auto\">macOS:</p>\n<ul dir=\"auto\">\n<li>Improved: 32 bit website download is a universal Intel/PowerPC build</li>\n<li>Improved: 64 bit website download is a universal Intel/ARM build</li>\n<li>Improved: Enable Game Mode support in info.plist</li>\n</ul>\n<p dir=\"auto\">iOS:</p>\n<ul dir=\"auto\">\n<li>Improved: Enable file sharing in Files app (Thanks Pear)</li>\n<li>Improved: Better support 32 bit only devices</li>\n<li>Improved: Enable Game Mode support in info.plist</li>\n<li>Improved: Use pre iOS 8 available way of detecting device rotation</li>\n<li>Fixed: Missing app icons</li>\n</ul>\n<p dir=\"auto\">Android:</p>\n<ul dir=\"auto\">\n<li>Improved: WIP on pre 2.3 support</li>\n<li>Fixed: Wrong username/password not being handled properly</li>\n<li>Fixed: Crashing on certain CPUs, such as Tegra 2</li>\n<li>Fixed: Crashing on some old ARM CPUs</li>\n</ul>\n<p dir=\"auto\">OpenBSD:</p>\n<ul dir=\"auto\">\n<li>Fixed: libexecinfo not being used</li>\n</ul>\n<p dir=\"auto\">NetBSD:</p>\n<ul dir=\"auto\">\n<li>Fixed: Not building on sparc64 (Thanks alarixnia)</li>\n</ul>\n<p dir=\"auto\">IRIX:</p>\n<ul dir=\"auto\">\n<li>Fixed: Not compiling</li>\n</ul>\n<p dir=\"auto\">Solaris:</p>\n<ul dir=\"auto\">\n<li>Fixed: Not compiling</li>\n</ul>\n<p dir=\"auto\">Symbian:</p>\n<ul dir=\"auto\">\n<li>Added: Mostly complete port (Big thanks to shinovon)</li>\n</ul>\n<p dir=\"auto\">SDL:</p>\n<ul dir=\"auto\">\n<li>Fixed: Only 1 filter type showing on save dialog in SDL3 (Thanks sungsphinx)</li>\n<li>Fixed: Can't exit fullscreen in SDL2</li>\n<li>Fixed: OpenGL attributes not being properly set (thanks DrinkyBird)</li>\n</ul>\n<hr>\n<p dir=\"auto\">Consoles:</p>\n<ul dir=\"auto\">\n<li>Improved: On most systems, L defaults to Place block and R to Delete block</li>\n<li>Improved: On console builds just always ignore expired SSL certificates</li>\n<li>Improved: Display full path when file opening/creation fails</li>\n<li>Improved: Add option for changing content offset x/y</li>\n<li>Improved: More descriptive error when no FAT filesystem found on some systems</li>\n<li>Improved: More descriptive error for non writable filesystem</li>\n<li>Fixed: Pointer/Touch inputs not being properly intercepted by onscreen keyboard</li>\n<li>Fixed: Touching on-screen keyboard button repeatedly typing same character</li>\n<li>Fixed: Special text (e.g Bottom right) not rendering properly on some systems</li>\n<li>Fixed: Pressing enter on virtual keyboard resulting in lockup</li>\n<li>Fixed: Cinematic bars not rendering properly</li>\n</ul>\n<p dir=\"auto\">PS4:</p>\n<ul dir=\"auto\">\n<li>Added: Completely unfinished and non-working port</li>\n</ul>\n<p dir=\"auto\">PS2:</p>\n<ul dir=\"auto\">\n<li>Improved: Performance increased</li>\n<li>Improved: Reduce VRAM usage with paletted textures and 16 bit depth buffer</li>\n<li>Fixed: Textures overlapping frame buffer</li>\n<li>Fixed: Onscreen keyboard not appearing</li>\n</ul>\n<p dir=\"auto\">PS3:</p>\n<ul dir=\"auto\">\n<li>Improved: Minorly improve performance (e.g. swizzled textures)</li>\n<li>Improved: Increase controller sensitivity</li>\n<li>Improved: Auto detect whether to use circle or cross as primary button</li>\n</ul>\n<p dir=\"auto\">PS1:</p>\n<ul dir=\"auto\">\n<li>Improved: Triangle+DPad controls camera</li>\n<li>Improved: Reduce world block clipping (Thanks wav3)</li>\n<li>Improved: Performance increased (Thanks wav3)</li>\n<li>Improved: Reduce VRAM usage with paletted textures</li>\n<li>Improved: Water/Ice is now rendered translucent</li>\n<li>Fixed: Some objects (e.g. Water/Bedrock outside map) not rendering</li>\n<li>Fixed: Not handling running out of RAM for vertices</li>\n<li>Fixed: On screen keyboard now displays</li>\n</ul>\n<p dir=\"auto\">PS Vita:</p>\n<ul dir=\"auto\">\n<li>Improved: Minorly improve performance (e.g. swizzled textures)</li>\n<li>Improved: Auto detect whether to use circle or cross as primary button</li>\n<li>Improved: Change DPAD to instead be for flying up/down and cycling hotbar slot</li>\n<li>Improved: Remove back screen touch behaviour</li>\n</ul>\n<p dir=\"auto\">PSP:</p>\n<ul dir=\"auto\">\n<li>Improved: On-screen dialog displays wifi connection progress/status</li>\n<li>Improved: Minorly improve performance (e.g. swizzled textures)</li>\n<li>Improved: Try to allocate textures in VRAM when possible</li>\n<li>Improved: Reduce VRAM usage with paletted textures and 16 bit depth buffer</li>\n<li>Improved: Start working on clipping support, not finished though</li>\n<li>Fixed: Block outline and sky not drawing at all</li>\n<li>Fixed: Usually failing to connect to wifi on startup</li>\n<li>Fixed: Launcher not rendering after returning from in-game</li>\n</ul>\n<p dir=\"auto\">Wii U:</p>\n<ul dir=\"auto\">\n<li>Improved: Change ZL/L/ZR/R default vpad bindings</li>\n<li>Improved: Increase vpad sensitivity</li>\n<li>Fixed: Mostly renders on real hardware</li>\n<li>Fixed: Loading audio sound looping forever</li>\n<li>Fixed: Clouds not moving</li>\n<li>Fixed: Tried to fix Exit not working properly</li>\n</ul>\n<p dir=\"auto\">Wii/GameCube:</p>\n<ul dir=\"auto\">\n<li>Improved: For gamecube controller, map B+Dpad L/R to hotbar L/R</li>\n<li>Improved: For gamecube controller, map dpad to just be fly up/down and hotbar left/right</li>\n<li>Improved: Power/Reset buttons properly supported (thanks Extrems)</li>\n<li>Fixed: Lockup after quitting in-game (thanks Extrems)</li>\n<li>Fixed: GameCube controller hotplugging (thanks Extrems)</li>\n<li>Fixed: Switching from splitscreen to singleplayer mode leaving viewport messed up</li>\n<li>Fixed: Screenshots rarely having corrupted data (thanks Extrems)</li>\n</ul>\n<p dir=\"auto\">GameCube:</p>\n<ul dir=\"auto\">\n<li>Improved: Use libogc2 instead, e.g. allowing SD card support (big thanks to Extrems)</li>\n<li>Improved: Sign in, resources, and some texture pack downloads work</li>\n<li>Improved: Allow using additional ARAM in systems with it as temp filesystem (Thanks Extrems)</li>\n<li>Improved: Show network details on startup</li>\n</ul>\n<p dir=\"auto\">N64:</p>\n<ul dir=\"auto\">\n<li>Added: Filesystem support for flashcarts (Thanks Phil564)</li>\n<li>Improved: Moderately optimise performance</li>\n<li>Improved: Texture precision slightly</li>\n</ul>\n<p dir=\"auto\">3DS:</p>\n<ul dir=\"auto\">\n<li>Improved: Don't use low memory mode (enables block IDs over 255)</li>\n<li>Improved: Try to allocate textures in VRAM when possible</li>\n<li>Improved: Request OS to make more RAM available to ClassiCube (Thanks man-of-eel)</li>\n<li>Improved: Minorly increase performance</li>\n<li>Fixed: Can't click on on-screen keyboard in the launcher</li>\n<li>Fixed: On-screen keyboard not showing when 3D anaglyph is enabled</li>\n<li>Fixed: UI being affected by fog</li>\n</ul>\n<p dir=\"auto\">NDS:</p>\n<ul dir=\"auto\">\n<li>Added: Separate non networking build</li>\n<li>Added: Fog (thanks rmn20, currently disabled as it interferes with UI)</li>\n<li>Improved: Unified build that supports both NDS and DSi wifi hardware (thanks BlocksDS)</li>\n<li>Improved: Use paletted textures (thanks rmn20 for the idea)</li>\n<li>Improved: Slightly increase performance (thanks rmn20)</li>\n<li>Improved: Appearance of water outside the map</li>\n<li>Improved: Texture precision slightly</li>\n<li>Improved: Water is now partially translucent</li>\n<li>Improved: Unhandled exception shows crash screen</li>\n<li>Improved: Colour wifi success/failure messages</li>\n<li>Fixed: Crashing when downloading resources fails</li>\n<li>Fixed: Keyboard not working the first time</li>\n<li>Fixed: Clouds not moving</li>\n<li>Fixed: Properly set/restore VRAM banks (thanks AntonioND)</li>\n</ul>\n<p dir=\"auto\">Dreamcast:</p>\n<ul dir=\"auto\">\n<li>Improved: Performance increased</li>\n<li>Improved: B+L/R now switch hotbar slot</li>\n<li>Improved: Exiting from launcher now 'Returns to menu'</li>\n<li>Improved: Reduce VRAM usage with paletted textures</li>\n<li>Improved: Don't force 50hz in Europe region</li>\n<li>Improved: RAM reduce minorly reduced</li>\n<li>Improved: Unhandled exception shows crash screen</li>\n<li>Fixed: Crashing when playing music</li>\n</ul>\n<p dir=\"auto\">Saturn:</p>\n<ul dir=\"auto\">\n<li>Improved: Improve performance</li>\n<li>Improved: Graphics are mostly rendered in proper order</li>\n<li>Fixed: Frustum culling not working</li>\n<li>Fixed: Water/Bedrock outside map not rendering</li>\n<li>Fixed: Leaking VRAM overtime</li>\n<li>Fixed: Can't see menus</li>\n</ul>\n<p dir=\"auto\">UWP:</p>\n<ul dir=\"auto\">\n<li>Added: Majorly unfinished port</li>\n</ul>\n<p dir=\"auto\">XBOX 360:</p>\n<ul dir=\"auto\">\n<li>Fixed: Launcher at least works, in-game doesn't work though</li>\n</ul>\n<p dir=\"auto\">XBOX:</p>\n<ul dir=\"auto\">\n<li>Improved: On-screen dialog displays network connection progress/status</li>\n<li>Improved: Slightly increase default content x/y offset</li>\n<li>Improved: Clouds now move</li>\n<li>Fixed: Texture warping</li>\n<li>Fixed: Can't go back to launcher menu</li>\n<li>Fixed: Sprites always being drawn solidly</li>\n<li>Fixed: Switching from splitscreen to singleplayer mode leaving viewport messed up</li>\n<li>Fixed: Log output on Xemu</li>\n</ul>\n<p dir=\"auto\">32x/GBA:</p>\n<ul dir=\"auto\">\n<li>Improved: Majorly optimise performance, still runs as a slideshow</li>\n<li>Improved: Completely skip launcher and go directly in-game</li>\n<li>Improved: Technically usable controls</li>\n<li>Improved: Render world without edge/horizon</li>\n<li>Fixed: Timing measurement now partially works</li>\n</ul>\n<hr>\n<p dir=\"auto\">Atari ST:</p>\n<ul dir=\"auto\">\n<li>Added: Barely working port</li>\n</ul>\n<p dir=\"auto\">Amiga:</p>\n<ul dir=\"auto\">\n<li>Added: Non-working unfinished port</li>\n</ul>\n<p dir=\"auto\">DOS:</p>\n<ul dir=\"auto\">\n<li>Added: Unfinished and slow port</li>\n</ul>\n<p dir=\"auto\">Mac OS Classic:</p>\n<ul dir=\"auto\">\n<li>Added: 68040 optimised build</li>\n<li>Improved: Use flat minimal software renderer for 68k build</li>\n<li>Fixed: 68k build now 'runs' on 4 MB system</li>\n</ul>\n<p dir=\"auto\">WinCE:</p>\n<ul dir=\"auto\">\n<li>Added: Mostly working port (Thanks oorange32 and picat)</li>\n</ul>\n<p dir=\"auto\">OS/2:</p>\n<ul dir=\"auto\">\n<li>Fixed: Not compiling and crashing at runtime (Thanks josch1710)</li>\n</ul>",
+  "update_notes_md": "All:\n* Added: NotifyAction CPE (Thanks Venk)\n* Added: ToggleBlockList CPE (Thanks Venk)\n* Added: Fixed point software renderer graphics backend (Thanks oorange32)\n* Added: Flat minimal software renderer graphics backend\n* Added: Hidden option for auto pause on focus lost\n* Improved: Use BearSSL for SSL support on all backends\n* Improved: Fallback native SSL certificate checking on Windows/macOS/Unix/ios/Android\n* Improved: Added PushStrength to EntityProperty (Thanks Venk)\n* Improved: Prefer visible block in auto rotate group when opening inventory (Thanks Goodlyay)\n* Improved: Cancel queued skin download if no more entities are using the skin\n* Improved: Mark all chunks as needing to be redrawn rather than immediately deleting when world state changes (e.g. sunlight changes, block properties updated)\n* Improved: Performance of SoftGPU backend slightly improved\n* Improved: Glass should have metal step sound like classic\n* Improved: Make primary UI button smaller on small displays\n* Improved: Log IP when opening a connection to a webserver\n* Improved: Allow overriding LINKER executable in makefile (Thanks Izder456)\n* Improved: Don't allow chat scrolling in pure classic mode\n* Improved: Crash logging shows module relative addresses instead\n* Improved: Allow using left/right for menu navigation in launcher\n* Improved: Updates are now fetched over SSL\n* Improved: Change crash message if possibly due to a third party plugin\n* Improved: Defer audio/texpacks directory creation until actually needed\n* Improved: Support very old systems without BGRA support in OpenGL 1 build\n* Improved: Use flat button background colour based on current theme if gui texture missing\n* Improved: Don't render clouds/sky in software renderer backends\n* Improved: Show better error messages for when required symbols aren't found\n* Improved: UI texture upload performance slightly on most systems\n* Improved: Minorly increase performance on some GPUs in Modern OpenGL backend\n* Fixed: OpenGL 1 build on big endian systems\n* Fixed: .wavs accidentally being generated/read with wrong endian on big endian systems\n* Fixed: Can't download from URLs that have raw IPv6 address as the hostname\n* Fixed: Occasional crashes when handling redirected web requests\n* Fixed: Can't overwrite existing map when saving without using mouse\n* Fixed: Loading default texture pack twice if it isn't default.zip\n* Fixed: Non-ASCII characters not parsed properly in server names \n* Fixed: 8 bit grayscale without alpha PNGs not being decoded correctly\n* Fixed: Colour code bleeding in URLs, partially\n* Fixed: Ampersands being UTF8 converted in HTTP URLs\n* Fixed: Save level button should not be enabled in pure classic mode (thanks Beyond5D)\n* Fixed: Non power of two skins not rendering properly with humanoid models\n* Fixed: Make sapling physics more accurate (thanks Beyond5D)\n* Fixed: Better handle out of memory when downloading HTTP data\n* Fixed: Random corruption on low stack memory systems (e.g. NDS, Saturn, etc)\n* Fixed: Mipmaps level not being properly calculated for modern OpenGL build\n* Fixed: Classic options menu not using proper layout\n* Fixed: When opening inventory with no block selected, arrow input scrolls hotbar instead\n* Fixed: Server list not immediately redrawing after new flag downloaded (Thanks CornerPin)\n* Fixed: CinematicGui CPE state not properly reset (Thanks eoniiii)\n* Fixed: Accidentally copying too much data for textures on 16bpp systems\n* Fixed: Try to fix rarely rendering as a translucent window on some systems\n* Fixed: GFX resource leak if server sends LevelFinalise without level chunks first\n* Fixed: HTTP URL redirects not remapping hosts (excluding webclient)\n* Fixed: Triangles not always being properly clipped in software renderer\n* Fixed: Crash if a plugin calls Chat_Add multiple times with very long input\n* Fixed: Properly prevent loading multiplayer maps over 2 GB in size\n* Fixed: OpenGL 1.0 fallback on 64 bit systems\n\nUnix:\n* Added: hp-ux support (Thanks tenox7)\n* Added: Option for disabling xinput2 support at runtime\n* Improved: Launcher on X11 now uses pure 2D visual instead of GLX visual\n* Improved: When using EGL, try to ensure chosen config has same visual ID as X11 window\n\nLinux:\n* Added: Support for compiling on Elbrus (Thanks a1batross)\n* Improved: Flatpak comes with ClassiCube texture pack and audio (Thanks sungsphinx)\n* Improved: Upgrade flatpak runtime (Thanks sungsphinx)\n* Fixed: Always link lm in makefile to avoid 'undefined sqrtf` on some CPU architectures\n\nWindows:\n* Improved: More specific crash messages for null pointer reads/writes\n* Improved: Support versions of Direct3D 9 earlier than Direct3D 9.0c\n* Improved: Compatibility with NT 3.5\n* Improved: Better win32s compatibility\n* Improved: Avoid linking to opengl32.dll directly in OpenGL build\n* Fixed: Use proper backtrace on ARM/ARM64 platforms\n* Fixed: OpenGL build not working with builtin 1.1 software renderer\n* Fixed: Cinematic GUI with Direct3D 9\n* Fixed: TinyC compilation\n\nmacOS:\n* Improved: 32 bit website download is a universal Intel/PowerPC build\n* Improved: 64 bit website download is a universal Intel/ARM build\n* Improved: Enable Game Mode support in info.plist\n\niOS:\n* Improved: Enable file sharing in Files app (Thanks Pear)\n* Improved: Better support 32 bit only devices\n* Improved: Enable Game Mode support in info.plist\n* Improved: Use pre iOS 8 available way of detecting device rotation\n* Fixed: Missing app icons\n\nAndroid:\n* Improved: WIP on pre 2.3 support\n* Fixed: Wrong username/password not being handled properly\n* Fixed: Crashing on certain CPUs, such as Tegra 2\n* Fixed: Crashing on some old ARM CPUs\n\nOpenBSD:\n* Fixed: libexecinfo not being used\n\nNetBSD:\n* Fixed: Not building on sparc64 (Thanks alarixnia)\n\nIRIX:\n* Fixed: Not compiling\n\nSolaris:\n* Fixed: Not compiling\n\nSymbian:\n* Added: Mostly complete port (Big thanks to shinovon)\n\nSDL:\n* Fixed: Only 1 filter type showing on save dialog in SDL3 (Thanks sungsphinx)\n* Fixed: Can't exit fullscreen in SDL2\n* Fixed: OpenGL attributes not being properly set (thanks DrinkyBird)\n\n---\n\nConsoles:\n* Improved: On most systems, L defaults to Place block and R to Delete block\n* Improved: On console builds just always ignore expired SSL certificates\n* Improved: Display full path when file opening/creation fails\n* Improved: Add option for changing content offset x/y\n* Improved: More descriptive error when no FAT filesystem found on some systems\n* Improved: More descriptive error for non writable filesystem\n* Fixed: Pointer/Touch inputs not being properly intercepted by onscreen keyboard \n* Fixed: Touching on-screen keyboard button repeatedly typing same character\n* Fixed: Special text (e.g Bottom right) not rendering properly on some systems\n* Fixed: Pressing enter on virtual keyboard resulting in lockup\n* Fixed: Cinematic bars not rendering properly\n\nPS4:\n* Added: Completely unfinished and non-working port\n\nPS2:\n* Improved: Performance increased\n* Improved: Reduce VRAM usage with paletted textures and 16 bit depth buffer\n* Fixed: Textures overlapping frame buffer\n* Fixed: Onscreen keyboard not appearing\n\nPS3:\n* Improved: Minorly improve performance (e.g. swizzled textures)\n* Improved: Increase controller sensitivity\n* Improved: Auto detect whether to use circle or cross as primary button\n\nPS1:\n* Improved: Triangle+DPad controls camera\n* Improved: Reduce world block clipping (Thanks wav3)\n* Improved: Performance increased (Thanks wav3)\n* Improved: Reduce VRAM usage with paletted textures\n* Improved: Water/Ice is now rendered translucent\n* Fixed: Some objects (e.g. Water/Bedrock outside map) not rendering\n* Fixed: Not handling running out of RAM for vertices\n* Fixed: On screen keyboard now displays\n\nPS Vita:\n* Improved: Minorly improve performance (e.g. swizzled textures)\n* Improved: Auto detect whether to use circle or cross as primary button\n* Improved: Change DPAD to instead be for flying up/down and cycling hotbar slot\n* Improved: Remove back screen touch behaviour\n\nPSP:\n* Improved: On-screen dialog displays wifi connection progress/status\n* Improved: Minorly improve performance (e.g. swizzled textures)\n* Improved: Try to allocate textures in VRAM when possible\n* Improved: Reduce VRAM usage with paletted textures and 16 bit depth buffer\n* Improved: Start working on clipping support, not finished though\n* Fixed: Block outline and sky not drawing at all\n* Fixed: Usually failing to connect to wifi on startup\n* Fixed: Launcher not rendering after returning from in-game\n\nWii U:\n* Improved: Change ZL/L/ZR/R default vpad bindings\n* Improved: Increase vpad sensitivity\n* Fixed: Mostly renders on real hardware\n* Fixed: Loading audio sound looping forever\n* Fixed: Clouds not moving\n* Fixed: Tried to fix Exit not working properly\n\nWii/GameCube:\n* Improved: For gamecube controller, map B+Dpad L/R to hotbar L/R\n* Improved: For gamecube controller, map dpad to just be fly up/down and hotbar left/right\n* Improved: Power/Reset buttons properly supported (thanks Extrems)\n* Fixed: Lockup after quitting in-game (thanks Extrems)\n* Fixed: GameCube controller hotplugging (thanks Extrems)\n* Fixed: Switching from splitscreen to singleplayer mode leaving viewport messed up\n* Fixed: Screenshots rarely having corrupted data (thanks Extrems)\n\nGameCube:\n* Improved: Use libogc2 instead, e.g. allowing SD card support (big thanks to Extrems)\n* Improved: Sign in, resources, and some texture pack downloads work\n* Improved: Allow using additional ARAM in systems with it as temp filesystem (Thanks Extrems)\n* Improved: Show network details on startup\n\nN64:\n* Added: Filesystem support for flashcarts (Thanks Phil564)\n* Improved: Moderately optimise performance\n* Improved: Texture precision slightly\n\n3DS:\n* Improved: Don't use low memory mode (enables block IDs over 255)\n* Improved: Try to allocate textures in VRAM when possible\n* Improved: Request OS to make more RAM available to ClassiCube (Thanks man-of-eel)\n* Improved: Minorly increase performance\n* Fixed: Can't click on on-screen keyboard in the launcher\n* Fixed: On-screen keyboard not showing when 3D anaglyph is enabled\n* Fixed: UI being affected by fog\n\nNDS:\n* Added: Separate non networking build\n* Added: Fog (thanks rmn20, currently disabled as it interferes with UI)\n* Improved: Unified build that supports both NDS and DSi wifi hardware (thanks BlocksDS)\n* Improved: Use paletted textures (thanks rmn20 for the idea)\n* Improved: Slightly increase performance (thanks rmn20)\n* Improved: Appearance of water outside the map\n* Improved: Texture precision slightly\n* Improved: Water is now partially translucent\n* Improved: Unhandled exception shows crash screen\n* Improved: Colour wifi success/failure messages\n* Fixed: Crashing when downloading resources fails\n* Fixed: Keyboard not working the first time\n* Fixed: Clouds not moving\n* Fixed: Properly set/restore VRAM banks (thanks AntonioND)\n\nDreamcast:\n* Improved: Performance increased\n* Improved: B+L/R now switch hotbar slot\n* Improved: Exiting from launcher now 'Returns to menu'\n* Improved: Reduce VRAM usage with paletted textures\n* Improved: Don't force 50hz in Europe region\n* Improved: RAM reduce minorly reduced\n* Improved: Unhandled exception shows crash screen\n* Fixed: Crashing when playing music\n\nSaturn:\n* Improved: Improve performance\n* Improved: Graphics are mostly rendered in proper order\n* Fixed: Frustum culling not working\n* Fixed: Water/Bedrock outside map not rendering\n* Fixed: Leaking VRAM overtime\n* Fixed: Can't see menus\n\nUWP:\n* Added: Majorly unfinished port\n\nXBOX 360:\n* Fixed: Launcher at least works, in-game doesn't work though\n\nXBOX:\n* Improved: On-screen dialog displays network connection progress/status\n* Improved: Slightly increase default content x/y offset\n* Improved: Clouds now move\n* Fixed: Texture warping\n* Fixed: Can't go back to launcher menu\n* Fixed: Sprites always being drawn solidly\n* Fixed: Switching from splitscreen to singleplayer mode leaving viewport messed up\n* Fixed: Log output on Xemu\n\n32x/GBA:\n* Improved: Majorly optimise performance, still runs as a slideshow\n* Improved: Completely skip launcher and go directly in-game\n* Improved: Technically usable controls\n* Improved: Render world without edge/horizon\n* Fixed: Timing measurement now partially works\n\n---\n\nAtari ST:\n* Added: Barely working port\n\nAmiga:\n* Added: Non-working unfinished port\n\nDOS:\n* Added: Unfinished and slow port\n\nMac OS Classic:\n* Added: 68040 optimised build\n* Improved: Use flat minimal software renderer for 68k build\n* Fixed: 68k build now 'runs' on 4 MB system\n\nWinCE:\n* Added: Mostly working port (Thanks oorange32 and picat)\n\nOS/2:\n* Fixed: Not compiling and crashing at runtime (Thanks josch1710)\n",
+  "updated": "2026-02-17T12:28:45Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/classicube"
+  ],
+  "version": "1.3.8",
+  "version_title": "Release 1.3.8",
+  "website": "https://classicube.net",
+  "wiki": "https://github.com/ClassiCube/ClassiCube/wiki"
+ },
+ {
+  "archive": {
+   "Apotris-(.*)?3(ds|DS)(-.*)?\\.zip": {
+    "Apotris.3dsx + assets": [
+     "3ds/Apotris/assets/",
+     "3ds/Apotris/license/",
+     "3ds/Apotris/Apotris.3dsx"
+    ],
+    "Apotris.cia + assets": [
+     "3ds/Apotris/assets/",
+     "3ds/Apotris/license/",
+     "3ds/Apotris/Apotris.cia"
+    ]
+   }
+  },
+  "author": "akouzoukos",
+  "avatar": "https://gitea.com/avatars/10b706f9ce7051b068a8ad17aa543135506f9893d499cf7435d4c43a604a7663",
+  "categories": [
+   "game"
+  ],
+  "color": "#ffe74a",
+  "color_bg": "#7d2999",
+  "created": "2023-10-27T20:04:22Z",
+  "description": "A free and multiplatform block stacking game",
+  "download_page": "https://akouzoukos.com/apotris/downloads",
+  "downloads": {
+   "Apotris-v4.1.03DS.zip": {
+    "size": 4655795,
+    "size_str": "4 MiB",
+    "url": "https://apotrisstorage.blob.core.windows.net/binaries/Apotris-v4.1.03DS.zip"
+   }
+  },
+  "forgejo": "akouzoukos/apotris",
+  "forgejo_host": "gitea.com",
+  "icon": "https://db.universal-team.net/assets/images/icons/apotris.png",
+  "icon_index": 236,
+  "image": "https://db.universal-team.net/assets/images/images/apotris.png",
+  "image_length": 2552,
+  "license": "AGPL-3.0-only",
+  "license_name": "GNU Affero General Public License v3.0 only",
+  "llm_generation": "unknown",
+  "long_description": "**Apotris** is a free multiplatform open-source block stacking game! What sets Apotris apart from other block stacking games is its extensive customization options, complemented by ultra-responsive controls that let you execute your moves with precision. With 14 unique game modes and a plethora of settings, you can tailor the game to your preferences, ensuring a fresh and challenging experience every time you play. Whether you're a casual player or a hardcore enthusiast, Apotris has something for everyone. <!--You can even battle your friends using the Gameboy Advance Link Cable or Wireless Adapters in 2-Player Battle!--> While Apotris was originally designed for Gameboy Advance, it now supports all kinds of platforms, so between the ports and emulation you can play Apotris on almost anything.\n\nThe game is still actively maintained and new features are added constantly. If you have any suggestions, want to learn about new features or participate in beta releases, join the Apotris discord server!\n\n### Game-modes:\n\n* **Marathon**: Try to get the best score as the game gets faster and faster\n* **Sprint**: Clear lines to reach the goal as fast as possible\n* **Dig**: Dig through lines of garbage\n* **Ultra**: Get the best score in a limited time\n* **Blitz**: Get the best score in a limited time while the game gets faster and faster\n* **Combo**: Aim for the most consecutive clears in a 4-wide well\n* **Survival**: Survive as long as possible while garbage rises from below\n* **Classic**: Old school stacking mechanics\n* **Master**: Get the highest Grade while the game gets aggressively faster\n* **Death**: Try to survive at brutal speeds\n* **Zen**: The goal is to relax...\n* **2P Battle**: Battle your friends through the Link Cable or Wireless Adapter (GBA Only!)\n* **CPU Battle**: Go against an AI opponent\n* **Training**: Try out new strategies or improve your playing using the included Finesse Trainer",
+  "screenshots": [
+   {
+    "description": "01 block stacking gameplay",
+    "url": "https://db.universal-team.net/assets/images/screenshots/apotris/01-block-stacking-gameplay.png"
+   },
+   {
+    "description": "02 configurable screen and scaling",
+    "url": "https://db.universal-team.net/assets/images/screenshots/apotris/02-configurable-screen-and-scaling.png"
+   },
+   {
+    "description": "03 multiple game modes",
+    "url": "https://db.universal-team.net/assets/images/screenshots/apotris/03-multiple-game-modes.png"
+   },
+   {
+    "description": "04 big mode",
+    "url": "https://db.universal-team.net/assets/images/screenshots/apotris/04-big-mode.png"
+   },
+   {
+    "description": "05 skin editor",
+    "url": "https://db.universal-team.net/assets/images/screenshots/apotris/05-skin-editor.png"
+   },
+   {
+    "description": "06 color editor",
+    "url": "https://db.universal-team.net/assets/images/screenshots/apotris/06-color-editor.png"
+   },
+   {
+    "description": "07 title screen",
+    "url": "https://db.universal-team.net/assets/images/screenshots/apotris/07-title-screen.png"
+   }
+  ],
+  "scripts": {
+   "Apotris.3dsx + assets": {
+    "script": [
+     {
+      "file": "https://apotrisstorage.blob.core.windows.net/binaries/Apotris-v4.1.03DS.zip",
+      "output": "/Apotris-v4.1.03DS.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "input": "^3ds/Apotris/assets/",
+      "output": "/3ds/Apotris/assets/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "input": "^3ds/Apotris/license/",
+      "output": "/3ds/Apotris/license/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "input": "^3ds/Apotris/Apotris.3dsx",
+      "output": "%3DSX%/Apotris.3dsx",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "4 MiB"
+   },
+   "Apotris.cia + assets": {
+    "script": [
+     {
+      "file": "https://apotrisstorage.blob.core.windows.net/binaries/Apotris-v4.1.03DS.zip",
+      "output": "/Apotris-v4.1.03DS.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "input": "^3ds/Apotris/assets/",
+      "output": "/3ds/Apotris/assets/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "input": "^3ds/Apotris/license/",
+      "output": "/3ds/Apotris/license/",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "input": "^3ds/Apotris/Apotris.cia",
+      "output": "/Apotris.cia",
+      "type": "extractFile"
+     },
+     {
+      "file": "/Apotris.cia",
+      "type": "installCia"
+     },
+     {
+      "file": "/Apotris.cia",
+      "type": "deleteFile"
+     },
+     {
+      "file": "/Apotris-v4.1.03DS.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "4 MiB"
+   }
+  },
+  "slug": "apotris",
+  "source": "https://gitea.com/akouzoukos/apotris",
+  "stars": 38,
+  "systems": [
+   "3DS"
+  ],
+  "title": "Apotris",
+  "unique_ids": [
+   694037
+  ],
+  "update_notes": "<div class=\"markdown-heading\"><h2 class=\"heading-element\">v4.1.0</h2><a id=\"user-content-v410\" class=\"anchor\" aria-label=\"Permalink: v4.1.0\" href=\"#v410\"><span aria-hidden=\"true\" class=\"octicon octicon-link\"></span></a></div>\n<ul>\n<li>New Port:\n<ul>\n<li>Nintendo 3DS (by Alvin Wong)</li>\n</ul>\n</li>\n<li>Added the Color Editor:\n<ul>\n<li>Lets you create and manage up to 3 custom color palettes.</li>\n</ul>\n</li>\n<li>Added HSV value editing capability to the Gradient Editor.</li>\n<li>Added the ability to skip the current music track from the pause menu.</li>\n<li>Added a timeout (3 minutes) to the demo mode.</li>\n<li>Disabled rumble during demo mode and replays.</li>\n<li>Re-added the option to darken the ghost piece.</li>\n<li>Greatly improved random number generation to prevent cases where the numbers generated weren't very random (by Luigi)</li>\n<li>Fixed Classic Mode DAS wallcharge being overridden by NRS charge.</li>\n<li>Fixed Classic Mode high scores saving based on frames instead of score.</li>\n<li>Fixed ARS T-piece wall kicks.</li>\n<li>Fixed issues with replay playback during Master/Death mode credit rolls.</li>\n<li>Fixed stat accumulation occurring after high score saving.</li>\n<li>Fixed graphics option randomizer (some options were never chosen).</li>\n<li>Fixed bone skin sometimes not being removed after a Death mode game ended.</li>\n<li>Fixed incorrect grade names displayed in Death mode results.</li>\n<li>Fixed enable rumble notification text glitching.</li>\n<li>Fixed potential crash if the music track list was empty.</li>\n<li>Fixed gradient editor rendering issues.</li>\n<li>Fixed demo mode games from counting towards total games started statistic.</li>\n<li>Removed F11 fullscreen keybind (now handled by options).</li>\n<li>(Windows / Linux / Portmaster) Added <em>Shader Support</em>\n</li>\n<li>(PC / Web) Added <em>Controller Support</em>\n</li>\n<li>(PC / PortMaster / Switch) Added <em>Rumble Support</em>\n</li>\n<li>(PC) Added an option for persistent fullscreen mode in Video Settings.</li>\n<li>(PC) Fixed the \"Save Replays\" option in Training Mode not working correctly</li>\n<li>(GBA) Improved Multiplayer stability</li>\n<li>(GBA) Added detection for more flash save chip types.</li>\n<li>(Switch) Added custom music track support</li>\n<li>(Portmaster) Resolved various crashes and issues on specific Portmaster hardware</li>\n</ul>\n",
+  "update_notes_md": "## v4.1.0 \n\n- New Port:\n  - Nintendo 3DS (by Alvin Wong)\n- Added the Color Editor:\n  - Lets you create and manage up to 3 custom color palettes.\n- Added HSV value editing capability to the Gradient Editor.\n- Added the ability to skip the current music track from the pause menu.\n- Added a timeout (3 minutes) to the demo mode.\n- Disabled rumble during demo mode and replays.\n- Re-added the option to darken the ghost piece.\n- Greatly improved random number generation to prevent cases where the numbers generated weren't very random (by Luigi)\n- Fixed Classic Mode DAS wallcharge being overridden by NRS charge.\n- Fixed Classic Mode high scores saving based on frames instead of score.\n- Fixed ARS T-piece wall kicks.\n- Fixed issues with replay playback during Master/Death mode credit rolls.\n- Fixed stat accumulation occurring after high score saving.\n- Fixed graphics option randomizer (some options were never chosen).\n- Fixed bone skin sometimes not being removed after a Death mode game ended.\n- Fixed incorrect grade names displayed in Death mode results.\n- Fixed enable rumble notification text glitching.\n- Fixed potential crash if the music track list was empty.\n- Fixed gradient editor rendering issues.\n- Fixed demo mode games from counting towards total games started statistic.\n- Removed F11 fullscreen keybind (now handled by options).\n- (Windows / Linux / Portmaster) Added *Shader Support*\n- (PC / Web) Added *Controller Support*\n- (PC / PortMaster / Switch) Added *Rumble Support*\n- (PC) Added an option for persistent fullscreen mode in Video Settings.\n- (PC) Fixed the \"Save Replays\" option in Training Mode not working correctly\n- (GBA) Improved Multiplayer stability\n- (GBA) Added detection for more flash save chip types.\n- (Switch) Added custom music track support\n- (Portmaster) Resolved various crashes and issues on specific Portmaster hardware",
+  "updated": "2025-04-19T17:31:10.551Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/apotris"
+  ],
+  "version": "v4.1.0",
+  "website": "https://akouzoukos.com/apotris",
+  "wiki": "https://github.com/akouzoukos/apotris/wiki"
+ },
+ {
+  "author": "mtheall",
+  "avatar": "https://avatars.githubusercontent.com/u/896483?v=4",
+  "categories": [
+   "utility"
+  ],
+  "color": "#001900",
+  "color_bg": "#001900",
+  "created": "2014-11-23T22:40:26Z",
+  "description": "FTP Server for 3DS/Switch",
+  "download_page": "https://github.com/mtheall/ftpd/releases",
+  "downloads": {
+   "ftpd-classic.3dsx": {
+    "size": 312840,
+    "size_str": "305 KiB",
+    "url": "https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd-classic.3dsx"
+   },
+   "ftpd-classic.cia": {
+    "size": 612288,
+    "size_str": "597 KiB",
+    "url": "https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd-classic.cia"
+   },
+   "ftpd.3dsx": {
+    "size": 1408252,
+    "size_str": "1 MiB",
+    "url": "https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd.3dsx"
+   },
+   "ftpd.cia": {
+    "size": 1344448,
+    "size_str": "1 MiB",
+    "url": "https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd.cia"
+   },
+   "ftpd.nds": {
+    "size": 431104,
+    "size_str": "421 KiB",
+    "url": "https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd.nds"
+   }
+  },
+  "github": "mtheall/ftpd",
+  "icon": "https://raw.githubusercontent.com/mtheall/ftpd/master/meta/icon.png",
+  "icon_index": 335,
+  "image": "https://raw.githubusercontent.com/mtheall/ftpd/master/meta/banner.png",
+  "image_length": 2124,
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "unknown",
+  "qr": {
+   "ftpd-classic.cia": "https://db.universal-team.net/assets/images/qr/ftpd-classic-cia.png",
+   "ftpd.cia": "https://db.universal-team.net/assets/images/qr/ftpd-cia.png",
+   "ftpd.nds": "https://db.universal-team.net/assets/images/qr/ftpd-nds.png"
+  },
+  "screenshots": [
+   {
+    "description": "Classic",
+    "url": "https://db.universal-team.net/assets/images/screenshots/ftpd/classic.png"
+   },
+   {
+    "description": "Hosting",
+    "url": "https://db.universal-team.net/assets/images/screenshots/ftpd/hosting.png"
+   },
+   {
+    "description": "Settings",
+    "url": "https://db.universal-team.net/assets/images/screenshots/ftpd/settings.png"
+   },
+   {
+    "description": "Transferring",
+    "url": "https://db.universal-team.net/assets/images/screenshots/ftpd/transferring.png"
+   }
+  ],
+  "slug": "ftpd",
+  "source": "https://github.com/mtheall/ftpd",
+  "stars": 1692,
+  "systems": [
+   "3DS",
+   "DS"
+  ],
+  "title": "ftpd",
+  "unique_ids": [
+   782069
+  ],
+  "update_notes": "<ul dir=\"auto\">\n<li>Center 3DS window selector on top screen</li>\n<li>Update to <a href=\"https://github.com/ocornut/imgui/releases/tag/v1.91.5\">Dear ImGui v1.91.5</a></li>\n<li>General system stability improvements to enhance the user’s experience</li>\n</ul>\n<p dir=\"auto\">Rebuild nro for switch 21.0.0 update</p>",
+  "update_notes_md": "- Center 3DS window selector on top screen\n- Update to [Dear ImGui v1.91.5](https://github.com/ocornut/imgui/releases/tag/v1.91.5)\n- General system stability improvements to enhance the user’s experience\n\nRebuild nro for switch 21.0.0 update",
+  "updated": "2024-11-17T07:29:51Z",
+  "urls": [
+   "https://db.universal-team.net/3ds/ftpd",
+   "https://db.universal-team.net/ds/ftpd"
+  ],
+  "version": "v3.2.1",
+  "version_title": "ftpd pro v3.2.1",
+  "wiki": "https://github.com/mtheall/ftpd/wiki"
+ },
+ {
+  "author": "Pk11",
+  "avatar": "https://avatars.githubusercontent.com/u/41608708?v=4",
+  "categories": [
+   "game"
+  ],
+  "color": "#9cc898",
+  "color_bg": "#638061",
+  "created": "2022-02-14T05:51:08Z",
+  "description": "A clone of Wordle for the Nintendo DS(i)",
+  "download_page": "https://github.com/Epicpkmn11/WordleDS/releases",
+  "downloads": {
+   "WordleDS.cia": {
+    "size": 993472,
+    "size_str": "970 KiB",
+    "url": "https://github.com/Epicpkmn11/WordleDS/releases/download/v3.2.3/WordleDS.cia"
+   },
+   "WordleDS.dsi": {
+    "size": 978880,
+    "size_str": "955 KiB",
+    "url": "https://github.com/Epicpkmn11/WordleDS/releases/download/v3.2.3/WordleDS.dsi"
+   },
+   "WordleDS.nds": {
+    "size": 978880,
+    "size_str": "955 KiB",
+    "url": "https://github.com/Epicpkmn11/WordleDS/releases/download/v3.2.3/WordleDS.nds"
+   }
+  },
+  "github": "Epicpkmn11/WordleDS",
+  "icon": "https://db.universal-team.net/assets/images/icons/wordle-ds.gif",
+  "icon_index": 66,
+  "icon_static": "https://raw.githubusercontent.com/Epicpkmn11/WordleDS/master/resources/icon/icon.0.png",
+  "image": "https://db.universal-team.net/assets/images/icons/wordle-ds.gif",
+  "image_length": 3957,
+  "installed_files": [
+   "%NDS%/WordleDS.dsi",
+   "%NDS%/WordleDS.nds"
+  ],
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "no",
+  "long_description": "A clone of [Wordle](https://www.nytimes.com/games/wordle/index.html) for the Nintendo DS(i). It features the same word each day as the official Wordle and has most of the same features including statistics tracking, high contrast and hard mode options, and even sharable emoji grid via QR code or txt file. Also featuring custom original background music by Rocket Robz.",
+  "no_instructions": true,
+  "qr": {
+   "WordleDS.cia": "https://db.universal-team.net/assets/images/qr/wordleds-cia.png",
+   "WordleDS.dsi": "https://db.universal-team.net/assets/images/qr/wordleds-dsi.png",
+   "WordleDS.nds": "https://db.universal-team.net/assets/images/qr/wordleds-nds.png"
+  },
+  "screenshots": [
+   {
+    "description": "How to play",
+    "url": "https://db.universal-team.net/assets/images/screenshots/wordle-ds/how-to-play.png"
+   },
+   {
+    "description": "Main menu",
+    "url": "https://db.universal-team.net/assets/images/screenshots/wordle-ds/main-menu.png"
+   },
+   {
+    "description": "Settings",
+    "url": "https://db.universal-team.net/assets/images/screenshots/wordle-ds/settings.png"
+   },
+   {
+    "description": "Statistics",
+    "url": "https://db.universal-team.net/assets/images/screenshots/wordle-ds/statistics.png"
+   }
+  ],
+  "scripts": {
+   "WordleDS.cia": [
+    {
+     "file": "WordleDS.cia",
+     "output": "/WordleDS.cia",
+     "repo": "Epicpkmn11/WordleDS",
+     "type": "downloadRelease"
+    },
+    {
+     "file": "https://wordle.xn--rck9c.xn--tckwe/words.php?mode=mod.json",
+     "output": "/_nds/WordleDS/Wordle DS/mod.json",
+     "type": "downloadFile"
+    },
+    {
+     "file": "/WordleDS.cia",
+     "type": "installCia"
+    },
+    {
+     "file": "/WordleDS.cia",
+     "type": "deleteFile"
+    }
+   ],
+   "WordleDS.dsi": [
+    {
+     "file": "WordleDS.dsi",
+     "output": "%NDS%/WordleDS.dsi",
+     "repo": "Epicpkmn11/WordleDS",
+     "type": "downloadRelease"
+    },
+    {
+     "file": "https://wordle.xn--rck9c.xn--tckwe/words.php?mode=mod.json",
+     "output": "/_nds/WordleDS/Wordle DS/mod.json",
+     "type": "downloadFile"
+    }
+   ],
+   "WordleDS.nds": [
+    {
+     "file": "WordleDS.nds",
+     "output": "%NDS%/WordleDS.nds",
+     "repo": "Epicpkmn11/WordleDS",
+     "type": "downloadRelease"
+    },
+    {
+     "file": "https://wordle.xn--rck9c.xn--tckwe/words.php?mode=mod.json",
+     "output": "/_nds/WordleDS/Wordle DS/mod.json",
+     "type": "downloadFile"
+    }
+   ],
+   "[extra] Update word list": [
+    {
+     "file": "https://wordle.xn--rck9c.xn--tckwe/words.php?mode=mod.json",
+     "output": "/_nds/WordleDS/Wordle DS/mod.json",
+     "type": "downloadFile"
+    }
+   ],
+   "[twlmenu boxart] KWRA.png": [
+    {
+     "file": "https://raw.githubusercontent.com/Epicpkmn11/WordleDS/main/resources/boxart/WordleDS.nds.png",
+     "output": "/_nds/TWiLightMenu/boxart/KWRA.png",
+     "type": "downloadFile"
+    }
+   ],
+   "[twlmenu boxart] WordleDS.nds.png": [
+    {
+     "file": "https://raw.githubusercontent.com/Epicpkmn11/WordleDS/main/resources/boxart/WordleDS.nds.png",
+     "output": "/_nds/TWiLightMenu/boxart/WordleDS.nds.png",
+     "type": "downloadFile"
+    }
+   ]
+  },
+  "slug": "wordle-ds",
+  "source": "https://github.com/Epicpkmn11/WordleDS",
+  "stars": 72,
+  "systems": [
+   "DS"
+  ],
+  "title": "Wordle DS",
+  "update_notes": "<p dir=\"auto\">This is a very minor release, but it does fix a rather important bug.</p>\n<ul dir=\"auto\">\n<li>Fixes mods not being usable because the git release tag was included in the version number...</li>\n<li>Adds support for melonDS without DLDI and I suppose dslink by downloading words to RAM if no SD is found</li>\n<li>Updates bundled words to all include all currently available</li>\n</ul>\n<hr>\n<p dir=\"auto\"><code class=\"notranslate\">WordleDS.nds</code> and <code class=\"notranslate\">WordleDS.dsi</code> are identical except that the <code class=\"notranslate\">.dsi</code> build has a title ID so it can be installed using <a href=\"https://github.com/Epicpkmn11/NTM/releases\">NTM</a> while the <code class=\"notranslate\">.nds</code> build doesn't so it works on flashcards. The <code class=\"notranslate\">.cia</code> build can be used to install to the 3DS HOME Menu. Here's QRs for FBI and dsidl:</p>\n<markdown-accessiblity-table><table role=\"table\">\n<thead>\n<tr>\n<th>WordleDS.cia</th>\n<th>WordleDS.dsi</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://github.com/user-attachments/assets/f486f652-d8c0-4f3b-8a50-9eeecd249aef\"><img src=\"https://github.com/user-attachments/assets/f486f652-d8c0-4f3b-8a50-9eeecd249aef\" alt=\"QR for WordleDS.cia\" style=\"max-width: 100%;\"></a></td>\n<td><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://github.com/user-attachments/assets/ba7326f5-2140-40fc-bb0e-67ffbb23ff6a\"><img src=\"https://github.com/user-attachments/assets/ba7326f5-2140-40fc-bb0e-67ffbb23ff6a\" alt=\"QR for WordleDS.dsi\" style=\"max-width: 100%;\"></a></td>\n</tr>\n</tbody>\n</table></markdown-accessiblity-table>",
+  "update_notes_md": "This is a very minor release, but it does fix a rather important bug.\n\n- Fixes mods not being usable because the git release tag was included in the version number...\n- Adds support for melonDS without DLDI and I suppose dslink by downloading words to RAM if no SD is found\n- Updates bundled words to all include all currently available\n\n---\n\n`WordleDS.nds` and `WordleDS.dsi` are identical except that the `.dsi` build has a title ID so it can be installed using [NTM](https://github.com/Epicpkmn11/NTM/releases) while the `.nds` build doesn't so it works on flashcards. The `.cia` build can be used to install to the 3DS HOME Menu. Here's QRs for FBI and dsidl:\n\n| WordleDS.cia | WordleDS.dsi |\n| ------------ | ------------ |\n| ![QR for WordleDS.cia][cia-qr] | ![QR for WordleDS.dsi][dsi-qr] |\n\n[cia-qr]: https://github.com/user-attachments/assets/f486f652-d8c0-4f3b-8a50-9eeecd249aef\n[dsi-qr]: https://github.com/user-attachments/assets/ba7326f5-2140-40fc-bb0e-67ffbb23ff6a",
+  "updated": "2026-06-10T15:23:42Z",
+  "urls": [
+   "https://db.universal-team.net/ds/wordle-ds"
+  ],
+  "version": "v3.2.3",
+  "version_title": "Minor improvements",
+  "website": "https://wordle.xn--rck9c.xn--tckwe",
+  "wiki": "https://github.com/Epicpkmn11/WordleDS/wiki"
+ },
+ {
+  "author": "Pk11",
+  "avatar": "https://avatars.githubusercontent.com/u/41608708?v=4",
+  "categories": [
+   "utility"
+  ],
+  "color": "#676967",
+  "color_bg": "#676967",
+  "created": "2020-08-03T07:14:58Z",
+  "description": "A simple example homebrew app that can use the DSi's cameras",
+  "download_page": "https://github.com/Epicpkmn11/dsi-camera/releases",
+  "downloads": {
+   "dsi-camera.cia": {
+    "size": 302336,
+    "size_str": "295 KiB",
+    "url": "https://github.com/Epicpkmn11/dsi-camera/releases/download/v1.1.0/dsi-camera.cia"
+   },
+   "dsi-camera.nds": {
+    "size": 287744,
+    "size_str": "281 KiB",
+    "url": "https://github.com/Epicpkmn11/dsi-camera/releases/download/v1.1.0/dsi-camera.nds"
+   }
+  },
+  "github": "Epicpkmn11/dsi-camera",
+  "icon": "https://db.universal-team.net/assets/images/icons/dsi-camera.png",
+  "icon_index": 67,
+  "image": "https://db.universal-team.net/assets/images/icons/dsi-camera.png",
+  "image_length": 630,
+  "license": "unlicense",
+  "license_name": "The Unlicense",
+  "llm_generation": "no",
+  "long_description": "This is just a simple proof of concept/example to show off the DSi's cameras being used in a homebrew app, and an open-source example for initializing the cameras in C/C++. Currently it can show both cameras and save a picture as to `sd:/DCIM/100DSI00/IMG_####.PNG`.\n\n![Example image](https://github.com/Epicpkmn11/dsi-camera/raw/master/resources/example.png)",
+  "qr": {
+   "dsi-camera.cia": "https://db.universal-team.net/assets/images/qr/dsi-camera-cia.png",
+   "dsi-camera.nds": "https://db.universal-team.net/assets/images/qr/dsi-camera-nds.png"
+  },
+  "screenshots": [
+   {
+    "description": "Taking a picture",
+    "url": "https://db.universal-team.net/assets/images/screenshots/dsi-camera/taking-a-picture.png"
+   }
+  ],
+  "slug": "dsi-camera",
+  "source": "https://github.com/Epicpkmn11/dsi-camera",
+  "stars": 58,
+  "systems": [
+   "DS"
+  ],
+  "title": "dsi-camera",
+  "update_notes": "<h3 dir=\"auto\">What's new?</h3>\n<ul dir=\"auto\">\n<li>Photos are now saved at 640×480! (Thanks to <a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/Arisotura/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/Arisotura\">@Arisotura</a> once again for pointing out the obvious fix lol)</li>\n<li>Photos are now saved as 24-bit PNGs instead of 15-bit BMPs, as YUV mode is now used for higher quality</li>\n<li>Photos are new saved to <code class=\"notranslate\">sd:/DCIM/100DSI00/IMG_####.PNG</code>, allowing for multiple images to be taken</li>\n<li>Changed the source to be 100% C, since it was already effectively C but using C++ files</li>\n</ul>",
+  "update_notes_md": "### What's new?\n- Photos are now saved at 640×480! (Thanks to @Arisotura once again for pointing out the obvious fix lol)\n- Photos are now saved as 24-bit PNGs instead of 15-bit BMPs, as YUV mode is now used for higher quality\n- Photos are new saved to `sd:/DCIM/100DSI00/IMG_####.PNG`, allowing for multiple images to be taken\n- Changed the source to be 100% C, since it was already effectively C but using C++ files",
+  "updated": "2022-04-19T06:56:09Z",
+  "urls": [
+   "https://db.universal-team.net/ds/dsi-camera"
+  ],
+  "version": "v1.1.0",
+  "version_title": "640×480"
+ },
+ {
+  "archive": {
+   "git_b1ddc811030fe2a3ef3e97187f0eeec4a4b3e353.zip": {
+    "lolSnes.nds": [
+     "lolSnes.nds"
+    ]
+   },
+   "lolsnes.7z": {
+    "lolSnes.nds": [
+     "lolsnes/lolSnes.nds"
+    ]
+   }
+  },
+  "author": "Arisotura",
+  "avatar": "https://avatars.githubusercontent.com/u/1311867?v=4",
+  "categories": [
+   "emulator"
+  ],
+  "color": "#7c9187",
+  "color_bg": "#6d8077",
+  "created": "2013-08-02T12:14:31Z",
+  "description": "SNES emulator for DS",
+  "download_page": "http://lolsnes.kuribo64.net/download.php",
+  "downloads": {
+   "lolsnes.7z": {
+    "size": 104976,
+    "size_str": "102 KiB",
+    "url": "http://lolsnes.kuribo64.net/lolsnes.7z"
+   }
+  },
+  "github": "Arisotura/lolSnes",
+  "icon": "https://db.universal-team.net/assets/images/icons/lolsnes.png",
+  "icon_index": 15,
+  "image": "https://db.universal-team.net/assets/images/images/lolsnes.png",
+  "image_length": 7997,
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "no",
+  "nightly": {
+   "download_page": "http://lolsnes.kuribo64.net/download.php",
+   "downloads": {
+    "git_b1ddc811030fe2a3ef3e97187f0eeec4a4b3e353.zip": {
+     "url": "http://lolsnes.kuribo64.net/gitbuilds/git_b1ddc811030fe2a3ef3e97187f0eeec4a4b3e353.zip"
+    }
+   }
+  },
+  "scripts": {
+   "[git] lolSnes.nds": {
+    "script": [
+     {
+      "file": "http://lolsnes.kuribo64.net/gitbuilds/git_b1ddc811030fe2a3ef3e97187f0eeec4a4b3e353.zip",
+      "output": "/git_b1ddc811030fe2a3ef3e97187f0eeec4a4b3e353.zip",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/git_b1ddc811030fe2a3ef3e97187f0eeec4a4b3e353.zip",
+      "input": "^lolSnes.nds",
+      "output": "%NDS%/lolSnes.nds",
+      "type": "extractFile"
+     },
+     {
+      "file": "/git_b1ddc811030fe2a3ef3e97187f0eeec4a4b3e353.zip",
+      "type": "deleteFile"
+     }
+    ],
+    "type": "git"
+   },
+   "lolSnes.nds": {
+    "script": [
+     {
+      "file": "http://lolsnes.kuribo64.net/lolsnes.7z",
+      "output": "/lolsnes.7z",
+      "type": "downloadFile"
+     },
+     {
+      "file": "/lolsnes.7z",
+      "input": "^lolsnes/lolSnes.nds",
+      "output": "%NDS%/lolSnes.nds",
+      "type": "extractFile"
+     },
+     {
+      "file": "/lolsnes.7z",
+      "type": "deleteFile"
+     }
+    ],
+    "size": "102 KiB"
+   }
+  },
+  "slug": "lolsnes",
+  "source": "https://github.com/Arisotura/lolSnes",
+  "stars": 72,
+  "systems": [
+   "DS"
+  ],
+  "title": "lolSnes",
+  "updated": "2013-08-31T00:23:48Z",
+  "urls": [
+   "https://db.universal-team.net/ds/lolsnes"
+  ],
+  "version": "v1.0",
+  "website": "http://lolsnes.kuribo64.net"
+ },
+ {
+  "author": "DS-Homebrew",
+  "avatar": "https://avatars.githubusercontent.com/u/46971470?v=4",
+  "categories": [
+   "emulator"
+  ],
+  "color": "#585758",
+  "color_bg": "#585758",
+  "created": "2016-09-11T19:50:26Z",
+  "description": "Boot an nds file",
+  "download_page": "https://github.com/DS-Homebrew/nds-bootstrap/releases",
+  "downloads": {
+   "nds-bootstrap.7z": {
+    "size": 837105,
+    "size_str": "817 KiB",
+    "url": "https://github.com/DS-Homebrew/nds-bootstrap/releases/download/v2.16.0/nds-bootstrap.7z"
+   },
+   "nds-bootstrap.zip": {
+    "size": 1204507,
+    "size_str": "1 MiB",
+    "url": "https://github.com/DS-Homebrew/nds-bootstrap/releases/download/v2.16.0/nds-bootstrap.zip"
+   }
+  },
+  "github": "DS-Homebrew/nds-bootstrap",
+  "icon": "https://db.universal-team.net/assets/images/icons/nds-bootstrap.png",
+  "icon_index": 51,
+  "image": "https://i.imgur.com/BFIu7xX.png",
+  "installed_files": [
+   "/_nds/nds-bootstrap-release.nds"
+  ],
+  "license": "gpl-3.0",
+  "license_name": "GNU General Public License v3.0",
+  "llm_generation": "no",
+  "long_description": "nds-bootstrap is an open-source application that allows Nintendo DS/DSi ROMs and homebrew to be natively utilised rather than using an emulator. nds-bootstrap works on Nintendo DSi/3DS SD cards through CFW and on Nintendo DS through flashcarts.",
+  "scripts": {
+   "nds-bootstrap": [
+    {
+     "file": "nds-bootstrap.7z",
+     "output": "/nds-bootstrap.7z",
+     "repo": "DS-Homebrew/nds-bootstrap",
+     "type": "downloadRelease"
+    },
+    {
+     "file": "/nds-bootstrap.7z",
+     "input": "",
+     "output": "/_nds/",
+     "type": "extractFile"
+    },
+    {
+     "file": "/nds-bootstrap.7z",
+     "type": "deleteFile"
+    }
+   ]
+  },
+  "slug": "nds-bootstrap",
+  "source": "https://github.com/DS-Homebrew/nds-bootstrap",
+  "stars": 1381,
+  "systems": [
+   "DS"
+  ],
+  "title": "nds-bootstrap",
+  "update_notes": "<p dir=\"auto\">Included in <a href=\"https://github.com/DS-Homebrew/TWiLightMenu/releases/tag/v27.24.0\"><strong>TW</strong>i<strong>L</strong>ight Menu++ v27.24.0</a></p>\n<p dir=\"auto\">Instructions:</p>\n<ol dir=\"auto\">\n<li>Download the <code class=\"notranslate\">.7z</code> or <code class=\"notranslate\">.zip</code> file.</li>\n<li>Extract the nds-bootstrap <code class=\"notranslate\">.nds</code> and <code class=\"notranslate\">.ver</code> files, to <code class=\"notranslate\">root:/_nds/</code>.</li>\n</ol>\n<p dir=\"auto\"><strong>B4DS</strong> = nds-bootstrap on DS flashcards</p>\n<h3 dir=\"auto\">What's new?</h3>\n<ul dir=\"auto\">\n<li><strong>3DS SD Card:</strong> When quitting the game from the in-game menu when running a DS(i) game in DS mode, it'll no longer return to TWLMenu++ by default. A file called <code class=\"notranslate\">srFrontendId.bin</code> is now read from <code class=\"notranslate\">sd:/_nds/nds-bootstrap/</code> to determine which frontend to boot (ex. TWLMenu++ or akmenu-next) when quitting the game.\n<ul dir=\"auto\">\n<li><code class=\"notranslate\">srBackendId.bin</code> is used for resetting a few games/apps such as <em>Nintendo DS Browser</em>.</li>\n<li>If <code class=\"notranslate\">srFrontendId.bin</code> is not found, it'll return to the 3DS HOME Menu.</li>\n</ul>\n</li>\n<li><strong>B4DS:</strong> The original <em>Bloons</em> now runs on DS &amp; DS Lite consoles! (Saving does not work.) (DSiWare Total: 501 -&gt; 502)</li>\n<li><strong>3DS:</strong> Added ROM pre-load settings for <em>Retro Game Challenge</em> (USA).</li>\n<li>DSi-Exclusive/DSiWare ROMs are no longer used as donor ROMs for DSi-Enhanced games (outside of DSiWare exploits where they're still used there).</li>\n<li>Various: Updated in-game menu translations.</li>\n</ul>\n<h3 dir=\"auto\">Bug fixes</h3>\n<ul dir=\"auto\">\n<li><a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/taxicat1/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/taxicat1\">@taxicat1</a>: New \"AP-fix\" for <em>Houkago Shounen</em> which fixes soft-locking after saving.</li>\n<li>Fixed a (somewhat) long-standing bug which caused DSi sound data to not be detected in apps such as <em>Mario Clock</em> &amp; <em>Animal Crossing Clock</em>.</li>\n<li><strong>B4DS:</strong> Added alternate DSTWO DLDI driver to work around red error screen. (Thanks to stl25 for letting me know about that driver!)</li>\n<li>Fixed <em>Disgaea DS</em> having these issues when using a screen color filter and/or DS Phat colors:\n<ul dir=\"auto\">\n<li>Top screen not refreshing</li>\n<li>Bottom screen displaying nothing</li>\n</ul>\n</li>\n</ul>",
+  "update_notes_md": "Included in [**TW**i**L**ight Menu++ v27.24.0](https://github.com/DS-Homebrew/TWiLightMenu/releases/tag/v27.24.0)\n\nInstructions:\n1. Download the `.7z` or `.zip` file.\n2. Extract the nds-bootstrap `.nds` and `.ver` files, to `root:/_nds/`.\n\n**B4DS** = nds-bootstrap on DS flashcards\n\n### What's new?\n- **3DS SD Card:** When quitting the game from the in-game menu when running a DS(i) game in DS mode, it'll no longer return to TWLMenu++ by default. A file called `srFrontendId.bin` is now read from `sd:/_nds/nds-bootstrap/` to determine which frontend to boot (ex. TWLMenu++ or akmenu-next) when quitting the game.\n    - `srBackendId.bin` is used for resetting a few games/apps such as *Nintendo DS Browser*.\n    - If `srFrontendId.bin` is not found, it'll return to the 3DS HOME Menu.\n- **B4DS:** The original *Bloons* now runs on DS & DS Lite consoles! (Saving does not work.) (DSiWare Total: 501 -> 502)\n- **3DS:** Added ROM pre-load settings for *Retro Game Challenge* (USA).\n- DSi-Exclusive/DSiWare ROMs are no longer used as donor ROMs for DSi-Enhanced games (outside of DSiWare exploits where they're still used there).\n- Various: Updated in-game menu translations.\n\n### Bug fixes\n- @taxicat1: New \"AP-fix\" for *Houkago Shounen* which fixes soft-locking after saving.\n- Fixed a (somewhat) long-standing bug which caused DSi sound data to not be detected in apps such as *Mario Clock* & *Animal Crossing Clock*.\n- **B4DS:** Added alternate DSTWO DLDI driver to work around red error screen. (Thanks to stl25 for letting me know about that driver!)\n- Fixed *Disgaea DS* having these issues when using a screen color filter and/or DS Phat colors:\n    - Top screen not refreshing\n    - Bottom screen displaying nothing",
+  "updated": "2026-05-23T07:18:51Z",
+  "urls": [
+   "https://db.universal-team.net/ds/nds-bootstrap"
+  ],
+  "version": "v2.16.0",
+  "version_title": "v2.16.0: Rocket Robz' Birthday Release",
+  "wiki": "https://wiki.ds-homebrew.com/nds-bootstrap/"
+ }
+]

@@ -1,0 +1,60 @@
+[plugin]
+slug        = "universal-db"
+name        = "Universal-DB (3DS/DS homebrew)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "universal_db.search:Search"
+importer = "universal_db.importer:Importer"
+
+# Two jobs, and they use different hosts.
+#
+# 1. Reading the database. `db.universal-team.net/data/full.json` is the
+#    whole catalogue in one 1.66 MB response -- the site publishes no
+#    per-system or paginated JSON (data/3ds.json, data/ds.json and
+#    data/index.json all 404), so one request is both the cheapest and the
+#    only way to ask.
+#
+# 2. Fetching a release. Universal-DB does not host the homebrew; each
+#    entry points at wherever its author publishes, so the download hosts
+#    are the authors' own. The list below is not a guess: it is every host
+#    reached by a payload this plugin will actually plan, computed over all
+#    400 live entries on 2026-07-29. `www.chishm.com`,
+#    `buildbot.libretro.com` and `downloads.scummvm.org` appear in the data
+#    and are deliberately absent, because no entry that resolves to a
+#    payload uses them.
+#
+# `*.githubusercontent.com` is there because a GitHub release URL is a 302:
+# `github.com/.../releases/download/...` answers `Location:
+# release-assets.githubusercontent.com/...` (verified live), and the broker
+# re-checks every hop, so an undeclared redirect target is a failed
+# download. The wildcard rather than that one name because GitHub has
+# renamed this host before -- it was `objects.githubusercontent.com` -- and
+# `raw.githubusercontent.com` is separately used by three entries that
+# publish straight out of a repository.
+[permissions]
+network = [
+    "db.universal-team.net",
+    "github.com",
+    "*.githubusercontent.com",
+    "gitlab.com",
+    "codeberg.org",
+    "gbatemp.net",
+    "cdn.classicube.net",
+    "apotrisstorage.blob.core.windows.net",
+]
+romm_api = []
+
+[config]
+# Restrict to one kind of entry. Universal-DB's own vocabulary is `game`,
+# `app`, `utility`, `emulator`, `media` and `save-tool` (plus three this
+# plugin never shows at all -- see README). Empty means no filter.
+category = { type = "str", default = "" }
+# Hide entries whose licence the database does not state. Off by default:
+# an unstated licence is a fact worth showing, not a reason to pretend the
+# entry is not there. On, it makes this plugin show only what carries a
+# licence in the data.
+require_license = { type = "bool", default = false }
+collection = { type = "str", default = "Homebrew" }
