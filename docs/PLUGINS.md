@@ -307,7 +307,7 @@ Proposes a curated title — `Tetris`, not `Tetris (World) (Rev A)` — and a co
 
 > **API key required** (kept out of the Hub's plain config as a `secret`; `rom-hub plugin secret list` says what that protects on your host)
 
-Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, stored in clear text.
+Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, held as a `secret` so it stays out of the Hub's config and out of command output.
 
 **Source terms.** An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.
 

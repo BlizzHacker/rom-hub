@@ -342,7 +342,7 @@
       "search_only": false,
       "key_required": true,
       "in_tree": false,
-      "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, stored in clear text.",
+      "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key, held as a `secret` so it stays out of the Hub's config and out of command output.",
       "terms": "An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.",
       "comments": "Needs a RetroAchievements web API key. `api_key` is declared `type = \"secret\"`, so the Hub keeps it out of `state.json` and redacts it from every command's output; set it with `rom-hub plugin secret set retroachievements api_key`, which prompts rather than taking it as an argument. What the storage itself protects depends on your host and is printed by `rom-hub plugin secret list` — an OS keyring where there is one, otherwise an encrypted file whose key, by default, sits next to it, which is obfuscation rather than secrecy and is described that way. The key is per-account, read-only and resettable; rotate it if the machine changes hands. Without a key the plugin returns nothing; that is the missing key, not a fault."
     },
