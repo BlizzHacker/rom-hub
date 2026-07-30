@@ -11,45 +11,77 @@ Implements the RPP v1 `metadata` capability: identifies a ROM by its hash on
 ## Install
 
     rom-hub plugin install ./plugins-dev/retroachievements
+    rom-hub plugin secret set retroachievements api_key     # prompts; nothing echoed
     rom-hub enrich retroachievements 42 --source-id <md5>
 
-## ⚠ The API key is stored in plain text
+## Where the API key is kept
 
-**Read this before you paste a key.**
+`api_key` is declared `type = "secret"`, so the Hub does **not** put it in its
+plain config. Concretely:
 
-RPP v1 reserves a `secret` config type for credentials. **This host does not
-implement it** — `rom_hub/manifest.py` rejects any field declaring
-`type = "secret"` with *"reserved in RPP v1 but not implemented in Phase 1"*.
-So `api_key` is declared as a plain `str`, and the Hub stores it **in the clear**
-in its plugin config on disk, alongside every other setting. Anything that can
-read that file can read your key.
+- it is not in `state.json`, the file that holds every other setting and the
+  one people open, dump, screenshot and commit;
+- it is redacted from `rom-hub plugin list`, `plugin config`, `plugin secret
+  list`, `browse`, `backend info`, `jobs` and `--help`, and scrubbed out of any
+  error message the Hub builds — including this plugin's own stderr if it ever
+  prints the key while crashing;
+- `rom-hub plugin secret set` prompts on a terminal, or reads stdin or an
+  environment variable, so it need never enter your shell history. Passing
+  `--value` still works and warns you that it just did.
 
-That is stated here rather than worked around, because an operator who believes
-a credential is protected treats it differently from one who knows it is not.
+**What that protects depends on your host, and the honest answer is printed by
+`rom-hub plugin secret list`.** Read it once rather than assuming:
 
-What follows from it:
+| Store | What it means |
+|---|---|
+| OS keyring | Whatever your OS gives. A locked login keychain is a real boundary; a desktop keyring unlocked at login is readable by anything running as you. |
+| file + `ROM_HUB_SECRET_KEY` | Encrypted with a key supplied from outside the box (a Docker secret, a systemd credential). The file at rest is genuinely unreadable without it. |
+| file, generated key (**the default**) | Encrypted, but the key sits in the same directory. That is **obfuscation, not secrecy** — whoever can read one file can read the other. It buys you that the key is not in `state.json` and not in any command's output. It does not survive somebody reading the directory. |
+
+On a headless Docker box — this Hub's primary deployment — you get the third
+row unless you set `ROM_HUB_SECRET_KEY`. So the advice that mattered before
+still matters, for a smaller reason:
 
 - A RetroAchievements web API key is **per-account, read-only, and resettable**.
   It is not your password and it cannot spend anything. Get it from your RA
   profile under **Settings → Keys**, where you can also reset it at any time.
-- Treat the one you put here as disposable. Reset it if the machine changes
+- Treat the one you put here as rotatable. Reset it if the machine changes
   hands, and do not reuse it anywhere that matters.
-- A test in this repo (`test_the_secret_config_type_really_is_rejected_by_this_host`)
-  pins the claim. If a later phase implements `secret`, that test fails and this
-  warning stops being true at the same moment.
+
+**What is not claimed.** The plugin *receives* the key — it has to, to make its
+request — and a plugin that chose to print its own credential into a search
+result or POST it somewhere could. That is unchanged by any of the above and is
+not what this protects against: a plugin already runs arbitrary code. What
+changed is accidental disclosure, which is the way credentials actually escape.
+
+### Upgrading from a version that stored it in the clear
+
+Nothing breaks and nothing is silently dropped. If your `state.json` still has
+a plaintext `api_key` from before this type existed, the next command that runs
+this plugin moves it into the secret store, removes it from the plain config,
+and prints one line on stderr saying so — naming the field, never the value.
+Until it does, the value is still redacted from every command's output and
+`rom-hub plugin secret list` flags it as `STILL IN PLAIN CONFIG`.
+
+**Rotate it anyway** if that `state.json` was ever committed, shared or backed
+up. Moving a credential out of a file does not move it out of the copies.
 
 ## Config
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `api_key` | `str` | `""` | your RA web API key — **stored in the clear**, see above |
+| `api_key` | `secret` | *(none)* | your RA web API key — see [above](#where-the-api-key-is-kept). A `secret` may not declare a default: a manifest is a public file in a git repo |
 | `username` | `str` | `""` | your RA username, sent as `z`. Optional: RA's docs mark only `y` required, but RA's own client sends both |
 | `set_name` | `bool` | `true` | write the matched game's title into RomM's `name` |
 | `only_with_achievements` | `bool` | `true` | ask RA for `f=1`, the smaller list |
 
 With no `api_key` the plugin refuses **before making any request**, with a
-message naming the config key and where to get a value for it — not a 401, not
-a `KeyError`.
+message naming the config key, where to get a value for it, and the command
+that stores one — not a 401, not a `KeyError`.
+
+An unset secret arrives as the empty string rather than as a missing key, so
+that refusal is this plugin's own sentence and not a `KeyError` raised from
+inside it.
 
 ## What it sets
 

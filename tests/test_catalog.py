@@ -190,8 +190,12 @@ def test_search_only_and_key_required_are_surfaced_in_the_page():
     # be wrong where "cannot import" is exactly right.
     assert "cannot import" in md
     assert "search-only" not in md
-    # The clear-text storage is the part that must not be buried.
-    assert "clear text" in md.lower()
+    # The storage question is the part that must not be buried. It used to
+    # be "clear text"; now that `secret` is implemented the directory
+    # points at the command that prints the honest, per-host answer rather
+    # than repeating a claim it cannot check.
+    assert "clear text" not in md.lower()
+    assert "plugin secret list" in md
 
 
 def test_the_api_key_really_is_not_stored_in_clear_text_any_more():

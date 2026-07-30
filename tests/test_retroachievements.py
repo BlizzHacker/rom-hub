@@ -193,7 +193,11 @@ def test_no_api_key_is_an_actionable_refusal_before_any_request():
     message = str(exc.value)
     assert "api_key" in message
     assert "Settings -> Keys" in message, "it must say where to get one"
-    assert "plain text" in message, "and that the Hub does not protect it"
+    assert "plugin secret set" in message, "and the command that stores one"
+    assert "plain text" not in message, (
+        "the key is no longer stored in plain text; a refusal still saying so "
+        "would be the warning outliving the problem"
+    )
     assert http.calls == [], "an unconfigured plugin costs no request"
 
 
