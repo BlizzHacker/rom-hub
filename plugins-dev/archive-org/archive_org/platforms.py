@@ -207,3 +207,21 @@ def platform_for(emulator: str) -> str | None:
     if not isinstance(emulator, str):
         return None
     return EMULATOR_PLATFORMS.get(emulator.strip().lower())
+
+
+def emulators_for(platform: str) -> list[str]:
+    """Every Archive.org emulator id that maps to one RomM slug.
+
+    The table read backwards, which is what a `--platform` filter needs:
+    an operator asking for `genesis` means all three of `genesis`,
+    `megadriv` and `megadrij`, and asking for `sms` means `sms`, `smsj`
+    and `sms-phaser`. Sorted so the query a search builds is stable and a
+    test can assert on it.
+
+    Empty means this source has nothing filed under that platform, which
+    a caller must report rather than silently widen into "everything".
+    """
+    if not isinstance(platform, str):
+        return []
+    wanted = platform.strip().lower()
+    return sorted(e for e, slug in EMULATOR_PLATFORMS.items() if slug == wanted)
