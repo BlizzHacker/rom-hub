@@ -10,6 +10,19 @@ its own manifest.toml, read at install time by the registry and enforced by the
 broker. If the catalog could grant permissions, whoever hosts it could silently
 widen every plugin's reach — so the `network` field here is advisory, shown to
 a human deciding whether to install, and never consulted at runtime.
+
+That paragraph used to describe a file shipped in this repository, where it
+was true but hard to test the importance of. It now describes a file that
+may have been fetched over the network from a stranger's server —
+`rom_hub.catalog_sources` is the operator's ordered list of them — so it is
+the property the whole feature rests on rather than a nicety.
+
+**Which is why this module parses like `manifest.py` and not like a config
+reader.** Everything unknown is rejected: an entry carrying a field this
+build does not know about is refused rather than ignored, so a catalog
+cannot ship a key in the hope that a later host grows a meaning for it and
+nobody re-reads the entry in between. `parse_catalog` is the only door, and
+it is the same door for the bundled file and for a fetched one.
 """
 
 import json
@@ -49,6 +62,16 @@ _REQUIRED_FIELDS = (
 # doing half the job.
 _REQUIRED_TEXT = ("description", "terms")
 _REQUIRED_FLAGS = ("search_only", "key_required", "in_tree")
+
+#: Everything a catalog document may say at the top level. Nothing else is
+#: accepted -- see `parse_catalog`.
+#:
+#: `updated` is the directory's own "last edited" date, for a human reading
+#: the raw file. It is deliberately **not** what staleness is computed from:
+#: for a fetched catalog that is the moment the Hub itself fetched it (see
+#: `catalog_sources.SourceStatus`), because a date written by whoever wrote
+#: the file is a claim rather than an observation.
+_TOP_LEVEL_KEYS = frozenset({"catalog_version", "plugins", "updated"})
 
 
 class CatalogError(Exception):
@@ -127,63 +150,98 @@ class CatalogEntry:
         return out
 
 
-def _check_https(entry: dict, field: str) -> None:
+def _check_https(entry: dict, field: str, where: str = "") -> None:
     value = entry.get(field, "")
     if not isinstance(value, str) or not value.startswith("https://"):
         raise CatalogError(
-            f"{entry.get('slug', '?')}: {field} must be an https URL, got {value!r}"
+            f"{where}{entry.get('slug', '?')}: {field} must be an https URL, "
+            f"got {value!r}"
         )
 
 
-def parse_catalog(raw: dict) -> list[CatalogEntry]:
+def parse_catalog(raw: dict, origin: str = "") -> list[CatalogEntry]:
+    """Validate a whole catalog, or refuse it.
+
+    `origin` names where these bytes came from -- a source name, for a
+    catalog fetched from one. With several directories in play, "an entry
+    is missing `terms`" is not an actionable message unless it also says
+    whose entry.
+    """
+    where = f"{origin}: " if origin else ""
+
     if not isinstance(raw, dict):
-        raise CatalogError("catalog must be a JSON object")
+        raise CatalogError(f"{where}catalog must be a JSON object")
 
     version = str(raw.get("catalog_version", ""))
     if version != SUPPORTED_CATALOG_VERSION:
         raise CatalogError(
-            f"unsupported catalog_version {version!r}: this build reads v"
+            f"{where}unsupported catalog_version {version!r}: this build reads v"
             f"{SUPPORTED_CATALOG_VERSION}"
+        )
+
+    # Default-deny at the top level too. A catalog that carries a key this
+    # build does not read is a catalog making a claim nobody will check --
+    # the exact shape of a field that means nothing here and something
+    # elsewhere.
+    unknown_top = sorted(set(raw) - _TOP_LEVEL_KEYS)
+    if unknown_top:
+        raise CatalogError(
+            f"{where}catalog has unknown top-level key(s) {unknown_top}; "
+            f"permitted: {sorted(_TOP_LEVEL_KEYS)}"
         )
 
     plugins = raw.get("plugins")
     if not isinstance(plugins, list):
-        raise CatalogError("catalog must contain a plugins array")
+        raise CatalogError(f"{where}catalog must contain a plugins array")
 
     entries: list[CatalogEntry] = []
     seen: set[str] = set()
     for item in plugins:
         if not isinstance(item, dict):
-            raise CatalogError("each catalog entry must be an object")
+            raise CatalogError(f"{where}each catalog entry must be an object")
         missing = [f for f in _REQUIRED_FIELDS if f not in item]
         if missing:
             raise CatalogError(
-                f"{item.get('slug', '?')}: entry is missing {', '.join(missing)}"
+                f"{where}{item.get('slug', '?')}: entry is missing "
+                f"{', '.join(missing)}"
+            )
+        # Same posture as `manifest.py`: unknown is rejected, not ignored.
+        # Adding a field to the directory is therefore an edit to
+        # `_REQUIRED_FIELDS` and `CatalogEntry` as well -- which it always
+        # had to be, since the entry is constructed from that tuple; before
+        # this check the field was simply dropped without a word.
+        unknown = sorted(set(item) - set(_REQUIRED_FIELDS))
+        if unknown:
+            raise CatalogError(
+                f"{where}{item.get('slug', '?')}: entry has unknown field(s) "
+                f"{unknown}. A catalog may not carry a key this build does "
+                f"not read; add it to catalog._REQUIRED_FIELDS and "
+                f"CatalogEntry if it is meant to mean something."
             )
 
         slug = item["slug"]
         if slug in seen:
-            raise CatalogError(f"duplicate slug {slug!r} in catalog")
+            raise CatalogError(f"{where}duplicate slug {slug!r} in catalog")
         seen.add(slug)
 
         if item["status"] not in STATUS_SYMBOLS:
             raise CatalogError(
-                f"{slug}: unknown status {item['status']!r}; expected one of "
+                f"{where}{slug}: unknown status {item['status']!r}; expected one of "
                 f"{sorted(STATUS_SYMBOLS)}"
             )
         if str(item["rpp_version"]) != "1":
             raise CatalogError(
-                f"{slug}: rpp_version {item['rpp_version']!r} is not readable by "
+                f"{where}{slug}: rpp_version {item['rpp_version']!r} is not readable by "
                 "this host"
             )
 
         for field in ("repository", "install", "download"):
-            _check_https(item, field)
+            _check_https(item, field, where)
 
         for field in _REQUIRED_FLAGS:
             if not isinstance(item[field], bool):
                 raise CatalogError(
-                    f"{slug}: {field} must be true or false, got {item[field]!r}"
+                    f"{where}{slug}: {field} must be true or false, got {item[field]!r}"
                 )
 
         # An empty string here is worse than a missing key: it renders as a
@@ -191,13 +249,13 @@ def parse_catalog(raw: dict) -> list[CatalogEntry]:
         # "nobody filled this in".
         for field in _REQUIRED_TEXT:
             if not isinstance(item[field], str) or not item[field].strip():
-                raise CatalogError(f"{slug}: {field} must be a non-empty string")
+                raise CatalogError(f"{where}{slug}: {field} must be a non-empty string")
 
         # A download must name the exact tag it ships. Pointing at a branch is
         # how a directory silently hands somebody new code on a later install.
         if item["ref"] not in item["download"]:
             raise CatalogError(
-                f"{slug}: download URL must be pinned to ref {item['ref']!r}"
+                f"{where}{slug}: download URL must be pinned to ref {item['ref']!r}"
             )
 
         # An empty list is legitimate (a plugin can map no platform at all);
@@ -208,12 +266,12 @@ def parse_catalog(raw: dict) -> list[CatalogEntry]:
             isinstance(p, str) and p.strip() for p in platforms
         ):
             raise CatalogError(
-                f"{slug}: platforms must be a list of platform slugs, got "
+                f"{where}{slug}: platforms must be a list of platform slugs, got "
                 f"{platforms!r}"
             )
         if list(platforms) != sorted(platforms):
             raise CatalogError(
-                f"{slug}: platforms must be sorted, so a diff shows what "
+                f"{where}{slug}: platforms must be sorted, so a diff shows what "
                 f"changed rather than where it moved"
             )
 
