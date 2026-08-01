@@ -155,12 +155,12 @@ class Search(SearchProvider):
 
         results: list[SearchResult] = []
         for doc in docs:
-            result = self._result(doc)
+            result = self._result(doc, known_controls=index.included_notes)
             if result is not None:
                 results.append(result)
         return results
 
-    def _result(self, doc: dict) -> SearchResult | None:
+    def _result(self, doc: dict, *, known_controls: bool) -> SearchResult | None:
         identifier = doc.get("identifier")
         title = doc.get("title")
         if not identifier or not title:
@@ -170,11 +170,18 @@ class Search(SearchProvider):
 
         collection = _as_list(doc.get("collection"))
         emulator = _text(doc.get("emulator"))
-        # The index asks for `notes`, which is one of the three places
-        # control information lives. Answering "does this item have any"
-        # here is free, and saves a caller a metadata round trip per item
-        # spent finding out that there was nothing.
-        controls = extract_controls(doc, str(identifier))
+        # The index asks for `notes` -- one of the three places control
+        # information lives -- whenever the read can afford the bytes.
+        # Answering "does this item have any" is then free, and saves a
+        # caller a metadata round trip per item spent finding out there
+        # was nothing. When the read could *not* afford it the answer is
+        # `unknown`, never `false`: a large read reporting that 11,893
+        # Mega Drive items have no control information would be a claim
+        # about Archive.org, and a false one.
+        if known_controls:
+            has_controls = "true" if extract_controls(doc, str(identifier)) else "false"
+        else:
+            has_controls = "unknown"
 
         try:
             return SearchResult(
@@ -192,7 +199,7 @@ class Search(SearchProvider):
                     "collections": ",".join(collection),
                     "emulator": emulator,
                     "emulator_ext": _text(doc.get("emulator_ext")),
-                    "has_controls": "true" if controls else "false",
+                    "has_controls": has_controls,
                 },
             )
         except (ValidationError, TypeError, ValueError):

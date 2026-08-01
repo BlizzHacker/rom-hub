@@ -731,3 +731,21 @@ def test_sb486_is_not_dos_however_much_the_name_reads_like_it():
     nothing.
     """
     assert platform_for("sb486") is None
+
+
+def test_a_read_too_big_for_notes_says_unknown_rather_than_false():
+    """A large read cannot afford the `notes` field, and reporting that
+    11,893 Mega Drive items have no control information would be a claim
+    about Archive.org rather than about the read -- and a false one."""
+    http = CorpusHttp(20000)
+    ctx = PluginContext(config={}, http=http)
+    results = Search(ctx).search("", None, 12000)
+    assert results
+    assert {r.extra["has_controls"] for r in results} == {"unknown"}
+
+
+def test_a_read_that_could_afford_notes_answers_yes_or_no():
+    search, _ = _search(replies=fixture("search_clr_genesis.json"))
+    results = search.search("sonic", "genesis", 12)
+    assert {r.extra["has_controls"] for r in results} <= {"true", "false"}
+    assert any(r.extra["has_controls"] == "true" for r in results)

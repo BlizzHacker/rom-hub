@@ -292,6 +292,12 @@ class Index:
         self._http = http
         self._max_rows = max(1, min(int(max_rows), MAX_ROWS))
         self._cache: dict[tuple, list[dict]] = {}
+        #: Whether the last `fetch` asked for `notes`. A caller reading
+        #: control information out of the documents has to know the
+        #: difference between "this item has none" and "this read could
+        #: not afford to ask" -- reporting the second as the first is a
+        #: statement about the corpus that would simply be untrue.
+        self.included_notes = True
 
     def fetch(self, q: str, limit: int, *, page: int | None = None) -> list[dict]:
         """Up to `limit` documents for `q`.
@@ -323,6 +329,7 @@ class Index:
             return self._cache[key]
 
         if paged or limit <= SAFE_ROWS_WITH_NOTES:
+            self.included_notes = True
             docs = self._read(q, limit, page if paged else None, with_notes=True)
         else:
             docs = self._collect(q, limit)
@@ -391,6 +398,7 @@ class Index:
         """
         total = self.total(q)
         with_notes = total is not None and total <= SAFE_ROWS_WITH_NOTES
+        self.included_notes = with_notes
         ceiling = min(SAFE_ROWS_WITH_NOTES if with_notes else SAFE_ROWS,
                       DEEP_PAGING_LIMIT)
 
