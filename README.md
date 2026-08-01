@@ -64,7 +64,7 @@ Disable one and it drops out of the fan-out — the source count falls — and a
 command aimed at it refuses and names the command that undoes it.
 
 **[docs/SHOWCASE.md](docs/SHOWCASE.md)** is the sixty-second tour: what a plugin
-is, the sandbox, the seven capabilities, all three backends, the fan-out search
+is, the sandbox, the eight capabilities, all three backends, the fan-out search
 and an import running end to end. It also carries the honest half — the real
 cover-art ratio, which roms RomM's player cannot actually run, and the import
 batch that lost roms to a scan race.
@@ -132,7 +132,7 @@ RomM's name, not the Hub's, and they configure one backend among several.
 
 ## Status
 
-**RPP v1 is fully implemented.** All seven capabilities have a host
+**RPP v1 is fully implemented.** All eight capabilities have a host
 implementation and a CLI command:
 
 | Capability | Command | What it does |
@@ -144,6 +144,7 @@ implementation and a CLI command:
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 | `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
 | `assets` | `rom-hub assets list\|install <plugin> [<asset>]` | lists a plugin's shaders, overlays, cheats and controller profiles **with each one's licence**, installs one to disk. No library involved |
+| `census` | `rom-hub catalogue build\|report\|list <plugin>` | enumerates a whole source into a local catalogue and states its coverage against the source's **own** declared total, per unit -- `29,955 of 29,955 declared entries across 43 units; 28 units excluded`, each exclusion named. Resumable; search is then served from it |
 
 Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
 survives a restart. No web UI yet.

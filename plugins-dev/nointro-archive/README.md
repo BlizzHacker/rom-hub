@@ -1,25 +1,94 @@
 # nointro-archive: No-Intro sets on Archive.org, for ROM Hub
 
-Implements the RPP v1 `search` and `importer` capabilities against a plain
-HTTP **directory index** — no API, just the listing a web server renders for a
-directory.
+Implements the RPP v1 `search`, `importer` and `census` capabilities against
+Archive.org — a plain HTTP **directory index** for the first two, and the
+search and metadata APIs for the third.
 
 | Capability | Endpoint | Does |
 |---|---|---|
 | `search` | `<base_url><directory>/` | reads the index once, caches it, matches and **ranks** file names |
 | `importer` | the same index | confirms the file is still listed, then plans it |
+| `census` | `advancedsearch.php` + `metadata/<id>` | enumerates **all 71** `nointro*` items, classifies each, and records what it could not account for |
 
 ## How much of No-Intro this reaches
 
-**25 directories, 25 RomM platforms, 15,165 archives.** Every number here
-was counted from the item's own `archive.org/metadata/<id>` file list on
-2026-08-01 — not estimated, and not the item's advertised contents.
+**All of it, and the number has a denominator behind it.**
 
-| | before (0.2.1) | after (0.3.0) |
-|---|---:|---:|
-| directories shipped | 12 | **25** |
-| platforms | 12 | **25** |
-| archives reachable | 6,628 | **15,165** |
+    $ rom-hub catalogue build nointro-archive
+    nointro-archive: complete -- 29,955 of 29,955 declared entries
+      across 43 units; 28 units excluded (1,411 entries)
+      29,771 catalogued rows -> 27,219 distinct dumps in 14,214 games
+      skipped, by reason:
+             184  archive.org bookkeeping (torrent, _meta.xml, thumbnails)
+
+That is the claim this plugin is now willing to make, and every part of it
+is checkable. `29,955` is not counted by the walk: it is the sum of
+Archive.org's own `files_count` for each item, taken from
+`advancedsearch.php`, while the enumeration reads the *metadata* endpoint.
+Two services, two requests — verified to agree on all 71 items. Then, per
+item, `kept + skipped == declared_total`, so every single declared entry is
+either catalogued or skipped for a named reason.
+
+| | 0.2.1 | 0.3.0 | 0.4.0 |
+|---|---:|---:|---:|
+| items reached | 12 | 25 | **71 (all of them)** |
+| entries accounted for | 6,628 | 15,165 | **31,366** |
+| entries catalogued | 6,628 | 15,165 | **29,771** |
+| distinct dumps after dedup | — | — | **27,219** |
+| coverage claim | "reachable" | "reachable" | **29,955 of 29,955, 28 units excluded by name** |
+
+The older rows say *reachable*, and that word is the point. 15,165 was the
+size of a list in `manifest.toml` — a fact about this plugin's
+configuration, not about Archive.org. `search` still works exactly that
+way and is unchanged; `census` is what answers *what is all of it?*
+
+### What is excluded, and why
+
+`--kinds` chooses what gets walked; `roms` is the default. Nothing is
+dropped silently — each excluded unit is printed with its reason.
+
+| kind | units | declared | what it is |
+|---|---:|---:|---|
+| `roms` | 43 | 29,955 | one entry per game — walked by default |
+| `pack` | 11 | 215 | archives-of-archives; each file is a whole machine's set (`NoIntroROMsCollection` is 62 files / 44.8 GB) |
+| `cdn-dump` | 4 | 1,105 | a console maker's distribution tree (`nointro_wiiu_cdn_nov_2020_2` is **928 GB**; two PS Vita items are 291 GB and 167 GB) |
+| `media` | 3 | 37 | soundtracks and screenshots, not ROMs |
+| `other` | 10 | 54 | too few files to be a set — a loose archive, a DAT bundle |
+
+The classifier reads only `mediatype`, `files_count` and `item_size`, which
+one search response already returns, so the whole scope is decided before
+any item is opened. It is not a curated list of these 71 items: a hand list
+would be right about them and silent about the 72nd.
+
+### Duplicates are collapsed on evidence
+
+The census records Archive.org's published `md5`, `sha1` and `crc32` for
+every file, under the keys `rom_hub.grouping` reads — so the Hub's one
+deduplicator does the work rather than this plugin guessing:
+
+* `NoIntro_VirtualBoy` and `NoIntroVirtualBoy` are separate uploads with
+  **31 byte-identical archives**. They collapse on proof.
+* `NoIntroNintendo` is titled "No Intro - Nintendo" and shares 31 hashes
+  with `NoIntroVirtualBoy`. It is a **mislabelled Virtual Boy set**, and
+  that is why it is mapped to `virtualboy` — the hashes say so where the
+  title does not.
+* `nointro.ws` (`.7z`) and `NoIntro_BandiWonderSwan` (`.zip`) share **zero**
+  hashes: the containers differ even though the ROMs inside do not, so the
+  name parse decides those instead.
+
+That is also why several overlapping directories are now mapped that
+0.3.0 deliberately withheld. `nointro-2600` and `NoIntro-Atari` share 523
+byte-identical archives — withholding 1,400 real files to avoid a merge the
+deduplicator performs anyway is incompleteness chosen on purpose.
+
+### 912 files are catalogued with no platform
+
+Real files this plugin will not guess a machine for: Satellaview (452) and
+Sufami Turbo (26) are SNES *peripherals* with their own RomM slugs and no
+EmulatorJS core; `NoIntroIBMPc` (318) is PC software; Benesse Pocket
+Challenge, Casio Loopy, PV-1000 and Konami Picno have no verified RomM
+slug. They are counted, catalogued and searchable — filing them under a
+neighbouring platform would be a remap onto hardware they are not.
 
 What was missing was not a long tail. It was the Nintendo shelf: **no Game
 Boy, no Super Nintendo**, and no Amiga or C64 either, because the twelve
