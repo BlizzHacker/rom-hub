@@ -1,7 +1,7 @@
 [plugin]
 slug        = "homebrew"
 name        = "Homebrew Hub (gbdev)"
-version     = "0.2.0"
+version     = "0.3.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -9,22 +9,42 @@ license     = "MIT"
 search   = "homebrew.search:Search"
 importer = "homebrew.importer:Importer"
 metadata = "homebrew.metadata:Metadata"
+stream   = "homebrew.stream:Stream"
 
-# One host does all three jobs: /api/search answers the queries and
+# `hh3.gbdev.io` does three jobs: /api/search answers the queries and
 # /static/ serves both the ROMs and the cover images, with no redirect off
 # it (verified 2026-07-29 -- `curl -w %{num_redirects}` reports 0 for a
-# real cover URL). hh.gbdev.io -- the human site whose /g/<slug> pages
-# results link to -- is deliberately NOT declared, because nothing here
-# ever fetches it; SearchResult.url is shown, never retrieved.
+# real cover URL).
+#
+# `hh.gbdev.io` is here as of 0.3.0 and only because `stream` needs it.
+# It was deliberately absent while SearchResult.url was the only thing
+# pointing at it -- a displayed URL is never fetched, and an allowlist
+# should say where a plugin causes traffic, not where it points. A
+# StreamTarget(kind="url") is different: the host validates it against
+# this list and hands it to something that will open it, so an undeclared
+# host would be a stream that fails at the gate.
+#
+# Nothing here crawls that host. `hh.gbdev.io/robots.txt` carries
+# `User-agent: ClaudeBot / Disallow: /`, so the page URL was read from the
+# frontend's published source (`gbdev/virens`: `pages/game/[slug].vue`
+# plus `nuxt.config.ts`) rather than by fetching the site -- which is also
+# how the old, wrong `/g/<slug>` spelling was caught.
 [permissions]
-network  = ["hh3.gbdev.io"]
+network  = ["hh3.gbdev.io", "hh.gbdev.io"]
 romm_api = []
 
 [config]
 # Restrict to one kind of entry. The Hub sees "game", "demo", "music" and
 # "tool"; empty means no filter.
 typetag    = { type = "str", default = "" }
-max_pages  = { type = "int", default = 3 }
+# Ten entries a page (`page_elements` is real but its range is 1..10, and
+# 10 is the default). At 3 this was a 30-entry ceiling on a 1,571-entry
+# catalogue. 158 is `page_total` for an unfiltered query, so the cap is
+# the whole database rather than a number picked to look generous.
+max_pages  = { type = "int", default = 20 }
+# Exact, comma-separated, AND-ed: the Hub's own category vocabulary
+# ("Puzzle", "Open Source", "RPG", "Adventure"). Empty means no filter.
+tags       = { type = "list[str]", default = [] }
 collection = { type = "str", default = "Homebrew" }
 # `metadata` only. Whether to write the Hub's title over the library's.
 # On by default because for homebrew the submitter *is* the publisher of

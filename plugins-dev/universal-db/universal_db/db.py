@@ -94,6 +94,14 @@ class Entry:
     #: own manifest of what is inside a release archive -- see
     #: `payload.py`, which is the only thing that reads it.
     archive: dict = field(default_factory=dict)
+    #: The application's own 48x48 icon, as the database records it. 364
+    #: of 400 entries have one; it is the closest thing this catalogue has
+    #: to box art, because it is the picture the console itself shows.
+    icon: str = ""
+    #: The 2D banner, 400 x 120-ish. 399 of 400 entries have one. Second
+    #: choice rather than first: 26 of them are the author's GitHub
+    #: avatar, which is a picture of an organisation and not of a title.
+    image: str = ""
 
     @property
     def url(self) -> str:
@@ -233,6 +241,8 @@ def parse_entry(raw: dict) -> Entry | None:
         ),
         downloads=_downloads(raw.get("downloads")),
         archive=raw.get("archive") if isinstance(raw.get("archive"), dict) else {},
+        icon=_text(raw.get("icon")),
+        image=_text(raw.get("image")),
     )
 
 
@@ -245,13 +255,37 @@ def parse_full(payload) -> list[Entry]:
     return [e for e in (parse_entry(r) for r in payload) if e is not None]
 
 
+#: The parsed database, kept for the life of the plugin process.
+#:
+#: `full.json` is 1.66 MB and three capabilities read it -- `search`,
+#: `importer` and `metadata` -- so without this, enriching a rom the
+#: operator just searched for would pull the whole catalogue a second
+#: time. It changes about as often as somebody submits homebrew, and a
+#: plugin process lives for one command.
+_CACHE: list[Entry] | None = None
+
+
+def clear_cache() -> None:
+    """Forget the cached database. For tests, and for nothing else."""
+    global _CACHE
+    _CACHE = None
+
+
 def fetch_entries(http) -> list[Entry]:
-    """Read the whole database through `ctx.http`.
+    """Read the whole database through `ctx.http`, once per process.
 
     One request, because the site publishes one file. 1.66 MB sits well
     inside the broker's 4 MiB response cap, but the cap is the reason this
     plugin will never grow a "fetch every entry's page too" habit.
     """
+    global _CACHE
+    if _CACHE is not None:
+        return _CACHE
+    _CACHE = _fetch(http)
+    return _CACHE
+
+
+def _fetch(http) -> list[Entry]:
     response = http.get(FULL_JSON)
     if response.status_code != 200:
         # The site answers a missing path with 404 and an HTML body, so

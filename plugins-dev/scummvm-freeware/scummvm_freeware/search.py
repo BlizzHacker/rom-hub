@@ -1,10 +1,23 @@
-"""Search the twelve ScummVM freeware games.
+"""Search the twenty-eight ScummVM freeware games.
 
-The catalogue is twelve rows in `games.py`, so matching a query costs no
-request at all: the terms are matched against the title and the slug in
-memory, and only the games that match have their directory listed. A
-query nobody's title contains therefore does **zero** network work, and a
-one-word query typically does one round trip.
+The catalogue is twenty-eight rows in `games.py`, so matching a query
+costs no request at all: the terms are matched against the title and the
+slug in memory, and only the games that match have their directory
+listed. A query nobody's title contains therefore does **zero** network
+work, and a one-word query typically does one round trip.
+
+**Sixteen of those rows are new in 0.2.0 and they came from re-reading
+the source**, not from widening a rule. `www.scummvm.org/games/` is the
+ScummVM project's own "Download freeware games" page, and it names 28
+games where this table carried 12. The sixteen it was missing are the
+SLUDGE, Wintermute and WAGE engine games, which live three to a directory
+rather than one -- so those rows name their archives explicitly and a
+file the page does not name stays unreachable. See `games.py`.
+
+**A directory is listed once however many of its games matched.**
+`SLUDGE/` holds fourteen games, and a query matching three of them used
+to be three identical round trips; the walk now reads a directory once
+and offers each matching game's own files out of it.
 
 `--platform` is answered the same way -- from the table -- so asking a
 ScummVM source for `snes` returns an empty list without a request.
@@ -23,9 +36,14 @@ from rom_hub_sdk import SearchProvider, SearchResult
 from .downloads import DownloadsError, directory_url, is_payload, parse_listing
 from .games import GAMES, Game
 
-DEFAULT_MAX_GAMES = 6
-#: One listing is one round trip and the host kills a plugin at 30s.
-MAX_GAMES_CAP = 12
+#: How many matched games one search may list. Raised from 6 with the
+#: table: twenty-eight games over fifteen directories, and a broad query
+#: that matched more than six used to stop without saying so.
+DEFAULT_MAX_GAMES = 16
+#: One *directory* is one round trip -- fourteen SLUDGE games cost one
+#: between them -- and the host kills a plugin at 30s. Twenty-eight is
+#: every game in the table.
+MAX_GAMES_CAP = 28
 
 
 class Search(SearchProvider):
@@ -42,13 +60,21 @@ class Search(SearchProvider):
         ]
 
         results: list[SearchResult] = []
+        listings: dict[str, list] = {}
         for slug, game in matched[: self._max_games()]:
             if len(results) >= limit:
                 break
-            for download in self._listing(game):
+            if game.directory not in listings:
+                listings[game.directory] = self._listing(game)
+            for download in listings[game.directory]:
                 if len(results) >= limit:
                     break
                 if not is_payload(download.filename):
+                    continue
+                if not game.offers(download.filename):
+                    # An engine directory holds several games and more
+                    # archives than the games page names. `files` is the
+                    # allowlist for those rows; see games.py.
                     continue
                 try:
                     results.append(

@@ -1,13 +1,14 @@
 [plugin]
 slug        = "universal-db"
 name        = "Universal-DB (3DS/DS homebrew)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 search   = "universal_db.search:Search"
 importer = "universal_db.importer:Importer"
+metadata = "universal_db.metadata:Metadata"
 
 # Two jobs, and they use different hosts.
 #
@@ -25,6 +26,16 @@ importer = "universal_db.importer:Importer"
 #    `buildbot.libretro.com` and `downloads.scummvm.org` appear in the data
 #    and are deliberately absent, because no entry that resolves to a
 #    payload uses them.
+#
+# 3. Fetching an icon, for `metadata`. Same story and the same hosts: an
+#    entry's `icon` and `image` live wherever its author publishes them,
+#    and a census of all 400 entries on 2026-08-01 found every one of them
+#    on a host already listed here -- except two. One `nawiasdev.eu` and
+#    one `i.imgur.com` are deliberately NOT added: widening where this
+#    plugin may go, permanently, to reach two covers is the wrong trade.
+#    `universal_db.metadata.ARTWORK_HOSTS` mirrors this list so those two
+#    fall through to no artwork instead of to a broker refusal, and a test
+#    fails the build if the two copies drift.
 #
 # `*.githubusercontent.com` is there because a GitHub release URL is a 302:
 # `github.com/.../releases/download/...` answers `Location:
@@ -58,3 +69,9 @@ category = { type = "str", default = "" }
 # licence in the data.
 require_license = { type = "bool", default = false }
 collection = { type = "str", default = "Homebrew" }
+# `metadata` only. Whether to write the database's title over the
+# library's. On by default because a Universal-DB import lands as
+# `Universal-Updater.3dsx` and the database's `title` is what its author
+# called it -- for homebrew the author is the publisher of record. An
+# operator who has curated their own spelling can turn it off.
+set_name = { type = "bool", default = true }

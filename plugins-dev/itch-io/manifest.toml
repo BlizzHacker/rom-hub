@@ -1,7 +1,7 @@
 [plugin]
 slug        = "itch-io"
-name        = "itch.io (free games) — NO IMPORT"
-version     = "0.3.0"
+name        = "itch.io (free games) — play in browser, NO IMPORT"
+version     = "0.4.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -12,14 +12,17 @@ license     = "MIT"
 # then say so by name -- see README, "This plugin cannot import. That is the
 # correct answer." Nothing here will ever place a file in your library.
 #
-# `metadata` is what makes the plugin worth installing anyway: it cannot
-# fetch the game, but it can read what the developer called it and the cover
-# they chose, and those are what a library is missing for a title it already
-# has.
+# `metadata` and `stream` are what make the plugin worth installing anyway.
+# `metadata` cannot fetch the game but can read what the developer called it
+# and the cover they chose, which is what a library is missing for a title
+# it already has. `stream` answers the complaint outright for the browser
+# half of the catalogue: those games were never a file, they run on the
+# page, and resolving one to its page is the whole of what playing it takes.
 [capabilities]
 search   = "itch_io.search:Search"
 importer = "itch_io.importer:Importer"
 metadata = "itch_io.metadata:Metadata"
+stream   = "itch_io.stream:Stream"
 
 # itch.io serves browse listings from the apex and every game page from a
 # per-developer subdomain (`csbrannan.itch.io`), so both are needed.
@@ -29,6 +32,14 @@ metadata = "itch_io.metadata:Metadata"
 # 2026-07-29 -- `curl -w %{num_redirects}` reports 0 for a real cover), and
 # the HOST fetches the cover this plugin names. Without it declared, every
 # artwork URL would fail the broker's allowlist at enrich time.
+#
+# `stream` needs no new host: the target is the game page, which is already
+# on `*.itch.io`. It is deliberately NOT the embed -- itch.io's robots.txt
+# carries `Disallow: /embed/` and `Disallow: /embed-upload/`, and the page's
+# markup hands its iframe an `html-classic.itch.zone` URL. Neither is
+# returned and neither host is declared. Pulling the inner URL out of the
+# markup to look more direct would be reaching around two robots directives
+# to arrive somewhere worse than the page itch.io means you to open.
 #
 # No download CDN is declared, because this plugin never gets far enough to
 # be handed a download URL -- see README, "Why nothing imports yet".
@@ -41,4 +52,8 @@ romm_api = []
 # facet ("tag-gameboy", "genre-puzzle"); anything else is refused rather
 # than pasted into a URL.
 filters   = { type = "list[str]", default = [] }
-max_pages = { type = "int", default = 4 }
+# 36 cells a page. At 4 this was a 144-game ceiling on a catalogue with
+# hundreds of thousands in it. Capped at 200 because that is how deep the
+# listing itself goes: page 200 answers a full fragment and page 500
+# answers HTTP 404, both checked live 2026-08-01.
+max_pages = { type = "int", default = 12 }

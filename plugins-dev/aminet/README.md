@@ -1,13 +1,43 @@
 # Aminet plugin for ROM Hub
 
 Implements the RPP v1 `search` and `importer` capabilities against
-`https://aminet.net` — the Amiga world's software archive, 85,449 packages
-deep, of which the `game/` tree holds about 6,700.
+`https://aminet.net` — the Amiga world's software archive, 85,453 packages
+deep, of which the `game/` tree holds **7,670**, and its fourteen
+game-holding shelves **5,737**.
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `search` | `/search?query=…&dir=game` | server-side search across every package, scoped to the game shelves |
+| `search` | `/search?query=…&page=N` | server-side search across every package; the game scope is applied client-side |
+| `search` (browse) | `/game/<shelf>?page=N` | one shelf's own listing, scoped by the server, pageable |
 | `importer` | `/<path>.readme` | reads the package's own header, then plans the archive |
+
+## What changed in 0.2.0, and why it matters
+
+**`dir=` was never a filter.** `?query=tetris`, `&dir=game`, `&dir=demo`
+and `&dir=zzz` return the identical 134 packages — verified live
+2026-08-01, four spellings, one answer. Aminet's search form emits exactly
+one field (`<input name="query">`); there is no directory parameter, and
+`dir` was an invented one that HTTP 200 made look like it worked. This
+README used to claim a server-side game scope on the strength of it. It
+never happened: every `comm/dlg` row arrived like any other and was
+dropped client-side.
+
+**So an empty query did not browse — it failed.** `/search?dir=game` with
+no `query` returns Aminet's search *form*: no count line, no result table.
+The parser refuses that document (correctly — this host answers a missing
+path with HTTP 200 and a themed error body), so `rom-hub search aminet ""`
+raised rather than listing anything.
+
+Both are fixed by using the endpoint that does scope: **a shelf listing**.
+`https://aminet.net/game/think` is a real page carrying the same result
+table, the same `Found 910 matching packages` count line and its own
+`?page=N`. An empty query now walks the fourteen game shelves through it.
+
+| | before | after |
+|---|---|---|
+| packages a browse can reach | **0** (it raised) | **5,737** — every package on the fourteen game shelves |
+| pages one search may walk | 2 (100 rows, unscoped, then filtered) | 4 by default, 20 by config |
+| scope of a searched page | claimed server-side; was client-side | stated as client-side, and the count line ends the walk exactly |
 
 ## Why this material is legitimate
 
@@ -43,7 +73,7 @@ and this is the single most important thing about the plugin.
 One `game/think` directory holds `abrick.lha` (AmigaOS 4 on PowerPC),
 `abrick-ix48.lha`, `abandoned_bricks-mos.lha` (MorphOS) and
 `alleytris_68k.lha` (AmigaOS on 68k). **Four different computers, same
-shelf, near-identical names.** Live counts over a `dir=game` search on
+shelf, near-identical names.** Live counts over one search page on
 2026-07-29: `m68k-amigaos` 98, `generic` 28, `ppc-amigaos` 16,
 `ppc-morphos` 15, `i386-aros` 9, `ppc-warpup` 3, `ppc-powerup` 3,
 `i386-amithlon` 3.
@@ -75,6 +105,22 @@ shelf for MorphOS.
 
 ## The `game/` tree is 18 shelves and four hold no games
 
+Measured 2026-08-01 from each shelf's own count line:
+
+| shelf | packages | shelf | packages |
+|---|---:|---|---:|
+| `game/think` | 910 | `game/role` | 507 |
+| `game/misc` | 834 | `game/wb` | 427 |
+| `game/shoot` | 756 | `game/actio` | 406 |
+| `game/demo` | 558 | `game/2play` | 304 |
+| `game/board` | 291 | `game/jump` | 255 |
+| `game/gag` | 178 | `game/text` | 123 |
+| `game/strat` | 113 | `game/race` | 75 |
+
+**5,737 across the fourteen.** The four excluded ones — `game/data` 896,
+`game/hint` 502, `game/patch` 412, `game/edit` 123 — bring the tree
+to 7,670.
+
 `game/data` (data files), `game/edit` (level editors), `game/hint`
 (walkthrough documents) and `game/patch` (patches) are excluded from search
 by default and **always** refuse to import. Aminet's search does not
@@ -88,19 +134,33 @@ strat text think wb` — are games, with Aminet's own descriptions carried in
 
 ## Search
 
-    rom-hub search aminet tetris
+    rom-hub search aminet tetris                    # /search, all 85,453
+    rom-hub search aminet "" --limit 40             # browse the shelves
+    rom-hub search aminet "" --platform amiga       # browse, 68k only
     rom-hub search aminet quake --platform amiga
 
-The query goes to the **server**, which is why this source was picked over
-walking `/tree`: one request searches all 85,449 packages and a match five
-thousand entries deep comes back in it. `--platform` is applied client-side
-to the architecture, because Aminet has no architecture filter — but a RomM
-platform this source has nothing for returns an empty list **without a
-request**.
+**A query goes to the server.** One request searches all 85,453 packages
+and a match five thousand entries deep comes back in it. The *game* scope
+is then applied here, because Aminet has no directory parameter — so a
+page of 50 that is mostly `util/` yields a handful, and the honest
+mitigation is to page further rather than to claim a scope that does not
+exist.
+
+**An empty query browses instead.** It walks the fourteen game shelves
+through their own listings, which *are* server-scoped, in order, paging
+each one until `limit` or `max_pages` runs out. `shelves` picks which ones
+and in what order:
+
+    shelves = ["game/role", "game/text"]
+
+`--platform` is applied client-side to the architecture, because Aminet
+has no architecture filter of any kind — but a RomM platform this source
+has nothing for returns an empty list **without a request**.
 
 Aminet answers 50 rows a page and the page size is not negotiable
 (`pagesize`, `limit` and `rows` were all tried live and all ignored), so
-`max_pages` bounds the walk.
+`max_pages` bounds the walk. The walk also stops on the `Found N matching
+packages` count line, so it never asks for a page past the end.
 
 ## Importing
 
@@ -120,13 +180,14 @@ Everything lands in the `Aminet` RomM collection by default.
 
 ## Install
 
-    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-aminet --ref v0.1.0
+    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-aminet --ref v0.2.0
 
 ## Config
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `max_pages` | `int` | `2` | Search pages to walk, 50 rows each (capped at 10) |
+| `max_pages` | `int` | `4` | Pages to walk, 50 rows each, across every shelf one call touches (capped at 20) |
+| `shelves` | `list[str]` | `[]` | Which game shelves a browse walks, in order. Empty means all fourteen. An unknown shelf is refused by name before any request |
 | `include_support` | `bool` | `false` | List `game/data`, `edit`, `hint`, `patch` (they still refuse to import) |
 | `collection` | `str` | `Aminet` | RomM collection imports are filed under |
 
@@ -149,6 +210,17 @@ Everything lands in the `Aminet` RomM collection by default.
   which is also what makes the readme's value and the icon's agree.
 - **The size column is Aminet's rounded `2.0M`.** Carried as
   `extra.size_text`, never as `size_bytes`.
+- **A shelf listing and a search page are the same document.** Same table,
+  same `Found N matching packages` line, same `?page=N`. One parser serves
+  both, which is why the browse cost no second parser.
+- **There is no `metadata` capability and there should not be.** The
+  `.readme` carries `Short:`, `Author:`, `Uploader:` and `Version:`, and
+  none of those is something RomM 4.9.2 will store: its update endpoint
+  takes a `name`, provider ids and a cover, Aminet publishes no title
+  distinct from the filename, and its package pages carry no artwork at
+  all — checked live, every `<img>` on one is the site's own furniture. An
+  `enrich` here would have to invent a title or return nothing, and an
+  empty capability is worse than an absent one.
 - **The mirrors are not in the allowlist.** `m68k.aminet.net`,
   `mos.aminet.net` and the rest are hostnames an operator picks on the
   website, not redirect targets. Downloads from `aminet.net` answer 200

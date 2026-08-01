@@ -12,10 +12,29 @@ for -- Dreamcast, say -- returns an empty list **without a request**. That
 is not an error: it is a reasonable question with a boring answer, and
 answering it for free is better than answering it slowly.
 
-Pages are ten entries and the size is not negotiable (`limit`, `per_page`,
-`elements` and `page_elements` were all tried against the live API and all
-ignored), so `max_pages` bounds the walk and the walk stops as soon as
-`limit` results exist or the Hub says there are no more pages.
+Pages are ten entries. `page_elements` is a real parameter -- the Hub's
+own API.md documents it -- but its allowed range is 1..10 and 10 is
+already the default, so there is nothing to win there and the only way to
+see more is to ask again.
+
+That is what `max_pages` bounds, and at 3 it was the plugin's real
+ceiling: **30 entries out of 1,571.** A query narrow enough to answer in
+thirty was fine and anything else was silently truncated. It is 20 by
+default now (200 entries) and 158 by config, which is the whole
+catalogue: `page_total` is 158 and the walk stops there on its own.
+
+`tags` is the third server-side filter, alongside `q` and `platform`. It
+is exact and comma-separated -- `tags=Open Source,RPG` -- and it is worth
+having because the Hub's categories are the only structure over 1,571
+entries that is neither a title nor a machine.
+
+**Unknown parameters are ignored, silently and completely.** `?bogus=snake`
+returns all 1,571 entries with HTTP 200, so a plugin that hopefully sent a
+made-up filter would look like it was filtering and would in fact be
+returning the whole database. Only `q`, `platform`, `typetag`, `tags`,
+`page` and the sort pair are real here, and each was checked live rather
+than read off the documentation -- API.md names the type filter `type`,
+which is one of the ignored ones; the parameter that works is `typetag`.
 """
 
 import json
@@ -27,8 +46,13 @@ from rom_hub_sdk import SearchProvider, SearchResult
 from .hub import API, HubError, parse_page
 from .platforms import hub_platform_for, platform_for
 
-DEFAULT_MAX_PAGES = 3
-PAGE_CAP = 50
+#: Pages one search may walk. Ten entries each, so 20 is 200 entries --
+#: enough that an operator asking for a hundred results gets a hundred.
+DEFAULT_MAX_PAGES = 20
+#: `page_total` for an unfiltered query is 158, so this is the whole
+#: catalogue and not an arbitrary ceiling. The walk stops on `page_total`
+#: anyway; this is what stops a config typo asking for a thousand.
+PAGE_CAP = 158
 
 
 class Search(SearchProvider):
@@ -41,6 +65,11 @@ class Search(SearchProvider):
         typetag = str(self.ctx.config.get("typetag") or "").strip()
         if typetag:
             params["typetag"] = typetag
+        tags = self._tags()
+        if tags:
+            # The Hub's own spelling: one parameter, comma-separated,
+            # AND-ed, exact per tag.
+            params["tags"] = ",".join(tags)
 
         wanted = (platform or "").strip()
         if wanted:
@@ -77,6 +106,16 @@ class Search(SearchProvider):
                                 "typetag": entry.typetag,
                                 "hub_platform": entry.platform or "",
                                 "files": str(len(entry.files)),
+                                # What `stream` will say without a second
+                                # round trip. 1,565 of 1,571 entries are
+                                # playable, so the interesting value is
+                                # the false one.
+                                "playable": (
+                                    "true" if entry.playable_file else "false"
+                                ),
+                                "license": entry.license,
+                                "tags": ",".join(entry.tags),
+                                "date": entry.date,
                             },
                         )
                     )
@@ -85,6 +124,18 @@ class Search(SearchProvider):
                     # fields. One bad record must not cost the page.
                     continue
         return results
+
+    def _tags(self) -> list[str]:
+        """Configured tag filter, as a list of exact tag names.
+
+        Accepts a list or a single comma-separated string, because both
+        spellings are what people write in a TOML config and neither is
+        wrong enough to refuse.
+        """
+        raw = self.ctx.config.get("tags") or []
+        if isinstance(raw, str):
+            raw = raw.split(",")
+        return [str(tag).strip() for tag in raw if str(tag).strip()]
 
     def _max_pages(self) -> int:
         raw = self.ctx.config.get("max_pages", DEFAULT_MAX_PAGES)

@@ -1,10 +1,20 @@
 """Homebrew Hub plugin, replayed against captured API responses.
 
-`tests/fixtures/homebrew/` holds four verbatim `hh3.gbdev.io/api/search`
+`tests/fixtures/homebrew/` holds six verbatim `hh3.gbdev.io/api/search`
 responses. The title-sorted one is there for the awkward records it
 happens to contain -- an entry with `title: null`, several with no
 `platform` at all, one whose filename is a path inside the entry -- all of
 which are live data, not invented edge cases.
+
+Two were captured for `stream` on 2026-08-01:
+
+* `search_slug_ghx_demos.json` -- one of exactly six entries in the whole
+  1,571-entry catalogue with **no file flagged `playable`**. Its page
+  renders no emulator, so it is the case `stream` has to refuse rather
+  than hand back a URL that shows the operator nothing;
+* `search_tags_puzzle.json` -- `?tags=Puzzle`, 114 results over 12 pages.
+  The server-side tag filter, which is the third real one alongside `q`
+  and `platform`.
 
 No test opens a socket.
 """
@@ -29,7 +39,8 @@ from homebrew.metadata import (  # noqa: E402
     NoMatch,
 )
 from homebrew.platforms import hub_platform_for, platform_for  # noqa: E402
-from homebrew.search import Search  # noqa: E402
+from homebrew.search import DEFAULT_MAX_PAGES, PAGE_CAP, Search  # noqa: E402
+from homebrew.stream import Stream, StreamRefused  # noqa: E402
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 from rom_hub.types import FetchFile, RomRef, SearchResult  # noqa: E402
@@ -43,6 +54,10 @@ SNAKE = fixture("search_snake.json")
 SNAKE_PAGE2 = fixture("search_snake_page2.json")
 BY_SLUG = fixture("search_slug_super_snake_off.json")
 TITLE_ASC = fixture("search_title_asc.json")
+#: One of the six entries in the catalogue with no playable file.
+NO_PLAYABLE = fixture("search_slug_ghx_demos.json")
+#: `?tags=Puzzle` -- 114 results, 12 pages.
+TAGS_PUZZLE = fixture("search_tags_puzzle.json")
 
 
 class FakeHttp:
@@ -66,6 +81,11 @@ def make_search(pages=None, config=None, status=200):
     return Search(PluginContext(config=config or {}, http=http)), http
 
 
+def make_stream(pages=None, config=None, status=200):
+    http = FakeHttp(pages if pages is not None else {1: BY_SLUG}, status)
+    return Stream(PluginContext(config=config or {}, http=http)), http
+
+
 def make_importer(pages=None, config=None, status=200):
     http = FakeHttp(pages if pages is not None else {1: BY_SLUG}, status)
     return Importer(PluginContext(config=config or {}, http=http)), http
@@ -81,7 +101,7 @@ def test_entries_become_results():
     first = next(r for r in results if r.source_id == "johnybot_super-snake-off")
     assert first.title == "Super Snake Off"
     assert first.platform == "nes"
-    assert first.url == "https://hh.gbdev.io/g/johnybot_super-snake-off"
+    assert first.url == "https://hh.gbdev.io/game/johnybot_super-snake-off"
     assert first.extra["developer"] == "Johnybot"
     assert first.extra["hub_platform"] == "NES"
 
@@ -176,10 +196,115 @@ def test_max_pages_bounds_the_walk():
 
 
 def test_a_nonsense_max_pages_falls_back_to_the_default():
-    search, http = make_search({n: TITLE_ASC for n in range(1, 10)},
+    search, http = make_search({n: TITLE_ASC for n in range(1, 30)},
                                config={"max_pages": "lots"})
-    search.search("", None, 100)
-    assert len(http.calls) == 3
+    search.search("", None, 1000)
+    assert len(http.calls) == DEFAULT_MAX_PAGES
+
+
+# ---------------------------------------------------------- the tag filter
+
+
+def test_tags_go_to_the_server_as_one_comma_separated_parameter():
+    search, http = make_search(
+        {1: TAGS_PUZZLE}, config={"tags": ["Open Source", "RPG"]}
+    )
+    search.search("", None, 5)
+    assert http.calls[0][1]["tags"] == "Open Source,RPG"
+
+
+def test_a_tags_string_is_accepted_as_well_as_a_list():
+    """Both spellings turn up in a TOML config and neither is wrong."""
+    search, http = make_search({1: TAGS_PUZZLE}, config={"tags": "Puzzle"})
+    search.search("", None, 5)
+    assert http.calls[0][1]["tags"] == "Puzzle"
+
+
+def test_no_tags_configured_sends_no_tags_parameter():
+    """An empty filter must be absent, not present-and-empty.
+
+    Unknown and empty parameters are both ignored by this API, so sending
+    `tags=` would be harmless -- and it would also be a line in the
+    request log claiming a filter that is not there.
+    """
+    search, http = make_search({1: SNAKE})
+    search.search("snake", None, 5)
+    assert "tags" not in http.calls[0][1]
+
+
+def test_results_carry_the_hubs_own_licence_tags_and_date():
+    search, _ = make_search({1: TAGS_PUZZLE})
+    result = search.search("", None, 1)[0]
+    assert set(result.extra) >= {"license", "tags", "date", "playable"}
+
+
+# ------------------------------------------------------------------- stream
+
+
+def test_stream_resolves_an_entry_to_the_page_that_plays_it():
+    stream, http = make_stream()
+    target = stream.resolve(
+        SearchResult(source_id="johnybot_super-snake-off", title="Super Snake Off")
+    )
+    assert target.kind == "url"
+    assert target.target == "https://hh.gbdev.io/game/johnybot_super-snake-off"
+    assert target.mime_type == "text/html"
+    assert target.title == "Super Snake Off"
+    assert target.extra["platform"] == "nes"
+    assert target.extra["rom"] == "files/SnakeOff.nes"
+    assert len(http.calls) == 1
+
+
+def test_stream_refuses_an_entry_with_no_playable_file():
+    """Six of 1,571. Their page renders no emulator at all."""
+    stream, _ = make_stream({1: NO_PLAYABLE})
+    with pytest.raises(StreamRefused, match="playable"):
+        stream.resolve(SearchResult(source_id="ghx-demos", title="GHX Demos"))
+
+
+def test_stream_refuses_a_near_miss_rather_than_playing_it():
+    stream, _ = make_stream({1: SNAKE})
+    with pytest.raises(StreamRefused, match="no Homebrew Hub entry"):
+        stream.resolve(SearchResult(source_id="snake", title="Snake"))
+
+
+def test_stream_refuses_an_empty_source_id_without_a_request():
+    stream, http = make_stream()
+    with pytest.raises(StreamRefused):
+        stream.resolve(SearchResult(source_id=" ", title="x"))
+    assert http.calls == []
+
+
+def test_the_stream_target_is_inside_the_declared_allowlist():
+    """A stream URL is allowlist-gated exactly like a FetchPlan URL."""
+    from rom_hub.manifest import parse_manifest
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = parse_manifest(
+        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    ).network
+    stream, _ = make_stream()
+    target = stream.resolve(
+        SearchResult(source_id="johnybot_super-snake-off", title="x")
+    )
+    assert url_allowed(target.target, allowlist)
+
+
+def test_a_stream_target_on_an_undeclared_host_would_be_refused():
+    """The gate is doing work, not decorating the manifest.
+
+    gbdev's own pages live on two hosts and only those two are declared;
+    a third -- say the GitHub repository an entry names as its source --
+    fails the check even though it is a perfectly real gbdev URL.
+    """
+    from rom_hub.manifest import parse_manifest
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = parse_manifest(
+        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    ).network
+    assert not url_allowed("https://github.com/gbdev/database", allowlist)
+    assert not url_allowed("https://gbdev.io/game/anything", allowlist)
 
 
 # ----------------------------------------------------------- platform mapping

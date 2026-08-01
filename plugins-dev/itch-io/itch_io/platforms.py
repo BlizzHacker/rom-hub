@@ -19,6 +19,23 @@ The values were checked against RomM's own platform-slug enum
 know fails much later and much less usefully.
 """
 
+#: RomM slug -> the itch.io *browse facet* that scopes a listing to it.
+#:
+#: This is the half that was missing. `--platform win` used to be applied
+#: here, to cells that had already been fetched -- so a page of 36 mostly
+#: Windows-less games yielded a handful and the walk moved on. itch.io
+#: scopes a browse itself: `/games/free/platform-windows` is 36 Windows
+#: games, every one of them. All five verified live 2026-08-01; note
+#: `platform-osx` rather than `platform-mac`, which 301s.
+BROWSE_FACETS: dict[str, str] = {
+    "win": "platform-windows",
+    "mac": "platform-osx",
+    "linux": "platform-linux",
+    "android": "platform-android",
+    "browser": "platform-web",
+}
+
+
 # itch.io platform label (lowercased, `Download for ` stripped) -> RomM slug.
 ITCH_PLATFORMS: dict[str, str] = {
     "windows": "win",
@@ -46,6 +63,17 @@ def label_for(raw: str) -> str:
     if label.lower().startswith(prefix):
         label = label[len(prefix) :]
     return " ".join(label.lower().split())
+
+
+def facet_for(romm_slug: str) -> str | None:
+    """The browse facet that scopes a listing to a RomM platform, or None.
+
+    None means itch.io has no facet for it, which for a slug outside
+    `ITCH_PLATFORMS` is the same thing as "this source has nothing there".
+    """
+    if not isinstance(romm_slug, str):
+        return None
+    return BROWSE_FACETS.get(romm_slug.strip().lower())
 
 
 def platform_for(raw: str) -> str | None:

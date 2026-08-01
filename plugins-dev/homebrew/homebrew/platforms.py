@@ -1,10 +1,17 @@
 """Homebrew Hub `platform` -> RomM platform slug, and back again.
 
-The Hub publishes a `platform` field per entry, and unlike most sources its
-vocabulary is small and closed: every one of the 1,571 entries live at the
-time of writing is `GB`, `GBC`, `GBA` or `NES` (913 / 447 / 188 / 23, which
-sums to the total). That makes an exact-match table cheap and a fallback
-indefensible.
+The Hub publishes a `platform` field per entry and its vocabulary is small
+and closed: `GB`, `GBC`, `GBA` or `NES`. That makes an exact-match table
+cheap and a fallback indefensible.
+
+**It is not published for every entry, and that changed under us.** A
+census of all 1,571 entries on 2026-08-01 reads GB 656, GBC 440, GBA 189,
+NES 23 -- and **263 with no `platform` at all**. This file used to record
+913 / 447 / 188 / 23 summing to the whole catalogue, which was true when
+it was written and is not now. `platform_for` already answered `None` for
+the missing case and the importer already refused rather than guessing, so
+nothing was ever misfiled; what was wrong was the claim that the field is
+always there. Counts are dated for exactly this reason.
 
 **No fallback, and specifically no "GBC is a Game Boy" softening.** The
 temptation here is real: the Hub's Game Boy database holds both, `gb` and

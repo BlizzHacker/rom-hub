@@ -305,6 +305,12 @@ NO_EQUIVALENT: dict[str, str] = {
     "appleii": "no Apple core in the map at all, in any revision",
     "appleiii": "no Apple core in the map at all, in any revision",
     "aquarius": "the Mattel Aquarius, a Z80 home computer with no core",
+    "arduboy": (
+        "the Arduboy, a credit-card handheld built on an ATmega32u4. Its "
+        "titles are Arduino sketches flashed to the microcontroller, not "
+        "cartridge images, and no core in the map is an AVR at all -- there "
+        "is no machine here to substitute, only a different kind of computer"
+    ),
     "atari-st": (
         "a 68000 computer. The playable Atari slugs are the 6502 consoles "
         "(2600/5200/7800) and the Lynx and Jaguar handheld/console; none of "
@@ -356,6 +362,12 @@ NO_EQUIVALENT: dict[str, str] = {
         "media, different software"
     ),
     "ngc": "the GameCube. No core in the map, and no other Nintendo slug is one",
+    "nuon": (
+        "the VM Labs NUON, a VLIW media processor built into a handful of "
+        "late-1990s DVD players rather than sold as a console. Nothing in "
+        "the map is that chip, and the discs are DVDs -- so there is not "
+        "even a family resemblance to be tempted by"
+    ),
     "odyssey-2": (
         "the Magnavox Odyssey 2 / Philips Videopac. RomM also carries "
         "`videopac-g7400`, which is the *later* machine and equally "

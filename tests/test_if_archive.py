@@ -20,6 +20,16 @@ Each kept entry is there for something a test below asserts:
   which is a sound-resource file and one an eBook reader
 * `3monkeys.taf` -- ADRIFT, a real format RomM has no platform for
 
+Two subdirectory indexes were captured whole on 2026-08-01, when the
+default directory list went from four to thirty:
+
+* `zcode_german.html` -- 19 files, 16 of them mapped Z-code. A real
+  translation shelf, and proof that the subdirectories carry games rather
+  than notes;
+* `hugo_old.html` -- 2 files, **neither** a story file. A real
+  subdirectory that contributes nothing, which is the other half of the
+  claim: the thirty directories are not thirty wins.
+
 `not_found.html` is the archive's real 404 body.
 
 No test opens a socket.
@@ -64,15 +74,38 @@ GLULX = fixture("glulx.html")
 TADS = fixture("tads.html")
 HUGO = fixture("hugo.html")
 ADRIFT = fixture("adrift.html")
+ZCODE_GERMAN = fixture("zcode_german.html")
+HUGO_OLD = fixture("hugo_old.html")
 NOT_FOUND = fixture("not_found.html")
 
+#: A real, valid index with an empty file list. `parse_index` accepts it
+#: and returns `[]` -- an empty directory and an unrecognised document are
+#: different things, and only one of them is an error.
+EMPTY_INDEX = (
+    '<html><body><div class="Body"><dl id="filelist" class="ItemList">'
+    "</dl></div></body></html>"
+)
+
+
+def index_url(directory: str) -> str:
+    return f"https://ifarchive.org/indexes/if-archive/games/{directory}/"
+
+
 PAGES = {
-    "https://ifarchive.org/indexes/if-archive/games/zcode/": ZCODE,
-    "https://ifarchive.org/indexes/if-archive/games/glulx/": GLULX,
-    "https://ifarchive.org/indexes/if-archive/games/tads/": TADS,
-    "https://ifarchive.org/indexes/if-archive/games/hugo/": HUGO,
-    "https://ifarchive.org/indexes/if-archive/games/adrift/": ADRIFT,
+    index_url("zcode"): ZCODE,
+    index_url("glulx"): GLULX,
+    index_url("tads"): TADS,
+    index_url("hugo"): HUGO,
+    index_url("adrift"): ADRIFT,
+    index_url("zcode/german"): ZCODE_GERMAN,
+    index_url("hugo/old"): HUGO_OLD,
 }
+# The remaining default subdirectories answer with a real empty index, so
+# a walk over the shipped thirty is exercised without twenty-four more
+# fixtures. A directory outside the default list still 404s, which is what
+# the not-found tests rely on.
+for _directory in DEFAULT_DIRECTORIES:
+    PAGES.setdefault(index_url(_directory), EMPTY_INDEX)
 
 
 class FakeHttp:
@@ -289,10 +322,43 @@ def test_camel_case_is_split_before_the_case_is_folded():
     assert normalise("905.z5") == "905 z5"
 
 
-def test_a_search_reads_the_four_default_directories():
+def test_a_search_reads_every_default_directory():
+    """Thirty, not four. The archive nests translations and superseded
+    releases one level down and that is where a quarter of the games are."""
     http = FakeHttp()
     Search(context(http=http)).search("advent", None, 50)
-    assert len(http.calls) == len(DEFAULT_DIRECTORIES) == 4
+    assert len(http.calls) == len(DEFAULT_DIRECTORIES) == 30
+
+
+def test_the_default_list_is_the_four_runtimes_and_their_subdirectories():
+    assert DEFAULT_DIRECTORIES[0] == "zcode"
+    for runtime in ("zcode", "glulx", "tads", "hugo"):
+        assert runtime in DEFAULT_DIRECTORIES
+        assert f"{runtime}/old" in DEFAULT_DIRECTORIES
+    assert "zcode/spanish" in DEFAULT_DIRECTORIES
+    # Every one of them is a name this plugin will actually request.
+    for directory in DEFAULT_DIRECTORIES:
+        assert clean_directory(directory) == directory
+
+
+def test_a_subdirectory_really_carries_games():
+    """`zcode/german` is 19 files, 16 of them mapped Z-code."""
+    entries = parse_index(ZCODE_GERMAN, "zcode/german")
+    mapped = [e for e in entries if (f := format_for(e.filename)) and f.platform]
+    assert len(entries) == 19
+    assert len(mapped) == 16
+    assert all(f.platform == "z-machine" for f in map(format_for, [e.filename for e in mapped]))
+
+
+def test_a_subdirectory_that_contributes_nothing_is_still_read():
+    """`hugo/old` is two files and neither is a story file.
+
+    Thirty directories are not thirty wins, and a default list that only
+    contained the ones that pay off would be a claim nobody checked.
+    """
+    entries = parse_index(HUGO_OLD, "hugo/old")
+    assert entries
+    assert all(format_for(e.filename) is None for e in entries)
 
 
 def test_a_second_search_in_one_process_costs_no_request():
@@ -384,7 +450,7 @@ def test_the_limit_is_honoured():
 
 def test_too_many_directories_is_refused_before_any_request():
     http = FakeHttp()
-    search = Search(context({"directories": [f"d{i}" for i in range(20)]}, http))
+    search = Search(context({"directories": [f"d{i}" for i in range(50)]}, http))
     with pytest.raises(IndexUnavailable) as exc:
         search.search("x", None, 10)
     assert "at most" in str(exc.value)

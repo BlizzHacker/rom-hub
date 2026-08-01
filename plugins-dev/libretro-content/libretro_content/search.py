@@ -9,12 +9,26 @@ platform-scoped search is a single request and a platform this source has
 nothing for -- Jaguar, say -- returns an empty list **without** a request.
 That is not an error; it is a reasonable question with a boring answer.
 
-Without `--platform` the plugin walks the systems in `systems` (RomM slugs,
-defaulting to the eight below) and stops at `max_systems`. The bound is not
-politeness: the host kills a plugin at 30 seconds, each listing is its own
-round trip, and a walk of all 29 mapped directories does not reliably
-finish inside that. An unbounded default would have made "no results" and
-"timed out" look the same from the outside.
+**Without `--platform` the walk is now all 29 mapped directories, and
+that is a measurement rather than a nerve.** The default used to be eight
+systems, which reached 104 of the source's 274 files -- and the reason
+given was that walking 29 "does not reliably finish" inside the host's
+30-second ceiling. It does. Measured 2026-08-01: **29 listings, 131 KB**
+-- 12.8 seconds fetched one connection at a time, and **2.1 seconds**
+through the Hub's broker, which keeps the connection alive. The
+pessimistic figure already fits with room; the real one is nowhere near
+the ceiling. So the default is every directory this plugin can map, the
+cap is the same 29 because there is no thirtieth, and the walk still
+stops the moment `limit` is reached -- so the common case is one or two
+requests and the full cost is only paid by a query that matches nothing.
+
+**Listings are cached for the life of the process** and shared with the
+importer, so an import that follows a search costs no request at all.
+
+This source is small, and saying so is more useful than implying
+otherwise: 274 files across 29 systems is the whole of libretro's free
+content shelf. What changed here is that a plugin which could see 104 of
+them now sees all 274.
 
 Matching is a case-insensitive substring over the filename, with every
 whitespace-separated term required. `alter ego` and `ego alter` both find
@@ -25,26 +39,51 @@ from pydantic import ValidationError
 
 from rom_hub_sdk import SearchProvider, SearchResult
 
-from .buildbot import BuildbotError, directory_url, parse_listing
-from .platforms import directory_for, platform_for
+from .buildbot import LISTINGS, directory_url
+from .platforms import DIRECTORIES, directory_for, platform_for
 
-#: Walked when the operator names no platform and configures no systems.
-#: Chosen for where the free content actually is: these eight directories
-#: hold the bulk of the homebrew on the buildbot.
-DEFAULT_SYSTEMS = (
-    "nes",
-    "snes",
-    "genesis",
-    "gb",
-    "gba",
-    "sms",
-    "atari2600",
-    "vectrex",
+#: File counts per system from a live walk on 2026-08-01, used only to
+#: order the default walk. A directory absent from this map sorts last,
+#: which is the right answer for one added later that nobody has counted.
+_ORDER: dict[str, int] = {
+    slug: rank
+    for rank, slug in enumerate(
+        (
+            "wasm-4",        # 63
+            "handheld-electronic-lcd",  # 59
+            "vectrex",       # 44
+            "nes",           # 26
+            "genesis",       # 15
+            "tic-80",        # 12
+            "gb",            # 11
+            "supergrafx",    # 5
+            "tg16",          # 5
+            "snes",          # 4
+            "n64",           # 4
+            "dos",           # 4
+            "dc",            # 3
+            "gba",           # 2
+            "virtualboy",    # 2
+            "psx",           # 2
+        )
+    )
+}
+
+#: Walked when the operator names no platform and configures no systems:
+#: every directory this plugin can map. Ordered by where the content
+#: actually is, largest shelf first, so a small `--limit` is answered from
+#: the directories most likely to hold the answer -- counts from a live
+#: walk on 2026-08-01.
+DEFAULT_SYSTEMS = tuple(
+    sorted(DIRECTORIES, key=lambda slug: _ORDER.get(slug, 99))
 )
 
-DEFAULT_MAX_SYSTEMS = 8
-#: One listing is one round trip and the host's ceiling is 30 seconds.
-MAX_SYSTEMS_CAP = 24
+#: Every mapped directory, because a 29-listing walk is 131 KB and 2.1
+#: seconds through the broker against a 30-second ceiling -- measured,
+#: not assumed.
+DEFAULT_MAX_SYSTEMS = 29
+#: There is no thirtieth directory to reach, so the cap is the table.
+MAX_SYSTEMS_CAP = 29
 
 
 class Search(SearchProvider):
@@ -139,14 +178,8 @@ class Search(SearchProvider):
     # -- transport -------------------------------------------------------
 
     def _listing(self, directory: str):
-        url = directory_url(directory)
-        response = self.ctx.http.get(url)
-        if response.status_code != 200:
-            raise BuildbotError(
-                f"the libretro buildbot returned HTTP {response.status_code} "
-                f"for {url!r}"
-            )
-        return parse_listing(response.text)
+        """One directory's rows, from the process cache when it has them."""
+        return LISTINGS.get(self.ctx.http, directory)
 
 
 def _matches(name: str, terms: list[str]) -> bool:

@@ -11,7 +11,14 @@
   reproduces it, and this fixture is what keeps it honest;
 * `myrient_shutdown.html` — what myrient.erista.me answers *today* for
   every path: 200 OK and a static notice. That one is a test, not a
-  curiosity — it is the failure mode a status-code check cannot see.
+  curiosity — it is the failure mode a status-code check cannot see;
+* `archive_org_atari_lynx_subdir.html` — the **subdirectory** listing at
+  `archive.org/download/NoIntro-Atari/Atari - Lynx/`, captured whole
+  (95 games) on 2026-08-01. It is the fixture for the shape that unlocked
+  five machines: an uploader who put several systems in one item and
+  named the folders after them. The item root holds no ROMs at all, so
+  before this the Lynx, the Jaguar, the ColecoVision, the VIC-20 and the
+  Plus/4 were unreachable however the plugin was configured.
 
 No test opens a socket.
 """
@@ -29,7 +36,14 @@ from nointro_archive.filenames import safe_filename  # noqa: E402
 from nointro_archive.importer import ImportRefused, Importer  # noqa: E402
 from nointro_archive.index import INDEXES, IndexCache, IndexError_, parse_index, parse_size  # noqa: E402
 from nointro_archive.platforms import platform_for  # noqa: E402
-from nointro_archive.search import ConfigError, Search, base_url, index_url  # noqa: E402
+from nointro_archive.search import (  # noqa: E402
+    ConfigError,
+    Search,
+    base_url,
+    index_url,
+    score,
+    title_key,
+)
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 from rom_hub.types import FetchFile, SearchResult  # noqa: E402
@@ -37,6 +51,10 @@ from rom_hub.types import FetchFile, SearchResult  # noqa: E402
 ARCHIVE_ORG = (FIXTURES / "archive_org_nointro_gg.html").read_text(encoding="utf-8")
 MYRIENT = (FIXTURES / "myrient_no_intro_game_boy.html").read_text(encoding="utf-8")
 SHUTDOWN = (FIXTURES / "myrient_shutdown.html").read_text(encoding="utf-8")
+LYNX = (FIXTURES / "archive_org_atari_lynx_subdir.html").read_text(encoding="utf-8")
+
+LYNX_DIR = "NoIntro-Atari/Atari - Lynx"
+LYNX_URL = "https://archive.org/download/NoIntro-Atari/Atari%20-%20Lynx/"
 
 CONFIG = {
     "base_url": "https://archive.org/download/",
@@ -318,6 +336,130 @@ def test_search_refuses_an_unmapped_directory_before_any_request():
     with pytest.raises(ConfigError, match="needs mapping"):
         search.search("x", None, 5)
     assert http.calls == []
+
+
+# ------------------------------------------------ subdirectories of an item
+
+
+def test_a_per_system_subdirectory_of_a_multi_system_item_is_a_directory():
+    """`NoIntro-Atari` holds five machines in five folders and no ROMs.
+
+    That layout is why five platforms were unreachable: the item root
+    parses to nothing and the plugin does not walk into subdirectories.
+    Naming the folder as the directory is the whole fix, and it needs the
+    space in `Atari - Lynx` to survive into the URL.
+    """
+    assert platform_for(LYNX_DIR) == "lynx"
+    assert index_url("https://archive.org/download/", LYNX_DIR) == LYNX_URL
+
+
+def test_the_lynx_subdirectory_parses_as_an_ordinary_index():
+    search, http = make_search(
+        bodies={LYNX_URL: LYNX}, config={"collections": [LYNX_DIR]}
+    )
+    results = search.search("", None, 200)
+    assert len(results) == 95, "the whole captured Lynx set"
+    assert all(r.platform == "lynx" for r in results)
+    assert http.calls == [LYNX_URL]
+
+
+def test_the_two_atari_2600_directories_are_not_both_mapped():
+    """`NoIntro-Atari/Atari - 2600` and `nointro.atari-2600` are the same
+    machine from two rebuilds. Mapping both would list every Atari game
+    twice, so only the newer dotted item is in the table."""
+    assert platform_for("nointro.atari-2600") == "atari2600"
+    assert platform_for("NoIntro-Atari/Atari - 2600") is None
+
+
+# ------------------------------------------------------------------ ranking
+
+
+def test_a_title_key_drops_regions_revisions_and_punctuation():
+    assert title_key("Klax (USA, Europe) (Beta).zip") == "klax"
+    assert title_key("Sonic The Hedgehog (USA, Europe) (Rev A).7z") == (
+        "sonic the hedgehog"
+    )
+    # No extension, no brackets: still just words.
+    assert title_key("Xenophobe") == "xenophobe"
+
+
+def test_score_separates_exact_from_prefix_from_substring():
+    assert score("Klax (USA, Europe).zip", "klax", ["klax"]) == 3
+    assert score("Batman Returns (USA, Europe).zip", "batman", ["batman"]) == 2
+    assert score(
+        "Adventures of Batman & Robin, The (USA).7z", "batman", ["batman"]
+    ) == 1
+    # A browse scores everything the same, so ordering falls through to
+    # the tie-breaks rather than to an invented relevance.
+    assert score("anything at all.zip", "", []) == 1
+
+
+def test_the_base_release_outranks_its_beta_even_though_beta_sorts_first():
+    """Both score 3; the shorter name wins, and that is the useful answer.
+
+    Alphabetically `Klax (USA, Europe) (Beta).zip` comes *before*
+    `Klax (USA, Europe).zip`, so listing order hands an operator the beta
+    first. Nothing about the old first-N-results walk could have done
+    otherwise.
+    """
+    search, _ = make_search(
+        bodies={LYNX_URL: LYNX}, config={"collections": [LYNX_DIR]}
+    )
+    titles = [r.title for r in search.search("klax", None, 2)]
+    assert titles == ["Klax (USA, Europe).zip", "Klax (USA, Europe) (Beta).zip"]
+
+
+def test_a_better_match_in_a_later_directory_beats_a_worse_one_first():
+    """The bug this ranking exists to fix.
+
+    The Game Gear index carries four `Adventures of Batman & Robin, The`
+    betas, which merely *contain* the word. The Lynx index carries
+    `Batman Returns`, which starts with it. Directory order used to
+    decide, so a `--limit 2` search returned two betas and never opened
+    the second directory.
+    """
+    gg_url = "https://archive.org/download/nointro.gg/"
+    search, http = make_search(
+        bodies={gg_url: ARCHIVE_ORG, LYNX_URL: LYNX},
+        config={"collections": ["nointro.gg", LYNX_DIR]},
+    )
+    results = search.search("batman", None, 2)
+    assert results[0].title == "Batman Returns (USA, Europe).zip"
+    assert results[0].platform == "lynx"
+    assert len(http.calls) == 2, "both directories were read before ranking"
+
+
+def test_a_platform_less_search_is_bounded_by_max_directories():
+    """Reading all 25 shipped indexes takes 34.8s; the host kills at 30."""
+    bodies = {index_url("https://archive.org/download/", d): ARCHIVE_ORG
+              for d in ("nointro.gg", "nointro.md", "nointro.32x", "nointro.ws")}
+    search, http = make_search(
+        bodies=bodies,
+        config={
+            "collections": ["nointro.gg", "nointro.md", "nointro.32x", "nointro.ws"],
+            "max_directories": 2,
+        },
+    )
+    search.search("nothing matches this", None, 50)
+    assert len(http.calls) == 2
+
+
+def test_a_platform_filter_ignores_the_directory_budget():
+    """One platform is one index, so the ceiling has nothing to bound.
+
+    This is what keeps every shipped set reachable: `max_directories`
+    shapes a browse, never an answer to a precise question.
+    """
+    search, http = make_search(
+        bodies={LYNX_URL: LYNX},
+        config={
+            "collections": ["nointro.gg", "nointro.md", LYNX_DIR],
+            "max_directories": 1,
+        },
+    )
+    results = search.search("", "lynx", 5)
+    assert http.calls == [LYNX_URL]
+    assert len(results) == 5
 
 
 def test_the_importer_refuses_an_unmapped_directory_and_names_it():

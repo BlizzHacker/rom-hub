@@ -2,10 +2,17 @@
 
 The whole of the safety argument is one line: **the slug is resolved
 through `games.py` before anything else happens.** A `source_id` naming a
-directory that is not one of the twelve cannot produce a URL, so the
+directory that is not one of the fifteen cannot produce a URL, so the
 subtitle packs and cutscene archives that sit beside these games under
 `/frs/extras/` are unreachable from here -- not filtered out afterwards,
 unreachable.
+
+**And for three of those fifteen the directory is not enough.** `SLUDGE`,
+`Wintermute` and `WAGE` are engine shelves holding many authors' games
+and more archives than ScummVM's games page names -- 35 files where the
+page names 30, in SLUDGE's case. Those rows carry an explicit file list
+and `game.offers()` is checked here as well as at search, so a filename
+an operator typed by hand gets the same answer as one they clicked.
 
 After that:
 
@@ -32,7 +39,7 @@ from .downloads import (
     parse_listing,
 )
 from .filenames import safe_filename
-from .games import GAMES, game_for
+from .games import DIRECTORIES, GAMES, game_for
 
 DEFAULT_COLLECTION = "ScummVM freeware"
 
@@ -60,6 +67,16 @@ class Importer(ImportProvider):
                 f"{filename!r} is not a game file -- it is a checksum sidecar or "
                 f"a manual. ScummVM ships those beside the archives; a library "
                 f"that filed one as a game would have a game that does not start."
+            )
+
+        if not game.offers(filename):
+            raise ImportRefused(
+                f"{filename!r} is in the {game.directory!r} directory but it is "
+                f"not one of {game.title}'s archives. That directory is an "
+                f"engine shelf holding several authors' games and more files "
+                f"than ScummVM's own freeware page names, so each game here "
+                f"lists its archives explicitly. {game.title} is "
+                f"{sorted(game.files)}."
             )
 
         listed = self._listed_name(game.directory, filename)

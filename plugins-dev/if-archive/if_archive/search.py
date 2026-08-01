@@ -30,6 +30,24 @@ not a result. A file whose extension *is* a known story format but has no
 RomM platform -- a `.blb`, a `.taf` -- is returned with `platform` unset,
 because hiding a game somebody can see on the archive's own site would be
 worse than showing why it will not import.
+
+**The default is thirty directories, not four**, and that is where the
+coverage went: the archive nests translations and superseded releases one
+level under each runtime, and `zcode/old` alone holds 59 mapped story
+files. Four roots reached 1,158 of the 1,410 these thirty hold. Thirty
+indexes is 1,251 KB and 4.4 seconds against a 30-second ceiling
+(measured), and the four roots are 914 KB of that -- so the twenty-six
+subdirectories were the cheap three-quarters of what was missing.
+
+**`--platform` deliberately does not narrow the directory list**, which
+is the one obvious optimisation here and it would be wrong. The extension
+decides the runtime, never the directory: `The Cruel Count's Castle.gblorb`
+sits in `games/zcode/` and is a **Glulx** game, and `zenspeak.blb` sits
+there and is not a game at all. A `--platform glulx` search that skipped
+`zcode/` on the strength of its name would silently lose exactly the
+files this plugin already goes to some trouble not to misfile. So every
+configured directory is read and the filter runs on `formats.py`'s
+answer.
 """
 
 import re
@@ -42,9 +60,13 @@ from .formats import PLATFORMS, format_for
 from .index import DEFAULT_DIRECTORIES, Index, IndexUnavailable, clean_directory
 
 #: Reading every configured directory costs one request each, so the list
-#: is bounded: an operator who names thirty directories is asking for
-#: thirty 500 KB pages inside one 30-second plugin timeout.
-MAX_DIRECTORIES = 12
+#: is bounded. Forty rather than twelve, because the shipped default is
+#: now thirty and a bound below the default would be a bound against
+#: nothing. Thirty indexes is 1,251 KB and 4.4 seconds over one
+#: keep-alive connection, measured 2026-08-01 against the host's
+#: 30-second ceiling; the four roots are 914 KB of that and the
+#: twenty-six subdirectories are the cheap part.
+MAX_DIRECTORIES = 40
 
 _CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 _NON_WORD_RE = re.compile(r"[^0-9a-z]+")

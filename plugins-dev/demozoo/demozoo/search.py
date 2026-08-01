@@ -60,11 +60,24 @@ ENDPOINT = "https://demozoo.org/api/v1/productions/"
 #: Requests one `search()` may make, across all platform ids and pages.
 #: Every page is a round trip against the host's own timeout, and
 #: `--platform amiga` already costs three streams before paging.
-DEFAULT_MAX_REQUESTS = 6
+#:
+#: Raised from 6. Results are filtered to what `importer` would accept, so
+#: a page of a hundred `Windows` demos yields nothing and still costs a
+#: request -- and six requests is 600 rows out of 386,682, which for
+#: several platforms did not fill one screen. Twelve is about ten seconds
+#: against the host's thirty-second ceiling.
+DEFAULT_MAX_REQUESTS = 12
+
+#: Hard ceiling on `max_requests`, whatever config says. demozoo.org
+#: publishes `Crawl-delay: 10` for every user agent; `/api/v1/` is not
+#: disallowed, but a plugin that could be configured to make a hundred
+#: calls to it in one command would deserve to be blocked.
+MAX_REQUESTS_CAP = 40
 
 #: Ceiling on `limit`, independent of what the host asks for. The API
-#: pages at 100 and the CLI prints every row.
-MAX_LIMIT = 200
+#: pages at 100; grouping in the host collapses a demo's several releases
+#: into one row, so a larger net costs the operator nothing on screen.
+MAX_LIMIT = 500
 
 
 class SearchError(Exception):
@@ -179,4 +192,4 @@ class Search(SearchProvider):
             value = int(raw)
         except (TypeError, ValueError):
             return DEFAULT_MAX_REQUESTS
-        return max(1, min(value, 20))
+        return max(1, min(value, MAX_REQUESTS_CAP))

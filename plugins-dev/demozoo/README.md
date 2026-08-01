@@ -1,8 +1,9 @@
 # Demozoo plugin for ROM Hub
 
-Implements the RPP v1 `search` and `importer` capabilities against
-[Demozoo](https://demozoo.org), the demoscene's catalogue: 386,682
-productions on 2026-07-29, indexed by platform, type, author and party.
+Implements the RPP v1 `search`, `importer` and `metadata` capabilities
+against [Demozoo](https://demozoo.org), the demoscene's catalogue:
+386,682 productions on 2026-07-29, indexed by platform, type, author and
+party.
 
 Demos, intros and cracktros for the machines a ROM library is already
 full of — Commodore 64, Amiga, ZX Spectrum, Atari 8-bit and ST, Amstrad
@@ -15,12 +16,31 @@ software that nobody has to be asked about.
 | `search` | `demozoo.org/api/v1/productions/` | exact-title lookup, or a platform browse |
 | `importer` | `demozoo.org/api/v1/productions/<id>/` | resolves one production to a download |
 | `importer` | `files.scene.org` / `fujiology.org` | names a URL; the **Hub** fetches it |
+| `metadata` | `demozoo.org` → `media.demozoo.org` | proposes the production's title and its screenshot |
+
+## What changed in 0.2.0
+
+| | before | after |
+|---|---:|---|
+| requests one search may make | 6 (600 rows scanned of 386,682) | **12** by default, **40** by config |
+| `--limit` ceiling | 200 | **500** |
+| capabilities | search, importer | + **metadata** |
+
+The request budget mattered more than it sounds. Results are filtered to
+what `importer` would accept, so **a page of a hundred `Windows` demos
+yields nothing and still costs a request** — and six requests was not
+enough to fill one screen for several platforms. The cap is 40 rather than
+unbounded because `demozoo.org/robots.txt` publishes `Crawl-delay: 10`
+for every user agent; `/api/v1/` is not disallowed, but a plugin that
+could be configured into a hundred calls per command would deserve to be
+blocked.
 
 ## Install
 
     rom-hub plugin install ./plugins-dev/demozoo
     rom-hub search "second reality"
     rom-hub import demozoo 108
+    rom-hub enrich demozoo 42 --source-id 142
 
 ## Config
 
@@ -28,10 +48,58 @@ software that nobody has to be asked about.
 |---|---|---|---|
 | `collection` | `str` | `"Demozoo"` | the library collection imports land in |
 | `production_type` | `str` | `""` | narrow a browse to one type — `Cracktro`, `Demo`, `64K Intro` … |
-| `max_requests` | `int` | `6` | requests one search may make, across platform ids and pages |
+| `max_requests` | `int` | `12` | requests one search may make, across platform ids and pages (capped at 40) |
+| `set_name` | `bool` | `true` | `metadata` only: write Demozoo's title over the library's |
+
+## What `metadata` sets — and what Demozoo has that cannot get there
+
+**`name`**, from the production's own title, and **`artwork_url`**,
+pointing at the screenshot Demozoo kept. Nothing else, and the "nothing
+else" is the honest half.
+
+A production record carries a release date, an author (often several
+groups), a platform list, a type list, tags, **the party it was released
+at**, **the competition placing** and **a full credit list** — code,
+graphics and music, by nick. Almost none of it reaches RomM: 4.9.2's
+update endpoint takes a name, provider ids and a cover, and it accepts all
+eight `raw_*_metadata` fields with HTTP 200 while **storing none of them**
+(verified against a live 4.9.2). Putting a party name into a field that
+belongs to IGDB would also be a lie in somebody else's column. So the
+party, the placing and the credits stay in `SearchResult.extra`, where an
+operator can read them, and this capability proposes what a library keeps.
+
+**The screenshot is the production, not a box.** The demoscene has no box
+art — there was never a box — and Demozoo's screenshots are frames
+captured from the production itself, which is the nearest thing that
+exists. `standard_url` rather than `original_url`: an original is a
+machine's full framebuffer at its native size, the standard rendering is
+what Demozoo's own site shows, and `MetadataPatch` caps artwork at 8 MB.
+
+**`?title=` being an exact match is a limitation everywhere else in this
+plugin and exactly right here.** `title=crackt` returns zero; `title=Desert
+Dream` returns the five productions actually called that. Five, because
+the scene reuses titles constantly — there are seven called *Second
+Reality*. A rom's platform narrows the lookup (RomM's `amiga` is three
+Demozoo platform ids, so that costs three requests) and a title that still
+lands on more than one production **refuses and names the ids** rather
+than attaching another group's screenshot.
+
+RomM names a rom after the file it was uploaded as, so a scene import
+comes back as `dd.lha` while the production is *Desert Dream*. Three
+spellings are tried — the name as given, the name without a trailing
+extension, the filename's stem — each matched exactly by Demozoo, so a
+wrong guess costs a request and a miss rather than a wrong cover.
 
 No credentials. The API is public and unauthenticated and this plugin
 sends nothing but a GET.
+
+`media.demozoo.org` joins the allowlist in 0.2.0 and only for `metadata`:
+a `MetadataPatch.artwork_url` is fetched by the **host** and gated against
+that list exactly like a FetchPlan URL. Every screenshot URL the API
+publishes is on that host and it answers 200 with zero redirects (checked
+live 2026-08-01). A screenshot that ever appeared on another host is
+ignored rather than named — the gate would refuse it, and naming a URL
+you know will be refused turns a shrug into an error.
 
 ## Search: what it can and cannot do
 
