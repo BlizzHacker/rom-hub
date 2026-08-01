@@ -1,0 +1,186 @@
+---
+Prince of Persia:
+  files:
+    "<base>/CONFIG.DAT":
+      tags:
+        - config
+      when:
+        - os: dos
+    "<base>/PRINCE.SAV":
+      tags:
+        - save
+      when:
+        - os: dos
+    "<base>/SETUP.DAT":
+      tags:
+        - config
+      when:
+        - os: dos
+  id:
+    lutris: prince-of-persia
+Duke Nukem 3D:
+  cloud:
+    gog: true
+  files:
+    "<base>/DUKE3D.CFG":
+      tags:
+        - config
+      when:
+        - os: dos
+    "<base>/GAME*.SAV":
+      tags:
+        - save
+      when:
+        - os: dos
+  gog:
+    id: 1207658730
+  id:
+    lutris: duke-nukem-3d
+  installDir:
+    Duke Nukem 3D: {}
+  launch:
+    "<base>/Dosbox/dosbox":
+      - arguments: "-conf \"..\\DUKE3d.conf\" -noconsole -c"
+        when:
+          - os: linux
+            store: steam
+        workingDir: "<base>/Dosbox"
+    "<base>/Duke Nukem 3D - DOS.bat":
+      - when:
+          - os: windows
+            store: steam
+    "<base>/Duke Nukem 3D.app":
+      - when:
+          - os: mac
+            store: steam
+    "<base>/Duke Nukem 3D/eduke32.exe":
+      - when:
+          - os: windows
+            store: steam
+        workingDir: "<base>/Duke Nukem 3D"
+  steam:
+    id: 359850
+Fallout:
+  cloud:
+    epic: true
+    gog: true
+    steam: true
+  files:
+    "<base>/data/SAVEGAME":
+      tags:
+        - save
+      when:
+        - os: dos
+        - os: windows
+    "<base>/fallout.cfg":
+      tags:
+        - config
+      when:
+        - os: dos
+        - os: windows
+  gog:
+    id: 1440166342
+  id:
+    gogExtra:
+      - 1
+      - 1440148836
+    lutris: fallout
+  installDir:
+    Fallout: {}
+  launch:
+    "<base>/falloutlauncher.exe":
+      - when:
+          - os: windows
+            store: steam
+      - arguments: "-classic"
+        when:
+          - os: windows
+            store: steam
+  steam:
+    id: 38400
+$1 Ride:
+  installDir:
+    $1 Ride: {}
+  launch:
+    "<base>/ride.exe":
+      - when:
+          - store: steam
+  registry:
+    HKEY_CURRENT_USER/Software/Back to Basics Gaming/1$ Ride:
+      tags:
+        - config
+        - save
+  steam:
+    id: 508290
+Accounting:
+  installDir:
+    Accounting: {}
+  steam:
+    id: 518580
+Accounting+:
+  id:
+    steamExtra:
+      - 964590
+  installDir:
+    AccountingPlus: {}
+  registry:
+    HKEY_CURRENT_USER/Software/Crows Crows Crows/Accounting+:
+      tags:
+        - save
+  steam:
+    id: 927270
+"\"LIFE\" not found":
+  id:
+    steamExtra:
+      - 1908970
+      - 1909340
+      - 2061400
+  installDir:
+    LIFEnotfound: {}
+  launch:
+    "<base>/LIFEnotfound.exe":
+      - when:
+          - store: steam
+  steam:
+    id: 1908870
+"!Anyway!":
+  cloud:
+    steam: true
+  files:
+    "<winLocalAppData>/anyway":
+      tags:
+        - save
+      when:
+        - os: windows
+  id:
+    steamExtra:
+      - 867990
+  installDir:
+    Anyway: {}
+  steam:
+    id: 866510
+"!4RC4N01D! 2: Retro Edition":
+  steam:
+    id: 791550
+"Смешарики: Параллельные миры":
+  files:
+    "<base>/config.info":
+      tags:
+        - config
+      when:
+        - os: windows
+    "<winAppData>/Смешарики - Параллельные миры/settings.sav":
+      tags:
+        - save
+      when:
+        - os: windows
+"!LABrpgUP!":
+  installDir:
+    "!LABrpgUP!": {}
+  launch:
+    "<base>/RPG.exe":
+      - when:
+          - os: windows
+            store: steam
+  steam:
+    id: 870990

@@ -1,0 +1,51 @@
+[plugin]
+slug        = "ludusavi"
+name        = "Ludusavi (save locations)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+metadata = "ludusavi.metadata:Metadata"
+
+# One host, and it is only ever reached to fetch the dataset below. This
+# plugin makes no `ctx.http` call at all -- `enrich()` reads a local file
+# the host has already downloaded and hash-verified.
+#
+# `raw.githubusercontent.com` answers a pinned blob URL with 200 and no
+# redirect (verified 2026-07-31: `curl -w %{num_redirects}` reports 0), so
+# unlike the GitHub *release* asset that openvgdb declares, there is no CDN
+# hop to declare and nothing else to allow.
+[permissions]
+network  = ["raw.githubusercontent.com"]
+romm_api = []
+
+# The dataset. `mtkennerly/ludusavi-manifest` publishes one 17.4 MB YAML
+# file and no API, so the source of this plugin is a *file* -- exactly the
+# case `[[data_assets]]` exists for. It cannot come down `ctx.http`: that
+# channel caps a response at 4 MiB, carries text rather than bytes, and
+# gives a per-command subprocess nowhere to cache anything between runs.
+#
+# **Pinned to a commit, not to a branch.** The repository publishes no
+# releases and no tags at all, so a commit sha is the only immutable
+# handle there is -- and a declared sha256 and a floating URL cannot both
+# be right. `master` would start failing verification the next time the
+# manifest is regenerated from PCGamingWiki, which is exactly when a human
+# should look at it.
+#
+# `size_bytes` is the *decoded* file. The server sends it gzipped
+# (Content-Length 2,367,377), and what lands on disk -- the file this
+# plugin opens and the file the sha256 covers -- is 17,460,574 bytes.
+[[data_assets]]
+name        = "manifest.yaml"
+url         = "https://raw.githubusercontent.com/mtkennerly/ludusavi-manifest/39c763895003b263d2f8a026b2590246ab3f7639/data/manifest.yaml"
+sha256      = "f50932356bf695869fe93a1dff75548afa56e539f18ec0e1c8da7fc33aa98489"
+size_bytes  = 17460574
+description = "ludusavi-manifest @ 39c7638 (2026-07-31): save-file and registry locations for 52,886 PC games, compiled from PCGamingWiki. MIT."
+
+[config]
+# The library platforms this dataset is true about. Ludusavi's own `when.os`
+# vocabulary is windows/linux/mac/dos, and these are the RomM slugs those
+# four correspond to. Widening this is an operator's deliberate decision --
+# see README.md, "The false positive this is built around".
+platforms = { type = "list[str]", default = ["dos", "win", "win3x", "linux", "mac"] }

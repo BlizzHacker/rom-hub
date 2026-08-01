@@ -1,6 +1,6 @@
 {
   "catalog_version": "1",
-  "updated": "2026-07-29",
+  "updated": "2026-07-31",
   "plugins": [
     {
       "slug": "aminet",
@@ -164,6 +164,33 @@
       "description": "Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports the ROM directly, and proposes the submitter's own title and cover.",
       "terms": "The cleanest source in this directory. Homebrew Hub indexes games written by their authors for the Game Boy, published by those authors for free distribution — the rights holder is the uploader, so there is no third-party copyright being routed around. Individual entries carry their own licences, which vary; the Hub's own catalogue metadata is community-maintained and openly published. Nothing here is a commercial ROM.",
       "comments": "The only plugin in this directory built from the start for material that is unambiguously free to redistribute. One host does both jobs — `/api/search` answers queries and `/static/` serves the ROMs with no redirect off it — so the allowlist is a single host. `hh.gbdev.io`, the human-facing site those results link to, is deliberately not declared, because the plugin shows that URL and never fetches it. `metadata` proposes the Hub's title and the entry's `cover.*` image, and nothing else. It may write a title where libretro-thumbnails may not, because for homebrew the submitter *is* the publisher of record — but only a file actually named `cover.*` becomes artwork, since roughly half the entries carry in-game screenshots instead and promoting one would fill a library with gameplay stills. Resolution is exact or it refuses: three live entries are titled exactly \"Snake\", and a query landing on those names all three rather than choosing."
+    },
+    {
+      "slug": "if-archive",
+      "name": "IF Archive (Interactive Fiction)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-if-archive",
+      "install": "https://github.com/BlizzHacker/rom-hub-if-archive",
+      "download": "https://github.com/BlizzHacker/rom-hub-if-archive/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-31",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer"
+      ],
+      "network": [
+        "ifarchive.org",
+        "ukrestrict.ifarchive.org"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches the IF Archive's Z-machine, Glulx, TADS and Hugo game directories and imports the story file, answering RomM issue #2140.",
+      "terms": "Stated by the archive itself, and not uniformly permissive — which is why this entry does not say \"freely distributable\". The IF Archive's Terms of Use say its contents \"are the intellectual property of their original creators\" and are \"where possible, archived and distributed with permission\"; material carrying a licence is distributed under that licence, and \"any material with no attached license is presumed to be licensed for personal use only\". A great deal of interactive fiction is public domain, Creative Commons or explicitly author-released, and a great deal of the older material has no clear terms at all — the archive hosts that deliberately, as \"part of the common heritage of interactive fiction\", with a DMCA route for objectors. The archive states it \"may not be compiled for commercial distribution\". Downloading a game to play is what the archive is for; redistributing a subset is not, and only each game's own licence settles which is which. The file descriptions this plugin surfaces are separate: the archive licenses its metadata, indexes and descriptions CC BY 4.0 to the Interactive Fiction Technology Foundation. `ifarchive.org` serves no robots.txt at all (a hard 404), so there is no crawl directive to observe.",
+      "comments": "Answers rommapp/romm#2140, which asks for one `interactive-fiction` platform — RomM 4.9.2 turns out to already have four (`z-machine`, `glulx`, `tads`, `hugo`, verified against a live `GET /api/platforms/supported`), so the plugin uses all four and collapses nothing: a Z-code `.z5` and a Glulx `.ulx` need different interpreters. The extension decides the platform, never the directory — `The Cruel Count's Castle.gblorb` is filed under `games/zcode` and is a Glulx game. A bare `.blb` is refused: the Blorb container does not say which runtime it holds, and two of the eleven in the game directories are not games at all (a sound-resource file and an eBook reader). ADRIFT `.taf`, Alan, Quest, AAS, Archetype and TAG are known formats with no RomM platform; they appear in search with no platform set and refuse at import naming the format. Two traps: `ifarchive.org` **302s downloads to `ukrestrict.ifarchive.org`** for glulx/tads/hugo but not for zcode, so both hosts must be declared or every non-Z-code import dies at the redirect hop; and each index entry escapes its filename two different ways — `<dt id=\"Apollo18=2B=20.zip\">` beside `href=\".../Apollo18%2B20.zip\"` — so the href is the only one that is a filename. Imports cost no HTTP request: the archive path is the URL, the platform and the name. ifdb.org is checked and deliberately untouched — its robots.txt is comment-only with no directive and no content signal, which is an absence of an answer rather than a yes."
     },
     {
       "slug": "itch-io",
@@ -346,6 +373,31 @@
       "description": "Proposes box art, title screens and in-game screenshots for a ROM by matching its No-Intro-style name.",
       "terms": "Read the licence before you publish anything downstream. The libretro thumbnail packs are community-collected scans and captures of commercial game packaging and screens; the artwork is the publishers' copyright, and libretro distributes it for use in emulator frontends rather than under a licence that grants redistribution. Fetching it to illustrate your own library is the intended use. The host is public and unauthenticated, and its robots.txt does not disallow the image paths.",
       "comments": "Metadata only — it proposes art and never touches a ROM. Matching is by exact No-Intro-style filename against the per-system index, so a name this plugin cannot spell yields no art rather than the wrong game's box. One host, verified to serve images with zero redirects, so there is no CDN hop to declare."
+    },
+    {
+      "slug": "ludusavi",
+      "name": "Ludusavi (save locations)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-ludusavi",
+      "install": "https://github.com/BlizzHacker/rom-hub-ludusavi",
+      "download": "https://github.com/BlizzHacker/rom-hub-ludusavi/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-31",
+      "rpp_version": "1",
+      "capabilities": [
+        "metadata"
+      ],
+      "network": [
+        "raw.githubusercontent.com"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Records where a PC game keeps its save files and registry keys, from the ludusavi manifest, answering RomM issue #1908.",
+      "terms": "The cleanest licensing position in this directory. `mtkennerly/ludusavi-manifest` is MIT-licensed in its own repository root — use, copy and redistribute, including commercially, keeping the notice. Nothing here is a game, a ROM or an executable: the dataset is factual file paths and registry keys for 52,886 PC titles, compiled from PCGamingWiki (whose own contributions are CC BY-NC-SA 3.0) plus the Steam API for install-directory names. Anyone redistributing a large derived work should follow that chain rather than take it from a plugin. One pinned blob URL is fetched once through the host's own downloader; nothing is crawled, so no robots.txt question arises.",
+      "comments": "Answers rommapp/romm#1908, and answers half of it: it records **where** saves live, it does not move them — no backup, no Ludusavi binary, no files touched. The caveat is where the answer lands. RomM 4.9.2 gates seven of its eight `raw_*_metadata` fields on a matching provider id (`if cleaned_data[\"hltb_id\"] and raw_hltb_metadata is not None: ...`), so any of those would be silently dropped unless a fabricated id were written alongside it — which is not on. `raw_manual_metadata` is the only ungated field, so that is where the blob goes, namespaced under a `ludusavi` key. Verified on a live 4.9.2: the write is durable in the `manual_metadata` column, but `GET /api/roms/{id}` does not echo the key back, because `ManualMetadata` is a closed seven-key TypedDict. It also replaces rather than merges, since RomM takes the whole blob and `RomRef` does not hand plugins the existing one. Matching is built around one false positive: `Sonic the Hedgehog` is in the manifest as a PC release, so the platform is checked *before* the title — only dos/win/win3x/linux/mac are looked up, matching is exact equality on a unicode-normalised title, keys under four characters refuse (259 of the manifest's own are that short), and a key resolving to two titles refuses naming both (243 keys, 491 titles). The dataset arrives as a 17.4 MB `[[data_assets]]` file pinned to a commit sha — the repository publishes no releases and no tags — and is read by a YAML subset parser, because ROM Hub does not depend on PyYAML and one plugin must not add a host dependency. That parser refuses anything outside the subset rather than skipping it; it reads all 52,886 real entries with zero refusals."
     },
     {
       "slug": "nointro-archive",
