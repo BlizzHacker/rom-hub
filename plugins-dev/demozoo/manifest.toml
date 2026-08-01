@@ -1,21 +1,29 @@
 [plugin]
 slug        = "demozoo"
 name        = "Demozoo (demoscene)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 search   = "demozoo.search:Search"
 importer = "demozoo.importer:Importer"
+metadata = "demozoo.metadata:Metadata"
 
 # Three hosts, reached on three different steps, and the third is the one
 # that is easy to forget.
 #
 #   demozoo.org        the public JSON API -- the index, and nothing else
+#   media.demozoo.org  the screenshots, for `metadata` and nothing else
 #   files.scene.org    scene.org's download entry point
 #   archive.scene.org  where files.scene.org's `get:nl-https` mirror 302s to
 #   fujiology.org      serves its files directly, no redirect
+#
+# `media.demozoo.org` is new in 0.2.0 and is there because a
+# `MetadataPatch.artwork_url` is fetched by the HOST and gated against this
+# list exactly like a FetchPlan URL. Every screenshot URL the API publishes
+# is on it, it answers 200 with zero redirects (verified live 2026-08-01),
+# and nothing else in this plugin touches it.
 #
 # Demozoo hosts no files. Every download is on somebody else's archive, so
 # the archive has to be declared -- and so does the mirror its redirect
@@ -37,6 +45,7 @@ importer = "demozoo.importer:Importer"
 [permissions]
 network  = [
   "demozoo.org",
+  "media.demozoo.org",
   "files.scene.org",
   "archive.scene.org",
   "fujiology.org",
@@ -46,11 +55,21 @@ romm_api = []
 [config]
 # The RomM collection everything from here lands in.
 collection      = { type = "str", default = "Demozoo" }
+# `metadata` only. Whether to write Demozoo's title over the library's. On
+# by default because a scene import lands as `sr.zip` and the production is
+# called "Second Reality"; Demozoo is a curated database with a public edit
+# history, so its title is as authoritative as this material has.
+set_name        = { type = "bool", default = true }
 # Narrow a browse to one production type -- "Cracktro", "Demo",
 # "64K Intro". Empty means every type this plugin imports. A type it does
 # not import is refused by name rather than accepted and then filtered.
 production_type = { type = "str", default = "" }
 # Requests one search may make, across platform ids and pages. RomM's
 # `amiga` is three Demozoo platforms, so a platform browse costs three
-# streams before any paging.
-max_requests    = { type = "int", default = 6 }
+# streams before any paging -- and results are filtered to what `importer`
+# would accept, so a page of a hundred Windows demos yields nothing and
+# still costs a request. At 6 that was 600 rows scanned out of 386,682,
+# which was not enough to fill one screen for several platforms. Capped at
+# 40 because demozoo.org publishes `Crawl-delay: 10` and a plugin that
+# hammered its API would deserve to be blocked.
+max_requests    = { type = "int", default = 12 }
