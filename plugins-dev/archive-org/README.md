@@ -174,6 +174,37 @@ one as "replace what is there with nothing".
 
     rom-hub enrich archive-org 4211 --source-id whac-a-critter-usa-unl
 
+### RomM 4.9.2 accepts the field and stores nothing
+
+Measured, and it is not this plugin's bug — it is the whole `raw_metadata`
+channel of RPP v1 against RomM. `PUT /api/roms/{id}` **declares** all eight
+raw fields in its own OpenAPI schema:
+
+    raw_igdb_metadata  raw_moby_metadata     raw_ss_metadata
+    raw_launchbox_metadata  raw_hasheous_metadata  raw_flashpoint_metadata
+    raw_hltb_metadata  raw_manual_metadata
+
+Every one of them is accepted with `200` and none of them comes back. On
+RomM 4.9.2, sending `{"probe": "..."}` to each and reading the rom again:
+
+| sent | read back |
+|---|---|
+| `raw_manual_metadata` | `manual_metadata = {}` |
+| `raw_moby_metadata` | `moby_metadata = {}` |
+| `raw_flashpoint_metadata` | `flashpoint_metadata = {}` |
+| `raw_hltb_metadata` | `hltb_metadata = {}` |
+
+Pairing the blob with its id does not help — `moby_id=12345` **persists** and
+`raw_moby_metadata` alongside it still does not — and no rom in a 200-rom
+library has a non-empty raw blob of any kind.
+
+So the control information is carried correctly through RPP and RomM 4.9.2
+drops it on the floor. Nothing here works around that: writing the text into
+`summary`, which does persist, would put a keyboard mapping in the field that
+holds the game's description, and a library that lies about what a field means
+is worse than one that is missing data. The plugin keeps writing the field it
+should write. A backend that stores it will store it.
+
 ## Streaming the other half
 
 6,816 items will not download, and they are not junk — Archive.org plays them

@@ -234,6 +234,21 @@ def patch_field(blob: dict | None) -> dict:
     not true. Note that a raw blob is *replaced*, not merged, by whoever
     writes it last; the namespaced `BLOB_KEY` at least makes it obvious
     whose it is.
+
+    **RomM 4.9.2 accepts this field and stores nothing.** Measured against
+    a real server, and it is the whole `raw_metadata` channel rather than
+    this field: `PUT /api/roms/{id}` declares all eight raw fields in its
+    own OpenAPI schema, answers 200 to every one of them, and reads back
+    `{}` for every one of them. Pairing a blob with its id does not help
+    -- `moby_id=12345` persists and `raw_moby_metadata` beside it does
+    not -- and no rom in a 200-rom library has a non-empty raw blob of any
+    kind.
+
+    Nothing here works around that. `summary` does persist, and putting a
+    keyboard mapping in the field that holds the game's description would
+    make the library lie about what a field means, which is worse than
+    missing data. This writes the field it should write; a backend that
+    stores it will store it.
     """
     if not blob:
         return {}
