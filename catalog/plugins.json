@@ -116,33 +116,6 @@
       ]
     },
     {
-      "slug": "archive-org-torrent",
-      "name": "Archive.org (torrents)",
-      "author": "BlizzHacker",
-      "repository": "https://github.com/BlizzHacker/rom-hub-archive-org-torrent",
-      "install": "https://github.com/BlizzHacker/rom-hub-archive-org-torrent",
-      "download": "https://github.com/BlizzHacker/rom-hub-archive-org-torrent/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-08-01",
-      "rpp_version": "1",
-      "capabilities": [
-        "torrent"
-      ],
-      "network": [
-        "archive.org",
-        "*.archive.org"
-      ],
-      "status": "ok",
-      "search_only": false,
-      "key_required": false,
-      "in_tree": false,
-      "description": "Reaches the .torrent the Internet Archive publishes and seeds for nearly every item it holds — 231,663 of softwarelibrary's 250,398, and all but 22 of the 17,930 downloadable Console Living Room items.",
-      "terms": "The Internet Archive's, unchanged: this plugin reaches the torrent the Archive publishes and seeds itself, for items it already serves over https, and it works around no restriction. Items the Archive will not distribute simply have no torrent, and both ways of saying so are handled as ordinary outcomes rather than obstacles — an item in `stream_only` or marked `access-restricted-item` publishes no `Archive BitTorrent` file (msdos_Oregon_Trail_The_1990 is a live example), and a darkened item answers its metadata with an `is_dark` stub and its download path with HTTP 403 (nointro.gb). The plugin refuses both by name. The underlying rights are the same mixed picture the `archive-org` entry describes: the Archive hosts public-domain, abandonware and still-copyrighted software under its own library position, not under a licence that passes to you. Access is public and unauthenticated; `/metadata/` and `/download/` are not disallowed by the Archive's robots.txt.",
-      "comments": "Separate from `archive-org` on purpose: this one can produce something you hand to a torrent client, which announces to trackers and connects to peers, and that is a network posture you should be able to decline by not installing it. The Hub itself links no torrent client — see docs/DESIGN.md — because these torrents carry https web seeds pointing back at archive.org, and a per-file sha1, md5 and crc32 inside the `info` dictionary and therefore under the info-hash. That makes a .torrent a verified file manifest: `rom-hub torrent fetch` pulls one named file over https and checks it against the torrent's own digest, with no peer stack involved. Two traps recorded while building it. `ia_make_torrent` FLATTENS subdirectories — an item whose metadata lists `NES/PAC-MAN Championship Edition.nes` carries it in the torrent as a bare name — so selecting files by their metadata path names entries the torrent does not contain. And the trackers are `http://bt1.archive.org:6969`, which `netpolicy.check_url` refuses because it permits https only; they are gated by hostname instead, rather than by weakening the check every other capability leans on.",
-      "platforms": []
-    },
-    {
       "slug": "demozoo",
       "name": "Demozoo (demoscene)",
       "author": "BlizzHacker",
