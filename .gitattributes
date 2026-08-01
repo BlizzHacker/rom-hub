@@ -1,0 +1,12 @@
+# A patch's line endings are part of the patch.
+#
+# `docs/patches/romm-stream-ice-servers.patch` targets a file that has CRLF
+# line terminators on the deployment target, so every context line in the
+# diff ends in CRLF too. Git's `core.autocrlf=true` -- the default on a
+# Windows checkout -- normalised those away on commit, which produced a
+# patch that looked right and matched nothing: `patch` compares context
+# lines byte for byte, so a CR stripped from the context is a hunk that
+# fails to apply.
+#
+# `-text` means "never convert", in either direction, on any platform.
+docs/patches/*.patch -text
