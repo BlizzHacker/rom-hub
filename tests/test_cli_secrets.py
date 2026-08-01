@@ -268,6 +268,52 @@ def test_plugin_config_says_not_set_when_nothing_is_stored(installed, capsys):
     assert "***" not in out, "'***' for an unset secret would say the opposite"
 
 
+# -- --set writes the non-secret fields, and refuses the secret ones ------
+
+
+def test_config_set_writes_a_declared_field(installed, capsys):
+    assert main(["plugin", "config", "demo", "--set", "depth=9"]) == 0
+    capsys.readouterr()
+    assert main(["plugin", "config", "demo"]) == 0
+    assert "9" in capsys.readouterr().out
+
+
+def test_config_set_coerces_to_the_declared_type(installed, capsys):
+    assert main(["plugin", "config", "demo", "--set", "depth=9"]) == 0
+    capsys.readouterr()
+    from rom_hub.registry import Registry
+
+    stored = Registry(installed).get("demo").config["depth"]
+    assert stored == 9 and isinstance(stored, int), "an int field must not hold a str"
+
+
+def test_config_set_refuses_a_value_the_declared_type_cannot_hold(installed, capsys):
+    assert main(["plugin", "config", "demo", "--set", "depth=seven"]) != 0
+    assert "not one" in capsys.readouterr().err
+
+
+def test_config_set_refuses_an_undeclared_field(installed, capsys):
+    assert main(["plugin", "config", "demo", "--set", "nope=1"]) != 0
+    err = capsys.readouterr().err
+    assert "nope" in err and "declares" in err
+
+
+def test_config_set_refuses_a_secret_and_names_the_command_that_takes_it(
+    installed, capsys
+):
+    assert main(["plugin", "config", "demo", "--set", f"api_key={SECRET}"]) != 0
+    err = capsys.readouterr().err
+    assert "plugin secret set" in err
+    assert SECRET not in err, "the refusal must not echo the value back"
+
+
+def test_config_set_does_not_write_the_secret_anywhere(installed, capsys):
+    main(["plugin", "config", "demo", "--set", f"api_key={SECRET}"])
+    capsys.readouterr()
+    state = (installed / "state.json").read_text(encoding="utf-8")
+    assert SECRET not in state
+
+
 # -- the store describes itself honestly ---------------------------------
 
 

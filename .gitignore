@@ -24,3 +24,7 @@ plugins-dev/*/.git/
 coverage.xml
 htmlcov/
 junit-*.xml
+
+# Local scratch for showcase captures before they are promoted to docs/
+.shots/
+.hubenv

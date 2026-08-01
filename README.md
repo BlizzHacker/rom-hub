@@ -54,16 +54,24 @@ own licence, carried in its own repository.
 
 ## It works — here is what that looks like
 
-![RomM populated entirely by ROM Hub plugins](docs/screenshots/romm.png)
+![RomM's Game Gear shelf, box art written by a ROM Hub plugin](docs/screenshots/romm.png)
 
-45 games across 18 platforms, plus 6 BIOS files, every one placed by a plugin
-installed from its public repo. The **Collections** row is named after the
-plugins that filled it. The same plugins also populated [Gaseous and
-Retrom](docs/SHOWCASE.md) in the same session.
+Imported by the `nointro-archive` plugin, box art written by the
+`libretro-thumbnails` plugin, both installed by slug from their public repos.
+Nothing was hand-copied and no database was written directly.
 
-See **[docs/SHOWCASE.md](docs/SHOWCASE.md)** for all three backends, the command
-transcripts, and an honest account of what is *not* in the picture — partial
-cover art, Gaseous landing ROMs on platform 0, and the two imports that failed.
+And the plugin system itself, which is the actual point:
+
+![Turning a plugin off and back on](docs/screenshots/cli-plugin-toggle.png)
+
+Disable one and it drops out of the fan-out — the source count falls — and any
+command aimed at it refuses and names the command that undoes it.
+
+**[docs/SHOWCASE.md](docs/SHOWCASE.md)** is the sixty-second tour: what a plugin
+is, the sandbox, the seven capabilities, all three backends, the fan-out search
+and an import running end to end. It also carries the honest half — the real
+cover-art ratio, which roms RomM's player cannot actually run, and the import
+batch that lost roms to a scan race.
 
 ## Renamed from `romm-hub`
 
