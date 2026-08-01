@@ -6,23 +6,24 @@ run offline.
 
 | Plugin | Canonical repository | Pinned tag |
 |---|---|---|
-| `aminet` | <https://github.com/BlizzHacker/rom-hub-aminet> | `v0.1.0` |
+| `aminet` | <https://github.com/BlizzHacker/rom-hub-aminet> | `v0.2.0` |
 | `archive-org` | <https://github.com/BlizzHacker/rom-hub-archive-org> | `v0.2.0` |
-| `demozoo` | <https://github.com/BlizzHacker/rom-hub-demozoo> | `v0.1.0` |
+| `demozoo` | <https://github.com/BlizzHacker/rom-hub-demozoo> | `v0.2.0` |
 | `emulators` | <https://github.com/BlizzHacker/rom-hub-emulators> | `v0.1.0` |
 | `hasheous` | <https://github.com/BlizzHacker/rom-hub-hasheous> | `v0.1.0` |
-| `homebrew` | <https://github.com/BlizzHacker/rom-hub-homebrew> | `v0.2.0` |
-| `if-archive` | <https://github.com/BlizzHacker/rom-hub-if-archive> | `v0.1.0` |
-| `itch-io` | <https://github.com/BlizzHacker/rom-hub-itch-io> | `v0.3.0` |
-| `libretro-content` | <https://github.com/BlizzHacker/rom-hub-libretro-content> | `v0.1.0` |
+| `homebrew` | <https://github.com/BlizzHacker/rom-hub-homebrew> | `v0.3.0` |
+| `if-archive` | <https://github.com/BlizzHacker/rom-hub-if-archive> | `v0.2.0` |
+| `itch-io` | <https://github.com/BlizzHacker/rom-hub-itch-io> | `v0.4.0` |
+| `libretro-content` | <https://github.com/BlizzHacker/rom-hub-libretro-content> | `v0.2.0` |
 | `libretro-cores` | <https://github.com/BlizzHacker/rom-hub-libretro-cores> | `v0.1.0` |
 | `libretro-database` | <https://github.com/BlizzHacker/rom-hub-libretro-database> | `v0.1.0` |
 | `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.1.0` |
 | `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.1.0` |
-| `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.2.1` |
+| `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.3.0` |
 | `openvgdb` | <https://github.com/BlizzHacker/rom-hub-openvgdb> | `v0.2.0` |
 | `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.2.0` |
-| `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.1.0` |
+| `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.2.0` |
+| `universal-db` | <https://github.com/BlizzHacker/rom-hub-universal-db> | `v0.2.0` |
 
 **`aminet`, `demozoo`, `emulators`, `if-archive`, `libretro-content`,
 `ludusavi` and `scummvm-freeware` are new and their repositories do not
@@ -66,20 +67,25 @@ Run the last one before publishing anything:
 
 ### Known drift, waiting to be published
 
-**`if-archive`, `itch-io` and `scummvm-freeware` have README-only edits here
-that are not in their published tags.** Each gained a section saying plainly
-that nothing it imports can be played in the library's web player — interactive
-fiction, ScummVM game data and PC downloads have no EmulatorJS core, and a
-reader deciding whether to install one is entitled to know that before rather
-than after. See `src/rom_hub/playability.py`.
+**Nine plugins have real, unpublished changes here.** The
+"Content plugins that reach their whole source" work bumped `aminet`
+0.1.0→0.2.0, `demozoo` 0.1.0→0.2.0, `homebrew` 0.2.0→0.3.0,
+`if-archive` 0.1.0→0.2.0, `itch-io` 0.3.0→0.4.0, `libretro-content`
+0.1.0→0.2.0, `nointro-archive` 0.2.1→0.3.0, `scummvm-freeware`
+0.1.0→0.2.0 and `universal-db` 0.1.0→0.2.0. Each plugin's own README
+says what changed and why.
 
-No code changed, so `version` was deliberately **not** bumped: `itch-io`
-`v0.3.0` is published and installable, and moving the catalog to a `v0.3.1`
-that does not exist would break a working install to ship a paragraph.
-`test_the_published_tag_still_matches_the_development_copy` will report this
-until the three repositories are updated; that is the test doing its job, and
-this note is what stops the next person treating it as a mystery. Fold these
-sections in with the next real change to each plugin.
+Unlike the previous entry under this heading, these are code changes and
+the versions **were** bumped, so `catalog/plugins.json` now points at tags
+that do not exist yet. `test_the_published_tag_still_matches_the_
+development_copy` will report every one of them until the nine
+repositories are updated and tagged — that is step 3 of "Changing a
+plugin" below, and it is the one step that cannot be done from this
+repository.
+
+The earlier README-only drift on `if-archive`, `itch-io` and
+`scummvm-freeware` is folded into these releases, which is what that note
+asked for.
 
 ## Changing a plugin
 
