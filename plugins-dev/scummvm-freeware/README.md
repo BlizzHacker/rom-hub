@@ -107,6 +107,29 @@ stated **per row** rather than as one module constant, so a row added later for
 a DOS-only or Amiga-only freeware drop can say so without anyone having to
 notice that a shared default stopped being true. `--platform` overrides.
 
+## This plugin is catalogue-only
+
+**RomM's web player cannot run any of these**, and the reason is structural:
+the player is EmulatorJS, EmulatorJS runs libretro cores, and `scummvm` has no
+entry in RomM 4.9.2's `_EJS_CORES_MAP`. A game imported here appears in the
+library, correctly filed and correctly described, and does nothing when
+clicked. `rom-hub import` warns before the download starts; `--allow-unplayable`
+silences it, and `rom-hub platforms` shows every platform in the same position.
+
+To actually play one, point a real ScummVM at the extracted directory — which
+is what the material is packaged for, and why it is worth having in a library
+whether or not a browser can start it.
+
+**`--platform dos` is the wrong fix and the plugin will not do it for you.**
+`dos` does have a core (`dosbox_pure`), and DOSBox can run *some* of these
+games from their original floppies — but what this plugin downloads is not
+that. It is ScummVM game data: the `.scummvm` descriptor, the engine's own
+resource layout, and in several cases assets that never existed in a DOS
+release at all. Handing that to DOSBox produces a shelf entry that claims to
+be playable and is not, which is strictly worse than one that says plainly
+that it is a catalogue entry. The override exists for a row that genuinely is
+a DOS drop; it is not a way to make this one look better.
+
 ## Install
 
     rom-hub plugin install https://github.com/BlizzHacker/rom-hub-scummvm-freeware --ref v0.1.0

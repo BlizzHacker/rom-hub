@@ -1266,3 +1266,72 @@ def test_the_data_directory_is_under_the_hub_home_and_not_the_plugin(
     monkeypatch.setenv("ROM_HUB_HOME", str(home))
     assert plugin_data_root() == home / "var" / "plugin-data"
     assert default_root() == home
+
+
+# -- rom-hub platforms ----------------------------------------------------
+
+
+def test_platforms_groups_by_whether_the_platform_can_be_played(capsys):
+    assert main(["platforms"]) == 0
+    out = capsys.readouterr().out
+    assert "PLAYABLE" in out
+    assert "CATALOGUE ONLY" in out
+    assert "NEEDS NETPLAY" in out
+
+
+def test_platforms_names_the_plugins_that_import_to_each(capsys):
+    """The column that makes it actionable: knowing `dc` will not play is
+    only half of it, and knowing which plugin files there is the other."""
+    assert main(["platforms"]) == 0
+    lines = {
+        line.split()[0]: line
+        for line in capsys.readouterr().out.splitlines()
+        if line.startswith("  ") and len(line.split()) > 1
+    }
+    assert "libretro-content" in lines["dc"]
+    assert "demozoo" in lines["dc"]
+    assert "nointro-archive" in lines["nes"]
+
+
+def test_platforms_lists_no_platform_twice(capsys):
+    """Three groups, and they must partition rather than overlap."""
+    assert main(["platforms"]) == 0
+    slugs = [
+        line.split()[0]
+        for line in capsys.readouterr().out.splitlines()
+        if line.startswith("  ") and len(line.split()) > 1
+    ]
+    assert len(slugs) == len(set(slugs))
+
+
+def test_platforms_counts_only_importers(capsys):
+    """A metadata plugin covers platforms it can never file a ROM under.
+
+    `libretro-thumbnails` carries 56 coreless platforms; if it were counted
+    the catalogue-only list would be dominated by platforms nothing in the
+    directory can actually import to.
+    """
+    assert main(["platforms"]) == 0
+    out = capsys.readouterr().out
+    assert "libretro-thumbnails" not in out
+    # A platform only the thumbnail plugin covers must not appear at all.
+    assert "wiiu" not in out
+
+
+def test_platforms_says_what_an_unplayable_import_will_do(capsys):
+    assert main(["platforms"]) == 0
+    out = capsys.readouterr().out
+    assert "will not start" in out
+    assert "--allow-unplayable" in out
+
+
+def test_platforms_output_is_ascii(capsys):
+    """A Windows console defaults to cp1252 -- see catalog.symbol_for."""
+    assert main(["platforms"]) == 0
+    capsys.readouterr().out.encode("ascii")
+
+
+def test_platforms_installed_narrows_to_this_host(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["platforms", "--installed"]) == 0
+    assert "no enabled plugins" in capsys.readouterr().out

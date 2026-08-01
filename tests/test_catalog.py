@@ -73,7 +73,7 @@ def entry_json(**overrides) -> str:
         "updated": "2026-01-01", "rpp_version": "1", "capabilities": ["search"],
         "network": [], "status": "ok", "description": "d", "terms": "t",
         "search_only": False, "key_required": False, "in_tree": False,
-        "comments": "",
+        "comments": "", "platforms": [],
     }
     entry.update(overrides)
     return json.dumps({"catalog_version": "1", "plugins": [entry]})
@@ -503,3 +503,156 @@ def test_the_display_name_comes_from_the_backend_not_from_this_module():
             f"catalog.py names {product!r}; backend-specific knowledge belongs "
             f"in that backend's package"
         )
+
+
+# --------------------------------------- will what a plugin imports play?
+#
+# The catalog's `platforms` list is what the directory renders and what
+# `rom-hub platforms` reads. It is hand-kept, so these are the tests that
+# stop it from becoming a hand-kept fiction.
+
+
+def _audit():
+    """The real platform tables, read by scripts/audit_platforms.py."""
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "_audit_platforms", root / "scripts" / "audit_platforms.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_catalog_platforms_match_the_plugin_source():
+    """The honesty check, and the reason the field can be trusted at all.
+
+    A plugin that gains a platform gains it in its own `platforms.py`,
+    where nothing about the directory is in view. This is what makes that
+    edit also an edit to `catalog/plugins.json` -- and therefore to the
+    published page, which then says out loud whether the new platform can
+    be played. Without it, a plugin could quietly start importing to a
+    platform with no emulator core and the directory would go on promising
+    the old answer.
+    """
+    audited = _audit().audit()
+    mismatched = []
+    for entry in load_catalog(CATALOG_PATH):
+        expected = audited[entry.slug]["platforms"]
+        if list(entry.platforms) != expected:
+            gained = sorted(set(expected) - set(entry.platforms))
+            lost = sorted(set(entry.platforms) - set(expected))
+            mismatched.append(f"{entry.slug}: +{gained} -{lost}")
+    assert not mismatched, (
+        "catalog/plugins.json disagrees with the plugins' own platform "
+        "tables. Re-run `python scripts/audit_platforms.py --json`, update "
+        "the `platforms` lists, then regenerate docs/PLUGINS.md:\n  "
+        + "\n  ".join(mismatched)
+    )
+
+
+def test_every_platform_named_is_one_romm_actually_has():
+    """A slug RomM does not know fails much later, at `platform_id()`, with
+    a far less useful message than this one."""
+    from rom_hub.playability import EJS_CORES
+
+    # The core map is a subset of RomM's platform enum rather than all of
+    # it, so this can only check the ones it covers -- which is exactly the
+    # set where a typo would masquerade as "catalogue-only" instead of
+    # showing up as a bad slug.
+    near_misses = []
+    for entry in load_catalog(CATALOG_PATH):
+        for platform in entry.platforms:
+            if platform != platform.strip().lower():
+                near_misses.append(f"{entry.slug}: {platform!r} is not normalised")
+            if platform.replace("_", "-") in EJS_CORES and platform not in EJS_CORES:
+                near_misses.append(
+                    f"{entry.slug}: {platform!r} looks like a typo for "
+                    f"{platform.replace('_', '-')!r}, which does play"
+                )
+    assert not near_misses, near_misses
+
+
+def test_a_plugin_that_can_import_nothing_playable_says_so_in_the_directory():
+    """`none - catalogue only` has to be legible on the page, not merely
+    derivable from it. These four exist to catalogue rather than to play,
+    and a reader choosing between plugins must be able to see that before
+    installing."""
+    md = render_markdown(load_catalog(CATALOG_PATH))
+    from rom_hub.catalog import playability_fit
+
+    catalogue_only = [
+        e.slug
+        for e in load_catalog(CATALOG_PATH)
+        if playability_fit(e).verdict == "catalogue-only"
+    ]
+    assert sorted(catalogue_only) == ["if-archive", "itch-io", "scummvm-freeware"]
+    assert "**none** — catalogue only" in md
+
+
+def test_every_unplayable_import_target_is_named_on_the_page():
+    """A count tells a reader there is a problem; only the names tell them
+    whether it is theirs."""
+    md = render_markdown(load_catalog(CATALOG_PATH))
+    from rom_hub.playability import verdict_for
+
+    missing = []
+    for entry in load_catalog(CATALOG_PATH):
+        if "importer" not in entry.capabilities:
+            continue
+        for platform in entry.platforms:
+            if verdict_for(platform).plays:
+                continue
+            if f"`{platform}`" not in md:
+                missing.append(f"{entry.slug}: {platform}")
+    assert not missing, (
+        "these platforms cannot be played and the directory never says so: "
+        + ", ".join(missing)
+    )
+
+
+def test_a_metadata_plugin_is_not_scored_on_playability():
+    """`libretro-thumbnails` covers 56 platforms with no emulator core and
+    that is not a defect: it files no ROM, so it cannot file a dead one.
+    Scoring it like an importer would invent a problem and bury the real
+    ones under it."""
+    from rom_hub.catalog import playability_cell, playability_fit
+
+    (entry,) = [e for e in load_catalog(CATALOG_PATH) if e.slug == "libretro-thumbnails"]
+    fit = playability_fit(entry)
+    assert not fit.files_roms
+    assert fit.catalogue_only, "the fixture is only meaningful while it has some"
+    assert playability_cell(fit) == "n/a (imports nothing)"
+
+
+def test_a_plugin_with_no_platform_table_renders_as_not_applicable():
+    from rom_hub.catalog import playability_cell, playability_fit
+
+    (entry,) = [e for e in load_catalog(CATALOG_PATH) if e.slug == "libretro-cores"]
+    assert entry.platforms == []
+    assert playability_cell(playability_fit(entry)) == "—"
+
+
+def test_platforms_must_be_a_sorted_list_of_slugs():
+    base = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    base["plugins"] = base["plugins"][:1]
+
+    base["plugins"][0]["platforms"] = ["snes", "nes"]
+    with pytest.raises(CatalogError, match="sorted"):
+        load_catalog_from_text(json.dumps(base))
+
+    base["plugins"][0]["platforms"] = "nes"
+    with pytest.raises(CatalogError, match="list of platform slugs"):
+        load_catalog_from_text(json.dumps(base))
+
+    base["plugins"][0]["platforms"] = ["nes", ""]
+    with pytest.raises(CatalogError, match="list of platform slugs"):
+        load_catalog_from_text(json.dumps(base))
+
+
+def test_the_page_carries_a_playable_column_and_says_how_to_read_it():
+    md = render_markdown(load_catalog(CATALOG_PATH))
+    assert "| Playable |" in md
+    assert "Reading the Playable column" in md
+    assert "does nothing at all when clicked" in md
