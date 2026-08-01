@@ -5,9 +5,11 @@ and `page=1`. That is fine for a search box and useless for a collection:
 the Console Living Room holds **24,746 items**, and nothing in the plugin
 could see past the first page of them.
 
-Getting the rest is not a matter of asking for more pages, so the three
-findings that shape this module are written down here rather than
-discovered again by the next person.
+Getting the rest is not a matter of asking for more pages. The four
+findings that shape this module are written down here rather than left to
+be discovered again by the next person -- and note that only the first
+two are about Archive.org. The limit that actually decides the shape of
+this code is the Hub's own, in section 3.
 
 ## 1. `page` is what imposes the ceiling, not `rows`
 
@@ -27,9 +29,9 @@ the live service::
       AND NOT collection:(stream_only)
     rows=11000, no page  ->  10,045 docs in ~2 seconds
 
-So a bulk read omits `page` entirely and asks for the whole result set in
-one response. `page` is still used for small asks, where it is the natural
-resume point -- see `Index.fetch`.
+So a bulk read omits `page` entirely. Whether one response is then enough
+is a separate question, answered in section 3. `page` is still used for
+small asks, where it is the natural resume point -- see `Index.fetch`.
 
 ## 2. The scrape API is the documented answer and the wrong one
 
