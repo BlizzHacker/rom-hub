@@ -205,6 +205,19 @@ holds the game's description, and a library that lies about what a field means
 is worse than one that is missing data. The plugin keeps writing the field it
 should write. A backend that stores it will store it.
 
+**Today, `stream` is the path where the mapping actually arrives.** It carries
+the same text on the target, and nothing in between discards it:
+
+    $ rom-hub stream archive-org Alex_Kidd_in_the_Enchanted_Castle_E_REV02_
+    url          https://archive.org/details/Alex_Kidd_in_the_Enchanted_Castle_E_REV02_
+    title        Alex Kidd in the Enchanted Castle (E) (REV02) [!]
+    controls     Sega Genesis/Megadrive Controls: Press the 1 key to start games.
+                 Use Arrow Keys to move up, left, right and down. There are three
+                 buttons, A, B and C, which are CONTROL, ALT/OPTION and SPACE.
+    emulator     genesis
+    platform     genesis
+    stream_only  false
+
 ## Streaming the other half
 
 6,816 items will not download, and they are not junk — Archive.org plays them
