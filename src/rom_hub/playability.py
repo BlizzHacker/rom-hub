@@ -62,6 +62,32 @@ from dataclasses import dataclass
 #: one that does not, cannot.
 ROMM_VERSION = "4.9.2"
 
+#: How to name the thing that does or does not have a core, in text an
+#: operator reads.
+#:
+#: It lives here because this module is the only one entitled to say it.
+#: `catalog.py` renders the directory and is held to naming no library
+#: product at all -- backend-specific knowledge belongs in the package
+#: that owns it, and `test_the_display_name_comes_from_the_backend_not_
+#: from_this_module` enforces that -- so it asks for these two strings
+#: rather than spelling either out.
+#:
+#: **And this is the honest scope of the whole module.** EmulatorJS is the
+#: player RomM ships and the player the Xbox client ships, which is why
+#: one table answers for both. A backend that ships a *different* player
+#: is not covered: against one of those, a verdict here is still right for
+#: anyone who also browses the same library through RomM, and an
+#: over-warning for anyone who does not. That is the same direction a
+#: stale copy fails in, and it is the reason this produces a warning
+#: rather than a refusal -- being wrong must never cost an operator an
+#: import they wanted.
+PLAYER = "EmulatorJS"
+
+#: The product and release the map was read from, as one phrase, so a
+#: caller that may not name a library product can still be specific
+#: about which one it checked against.
+PLAYER_SOURCE = f"RomM {ROMM_VERSION}"
+
 #: RomM's `_EJS_CORES_MAP`, verbatim. Platform slug -> the EmulatorJS
 #: cores that run it. A slug absent from this table has no core in a
 #: default RomM, and a ROM filed under it will not start.

@@ -375,6 +375,84 @@ def _cmd_plugin_browse(args) -> int:
     return 0
 
 
+def _cmd_platforms(args) -> int:
+    """Which platforms play, which are catalogue-only, and who targets each.
+
+    Reads the *catalog* rather than the installed plugins, and does so on
+    purpose: the question "should I install this" is asked before there is
+    anything installed to ask about. `--installed` narrows it afterwards.
+    """
+    from rom_hub.playability import (
+        CATALOGUE_ONLY,
+        NEEDS_NETPLAY,
+        PLAYS,
+        ROMM_VERSION,
+        verdict_for,
+    )
+
+    try:
+        entries = load_catalog(CATALOG_PATH)
+    except CatalogError as exc:
+        print(f"catalog unreadable: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    if args.installed:
+        have = {p.slug for p in Registry(default_root()).installed() if p.enabled}
+        entries = [e for e in entries if e.slug in have]
+        if not entries:
+            print("no enabled plugins are listed in the directory")
+            return EXIT_OK
+
+    # Only importers, because only an importer can file an unplayable ROM.
+    # A metadata plugin covering `vectrex` is offering to identify a
+    # Vectrex ROM somebody already has; there is no dead import in it.
+    importers = [e for e in entries if "importer" in e.capabilities]
+
+    by_platform: dict[str, list[str]] = {}
+    for entry in importers:
+        for platform in entry.platforms:
+            by_platform.setdefault(platform, []).append(entry.slug)
+
+    groups = {
+        PLAYS: ("PLAYABLE", "an emulator core ships with RomM"),
+        NEEDS_NETPLAY: (
+            "NEEDS NETPLAY",
+            "core is in RomM's nightly build, read only when "
+            "EJS_NETPLAY_ENABLED is set",
+        ),
+        CATALOGUE_ONLY: (
+            "CATALOGUE ONLY",
+            "no emulator core; imports land and will not start",
+        ),
+    }
+    for key, (heading, why) in groups.items():
+        rows = sorted(p for p in by_platform if verdict_for(p).verdict == key)
+        print(f"\n{heading} ({len(rows)}) -- {why}")
+        if not rows:
+            print("  (none)")
+            continue
+        for platform in rows:
+            plugins = ", ".join(sorted(set(by_platform[platform])))
+            print(f"  {platform:<26} {plugins}")
+
+    total = len(by_platform)
+    dead = sum(1 for p in by_platform if verdict_for(p).verdict == CATALOGUE_ONLY)
+    print()
+    print(
+        f"{total} platform(s) across {len(importers)} importer plugin(s); "
+        f"{dead} cannot be played."
+    )
+    print(
+        f"Playability is RomM {ROMM_VERSION}'s own EmulatorJS core map, and the "
+        f"Xbox client ships the same player."
+    )
+    print(
+        "An import to a catalogue-only platform warns and proceeds; pass "
+        "--allow-unplayable to silence it."
+    )
+    return EXIT_OK
+
+
 def _cmd_plugin_install(args) -> int:
     reg = Registry(default_root())
     source, ref = args.source, args.ref
@@ -1492,6 +1570,20 @@ def build_parser() -> argparse.ArgumentParser:
         "slug", nargs="?", default=None, help="only this plugin (default: all)"
     )
     secret_list.set_defaults(func=_cmd_plugin_secret_list)
+
+    platforms = sub.add_parser(
+        "platforms",
+        help=(
+            "which platforms the web player can actually run, which are "
+            "catalogue-only, and which plugins import to each"
+        ),
+    )
+    platforms.add_argument(
+        "--installed",
+        action="store_true",
+        help="only the plugins installed and enabled on this host",
+    )
+    platforms.set_defaults(func=_cmd_platforms)
 
     search = sub.add_parser("search", help="search across enabled plugins")
     search.add_argument("query")

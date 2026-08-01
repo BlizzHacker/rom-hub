@@ -39,7 +39,7 @@ _REQUIRED_FIELDS = (
     "slug", "name", "author", "repository", "install", "download",
     "version", "ref", "updated", "rpp_version", "capabilities",
     "network", "status", "description", "terms", "search_only",
-    "key_required", "in_tree", "comments",
+    "key_required", "in_tree", "comments", "platforms",
 )
 
 # Fields a reader needs in plain language before deciding to install.
@@ -76,6 +76,20 @@ class CatalogEntry:
     key_required: bool
     in_tree: bool
     comments: str
+    #: Every library platform slug this plugin's own platform table can
+    #: produce, sorted. `[]` for a plugin that maps no platform at all --
+    #: `emulators` deals in build targets, `libretro-cores` in core names,
+    #: `retroarch-autoconfig` in controller names, and none of those is a
+    #: platform.
+    #:
+    #: **Declared here and checked against the source.** The list is what a
+    #: reader needs to judge a plugin before installing it, so it belongs
+    #: in the directory; but a hand-kept list is a list that goes stale, so
+    #: `scripts/audit_platforms.py` reads the real tables and
+    #: `test_catalog_platforms_match_the_plugin_source` fails when the two
+    #: disagree. Adding a platform to a plugin is therefore an edit to this
+    #: file too, and the directory says what that platform costs.
+    platforms: list[str]
 
     @property
     def symbol(self) -> str:
@@ -184,6 +198,23 @@ def parse_catalog(raw: dict) -> list[CatalogEntry]:
         if item["ref"] not in item["download"]:
             raise CatalogError(
                 f"{slug}: download URL must be pinned to ref {item['ref']!r}"
+            )
+
+        # An empty list is legitimate (a plugin can map no platform at all);
+        # a non-list, or a list holding anything but slugs, is a typo that
+        # would otherwise render as a blank cell reading like "none".
+        platforms = item["platforms"]
+        if not isinstance(platforms, list) or not all(
+            isinstance(p, str) and p.strip() for p in platforms
+        ):
+            raise CatalogError(
+                f"{slug}: platforms must be a list of platform slugs, got "
+                f"{platforms!r}"
+            )
+        if list(platforms) != sorted(platforms):
+            raise CatalogError(
+                f"{slug}: platforms must be sorted, so a diff shows what "
+                f"changed rather than where it moved"
             )
 
         entries.append(CatalogEntry(**{f: item[f] for f in _REQUIRED_FIELDS}))
@@ -327,6 +358,140 @@ def backend_fit(entry: CatalogEntry, backends=None, labels=None) -> list[Backend
     return fits
 
 
+# -- will what this plugin imports actually play? ------------------------
+#
+# **Derived, like the backend column and for the same reason.** The
+# catalog records which platforms a plugin targets; `playability` records
+# which platforms have an emulator core. Which of a plugin's imports will
+# start follows from those two facts, and a hand-written verdict would be
+# a third copy that goes stale the day the player gains a core.
+
+
+@dataclass(frozen=True)
+class PlayabilityFit:
+    """What happens when somebody clicks play on this plugin's imports."""
+
+    #: Targets the web player has a core for out of the box.
+    playable: tuple[str, ...]
+    #: Targets whose core ships only in the player's nightly build,
+    #: which is
+    #: read only where netplay is enabled.
+    netplay_only: tuple[str, ...]
+    #: Targets with no core at all. Not a defect -- see `verdict`.
+    catalogue_only: tuple[str, ...]
+    #: False for a plugin that files nothing: metadata, assets, cores and
+    #: firmware plugins have platform tables too, and a coreless platform
+    #: in one of those is coverage for a ROM somebody obtained elsewhere
+    #: rather than a ROM that will not start.
+    files_roms: bool
+
+    @property
+    def verdict(self) -> str:
+        if not self.playable and not self.netplay_only and not self.catalogue_only:
+            return "n/a"
+        if not self.catalogue_only and not self.netplay_only:
+            return "playable"
+        if not self.playable and not self.netplay_only:
+            return "catalogue-only"
+        return "mixed"
+
+
+def playability_fit(entry: CatalogEntry) -> PlayabilityFit:
+    """Split one plugin's declared platforms three ways."""
+    from rom_hub.playability import CATALOGUE_ONLY, NEEDS_NETPLAY, verdict_for
+
+    verdicts = {p: verdict_for(p) for p in entry.platforms}
+    return PlayabilityFit(
+        playable=tuple(p for p, v in verdicts.items() if v.plays),
+        netplay_only=tuple(p for p, v in verdicts.items() if v.verdict == NEEDS_NETPLAY),
+        catalogue_only=tuple(
+            p for p, v in verdicts.items() if v.verdict == CATALOGUE_ONLY
+        ),
+        files_roms="importer" in entry.capabilities,
+    )
+
+
+def playability_cell(fit: PlayabilityFit) -> str:
+    """The table cell: how many of this plugin's imports will start."""
+    if fit.verdict == "n/a":
+        return "—"
+    if not fit.files_roms:
+        # Counting "playable" for a plugin that imports nothing would
+        # answer a question nobody asked and imply one it cannot fail.
+        return "n/a (imports nothing)"
+    if fit.verdict == "playable":
+        return f"all {len(fit.playable)}"
+    if fit.verdict == "catalogue-only":
+        return f"**none** — catalogue only ({len(fit.catalogue_only)})"
+    total = len(fit.playable) + len(fit.netplay_only) + len(fit.catalogue_only)
+    count = len(fit.netplay_only)
+    netplay = f", {count} need{'s' if count == 1 else ''} netplay" if count else ""
+    return f"{len(fit.playable)} of {total}{netplay}"
+
+
+def playability_prose(entry: CatalogEntry, fit: PlayabilityFit) -> str:
+    """The per-plugin paragraph, naming every platform that will not play.
+
+    Named rather than counted, because the count tells a reader there is a
+    problem and only the names tell them whether it is *their* problem. An
+    operator who wants Amiga games does not care that this plugin also
+    targets MorphOS.
+    """
+    from rom_hub.playability import PLAYER, PLAYER_SOURCE
+
+    if fit.verdict == "n/a":
+        return (
+            "**Playability.** This plugin files no ROMs and maps no platform, "
+            "so there is nothing here that can be unplayable."
+        )
+    if not fit.files_roms:
+        return (
+            f"**Playability.** This plugin imports nothing — it covers "
+            f"{len(entry.platforms)} platforms to enrich or equip ROMs that "
+            f"reached the library some other way, so a platform with no "
+            f"emulator core costs nothing here. Whether those ROMs play is "
+            f"decided by whichever plugin imported them."
+        )
+    if fit.verdict == "playable":
+        count = len(fit.playable)
+        return (
+            f"**Playability.** Everything this plugin imports can be played: "
+            f"{'its one platform has' if count == 1 else f'all {count} of its platforms have'} "
+            f"an {PLAYER} core in {PLAYER_SOURCE}."
+        )
+
+    sentences = []
+    if fit.catalogue_only:
+        names = ", ".join(f"`{p}`" for p in sorted(fit.catalogue_only))
+        one = len(fit.catalogue_only) == 1
+        sentences.append(
+            f"{names} {'has' if one else 'have'} no {PLAYER} core in "
+            f"{PLAYER_SOURCE}. "
+            f"{'A ROM' if one else 'ROMs'} filed there "
+            f"{'imports' if one else 'import'}, "
+            f"{'appears' if one else 'appear'} in the library and "
+            f"{'does' if one else 'do'} nothing when played — which is a fine "
+            f"thing to want from a catalogue, and the reason the Hub warns "
+            f"rather than refuses."
+        )
+    if fit.netplay_only:
+        names = ", ".join(f"`{p}`" for p in sorted(fit.netplay_only))
+        one = len(fit.netplay_only) == 1
+        sentences.append(
+            f"{names} {'plays' if one else 'play'} only where the server has "
+            f"netplay enabled, because that is the switch that pulls the "
+            f"player's nightly cores in."
+        )
+    head = (
+        f"**Playability.** {len(fit.playable)} of {len(entry.platforms)} "
+        f"platforms play out of the box."
+        if fit.playable
+        else "**Playability.** **Nothing this plugin imports can be played in "
+        "the web player.**"
+    )
+    return " ".join([head, *sentences])
+
+
 #: Plain ASCII on purpose. This lands in a Markdown file rather than on a
 #: console, but the same directory is read by `rom-hub plugin browse`, and
 #: a cp1252 terminal cannot encode a decorative glyph any better here than
@@ -427,10 +592,11 @@ def render_markdown(entries: list[CatalogEntry]) -> str:
     backends = backend_capabilities()
     labels = backend_labels()
     fits = {e.slug: backend_fit(e, backends, labels) for e in ordered}
+    plays = {e.slug: playability_fit(e) for e in ordered}
     lines = [
         "| Source | Author (Repository) | Version | Last update | Install "
-        "| Capabilities | Backends | Flags | Network |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| Capabilities | Backends | Playable | Flags | Network |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for e in ordered:
         network = ", ".join(f"`{h}`" for h in e.network) or "_none_"
@@ -444,10 +610,30 @@ def render_markdown(entries: list[CatalogEntry]) -> str:
             f"| {_install_cell(e)} "
             f"| {caps} "
             f"| {backend_cell(fits[e.slug])} "
+            f"| {playability_cell(plays[e.slug])} "
             f"| {'<br>'.join(e.flags) or '—'} "
             f"| {network} |"
         )
     lines += [
+        "",
+        "**Reading the Playable column.** A ROM is only playable if the "
+        "library's web player has an emulator core for its platform, and "
+        "the player's list of those is shorter than the library's list of "
+        "platforms. A ROM "
+        "filed under a platform with no core imports cleanly, appears in the "
+        "library with its cover and metadata, and does nothing at all when "
+        "clicked — so this column says, per plugin, how many of the platforms "
+        "it can import to will actually start. `none — catalogue only` is not "
+        "a broken plugin: interactive fiction, ScummVM games and PC downloads "
+        "are real things to keep in a library, and the Hub warns at import "
+        "rather than refusing. `n/a (imports nothing)` is a metadata, asset, "
+        "core or firmware plugin, which files no ROM and therefore cannot file "
+        "an unplayable one.",
+        "",
+        "This column is **derived** too — from the plugin's `platforms` list "
+        "and the player's own core map, vendored in "
+        "`src/rom_hub/playability.py`. `rom-hub platforms` prints the same "
+        "answer for the plugins you have actually installed.",
         "",
         "**Reading the Backends column.** A plain name means everything this "
         "plugin declares works there. `*` means it all runs but an *extra* is "
@@ -474,6 +660,8 @@ def render_markdown(entries: list[CatalogEntry]) -> str:
             f"**Source terms.** {e.terms}",
             "",
             f"**Comments.** {e.comments}",
+            "",
+            playability_prose(e, plays[e.slug]),
             "",
             backend_prose(e, fits[e.slug]),
             "",
