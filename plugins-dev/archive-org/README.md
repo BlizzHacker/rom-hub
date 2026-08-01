@@ -29,7 +29,7 @@ What is in there, from a census of every `emulator` value (132 distinct):
 | Game Gear (`gamegear`) | 445 | 19 | yes |
 | Game Boy Advance (`gba`) | 382 | **382** | yes |
 | Game Boy Color (`gbcolor`) | 363 | **363** | yes |
-| NES (`nes`, `nesp`, `nespal`) | 361 | **361** | yes |
+| NES (`nes`, `nesp`, `nespal`) | 359 | **359** | yes |
 | TurboGrafx-16 (`tg16`) | 310 | **310** | yes |
 | ColecoVision (`coleco`) | 265 | 32 | yes |
 | Neo Geo Pocket Color (`ngpc`) | 228 | **228** | yes |
@@ -54,8 +54,9 @@ RomM client including the Xbox app.
 
 Point it somewhere else if you want to:
 
-    rom-hub plugin config archive-org collections consolelivingroom
-    rom-hub search archive-org sonic --platform genesis --limit 500
+    rom-hub plugin config archive-org --set collections=consolelivingroom
+    rom-hub plugin config archive-org --set downloadable_only=true
+    rom-hub search sonic --platform genesis --limit 500
 
 ## Reaching a whole collection
 
