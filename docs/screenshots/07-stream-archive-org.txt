@@ -1,0 +1,7 @@
+$ rom-hub stream archive-org msdos_Oregon_Trail_The_1990
+url	https://archive.org/details/msdos_Oregon_Trail_The_1990
+title	Oregon Trail, The
+type	text/html
+emulator	dosbox
+identifier	msdos_Oregon_Trail_The_1990
+stream_only	true

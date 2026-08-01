@@ -1,0 +1,16 @@
+$ ROM_HUB_BACKEND=romm rom-hub backend info
+backend          romm
+selected by      ROM_HUB_BACKEND=romm
+summary          A `LibraryBackend` over one RomM server.
+available        gaseous, retrom, romm
+settings         ROMM_URL, ROMM_USER, ROMM_PASSWORD
+configured       yes
+
+can:
+  artwork        attach cover art to a rom
+  collections    group roms into a named collection (rom-hub import --collection)
+  firmware       store a platform's BIOS files (rom-hub firmware install)
+  import         accept a ROM upload, and list the library so a duplicate is caught first
+  metadata       write a rom's metadata fields (rom-hub enrich)
+  scan           needs an explicit registration step after an upload
+cannot: (nothing -- this backend supports every capability)

@@ -1,0 +1,109 @@
+$ rom-hub jobs
+   ID  STATE              PLUGIN         PLATFORM   SOURCE
+    1  DONE               libretro-content nes        Nintendo - Nintendo Entertainment System/Alter Ego.nes
+    2  DONE               nointro-archive gamegear   nointro.gg/Sonic & Tails (Japan) (En).7z
+    3  DONE               nointro-archive gamegear   nointro.gg/Columns (USA, Europe, Brazil) (En).7z
+    4  DONE               nointro-archive gamegear   nointro.gg/Wonder Boy (Europe).7z
+    5  DONE               nointro-archive gamegear   nointro.gg/Castle of Illusion Starring Mickey Mouse (USA, Europe, Brazil) (En).7z
+    6  DONE               nointro-archive gamegear   nointro.gg/Streets of Rage (World).7z
+    7  DONE               nointro-archive gamegear   nointro.gg/Ms. Pac-Man (USA).7z
+    8  DONE               nointro-archive gamegear   nointro.gg/Pac-Man (USA).7z
+    9  DONE               nointro-archive gamegear   nointro.gg/Galaga '91 (Japan) (En).7z
+   10  FAILED             nointro-archive gamegear   nointro.gg/Defenders of Oasis (USA, Europe).7z
+       ! Defenders of Oasis (USA, Europe).7z uploaded to romm successfully, but registering it in the library failed, so the ROM is not importable yet: timed out after 600s waiting for RomM to report the library scan of platform 15 finished (expected a 'scan:done' event). The file already reached romm for platform 'gamegear' -- do not re-upload it; re-run the registration from romm itself.
+   11  DONE               nointro-archive gamegear   nointro.gg/Phantasy Star Gaiden (Japan).7z
+   12  DONE               nointro-archive sms        nointro.ms-mkiii/Golden Axe (USA, Europe, Brazil) (En).7z
+   13  DONE               nointro-archive sms        nointro.ms-mkiii/Phantasy Star (Japan).7z
+   14  FAILED             nointro-archive sms        nointro.ms-mkiii/Streets of Rage (Europe, Brazil) (En).7z
+       ! Streets of Rage (Europe, Brazil) (En).7z uploaded to romm successfully, but registering it in the library failed, so the ROM is not importable yet: could not open a socket.io connection to RomM at http://romm.example:8110/ws/socket.io to register the upload: One or more namespaces failed to connect: . The file already reached romm for platform 'sms' -- do not re-upload it; re-run the registration from romm itself.
+   15  FAILED             nointro-archive sms        nointro.ms-mkiii/Golden Axe Warrior (USA, Europe, Brazil) (En).7z
+       ! Golden Axe Warrior (USA, Europe, Brazil) (En).7z uploaded to romm successfully, but registering it in the library failed, so the ROM is not importable yet: could not open a socket.io connection to RomM at http://romm.example:8110/ws/socket.io to register the upload: One or more namespaces failed to connect: . The file already reached romm for platform 'sms' -- do not re-upload it; re-run the registration from romm itself.
+   16  DONE               nointro-archive genesis    nointro.md/Streets of Rage (World) (En,Ja).7z
+   17  DONE               nointro-archive genesis    nointro.md/Mega Bomberman (USA).7z
+   18  DONE               nointro-archive genesis    nointro.md/Alex Kidd in the Enchanted Castle (Europe).7z
+   19  FAILED             nointro-archive -          nointro.md/Tetris (USA) (Genesis Mini).7z
+       ! could not resolve platform 'genesis' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   20  FAILED             nointro-archive -          nointro.tg-16/Bomberman '93 (USA).7z
+       ! could not resolve platform 'tg16' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   21  FAILED             nointro-archive -          nointro.tg-16/Galaga '90 (USA).7z
+       ! could not resolve platform 'tg16' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   22  FAILED             nointro-archive -          nointro.atari-2600/Asteroids (Japan, USA) (En).7z
+       ! could not resolve platform 'atari2600' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   23  FAILED             nointro-archive -          nointro.atari-7800/Galaga (Europe).7z
+       ! could not resolve platform 'atari7800' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   24  FAILED             nointro-archive -          nointro.wsc/Tetris (Japan).7z
+       ! could not resolve platform 'wonderswan-color' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   25  FAILED             libretro-content -          Nintendo - Nintendo Entertainment System/Chrono Knight.nes
+       ! could not resolve platform 'nes' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   26  FAILED             libretro-content -          Nintendo - Nintendo Entertainment System/Bobl (v1.1).nes
+       ! could not resolve platform 'nes' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   27  FAILED             libretro-content -          Nintendo - Nintendo Entertainment System/240p Test Suite.nes
+       ! could not resolve platform 'nes' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   28  FAILED             libretro-content -          Nintendo - GameBoy/Sheep It Up.zip
+       ! could not resolve platform 'gb' in the 'romm' library: authentication request to RomM failed: [WinError 10061] No connection could be made because the target machine actively refused it
+   29  DONE               libretro-content genesis    Sega - Mega Drive - Genesis/Cave Story (v0.7.0).zip
+   30  DONE               homebrew       gb         dorotea
+   31  DONE               homebrew       gbc        pacman
+   32  DONE               homebrew       gb         factory-danger
+   33  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Columns (USA, Europe, Brazil) (En).7z
+   34  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Wonder Boy (Europe).7z
+   35  DONE               homebrew       gb         avivbeeri_scoundrel-gb
+   36  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Castle of Illusion Starring Mickey Mouse (USA, Europe, Brazil) (En).7z
+   37  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Streets of Rage (World).7z
+   38  DONE               universal-db   nds        wordle-ds
+   39  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Ms. Pac-Man (USA).7z
+   40  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Pac-Man (USA).7z
+   41  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Galaga '91 (Japan) (En).7z
+   42  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Defenders of Oasis (USA, Europe).7z
+   43  DONE               if-archive     z-machine  if-archive/games/zcode/zork_285.z5
+   44  SKIPPED_DUPLICATE  nointro-archive gamegear   nointro.gg/Phantasy Star Gaiden (Japan).7z
+   45  SKIPPED_DUPLICATE  nointro-archive sms        nointro.ms-mkiii/Golden Axe (USA, Europe, Brazil) (En).7z
+   46  SKIPPED_DUPLICATE  nointro-archive sms        nointro.ms-mkiii/Phantasy Star (Japan).7z
+   47  DONE               scummvm-freeware scummvm    beneath-a-steel-sky/BASS-Floppy-1.3.zip
+   48  FAILED             nointro-archive sms        nointro.ms-mkiii/Streets of Rage (Europe, Brazil) (En).7z
+       ! upload of 'Streets of Rage (Europe, Brazil) (En).7z' to romm failed: POST /api/roms/upload/start failed (400): {"detail":"File Streets of Rage (Europe, Brazil) (En).7z already exists"}
+   49  FAILED             nointro-archive sms        nointro.ms-mkiii/Golden Axe Warrior (USA, Europe, Brazil) (En).7z
+       ! upload of 'Golden Axe Warrior (USA, Europe, Brazil) (En).7z' to romm failed: POST /api/roms/upload/start failed (400): {"detail":"File Golden Axe Warrior (USA, Europe, Brazil) (En).7z already exists"}
+   50  SKIPPED_DUPLICATE  nointro-archive genesis    nointro.md/Streets of Rage (World) (En,Ja).7z
+   51  SKIPPED_DUPLICATE  nointro-archive genesis    nointro.md/Mega Bomberman (USA).7z
+   52  SKIPPED_DUPLICATE  nointro-archive genesis    nointro.md/Alex Kidd in the Enchanted Castle (Europe).7z
+   53  DONE               nointro-archive genesis    nointro.md/Tetris (USA) (Genesis Mini).7z
+   54  DONE               nointro-archive tg16       nointro.tg-16/Bomberman '93 (USA).7z
+   55  DONE               nointro-archive tg16       nointro.tg-16/Galaga '90 (USA).7z
+   56  DONE               nointro-archive atari2600  nointro.atari-2600/Asteroids (Japan, USA) (En).7z
+   57  DONE               nointro-archive atari7800  nointro.atari-7800/Galaga (Europe).7z
+   58  DONE               nointro-archive wonderswan-color nointro.wsc/Tetris (Japan).7z
+   59  DONE               libretro-content nes        Nintendo - Nintendo Entertainment System/Chrono Knight.nes
+   60  DONE               libretro-content nes        Nintendo - Nintendo Entertainment System/Bobl (v1.1).nes
+   61  DONE               libretro-content nes        Nintendo - Nintendo Entertainment System/240p Test Suite.nes
+   62  DONE               libretro-content gb         Nintendo - GameBoy/Sheep It Up.zip
+   63  SKIPPED_DUPLICATE  libretro-content genesis    Sega - Mega Drive - Genesis/Cave Story (v0.7.0).zip
+   64  SKIPPED_DUPLICATE  homebrew       gb         dorotea
+   65  SKIPPED_DUPLICATE  homebrew       gbc        pacman
+   66  SKIPPED_DUPLICATE  homebrew       gb         factory-danger
+   67  SKIPPED_DUPLICATE  homebrew       gb         avivbeeri_scoundrel-gb
+   68  SKIPPED_DUPLICATE  universal-db   nds        wordle-ds
+   69  SKIPPED_DUPLICATE  if-archive     z-machine  if-archive/games/zcode/zork_285.z5
+   70  SKIPPED_DUPLICATE  scummvm-freeware scummvm    beneath-a-steel-sky/BASS-Floppy-1.3.zip
+   71  DONE               aminet         amiga      game/shoot/2CyberBlast.lha
+   72  DONE               aminet         amiga      game/board/2048.lha
+   73  DONE               demozoo        dos        108
+   74  DONE               demozoo        c64        19822
+   75  DONE               archive-org    dos        oregon-trail-deluxe
+   76  DONE               if-archive     glulx      if-archive/games/glulx/ZorkI7.ulx
+   77  DONE               universal-db   3ds        wordle-terminal-3ds
+   78  DONE               homebrew       gb         howdyriceball_polar-peril
+   79  DONE               homebrew       gbc        playinstinct_neon-nova
+   80  DONE               homebrew       gb         nicholasbm_the-green-knight
+   81  DONE               nointro-archive gamegear   nointro.gg/Columns (USA, Europe, Brazil) (En).7z
+       ~ adding it to the collection 'No-Intro' was skipped: the 'gaseous' backend does not support collections
+   82  DONE               nointro-archive gamegear   nointro.gg/Wonder Boy (Europe).7z
+       ~ adding it to the collection 'No-Intro' was skipped: the 'gaseous' backend does not support collections
+   83  DONE               nointro-archive gamegear   nointro.gg/Streets of Rage (World).7z
+       ~ adding it to the collection 'No-Intro' was skipped: the 'gaseous' backend does not support collections
+   84  DONE               nointro-archive gamegear   nointro.gg/Pac-Man (USA).7z
+       ~ adding it to the collection 'No-Intro' was skipped: the 'gaseous' backend does not support collections
+   85  DONE               nointro-archive sms        nointro.ms-mkiii/Golden Axe (USA, Europe, Brazil) (En).7z
+       ~ adding it to the collection 'No-Intro' was skipped: the 'gaseous' backend does not support collections
+
+85 job(s)

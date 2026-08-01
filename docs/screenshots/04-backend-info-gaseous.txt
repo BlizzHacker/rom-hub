@@ -1,0 +1,16 @@
+$ ROM_HUB_BACKEND=gaseous rom-hub backend info
+backend          gaseous
+selected by      ROM_HUB_BACKEND=gaseous
+summary          A `LibraryBackend` over one Gaseous server.
+available        gaseous, retrom, romm
+settings         GASEOUS_URL, GASEOUS_USER, GASEOUS_PASSWORD
+configured       yes
+
+can:
+  import         accept a ROM upload, and list the library so a duplicate is caught first
+  scan           needs an explicit registration step after an upload
+cannot:
+  artwork        attach cover art to a rom
+  collections    group roms into a named collection (rom-hub import --collection)
+  firmware       store a platform's BIOS files (rom-hub firmware install)
+  metadata       write a rom's metadata fields (rom-hub enrich)

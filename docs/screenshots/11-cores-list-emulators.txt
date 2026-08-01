@@ -1,0 +1,8 @@
+$ rom-hub cores list emulators
+CORE        VERSION SYSTEM             NAME
+duckstation latest  Sony PlayStation   DuckStation [CC-BY-NC-ND-4.0] - DuckStation-x64.AppImage
+mgba        0.10.5  Game Boy Advance   mGBA [MPL-2.0] - mGBA-0.10.5-appimage-x64.appimage
+pcsx2       v2.6.3  Sony PlayStation 2 PCSX2 [GPL-3.0] - pcsx2-v2.6.3-linux-appimage-x64-Qt.AppImage
+melonds     1.1     Nintendo DS        melonDS [GPL-3.0] - melonDS-1.1-appimage-x86_64.zip
+
+4 core(s). Install with: rom-hub cores install emulators <core>

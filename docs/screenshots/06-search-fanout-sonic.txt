@@ -1,0 +1,75 @@
+$ rom-hub search "sonic" --limit 30
+aminet         amiga                 -  Blaze.adf
+aminet         amiga                 -  sonicfortress.lha
+archive-org    ruffle-swf       7.9 MB  Amazing Sonic Scene Creator 2
+archive-org    -                4.2 MB  Sonic 1
+archive-org    dosbox         163.8 MB  Sonic The Hedgehog: The Screen Saver
+archive-org    dosbox           0.3 MB  Sonic and Tails
+archive-org    dosbox        3701.6 MB  Whitney's Sonic The Hedgehog & Windows 311 DOSBox!
+archive-org    spec128          0.5 MB  Sonic Intro (1998)(Anestis Koutsoudis)[128K]
+archive-org    spec128          0.3 MB  Scoria Sonic II Preview (1993)(Jackson Hollis)[128K]
+archive-org    vice-resid       4.1 MB  Sonic Power (1999)(Sonic Dreams)
+archive-org    -             1419.7 MB  Title: Sonic Heroes (2004) (SEGA / Platinum / 2 CD) [300 DPI Scans & Topology]
+archive-org    sae-a500p        0.9 MB  Sonic Book 7 Back to the C64
+archive-org    -             1392.4 MB  Sonic Adventure 2 Battle (Review Prototype) (11, 29 01)
+archive-org    ruffle-swf       1.9 MB  Mario & Sonic at the Olympic Games Record
+archive-org    sae-a500p        1.7 MB  Sonic Drum Kit v2.1
+archive-org    ruffle-swf       2.1 MB  Mario & Sonic at the Olympic Games Gamemode
+archive-org    dosbox           1.5 MB  Sonic the Hedgehog ZZT
+archive-org    dosbox           0.5 MB  Sonic the Hedgehog ZZT Blast
+archive-org    dosbox           2.4 MB  Sonic (revised)
+archive-org    ruffle-swf       4.7 MB  Sonic unleashed in 4 min.
+archive-org    genesis          1.0 MB  Sonic 1 - Over 9000
+archive-org    -              463.8 MB  Sonic CD (Japan) & Sega Multimedia Demo [Mega-CD] - NTSC-U Conversions
+archive-org    ruffle-swf       3.6 MB  Sonic Halo
+archive-org    segacd         314.5 MB  Sonic The Hedgehog CD++
+archive-org    dosbox           3.1 MB  Sonic the Hedgehog (1999) (MS-DOS) (ULTRA RARE)
+archive-org    ruffle-swf       0.1 MB  Sonic XS (Cheat Code ver)
+archive-org    ruffle-swf      15.0 MB  Sonic Shorts Volume 6
+archive-org    -                6.9 MB  sonic the hedgehog 3 limited edition Prototype
+archive-org    ruffle-swf       0.5 MB  Sonic Pac-Man
+archive-org    genesis          3.0 MB  tails in sonic 1 early proto 1999
+archive-org    vice-resid      10.8 MB  Sonic (1989)(Evil Venom)
+archive-org    -              154.4 MB  Sonic CD (Sep 7, 1995 prototype)
+demozoo        zxs                   -  Sonic
+demozoo        dos                   -  Sonic
+demozoo        c64                   -  Sonic
+demozoo        c64                   -  Sonic
+demozoo        c64                   -  Sonic
+demozoo        zxs                   -  Sonic
+nointro-archive gamegear         0.2 MB  Sonic & Tails (Japan) (En) (Sample).7z
+nointro-archive gamegear         0.2 MB  Sonic & Tails (Japan) (En).7z
+nointro-archive gamegear         0.2 MB  Sonic & Tails 2 (Japan) (En).7z
+nointro-archive gamegear         0.1 MB  Sonic Blast (World) (Beta) (1996-05-31).7z
+nointro-archive gamegear         0.2 MB  Sonic Blast (World) (Beta) (1996-07-04).7z
+nointro-archive gamegear         0.3 MB  Sonic Blast (World) (Beta) (1996-08-06).7z
+nointro-archive gamegear         0.3 MB  Sonic Blast (World) (Beta) (1996-08-21).7z
+nointro-archive gamegear         0.3 MB  Sonic Blast (World) (Beta) (1996-08-27).7z
+nointro-archive gamegear         0.4 MB  Sonic Blast (World) (Beta) (1996-09-02).7z
+nointro-archive gamegear         0.4 MB  Sonic Blast (World).7z
+nointro-archive gamegear         0.1 MB  Sonic Chaos (USA, Europe, Brazil) (En) (Beta) (1993-05-17).7z
+nointro-archive gamegear         0.2 MB  Sonic Chaos (USA, Europe, Brazil) (En).7z
+nointro-archive gamegear         0.1 MB  Sonic Drift (Japan) (En) (Auto Demo).7z
+nointro-archive gamegear         0.1 MB  Sonic Drift (Japan) (En).7z
+nointro-archive gamegear         0.2 MB  Sonic Drift 2 (World).7z
+nointro-archive gamegear         0.2 MB  Sonic Labyrinth (World) (Virtual Console).7z
+nointro-archive gamegear         0.2 MB  Sonic Labyrinth (World).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-03-07).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-03-10).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-03-11).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-03-21).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-03-28).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-03-29).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-03-30).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-04-05).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-04-12).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-04-13).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-04-15).7z
+nointro-archive gamegear         0.2 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-04-21).7z
+nointro-archive gamegear         0.1 MB  Sonic Spinball (USA, Europe, Brazil) (En) (Beta) (1994-04-27).7z
+universal-db   3ds                   -  Sonic 1 / 2
+universal-db   3ds                   -  Sonic Mania
+universal-db   3ds                   -  Sonic CD
+universal-db   3ds                   -  Sonic Robo Blast 2
+
+10 of 10 sources responded, 72 results

@@ -1,0 +1,7 @@
+$ rom-hub firmware list open-bios
+FIRMWARE    PLATFORM LICENCE     NAME
+cult-of-gba gba      MIT         Cult-of-GBA BIOS
+sameboy-dmg gb       MIT (Expat) SameBoy Game Boy boot ROMs
+sameboy-cgb gbc      MIT (Expat) SameBoy Game Boy Color boot ROMs
+
+3 item(s). Install with: rom-hub firmware install open-bios <firmware>

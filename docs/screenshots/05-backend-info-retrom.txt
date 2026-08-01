@@ -1,0 +1,16 @@
+$ ROM_HUB_BACKEND=retrom rom-hub backend info
+backend          retrom
+selected by      ROM_HUB_BACKEND=retrom
+summary          A `LibraryBackend` over one Retrom server.
+available        gaseous, retrom, romm
+settings         RETROM_URL
+configured       yes
+
+can:
+  artwork        attach cover art to a rom
+  import         accept a ROM upload, and list the library so a duplicate is caught first
+  metadata       write a rom's metadata fields (rom-hub enrich)
+  scan           needs an explicit registration step after an upload
+cannot:
+  collections    group roms into a named collection (rom-hub import --collection)
+  firmware       store a platform's BIOS files (rom-hub firmware install)

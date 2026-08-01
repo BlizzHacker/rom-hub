@@ -51,6 +51,20 @@ what is *not* confined.
 MIT licensed; see [LICENSE](LICENSE). Each plugin is a separate work under its
 own licence, carried in its own repository.
 
+
+## It works — here is what that looks like
+
+![RomM populated entirely by ROM Hub plugins](docs/screenshots/romm.png)
+
+45 games across 18 platforms, plus 6 BIOS files, every one placed by a plugin
+installed from its public repo. The **Collections** row is named after the
+plugins that filled it. The same plugins also populated [Gaseous and
+Retrom](docs/SHOWCASE.md) in the same session.
+
+See **[docs/SHOWCASE.md](docs/SHOWCASE.md)** for all three backends, the command
+transcripts, and an honest account of what is *not* in the picture — partial
+cover art, Gaseous landing ROMs on platform 0, and the two imports that failed.
+
 ## Renamed from `romm-hub`
 
 The project, its packages and its `ROMM_HUB_*` environment variables lost a

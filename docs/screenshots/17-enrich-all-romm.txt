@@ -1,0 +1,100 @@
+$ python enrich_all.py   # libretro-thumbnails + openvgdb across the whole RomM library
+44 rom(s) in the library
+
+== pass 1: libretro-thumbnails (box art) ==
+   35 none 2CyberBlast.lha
+   37 none 2nd_real.zip
+   33 none 240p Test Suite.nes
+   36 none 2048.lha
+   16 ART  Alex Kidd in the Enchanted Castle (Europe).7z
+    1 none Alter Ego.nes
+   28 ART  Asteroids (Japan, USA) (En).7z
+   24 none BASS-Floppy-1.3.zip
+   32 none Bobl (v1.1).nes
+   26 ART  Bomberman '93 (USA).7z
+    5 ART  Castle of Illusion Starring Mickey Mouse (USA, Europe, Bra
+   17 ART  Cave Story (v0.7.0).zip
+   31 none Chrono Knight.nes
+    3 ART  Columns (USA, Europe, Brazil) (En).7z
+   10 ART  Defenders of Oasis (USA, Europe).7z
+   20 none factory_danger_v01.gb
+   27 ART  Galaga '90 (USA).7z
+    9 ART  Galaga '91 (Japan) (En).7z
+   29 ART  Galaga (Europe).7z
+   12 ART  Golden Axe (USA, Europe, Brazil) (En).7z
+   41 none HTWordleTerminal.3dsx
+   15 none Mega Bomberman (USA).7z
+    7 ART  Ms. Pac-Man (USA).7z
+   43 none NEON-NOVA_jam.gbc
+   39 ART  Oregon Trail Deluxe.zip
+    8 ART  Pac-Man (USA).7z
+   19 none pacman.gbc
+   18 none pasquiindustry_dorotea_en_v_1_1_0.gb
+   13 ART  Phantasy Star (Japan).7z
+   11 ART  Phantasy Star Gaiden (Japan).7z
+   42 none polarperil_jam.gb
+   21 none SCOUNDREL_jam.gb
+   34 none Sheep It Up.zip
+   38 none smash_secondreality_d64.zip
+    2 ART  Sonic & Tails (Japan) (En).7z
+   14 ART  Streets of Rage (World) (En,Ja).7z
+    6 ART  Streets of Rage (World).7z
+   30 ART  Tetris (Japan).7z
+   25 ART  Tetris (USA) (Genesis Mini).7z
+   44 none The-Green-Knight-v2.2.gb
+    4 ART  Wonder Boy (Europe).7z
+   22 none WordleDS.nds
+   23 none zork_285.z5
+   40 none ZorkI7.ulx
+
+  art: 22 hit, 22 miss
+
+== pass 2: openvgdb, names only (roms that already have art) ==
+   16 NAME
+   28 none
+   26 NAME
+    5 none
+   17 none
+    3 none
+   10 NAME
+   27 NAME
+    9 none
+   29 NAME
+   12 none
+    7 NAME
+   39 none
+    8 NAME
+   13 NAME
+   11 NAME
+    2 NAME
+   14 none
+    6 none
+   30 NAME
+   25 none
+    4 NAME
+
+== pass 3: openvgdb with art (roms libretro had no art for) ==
+   35 none
+   37 none
+   33 none
+   36 none
+    1 none
+   24 none
+   32 none
+   31 none
+   20 none
+   41 none
+   15 NAME+ART
+   43 none
+   19 none
+   18 none
+   42 none
+   21 none
+   34 none
+   38 none
+   44 none
+   22 none
+   23 none
+   40 none
+
+summary: 22 libretro covers, 12 curated names, 1 openvgdb covers for the rest
