@@ -458,8 +458,9 @@ api_key     = { type = "secret" }           # never in state.json; no default al
 | `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` | downloads into the configured cores directory |
 | `firmware` | `list()` / `plan(firmware)` | `FirmwareArtifact[]` / `FetchPlan` | downloads into the configured firmware directory, unpacks the declared archive members, and stores the files in the library where the backend can hold firmware |
 | `assets` | `list()` / `plan(asset)` | `AssetArtifact[]` / `FetchPlan` | downloads into the directory configured for the item's `kind` — shaders, overlays, cheats, controller profiles. Touches no library at all |
+| `torrent` | `resolve(result)` | `TorrentSource` — a `.torrent` URL or a magnet, plus which files inside are wanted | fetches and **reads** the torrent as a verified file manifest, then: prints it, hands it to the torrent client the operator already runs, or pulls one named file from the torrent's own https web seed and checks it against the torrent's own digest. Links no BitTorrent client and speaks no peer protocol |
 
-**RPP v1 is fully implemented.** All seven capabilities have a host
+**RPP v1 is fully implemented.** All eight capabilities have a host
 implementation, a CLI command and tests that exercise them through a real
 plugin subprocess.
 
@@ -489,6 +490,7 @@ allowlist before the host fetches it.
 | `cores` | `CoreArtifact[]`, `FetchPlan` | the **same** `_gated_plan()` the importer uses — one implementation, so the two cannot drift |
 | `firmware` | `FirmwareArtifact[]`, `FetchPlan` | the same `_gated_plan()` again. Plus: every archive member goes through `bare_filename` on the *type*, and is matched against the zip by full-name equality and written to a destination the host built with `dest_in_job_dir` — an entry named `../../etc/passwd` is simply not one of the members, and is never joined onto a path |
 | `assets` | `AssetArtifact[]`, `FetchPlan` | the same `_gated_plan()` a third time. `kind` is a closed `Literal`, so the host can always choose a destination; the `asset_id` may contain `/` because it is a path *within the source tree* and is never joined onto a filesystem path — every write is built from a `FetchPlan` filename, which `bare_filename` and `dest_in_job_dir` still gate |
+| `torrent` | `TorrentSource`, and then the fetched torrent's own URLs | `check_url` on a `kind="torrent_url"` in `PluginProcess.resolve_torrent()`, then `HttpDownloader`'s per-hop `check_url` on the way to the bytes. A `kind="magnet"` is **not** http(s), so `check_url` cannot be applied to one whole: it is taken apart in `torrents.check_magnet` — the info-hash validated as v1 SHA-1, every `tr=` tracker gated by *hostname* against the same allowlist, every `ws=` web seed gated by `check_url` proper, and **every other parameter refused**. The discriminator cannot be lied about in either direction. Then the torrent's *own* `announce`/`announce-list`/`url-list` are gated the same way, because they are locations somebody will contact. Every entry path goes through `bare_filename` and `dest_in_job_dir` |
 | *(any)* `[[data_assets]]` | nothing — it is a manifest declaration, not a return value | `check_url` at **parse** time against `permissions.network`, so a violating manifest cannot be installed; then `HttpDownloader`'s per-hop `check_url` at fetch time; then a mandatory `sha256` before the plugin is told the path |
 
 Three things about that table are deliberate.
@@ -517,6 +519,9 @@ carry no artwork part at all.
 
 **`stream` resolves and hands over. It is not a streaming server.** See
 [What `stream` does, and what it refuses to do](#what-stream-does-and-what-it-refuses-to-do).
+
+**`torrent` reads and hands over. It is not a torrent client.** See
+[What `torrent` does, and what it refuses to do](#what-torrent-does-and-what-it-refuses-to-do).
 
 ### What `stream` does, and what it refuses to do
 
@@ -605,6 +610,172 @@ Verified against a copy of the service on a spare port, not the live one:
 without it the offer carried `host` and `srflx` candidates only; with it the
 same offer carried a `typ relay` candidate at the site's external address.
 **The patch is not applied** — it is the service owner's to apply.
+
+### What `torrent` does, and what it refuses to do
+
+The request behind this capability was "add torrent support", and the
+honest answer turned out to be smaller than the request. The Hub reads
+torrents. It does not speak BitTorrent.
+
+#### The dependency decision, and why it went the other way
+
+Linking `libtorrent` is the obvious move and it was rejected on both
+halves of the trade.
+
+**What it would cost.** `libtorrent` is the only complete implementation:
+C++ over Boost, wanting a compiler or a platform wheel, and what it brings
+into the process is a *session* — a listening socket, a DHT node, a peer
+pool and a background thread that outlives any one call. `rom-hub` is a
+CLI that runs one command and exits, whose plugins are seccomp-confined
+subprocesses with no sockets at all. A daemon-shaped dependency does not
+fit a command-shaped program. The pure-Python clients that would avoid the
+build are partial and largely unmaintained.
+
+**What it would buy, for this corpus: nothing that is not already there.**
+Archive.org publishes a `.torrent` for nearly every item **and seeds it
+itself, over HTTPS, from the origin this project already talks to**. The
+torrent says so — `url-list` (BEP 19) on a live Archive.org torrent is
+
+```
+https://archive.org/download/
+http://ia902705.us.archive.org/26/items/
+http://ia802705.us.archive.org/26/items/
+```
+
+The first is https and inside the plugin's own allowlist. A peer stack
+would be a second way to fetch the same bytes from the same organisation.
+
+**What is actually needed is a reader**, and the finding that decided it:
+Archive.org's torrents carry a per-file `sha1`, `md5`, `crc32` and
+`length` **inside the `info` dictionary**, and therefore under the
+info-hash. That makes a `.torrent` a per-file verified manifest — strictly
+better than the plain `/download/` path it describes, because it is the
+same bytes plus a digest to check them against. Reading it is
+`rom_hub.bencode`: ~120 lines, no dependency, treating its input as
+hostile (depth bound, integer bound, explicit short-string refusal,
+duplicate-key refusal, no trailing data).
+
+That module has **no encoder**, deliberately. The info-hash is taken from
+the raw byte span of the `info` value rather than by re-encoding the
+parsed form, because a re-encoding is only correct for input that was
+already canonical and the failure when it is not is a *silently wrong*
+info-hash. Verified against the live service: the span gives
+`6e56c747303e7bf35bf86b1956fb7ea06c99b805` for `rubik_202308`, which is
+the `btih` Archive.org itself publishes.
+
+**Where a swarm genuinely wins, the answer is handoff.** A multi-gigabyte
+disc image really is faster from many peers, and an operator who wants
+that already runs qBittorrent, Transmission or Deluge — every one of which
+has watched a directory for a decade. So `rom-hub torrent handoff` writes
+the validated `.torrent` there (named by its info-hash, so no
+plugin- or source-controlled string reaches the filesystem) or prints a
+magnet the host built itself. That integration is smaller, has no
+dependency, and is *better*: the operator's client already has their
+bandwidth limits, their VPN binding and their disk layout configured.
+
+#### "Streaming", honestly
+
+The ask was torrent *streaming* — sequential piece ordering so a file is
+usable before it completes. Three things are true, and the first is the
+one that matters.
+
+**For most of this corpus, "stream" and "download" are the same thing.** A
+ROM is kilobytes to a few megabytes: `rubik.zip` is 15 KB, a NES image
+262 KB. There is no interval during which a 15 KB file is partly useful.
+Sequential ordering buys nothing there, and claiming otherwise would be
+selling a feature by its name.
+
+**Where it matters, it is real.** These collections do hold multi-gigabyte
+items — 5.7 GB is the largest measured. For a disc image, order of arrival
+is the difference between mounting it now and mounting it in an hour.
+
+**And for those, the HTTPS path is already sequential.** An HTTP response
+body arrives in order, from byte zero, by construction. Out-of-order
+arrival is something a *swarm* introduces, because it fetches rare pieces
+first from many peers; "sequential mode" in a client exists to partly undo
+that, at the cost of the parallelism that was the point. For a source that
+seeds its own content over HTTPS, the plain fetch is the sequential one.
+
+So there is **no play-while-downloading pipeline**, no piece-priority
+scheduler, and nothing here hands a partial file to an emulator. Half a
+BitTorrent client would not have been streaming either.
+
+#### What the host actually does
+
+| command | what happens |
+|---|---|
+| `torrent show` | resolve, fetch, read, print the manifest — files with their digests, trackers, web seeds, magnet. Writes nothing |
+| `torrent handoff` | build a magnet from the *host-computed* info-hash and the allowlisted trackers/seeds; drop the `.torrent` byte-for-byte into the watch directory (`ROM_HUB_TORRENT_WATCH_DIR`) |
+| `torrent fetch` | pull one named file from the torrent's own allowlisted https web seed, streamed to disk, verified against the torrent's own per-file `sha1` (or `md5`) |
+
+Piece hashes are deliberately **not** the verification fallback, and the
+measurement is why: Archive.org's piece length is 512 KB and up while a
+ROM is kilobytes, so a single piece routinely spans an item's entire file
+list — `rubik_202308` is six files in one piece. Verifying one 15 KB ROM
+against piece 0 would mean downloading the thumbnail, the screenshot and
+the metadata sqlite that share it. A check that costs more than the thing
+it checks is not a fallback. When a torrent carries no per-file digest the
+fetch reports **unverified** and says so, rather than claiming a check it
+did not perform.
+
+#### How a magnet is validated
+
+A magnet is not http(s), so `netpolicy.check_url` cannot be applied to it
+as a whole — and "it is not a URL, so there is nothing to check" is the
+wrong conclusion. It is a *bundle*, some of which are network locations.
+Each part is treated on its own terms, in `torrents.check_magnet`:
+
+* **`xt=urn:btih:<hash>` — the content, not a location.** An info-hash
+  names bytes by their digest; it cannot be pointed at a host and cannot
+  be an SSRF target. What is checked is that it is a well-formed v1
+  info-hash (40 hex, or the 32-character base32 form normalised to hex)
+  and that there is exactly one. `urn:btmh:` (v2, SHA-256) is refused,
+  because nothing here computes a v2 hash and a field that accepted one
+  would promise a comparison that never happens.
+* **`tr=` — trackers.** Real locations, contacted by whatever client this
+  is handed to. Gated by a closed scheme set (`http`, `https`, `udp`,
+  `ws`, `wss`) plus `netpolicy.host_matches` on the **hostname**, against
+  the plugin's own allowlist.
+* **`ws=` — web seeds.** Plain http(s) URLs somebody will GET, so they get
+  `check_url` unmodified: https, declared host.
+* **`dn`, `xl`, `kt`, `so` — description.** Not locations. Inert.
+* **everything else — refused.** `xs` and `mt` are URLs in schemes this
+  reasoning has not been done for; **`x.pe` is a raw `IP:port` peer
+  address with no hostname for an allowlist to match**, which makes it
+  precisely the parameter that would turn a magnet into an unrestricted
+  outbound connection. Rather than enumerate the dangerous ones — a list
+  that cannot be finished — the accepted keys are an allowlist. That is
+  what `manifest.py` does with manifest keys and `netpolicy` does with
+  hosts; this is the third instance of the same rule.
+
+Trackers are gated by hostname rather than by `check_url` because
+`ALLOWED_SCHEMES` is `{https}` and every real tracker is `http` or `udp` —
+Archive.org's own is `http://bt1.archive.org:6969/announce`. Widening
+`ALLOWED_SCHEMES` to make it pass would have weakened the check for the
+five capabilities whose URLs the host actually fetches, which is the
+opposite of what a tracker needs. The property enforced is the one
+`permissions.network` promises: **every host this torrent will cause
+traffic to was declared in a manifest somebody could read before
+installing it.**
+
+That is deliberately strict in a direction that will eventually be
+inconvenient — a future source using public trackers (`opentrackr`,
+`torrent.eu.org`) would have to declare them. That is the correct outcome.
+A tracker is traffic.
+
+#### What is out of scope, on purpose
+
+**Only Archive.org.** One source in this pass. Whether other torrent
+sources belong in this project at all is an open question and not one this
+capability answers by quietly growing a plugin for one.
+
+**No library upload.** `torrent fetch` lands a file on disk and stops,
+exactly like `cores` and `assets` — which is why `torrent` is
+`BACKEND_INDEPENDENT`. Making it require a backend would refuse to fetch a
+public-domain ROM from a verified manifest because no *library server* was
+configured, which is `--collection` refusing every Gaseous import again.
+Putting it in a library is `rom-hub import`'s job. Two commands, each of
+which works alone.
 
 ### Firmware: the capability where the licence is the product
 

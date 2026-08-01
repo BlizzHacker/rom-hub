@@ -18,6 +18,11 @@ socket is opened:
   * the `FetchPlan` returned by asset_plan(), the same gate once more -- a
     shader, bezel, cheat file or controller profile is a file landing on
     disk in a directory an emulator reads
+  * the `TorrentSource` returned by resolve_torrent(), whose `torrent_url`
+    kind the host fetches and whose `magnet` kind carries trackers and web
+    seeds somebody will contact -- gated here for the URL and, because a
+    magnet is not http(s) and `check_url` cannot be applied to one whole,
+    taken apart parameter by parameter in `torrents.check_magnet`
 
 Adding another path without a check_url() on it would make the manifest's
 `network` declaration decorative.
@@ -74,6 +79,7 @@ from rom_hub.types import (
     RomRef,
     SearchResult,
     StreamTarget,
+    TorrentSource,
 )
 
 from .fetcher import Fetcher
@@ -721,6 +727,47 @@ class PluginProcess:
                     f"plugin {self.manifest.slug} StreamTarget rejected: {exc}"
                 ) from exc
         return target
+
+    def resolve_torrent(self, result: SearchResult) -> TorrentSource:
+        """Ask the plugin where an item's torrent is. The host fetches it.
+
+        The gate here covers the `torrent_url` kind, and it is the same
+        `check_url` a `FetchPlan` URL gets -- the host is about to
+        download this, so it is exactly as privileged as a ROM URL, and
+        `HttpDownloader` re-checks every redirect hop on the way.
+
+        A `magnet` is **not** checked here, and that is a deliberate
+        split rather than a gap. `check_url` permits `https` and nothing
+        else, so it can say nothing useful about a `magnet:` URI; running
+        it would either refuse every magnet or invite somebody to widen
+        `ALLOWED_SCHEMES`, which would weaken the gate for the five
+        capabilities that depend on it being https-only. A magnet is
+        instead taken apart in `torrents.check_magnet` -- info-hash
+        validated, trackers gated by host, web seeds gated by `check_url`
+        proper, every other parameter refused -- and *that* runs before
+        anything is done with it. The reasoning is written out there.
+        """
+        raw = self._call("resolve_torrent", {"result": result.model_dump()})
+        if not isinstance(raw, dict):
+            raise self._fail(
+                f"plugin {self.manifest.slug} returned an invalid TorrentSource: "
+                f"expected an object, got {type(raw).__name__}"
+            )
+        try:
+            source = TorrentSource(**raw)
+        except (ValidationError, TypeError) as exc:
+            raise self._fail(
+                f"plugin {self.manifest.slug} returned an invalid TorrentSource: "
+                f"{exc}"
+            ) from exc
+        if source.kind == "torrent_url":
+            try:
+                check_url(source.source, self.manifest.network)
+            except PolicyViolation as exc:
+                raise self._fail(
+                    f"plugin {self.manifest.slug} TorrentSource rejected: {exc}"
+                ) from exc
+        return source
 
     def close(self) -> None:
         if self._proc is None:

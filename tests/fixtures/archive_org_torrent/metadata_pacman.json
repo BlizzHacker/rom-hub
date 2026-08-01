@@ -1,0 +1,918 @@
+{
+  "alternate_locations": {
+    "servers": [
+      {
+        "dir": "/0/items/pac-man-championship-edition-1",
+        "server": "dn710205.ca.archive.org"
+      }
+    ],
+    "workable": [
+      {
+        "dir": "/0/items/pac-man-championship-edition-1",
+        "server": "dn710205.ca.archive.org"
+      }
+    ]
+  },
+  "created": 1785605428,
+  "d1": "ia902802.us.archive.org",
+  "d2": "ia802802.us.archive.org",
+  "dir": "/21/items/pac-man-championship-edition-1",
+  "files": [
+    {
+      "crc32": "7c0c7b0c",
+      "format": "PNG",
+      "md5": "641dc8db68f0b984cd904b0456c7ea72",
+      "mtime": "1768102000",
+      "name": "00_coverscreenshot.png",
+      "sha1": "aaf496639dab9eae8cc380cd48fe2bb54d030ef6",
+      "size": "8604",
+      "source": "original"
+    },
+    {
+      "crc32": "a2ba3959",
+      "format": "JPEG Thumb",
+      "md5": "376357b164194b30805fb31fe40d8a66",
+      "mtime": "1768102470",
+      "name": "00_coverscreenshot_thumb.jpg",
+      "original": "00_coverscreenshot.png",
+      "sha1": "7849cd577fe79063d1b0d702003f34d10382372c",
+      "size": "9264",
+      "source": "derivative"
+    },
+    {
+      "crc32": "2c0ffc9b",
+      "format": "Android Package Archive",
+      "md5": "f4a371d91610a3957edf42c75ce8058e",
+      "mtime": "1760135522",
+      "name": "Android/PAC-MAN Championship Edition.apk",
+      "sha1": "32b2123f1c600a7bbb7f90e23d482f43007abcc3",
+      "size": "13841311",
+      "source": "original",
+      "viruscheck": "1760136448"
+    },
+    {
+      "crc32": "3d5ff8bc",
+      "format": "Text",
+      "md5": "b7b3792efd5a8576350c00521e85fc97",
+      "mtime": "1760147383",
+      "name": "NES/Cheat Codes for NES version.txt",
+      "sha1": "3c269bf7153f97014d0d4007fc8564c233dab61b",
+      "size": "309",
+      "source": "original",
+      "viruscheck": "1760156244"
+    },
+    {
+      "crc32": "39e8ae60",
+      "format": "Unknown",
+      "md5": "ef824fa073b9b34fb07b9caba33eeca0",
+      "mtime": "1760146335",
+      "name": "NES/PAC-MAN Championship Edition.nes",
+      "sha1": "90ab4682c1cfbe78d9e32baff37600b0114f6e74",
+      "size": "262160",
+      "source": "original",
+      "viruscheck": "1760146365"
+    },
+    {
+      "crc32": "e56a94ae",
+      "filecount": "428",
+      "format": "ISO Image",
+      "md5": "b9f99263313b8f5b19eff06cbaaa8532",
+      "mtime": "1760136453",
+      "name": "PSP/Pac-Man Championship Edition (Europe) (minis) (PSN).iso",
+      "sha1": "e04f933a3049d960983793396a08d8da624e1e82",
+      "size": "164888576",
+      "source": "original"
+    },
+    {
+      "crc32": "414f1205",
+      "filecount": "428",
+      "format": "ISO Image",
+      "md5": "737d910c9e35fe096c2098d9abadd127",
+      "mtime": "1760146839",
+      "name": "PSP/Pac-Man Championship Edition (France) (minis) (PSN).iso",
+      "sha1": "9cc44412768769662c5bab49ee65162aea84151d",
+      "size": "164855808",
+      "source": "original"
+    },
+    {
+      "crc32": "da239a28",
+      "filecount": "428",
+      "format": "ISO Image",
+      "md5": "2917cb1b2a82a5ee48ad6fbb1ee093ca",
+      "mtime": "1760147555",
+      "name": "PSP/Pac-Man Championship Edition (Germany) (minis) (PSN).iso",
+      "sha1": "452f2956686e01aaf1dc0f7ffe720d52c9a67132",
+      "size": "164855808",
+      "source": "original"
+    },
+    {
+      "crc32": "f8a62db4",
+      "filecount": "428",
+      "format": "ISO Image",
+      "md5": "ee69135779bd5a28f2f9d4f1f40b6914",
+      "mtime": "1760148296",
+      "name": "PSP/Pac-Man Championship Edition (Italy) (minis) (PSN).iso",
+      "sha1": "e32856238bdd9555d13cdc8ded48529f44c731c8",
+      "size": "164855808",
+      "source": "original"
+    },
+    {
+      "crc32": "a71805cb",
+      "filecount": "428",
+      "format": "ISO Image",
+      "md5": "519c9b40115160a5b6b19f65814a70e4",
+      "mtime": "1760149206",
+      "name": "PSP/Pac-Man Championship Edition (Spain) (minis) (PSN).iso",
+      "sha1": "3194291e8c9dd05730681aebe217654bcf260b16",
+      "size": "164855808",
+      "source": "original"
+    },
+    {
+      "crc32": "975a13a6",
+      "filecount": "428",
+      "format": "ISO Image",
+      "md5": "e357ab60bff1c8614cdfd41501fc5996",
+      "mtime": "1760150134",
+      "name": "PSP/Pac-Man Championship Edition (USA) (minis) (PSN).iso",
+      "sha1": "3d909ff7f88e61fdf6df4c6eb13e53beecc0d17d",
+      "size": "164855808",
+      "source": "original"
+    },
+    {
+      "crc32": "425edb69",
+      "filecount": "1",
+      "format": "ZIP",
+      "md5": "fb59b21ffbac041499c94987f398b425",
+      "mtime": "1760136870",
+      "name": "Xbox 360/Pac-Man Championship Edition (World) (XBLA).zip",
+      "sha1": "348ab1553b0bfc8fad4544c25e215fd105c60651",
+      "size": "41013113",
+      "source": "original"
+    },
+    {
+      "crc32": "5b967e6f",
+      "format": "Item Tile",
+      "md5": "107a56786e1c35b5f48d18e4add5494e",
+      "mtime": "1768102149",
+      "name": "__ia_thumb.jpg",
+      "sha1": "9ccad5d1e40b1e573c727b6ad045e8c895d7dabf",
+      "size": "17712",
+      "source": "original"
+    },
+    {
+      "crc32": "0cdcbfaf",
+      "filecount": "709",
+      "format": "iOS App Store Package",
+      "md5": "cf817735383778d6686833acad1f65b2",
+      "mtime": "1760135461",
+      "name": "iOS/PAC-MAN Championship Edition.ipa",
+      "sha1": "ee749f481aac0847afd2c76f0a71a9e087e949d0",
+      "size": "56129310",
+      "source": "original"
+    },
+    {
+      "crc32": "64655e6c",
+      "format": "PNG",
+      "md5": "f146d9fc955235cdbbc46b74598e96a7",
+      "mtime": "1760134682",
+      "name": "logo.png",
+      "sha1": "5f7c5b56cc05074e97ffef7a17bc2b2d460d032d",
+      "size": "88900",
+      "source": "original"
+    },
+    {
+      "crc32": "f3536b0b",
+      "format": "PNG",
+      "md5": "b267a64e132299c3b6eefabfd8b01544",
+      "mtime": "1760222361",
+      "name": "logo2.png",
+      "sha1": "8e7aa77088c791e274cbb1ca7d05bc2ef595f8a4",
+      "size": "244430",
+      "source": "original"
+    },
+    {
+      "crc32": "255d3432",
+      "format": "JPEG Thumb",
+      "md5": "5b934a195ae732f2ccbd0cbd6c442f47",
+      "mtime": "1760222517",
+      "name": "logo2_thumb.jpg",
+      "original": "logo2.png",
+      "sha1": "6091439531944848958d4125359b98dae92deb9c",
+      "size": "9474",
+      "source": "derivative"
+    },
+    {
+      "crc32": "02264000",
+      "format": "JPEG Thumb",
+      "md5": "f15569e047f6f191990ffd53770b5b83",
+      "mtime": "1760134792",
+      "name": "logo_thumb.jpg",
+      "original": "logo.png",
+      "sha1": "451b4ed5946f1a5c3be25cc814ca16450a12f1c5",
+      "size": "6728",
+      "source": "derivative"
+    },
+    {
+      "btih": "2b5faa82986f53c5597485d064dd3af35a47a511",
+      "crc32": "f5fc5a54",
+      "format": "Archive BitTorrent",
+      "md5": "9e7a825f367e07706abc1111cec925c0",
+      "mtime": "1768103588",
+      "name": "pac-man-championship-edition-1_archive.torrent",
+      "sha1": "e817db757a5c38820576a090fd468b0857c481c5",
+      "size": "36301",
+      "source": "metadata"
+    },
+    {
+      "format": "Metadata",
+      "md5": "064cabcbd7340b4ec2371eac14dec43b",
+      "name": "pac-man-championship-edition-1_files.xml",
+      "source": "original",
+      "summation": "md5"
+    },
+    {
+      "crc32": "4af56ff8",
+      "format": "Metadata",
+      "md5": "140e188625cad13c80ac4b06c594d20b",
+      "mtime": "1768102109",
+      "name": "pac-man-championship-edition-1_meta.sqlite",
+      "sha1": "ea598430fe56523ae0e79c3122cf4a19fd1e2bae",
+      "size": "73728",
+      "source": "original"
+    },
+    {
+      "crc32": "8721b47f",
+      "format": "Metadata",
+      "md5": "2051f0a6baed2577fbadf0a42564a001",
+      "mtime": "1768103580",
+      "name": "pac-man-championship-edition-1_meta.xml",
+      "sha1": "f190a3c0fc3a418c69266894fe8e84c350664025",
+      "size": "2755",
+      "source": "original"
+    },
+    {
+      "crc32": "898e28a5",
+      "format": "Emulator Screenshot",
+      "md5": "f9edd894dddc6bdd1c3b7708212c9660",
+      "mtime": "1768102107",
+      "name": "pac-man-championship-edition-1_screenshot.gif",
+      "sha1": "439fded4e295401ff29a272e2e57be0363fb77aa",
+      "size": "701799",
+      "source": "original"
+    },
+    {
+      "crc32": "8312b85e",
+      "format": "PNG",
+      "md5": "6800d2706d3e0181dc65ea4fc4390a86",
+      "mtime": "1768102003",
+      "name": "screenshot_00.png",
+      "sha1": "6b00965f31684fc515fa91d1132c6899c6730658",
+      "size": "5441",
+      "source": "original"
+    },
+    {
+      "crc32": "6b6dde39",
+      "format": "JPEG Thumb",
+      "md5": "4dc8044cc0ab4e504acd45f440a1411e",
+      "mtime": "1768102348",
+      "name": "screenshot_00_thumb.jpg",
+      "original": "screenshot_00.png",
+      "sha1": "be43cac417094704909fe374e8e67da1d3ff166a",
+      "size": "8277",
+      "source": "derivative"
+    },
+    {
+      "crc32": "ec1eb189",
+      "format": "PNG",
+      "md5": "c676422f3ee059415c5d6451af6cd973",
+      "mtime": "1768102006",
+      "name": "screenshot_01.png",
+      "sha1": "15447797515136ca3d00126f7af839c4e6119bc4",
+      "size": "5177",
+      "source": "original"
+    },
+    {
+      "crc32": "df08311e",
+      "format": "JPEG Thumb",
+      "md5": "47f21fdc643ca0fd16109d048f9be05b",
+      "mtime": "1768102364",
+      "name": "screenshot_01_thumb.jpg",
+      "original": "screenshot_01.png",
+      "sha1": "79ecb3bfc63de3db7dcf81d14c3d6f223c25c14d",
+      "size": "8080",
+      "source": "derivative"
+    },
+    {
+      "crc32": "7f230b00",
+      "format": "PNG",
+      "md5": "efaaecf23fe8e98c22943178e0079bf7",
+      "mtime": "1768102009",
+      "name": "screenshot_02.png",
+      "sha1": "01cb6bae8d313aad031d56a071332bf0856bae6e",
+      "size": "5101",
+      "source": "original"
+    },
+    {
+      "crc32": "b74924df",
+      "format": "JPEG Thumb",
+      "md5": "29c9d9328922eb82f7e3b71f3c747365",
+      "mtime": "1768102332",
+      "name": "screenshot_02_thumb.jpg",
+      "original": "screenshot_02.png",
+      "sha1": "623e9fa87425d3eff2abcfc6cdfae4613377486e",
+      "size": "7943",
+      "source": "derivative"
+    },
+    {
+      "crc32": "e89053a4",
+      "format": "PNG",
+      "md5": "633a1f6f49178773aeb53ce2fd034cad",
+      "mtime": "1768102014",
+      "name": "screenshot_03.png",
+      "sha1": "46ea99916e9a325149051106a45c8ded231198ba",
+      "size": "5157",
+      "source": "original"
+    },
+    {
+      "crc32": "1744f6a0",
+      "format": "JPEG Thumb",
+      "md5": "b042eafd4be2f4258ffbaa8507bb0422",
+      "mtime": "1768102343",
+      "name": "screenshot_03_thumb.jpg",
+      "original": "screenshot_03.png",
+      "sha1": "8721ac1e5343dbf2a36abbff130bd7e6fc9e6bfc",
+      "size": "8066",
+      "source": "derivative"
+    },
+    {
+      "crc32": "ef77aaa7",
+      "format": "PNG",
+      "md5": "fd69c30c1c9e917658d7fcf2129cdf00",
+      "mtime": "1768102017",
+      "name": "screenshot_04.png",
+      "sha1": "34dfed08427ca49548ca489467a0d007fdb73106",
+      "size": "4824",
+      "source": "original"
+    },
+    {
+      "crc32": "d49d765d",
+      "format": "JPEG Thumb",
+      "md5": "c93b647c910a8a71f22778d5a07cc5f8",
+      "mtime": "1768102370",
+      "name": "screenshot_04_thumb.jpg",
+      "original": "screenshot_04.png",
+      "sha1": "95377fcfb4c4ee8828f44bcc1bd43b1c5a87876a",
+      "size": "7732",
+      "source": "derivative"
+    },
+    {
+      "crc32": "690926e6",
+      "format": "PNG",
+      "md5": "4b12986b3e8da19867e84f9cc7f968b4",
+      "mtime": "1768102020",
+      "name": "screenshot_05.png",
+      "sha1": "1d03be7325f1652cb80061b8b23793262296ae55",
+      "size": "5428",
+      "source": "original"
+    },
+    {
+      "crc32": "4a2853ac",
+      "format": "JPEG Thumb",
+      "md5": "713726862191170a03ffd5de786e41b2",
+      "mtime": "1768102405",
+      "name": "screenshot_05_thumb.jpg",
+      "original": "screenshot_05.png",
+      "sha1": "57112de4f1f250cf685c03c21809bb9e3fea0756",
+      "size": "8235",
+      "source": "derivative"
+    },
+    {
+      "crc32": "1150aaa4",
+      "format": "PNG",
+      "md5": "bdc9c6bfcf04495043d003493ca2148b",
+      "mtime": "1768102024",
+      "name": "screenshot_06.png",
+      "sha1": "6387c46756fa7b23d9c7581b02d3ec282026325e",
+      "size": "5791",
+      "source": "original"
+    },
+    {
+      "crc32": "77d5bc00",
+      "format": "JPEG Thumb",
+      "md5": "e6028483065091e6101d6e9813195e1c",
+      "mtime": "1768102374",
+      "name": "screenshot_06_thumb.jpg",
+      "original": "screenshot_06.png",
+      "sha1": "be1b82025131a3129f911c555f03c0fc9084ba4d",
+      "size": "8712",
+      "source": "derivative"
+    },
+    {
+      "crc32": "6e30ba9e",
+      "format": "PNG",
+      "md5": "9773db63eef996f6248be4dd60c28675",
+      "mtime": "1768102028",
+      "name": "screenshot_07.png",
+      "sha1": "68dcbb62c0161fe139556f9d81fd600ae6fe3afc",
+      "size": "5368",
+      "source": "original"
+    },
+    {
+      "crc32": "80bddb6f",
+      "format": "JPEG Thumb",
+      "md5": "a40ef00ffe9e9dc8b06bacc169a5bb07",
+      "mtime": "1768102380",
+      "name": "screenshot_07_thumb.jpg",
+      "original": "screenshot_07.png",
+      "sha1": "a2235d8b7eb2a45c88ccb71bbb36ce6720620a86",
+      "size": "8206",
+      "source": "derivative"
+    },
+    {
+      "crc32": "090b96da",
+      "format": "PNG",
+      "md5": "72b1f2232b0d20fb5e27176de4565256",
+      "mtime": "1768102034",
+      "name": "screenshot_08.png",
+      "sha1": "bfa7557dfc1c79f472a68d3d53f6d828a764da10",
+      "size": "5370",
+      "source": "original"
+    },
+    {
+      "crc32": "e71c0c9d",
+      "format": "JPEG Thumb",
+      "md5": "6ea6e81e9c7028f4d5ed2226c08f7007",
+      "mtime": "1768102386",
+      "name": "screenshot_08_thumb.jpg",
+      "original": "screenshot_08.png",
+      "sha1": "395c4e12b0b4f98828b1ffc575d9aa7ce300ef0a",
+      "size": "8207",
+      "source": "derivative"
+    },
+    {
+      "crc32": "867fd160",
+      "format": "PNG",
+      "md5": "688ec58970e426bea4477e1a13d77317",
+      "mtime": "1768102037",
+      "name": "screenshot_09.png",
+      "sha1": "6be84efd9ece59e0362ff8766718f606d6110837",
+      "size": "4669",
+      "source": "original"
+    },
+    {
+      "crc32": "969a23fa",
+      "format": "JPEG Thumb",
+      "md5": "819a7188a7b66865bf520118b7f4fbcf",
+      "mtime": "1768102360",
+      "name": "screenshot_09_thumb.jpg",
+      "original": "screenshot_09.png",
+      "sha1": "adea998407974350f1c3d851835d71c6c7255783",
+      "size": "7901",
+      "source": "derivative"
+    },
+    {
+      "crc32": "dd95e9da",
+      "format": "PNG",
+      "md5": "b31a30b14a3db30ebc92e548614d9bed",
+      "mtime": "1768102040",
+      "name": "screenshot_10.png",
+      "sha1": "90c971f8073c19a2867aa35535c2a217bf9774a0",
+      "size": "8001",
+      "source": "original"
+    },
+    {
+      "crc32": "5cd077a2",
+      "format": "JPEG Thumb",
+      "md5": "d24d57c97eca7214dd5b7b316c5ff260",
+      "mtime": "1768102354",
+      "name": "screenshot_10_thumb.jpg",
+      "original": "screenshot_10.png",
+      "sha1": "8ae513524ca36756a3e65404100c28993202d7e6",
+      "size": "9856",
+      "source": "derivative"
+    },
+    {
+      "crc32": "a9cf593d",
+      "format": "PNG",
+      "md5": "b7fb44e7653adf01b4820ae8b2067c7e",
+      "mtime": "1768102041",
+      "name": "screenshot_11.png",
+      "sha1": "a400ca891580bdc63782561056365bdbb82a4d2f",
+      "size": "7561",
+      "source": "original"
+    },
+    {
+      "crc32": "4eedd76a",
+      "format": "JPEG Thumb",
+      "md5": "c866d9f002c3862d7f5df72ba06b0914",
+      "mtime": "1768102338",
+      "name": "screenshot_11_thumb.jpg",
+      "original": "screenshot_11.png",
+      "sha1": "407ceae43a0becba5bd7ad4eef235f87a9568ff0",
+      "size": "9675",
+      "source": "derivative"
+    },
+    {
+      "crc32": "6785d306",
+      "format": "PNG",
+      "md5": "7fc132ebe5c1afa088af24267bfaeb4e",
+      "mtime": "1768102045",
+      "name": "screenshot_12.png",
+      "sha1": "23c3466591ab81075ee4ab664300f1678722eb5b",
+      "size": "6408",
+      "source": "original"
+    },
+    {
+      "crc32": "1f58b356",
+      "format": "JPEG Thumb",
+      "md5": "f7241be17e88f0f924a2c658b548e0c7",
+      "mtime": "1768102500",
+      "name": "screenshot_12_thumb.jpg",
+      "original": "screenshot_12.png",
+      "sha1": "478b88795772e5d3a467263ea6ffe8f62674b902",
+      "size": "9053",
+      "source": "derivative"
+    },
+    {
+      "crc32": "d6d65fed",
+      "format": "PNG",
+      "md5": "624868414002f9505a99dd6fa15f4bb8",
+      "mtime": "1768102047",
+      "name": "screenshot_13.png",
+      "sha1": "2830f657029c9e3748825c04db17ff51e8686ea9",
+      "size": "6707",
+      "source": "original"
+    },
+    {
+      "crc32": "94b6a47e",
+      "format": "JPEG Thumb",
+      "md5": "e3696aa9664f6eb4b5dfa1daae1c76a6",
+      "mtime": "1768102394",
+      "name": "screenshot_13_thumb.jpg",
+      "original": "screenshot_13.png",
+      "sha1": "eaeb2237240ec1f2a4024f2643499d40e1c6d416",
+      "size": "10594",
+      "source": "derivative"
+    },
+    {
+      "crc32": "4433bc44",
+      "format": "PNG",
+      "md5": "e7b67a73db63b318ac6eba72440597da",
+      "mtime": "1768102053",
+      "name": "screenshot_14.png",
+      "sha1": "0e486b5157dc2033bfe94850526166d7a19bdb76",
+      "size": "6482",
+      "source": "original"
+    },
+    {
+      "crc32": "0a9bcc74",
+      "format": "JPEG Thumb",
+      "md5": "5d0f3695b4687b050a1be5c366d2a9d8",
+      "mtime": "1768102420",
+      "name": "screenshot_14_thumb.jpg",
+      "original": "screenshot_14.png",
+      "sha1": "72a559549b605fef757d044f48b8a2b94a360449",
+      "size": "10525",
+      "source": "derivative"
+    },
+    {
+      "crc32": "6db7a0bc",
+      "format": "PNG",
+      "md5": "81cc6ca4fe3ce598eab334494369a85e",
+      "mtime": "1768102058",
+      "name": "screenshot_15.png",
+      "sha1": "106101a6d28168585204dd47849329d6f7ea80d4",
+      "size": "6220",
+      "source": "original"
+    },
+    {
+      "crc32": "b14749d0",
+      "format": "JPEG Thumb",
+      "md5": "9e08cdef2709ca76c97e6a5a0646c1ad",
+      "mtime": "1768102457",
+      "name": "screenshot_15_thumb.jpg",
+      "original": "screenshot_15.png",
+      "sha1": "fbe3cc08df29ec2f9af3895bec9a393ea21abfa0",
+      "size": "10299",
+      "source": "derivative"
+    },
+    {
+      "crc32": "d7bf6cc6",
+      "format": "PNG",
+      "md5": "1e99071f12db2ca119119982ae6264bf",
+      "mtime": "1768102060",
+      "name": "screenshot_16.png",
+      "sha1": "835dbbd7b83e3cee3566edc1c807fb59f2860aa0",
+      "size": "5256",
+      "source": "original"
+    },
+    {
+      "crc32": "0899123d",
+      "format": "JPEG Thumb",
+      "md5": "2f6a636f86fb51d9344ce03fc5111c1a",
+      "mtime": "1768102429",
+      "name": "screenshot_16_thumb.jpg",
+      "original": "screenshot_16.png",
+      "sha1": "ac0760083baf94a574b797ec88b3e13cc7e56366",
+      "size": "9946",
+      "source": "derivative"
+    },
+    {
+      "crc32": "0198aeb8",
+      "format": "PNG",
+      "md5": "ac5e75a18804e75d9c698325a1b73d92",
+      "mtime": "1768102063",
+      "name": "screenshot_17.png",
+      "sha1": "374292c4f92dfa342e7b1c87ba5165107a8fcb33",
+      "size": "6443",
+      "source": "original"
+    },
+    {
+      "crc32": "2387a2fe",
+      "format": "JPEG Thumb",
+      "md5": "1c545ed29441b3bddfc65004d0da57e4",
+      "mtime": "1768102436",
+      "name": "screenshot_17_thumb.jpg",
+      "original": "screenshot_17.png",
+      "sha1": "34490f9ca384032c4b02e2eb663a6630f3d977a0",
+      "size": "8558",
+      "source": "derivative"
+    },
+    {
+      "crc32": "7c0c7b0c",
+      "format": "PNG",
+      "md5": "641dc8db68f0b984cd904b0456c7ea72",
+      "mtime": "1768102066",
+      "name": "screenshot_18.png",
+      "sha1": "aaf496639dab9eae8cc380cd48fe2bb54d030ef6",
+      "size": "8604",
+      "source": "original"
+    },
+    {
+      "crc32": "a2ba3959",
+      "format": "JPEG Thumb",
+      "md5": "376357b164194b30805fb31fe40d8a66",
+      "mtime": "1768102425",
+      "name": "screenshot_18_thumb.jpg",
+      "original": "screenshot_18.png",
+      "sha1": "7849cd577fe79063d1b0d702003f34d10382372c",
+      "size": "9264",
+      "source": "derivative"
+    },
+    {
+      "crc32": "619af758",
+      "format": "PNG",
+      "md5": "a94a471ec2440903e940c2cace37c069",
+      "mtime": "1768102069",
+      "name": "screenshot_19.png",
+      "sha1": "e9c71e4cab2fd73e98bbc2d07c1075505936dc4b",
+      "size": "6401",
+      "source": "original"
+    },
+    {
+      "crc32": "4821abce",
+      "format": "JPEG Thumb",
+      "md5": "43176e0500e34832506954fe9aaa24ab",
+      "mtime": "1768102464",
+      "name": "screenshot_19_thumb.jpg",
+      "original": "screenshot_19.png",
+      "sha1": "5217a69d85b45ab26c3826891c6ac5557fdc39aa",
+      "size": "10276",
+      "source": "derivative"
+    },
+    {
+      "crc32": "ce612ce5",
+      "format": "PNG",
+      "md5": "d14f2a93b7bfa2c4d726928d7c331937",
+      "mtime": "1768102073",
+      "name": "screenshot_20.png",
+      "sha1": "d9d796ba33263dab23b0370da74fed882c5a3cd8",
+      "size": "5898",
+      "source": "original"
+    },
+    {
+      "crc32": "aacbaa6a",
+      "format": "JPEG Thumb",
+      "md5": "a4081a5a49c5da7a98de7aa67df962a4",
+      "mtime": "1768102443",
+      "name": "screenshot_20_thumb.jpg",
+      "original": "screenshot_20.png",
+      "sha1": "12563ec3152ca22b7ccdff612a7ac803b5839aca",
+      "size": "10333",
+      "source": "derivative"
+    },
+    {
+      "crc32": "462aaedd",
+      "format": "PNG",
+      "md5": "4eec8429c90f1cb6ee4d43e00f5a9ef8",
+      "mtime": "1768102076",
+      "name": "screenshot_21.png",
+      "sha1": "b0cb177f681f80414408c5b1def5edefafb835a2",
+      "size": "6785",
+      "source": "original"
+    },
+    {
+      "crc32": "99e6ccdd",
+      "format": "JPEG Thumb",
+      "md5": "9c8596ffec0c4e12ba9613ffaeed351c",
+      "mtime": "1768102479",
+      "name": "screenshot_21_thumb.jpg",
+      "original": "screenshot_21.png",
+      "sha1": "cc7cbf310415e935264d6ce6c3697bfde3a5b0ea",
+      "size": "10755",
+      "source": "derivative"
+    },
+    {
+      "crc32": "73c4b4cf",
+      "format": "PNG",
+      "md5": "87a0ab156646673a7fb2bb51e272c8a7",
+      "mtime": "1768102078",
+      "name": "screenshot_22.png",
+      "sha1": "967c09be07c32f31e77ce6b7f7183d3b9b1ac3b0",
+      "size": "7187",
+      "source": "original"
+    },
+    {
+      "crc32": "c6fcf4d6",
+      "format": "JPEG Thumb",
+      "md5": "86260b7fb5e07de7f0a33b2d7999c384",
+      "mtime": "1768102487",
+      "name": "screenshot_22_thumb.jpg",
+      "original": "screenshot_22.png",
+      "sha1": "6ad5239593f417c913eed46ea734ba92fd9550ac",
+      "size": "11248",
+      "source": "derivative"
+    },
+    {
+      "crc32": "e9dcb8b4",
+      "format": "PNG",
+      "md5": "3bdf7d6abfcad8732bcdd8d5ccb635fe",
+      "mtime": "1768102080",
+      "name": "screenshot_23.png",
+      "sha1": "c5aa1493800b1698074641b451e2b868e90ef3a8",
+      "size": "7155",
+      "source": "original"
+    },
+    {
+      "crc32": "51b0040d",
+      "format": "JPEG Thumb",
+      "md5": "ff71225b63a27da731d45e2b8ba1a0db",
+      "mtime": "1768102494",
+      "name": "screenshot_23_thumb.jpg",
+      "original": "screenshot_23.png",
+      "sha1": "5890c7ce5b79db77f39d50cb39757a7af524aca6",
+      "size": "11042",
+      "source": "derivative"
+    },
+    {
+      "crc32": "e4e203ed",
+      "format": "PNG",
+      "md5": "9489ca04ad3e01594a76f7c31de77e63",
+      "mtime": "1768102083",
+      "name": "screenshot_24.png",
+      "sha1": "ef28371deddd6fc6d4f8543a2b615496cf103f6c",
+      "size": "7025",
+      "source": "original"
+    },
+    {
+      "crc32": "35ef6a94",
+      "format": "JPEG Thumb",
+      "md5": "0f47ecd25a1fa4b4d4e223663c3ae95b",
+      "mtime": "1768102410",
+      "name": "screenshot_24_thumb.jpg",
+      "original": "screenshot_24.png",
+      "sha1": "d46d35451eda20e385056f51d0cea25a2b226ecf",
+      "size": "11095",
+      "source": "derivative"
+    },
+    {
+      "crc32": "004c35ae",
+      "format": "PNG",
+      "md5": "e78b75af7db97991a520756919ea9b87",
+      "mtime": "1768102086",
+      "name": "screenshot_25.png",
+      "sha1": "dc70a5bd3a260a5c25e654259eb1fd7835c4cd13",
+      "size": "7030",
+      "source": "original"
+    },
+    {
+      "crc32": "73e9b6d1",
+      "format": "JPEG Thumb",
+      "md5": "c283f6d78e647f95d223e2d4259fef59",
+      "mtime": "1768102506",
+      "name": "screenshot_25_thumb.jpg",
+      "original": "screenshot_25.png",
+      "sha1": "e18e493b1de9dfefb2bc119bce9746f0e0d8ecab",
+      "size": "10869",
+      "source": "derivative"
+    },
+    {
+      "crc32": "8a89f844",
+      "format": "PNG",
+      "md5": "d7a64fe75c3935308d9d9c0e9ceba027",
+      "mtime": "1768102088",
+      "name": "screenshot_26.png",
+      "sha1": "64bf1f71f142c7b75a4db1587dd42e57beec4690",
+      "size": "6866",
+      "source": "original"
+    },
+    {
+      "crc32": "3ceb0b06",
+      "format": "JPEG Thumb",
+      "md5": "dce8fd25f59e94b038d43af369f8c085",
+      "mtime": "1768102449",
+      "name": "screenshot_26_thumb.jpg",
+      "original": "screenshot_26.png",
+      "sha1": "aa5d12895776d53fe5389d6d3a3397e684c83a3b",
+      "size": "11241",
+      "source": "derivative"
+    },
+    {
+      "crc32": "b29844fa",
+      "format": "PNG",
+      "md5": "02b323df0a12349d493218d64b1358a0",
+      "mtime": "1768102091",
+      "name": "screenshot_27.png",
+      "sha1": "fc792e1fcfb787ec53a3ae0f53d7c8223283e3d9",
+      "size": "7309",
+      "source": "original"
+    },
+    {
+      "crc32": "7acc5610",
+      "format": "JPEG Thumb",
+      "md5": "410a567166821c4daa7fc1f151362c6a",
+      "mtime": "1768102414",
+      "name": "screenshot_27_thumb.jpg",
+      "original": "screenshot_27.png",
+      "sha1": "22f44159af57aee15082724a5b6674b97648014d",
+      "size": "9494",
+      "source": "derivative"
+    },
+    {
+      "crc32": "583fe176",
+      "format": "PNG",
+      "md5": "c5d9737b87d477925c9fc52271e0f7ba",
+      "mtime": "1768102098",
+      "name": "screenshot_28.png",
+      "sha1": "8f1653272f920c98a4f6dd5e40600baf2acb3fb8",
+      "size": "6602",
+      "source": "original"
+    },
+    {
+      "crc32": "cd674010",
+      "format": "JPEG Thumb",
+      "md5": "cfacdc3be8b3752ec4aebac9b0a6300b",
+      "mtime": "1768102399",
+      "name": "screenshot_28_thumb.jpg",
+      "original": "screenshot_28.png",
+      "sha1": "aa1f49255e70300f307041324cbb3af9b7064c13",
+      "size": "10784",
+      "source": "derivative"
+    }
+  ],
+  "files_count": 81,
+  "item_last_updated": 1777750712,
+  "item_size": 1102072046,
+  "metadata": {
+    "addeddate": "2025-10-10 22:18:44",
+    "collection": [
+      "miscconsoles",
+      "consolelivingroom",
+      "emulation"
+    ],
+    "collection_added": [
+      "softwarelibrary",
+      "emulation",
+      "consolelivingroom"
+    ],
+    "creator": "Namco Bandai Games",
+    "curation": "[curator]validator@archive.org[/curator][date]20251010221924[/date][comment]checked for malware[/comment]",
+    "date": "2007-06-07",
+    "description": "Well, there's not much to say, just a great game made by Iwatani himself in 2007, which I know looks good, to be honest.<br /><br />Pac-Man Championship Edition (\u30d1\u30c3\u30af\u30de\u30f3 \u30c1\u30e3\u30f3\u30d4\u30aa\u30f3\u30b7\u30c3\u30d7\u30a8\u30c7\u30a3\u30b7\u30e7\u30f3 Pakkuman Chanpionshippu Edishon, sometimes referred to simply as Pac-Man C.E.) is a 2007 video game in the Pac-Man series developed by Namco Bandai Games. The game was designed by T\u014dru Iwatani, the creator of the original 1980 Pac-Man, and is Iwatani's last game before his retirement. Though originally released for the Xbox 360\u00a0via the Xbox Live Arcade service, Championship Edition was later released for iOS and Android platforms, and on the PlayStation Network for the PlayStation Portable and PlayStation 3. A sequel to the game called Pac-Man Championship Edition DX was released in 2010.<br /><br />In this post you find these game versions:<div><b>Android, iOS, PSP, Xbox 360, Nintendo 3DS, NES</b><br /><br />However, the remaining ones:\u00a0<b>Roku, Maemo, PS3.\u00a0</b>Are not available for the moment<br /><br />For the Nintendo 3DS rom file, well, the thing is that the game is included in the game <b>Pac-Man &amp; Galaga Dimensions</b>\u00a0game so yeah, that means if you install this game, you may have the pac-man championship edition in the game itself and you can download <a href=\"https://romsfun.com/download/pac-man-galaga-dimensions-43288\" rel=\"ugc nofollow\">here</a>.</div>",
+    "emulator": "nes",
+    "emulator_ext": "nes",
+    "identifier": "pac-man-championship-edition-1",
+    "language": "eng",
+    "mediatype": "software",
+    "publicdate": "2025-10-10 22:18:44",
+    "scanner": "Internet Archive HTML5 Uploader 1.7.0",
+    "subject": [
+      "Pac-Man",
+      "namco",
+      "bandai",
+      "pc",
+      "championship",
+      "dots",
+      "ghosts",
+      "score"
+    ],
+    "title": "Pac Man Championship Edition",
+    "uploader": "luisjimenezgonzalez2023@gmail.com"
+  },
+  "server": "ia902802.us.archive.org",
+  "uniq": 100709251,
+  "workable_servers": [
+    "ia902802.us.archive.org",
+    "ia802802.us.archive.org"
+  ]
+}
