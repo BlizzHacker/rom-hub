@@ -1,7 +1,7 @@
 [plugin]
 slug        = "aminet"
 name        = "Aminet (Amiga)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -9,10 +9,11 @@ license     = "MIT"
 search   = "aminet.search:Search"
 importer = "aminet.importer:Importer"
 
-# One host does all three jobs: `/search` answers the queries, `/<path>`
-# serves the packages and `/<path>.readme` serves the descriptions, with
-# no redirect off it (verified 2026-07-29 -- `curl -w %{num_redirects}`
-# reports 0 for a real .lha URL).
+# One host does all four jobs: `/search` answers the queries,
+# `/<tree>/<shelf>` lists one shelf, `/<path>` serves the packages and
+# `/<path>.readme` serves the descriptions, with no redirect off it
+# (verified 2026-07-29 -- `curl -w %{num_redirects}` reports 0 for a real
+# .lha URL).
 #
 # Aminet's mirrors -- `m68k.aminet.net`, `mos.aminet.net`, `us.aminet.net`
 # and the rest -- are deliberately NOT declared. They are separate
@@ -24,7 +25,15 @@ romm_api = []
 
 [config]
 # Aminet answers 50 rows a page and the page size is not negotiable.
-max_pages       = { type = "int",  default = 2 }
+# Spent across every page one search or browse fetches; capped at 20,
+# because one page is one round trip and the host kills a plugin at 30s.
+max_pages       = { type = "int",  default = 4 }
+# Which of Aminet's game shelves a browse (an empty query) walks, in
+# order. Empty means all fourteen that hold games -- plus the four
+# support ones when `include_support` is on. A shelf that is not in
+# aminet/platforms.py GAME_DIRS is refused by name rather than requested,
+# because Aminet answers a typo'd path with HTTP 200 and an error page.
+shelves         = { type = "list[str]", default = [] }
 # List `game/data`, `game/edit`, `game/hint` and `game/patch` -- data
 # files, level editors, walkthroughs and patches. They still refuse to
 # import; this only makes them visible.

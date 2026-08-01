@@ -82,15 +82,21 @@ class GameCell:
         ).lower()
 
 
-def browse_url(filters: list[str]) -> str:
+def browse_url(filters: list[str], facet: str | None = None) -> str:
     """The browse URL for `filters`, always under the free-games scope.
 
     `/games/free` is not optional and is not taken from config: this plugin
     is scoped to free games, and a config key able to drop that scoping
     would make the scope a suggestion.
+
+    `facet` is the platform facet `search` derives from `--platform`. It
+    goes through the same validation as a configured filter and is
+    appended last, because itch.io reads the path segments as an
+    unordered set of facets and putting the plugin's own last keeps a
+    configured list readable in the URL.
     """
     segments = []
-    for raw in filters or []:
+    for raw in list(filters or []) + ([facet] if facet else []):
         facet = str(raw).strip().strip("/")
         if not FACET_RE.match(facet):
             raise BrowseError(

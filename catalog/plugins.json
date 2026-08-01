@@ -8,14 +8,14 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-aminet",
       "install": "https://github.com/BlizzHacker/rom-hub-aminet",
-      "download": "https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "search"
       ],
       "network": [
         "aminet.net"
@@ -24,7 +24,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches Aminet's 6,700-package game tree for Amiga games and imports the archive directly.",
+      "description": "Searches all 85,453 Aminet packages and browses the 5,737 on its fourteen game shelves, then imports the archive directly.",
       "terms": "Freely distributable by admission rule, which is about as good as an archive's terms get. Aminet's uploading instructions open with “This site is intended for the distribution of any type of freely distributable software” and then refuse, first on the list, “Unlicensed copies of commercial software” and “Software with a license in conflict with Aminet's nature”. Freely distributable is not a description of the archive, it is the condition of being in it, moderated since 1992. What you reach is public-domain, freeware, shareware and open-source Amiga software its authors uploaded themselves; each package's own terms are in its `.readme`, which this plugin fetches on every import anyway. `game/demo` is “Demos of commercial games” and belongs here for the same reason the rest does — a publisher's playable demo was published *for* free distribution. `aminet.net` serves no robots.txt (its /robots.txt is the site's themed 404 page), so there is no crawl directive to observe.",
       "comments": "The caveat is the architecture, and it is the whole plugin. Aminet is not an Amiga archive — it is the archive for every system that grew out of the Amiga, and one `game/think` directory holds `abrick.lha` (AmigaOS 4 on PowerPC), `abandoned_bricks-mos.lha` (MorphOS) and `alleytris_68k.lha` (AmigaOS on 68k) under near-identical names. RomM has `amiga` and `amiga` means the Commodore machine, so exactly three architectures map — `m68k-amigaos`, plus `ppc-warpup` and `ppc-powerup`, which are accelerator cards *inside* an Amiga — and MorphOS, AmigaOS 4, AROS and Amithlon each refuse **by name**, saying which computer they actually are. Measured over a live `dir=game` search: 98 of 172 rows were `m68k-amigaos`. The rest still appear in search with no platform set, because hiding a game somebody can see on Aminet's own site would be worse than showing why it will not import. Four of the eighteen `game/` shelves — `data`, `edit`, `hint`, `patch` — hold data files, level editors, walkthroughs and patches; they are hidden by default and never import. Two traps for the next person: light and dark result rows are **different markup**, so a regex anchored on the opening tag finds exactly half the results; and this host answers a missing path with HTTP **200** and an error body, so both parsers refuse a document that is not the shape they expect rather than reading zero rows out of it.",
       "platforms": [
@@ -121,17 +121,19 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-demozoo",
       "install": "https://github.com/BlizzHacker/rom-hub-demozoo",
-      "download": "https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "metadata",
+        "search"
       ],
       "network": [
         "demozoo.org",
+        "media.demozoo.org",
         "files.scene.org",
         "archive.scene.org",
         "fujiology.org"
@@ -140,7 +142,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches Demozoo's 386,682-production demoscene catalogue for demos, intros and cracktros and imports them from scene.org.",
+      "description": "Searches and browses Demozoo's 386,682 demoscene productions, imports the ones that are runnable files, and writes the production's title and screenshot.",
       "terms": "Demoscene productions are released free by their authors for distribution — that is what the form is. A demo exists to be copied, and scene.org's entire purpose is copying them; the archives this plugin reaches are the ones the scene runs for itself. That is not a licence granted to anybody, and many productions carry no stated terms at all, but free circulation has been the condition of the whole culture since the 1980s. Cracktros are the one class where the original context was piracy: the intro itself is the group's own code and artwork, which is why it is the part that got archived, and the game it was attached to is not here. On robots: `demozoo.org/robots.txt` disallows `/search/`, `/account/` and `/beep-boop/` with `Crawl-delay: 10`, and this plugin uses only `/api/v1/`, which is not restricted — Demozoo's substring search lives behind that disallowed `/search/` and is therefore not used, which is why title matching is exact. `files.scene.org` and `fujiology.org` serve no robots.txt. Three archives Demozoo links to are refused outright: `csdb.dk` (its robots.txt is `Disallow: /` for ClaudeBot and anthropic-ai, and disallows `/release/download.php` for everyone), `ftp.amigascne.org` (`Disallow: /` for every user agent) and `files.zxdemo.org` (403 on its own root, unverifiable). csdb.dk alone would roughly double C64 coverage and it stays out.",
       "comments": "Two traps, and both are the whole plugin. **The API silently ignores unknown parameters**: `?search=`, `?q=`, `?title__icontains=` and `?page_size=` all return HTTP 200 and the complete unfiltered 386,682-row listing, so a plugin that hopefully sent one would look like it was searching while handing back the alphabetical head of the database. Only `title`, `platform`, `production_type`, `supertype` and `page` are real, and `title` is an **exact** case-insensitive match — `title=crackt` returns zero. **And Demozoo hosts nothing**: `files.scene.org/get/<p>` 302s to `http://http.us.scene.org/...`, plain http, which `netpolicy` refuses outright whatever the allowlist says. The plugin pins `get:nl-https`, which resolves to exactly one https host, `archive.scene.org` — declared, because every redirect hop is re-checked. `Video` is the filter's reason for existing: its supertype is `production`, exactly like `Demo`, so a supertype-only rule keeps it, and its download links are usually a YouTube page. The whole `graphics` and `music` supertypes are out too, deliberately — `Executable Graphics` really is an executable, and forty thousand single-image entries beside the games would ruin the shelf. Platform absences come in three flavours with three different sentences: **needs mapping** for a real machine (`Acorn Archimedes`, `BBC Micro`), **not a library platform** for `Windows`/`Linux`/`Browser`/`Paper`, and **ambiguous** for `Neo Geo`, `Neo Geo Pocket / NGPC` and `Thomson`, each of which is one Demozoo platform over two RomM ones. Filename sanitising deliberately does **not** collapse runs of underscores: scene.org really does serve `2.8k_nuance__onslaught.zip`.",
       "platforms": [
@@ -226,10 +228,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-hasheous",
       "install": "https://github.com/BlizzHacker/rom-hub-hasheous",
-      "download": "https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "metadata"
@@ -241,9 +243,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Turns a ROM's hash into a game identity, and hands back other providers' ids — IGDB, TheGamesDB, RetroAchievements — without you holding a key for any of them.",
+      "description": "Turns a ROM's hash into a game identity: the catalogue title, the signature row's publisher, year, region, language and DAT corpus, and every other provider's id hasheous has mapped — IGDB, TheGamesDB, RetroAchievements — with no API key of your own.",
       "terms": "The cleanest terms of any identification source here, because there is no game content in an answer. Hasheous distributes matching data only: hash to name to other databases' identifiers. Its own README says it \"Is completely free to use\" and its MCP documentation says the hosted endpoint is \"intentionally public for free database lookups\"; the lookup routes take no key and this plugin sends no credential. The DAT catalogues it ingests (No-Intro, Redump, TOSEC, MAME) are published openly by those projects, and the metadata ids it maps to belong to IGDB, TheGamesDB and RetroAchievements — hasheous holds those keys so you do not have to. Its robots.txt allows `User-agent: *` and disallows some named AI crawlers; this plugin is a ROM manager issuing one GET per hash, not a crawler.",
-      "comments": "Metadata only, and hash-keyed only: the four `ByHash` routes are the whole GET surface, so a ROM with no hash is refused rather than resolved by searching for its title and taking the top hit. Pass the digest with `--source-id md5:<hex>` (or sha1:, sha256:, crc:, or a bare digest — 8/32/40/64 characters are unambiguous). CRC-32 is refused unless `allow_crc32` is set, because 32 bits over this corpus collide and the failure is a confident answer about a different game. Every answer is cross-checked against the console RomM already has the ROM filed under, comparing hasheous's own DAT-derived `signature.game.system` first; a mismatch refuses and writes nothing. Only provider ids hasheous itself marks `Mapped` are written — a `NotMapped` row is a scheduled search, not an answer.",
+      "comments": "Metadata only, and hash-keyed only: the four `ByHash` routes are the whole GET surface, so a ROM with no hash is refused rather than resolved by searching for its title and taking the top hit. Pass the digest with `--source-id md5:<hex>` (or sha1:, sha256:, crc:, or a bare digest — 8/32/40/64 characters are unambiguous). CRC-32 is refused unless `allow_crc32` is set, because 32 bits over this corpus collide and the failure is a confident answer about a different game. Every answer is cross-checked against the console RomM already has the ROM filed under, comparing hasheous's own DAT-derived `signature.game.system` first; a mismatch refuses and writes nothing. Only provider ids hasheous itself marks `Mapped` are written — a `NotMapped` row is a scheduled search, not an answer. **v0.2.0 stops withholding two thirds of the point.** `cross_provider_ids` defaulted to off because writing `ra_id` to a RomM with no RetroAchievements key answers HTTP 500 rather than degrading. That measurement was right; measuring the other ten one at a time against the same keyless RomM showed the danger was one field — igdb, sgdb, moby, ss, launchbox, hasheous, tgdb, flashpoint, hltb and libretro all answer 200 and store the number. So the Hub asks your server instead: `GET /api/heartbeat` reports one flag per provider RomM holds credentials for, an id the server will not take is dropped with a sentence naming the missing configuration, the rest of the patch is written anyway, and an id that *will* make RomM go and fetch genre, summary and screenshots is reported as such. `provider_ids` replaces the boolean with a per-source list. Two further corrections: `raw_metadata` now defaults to false, because `raw_hasheous_metadata` is accepted with a 200 and stored nowhere RomM will return — measured including with `hasheous_id` changed in the same request, which rules out the id gate; and the platform table gained the names the live service actually returns, because No-Intro has renamed several sets and `nes` and `sms` were matching on neither the signature name nor the platform name, so `verify_platform` was refusing every correct match on two consoles.",
       "platforms": [
         "3do",
         "3ds",
@@ -341,24 +343,26 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-homebrew",
       "install": "https://github.com/BlizzHacker/rom-hub-homebrew",
-      "download": "https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz",
-      "version": "0.2.0",
-      "ref": "v0.2.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
         "importer",
-        "metadata"
+        "metadata",
+        "search",
+        "stream"
       ],
       "network": [
-        "hh3.gbdev.io"
+        "hh3.gbdev.io",
+        "hh.gbdev.io"
       ],
       "status": "ok",
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports the ROM directly, and proposes the submitter's own title and cover.",
+      "description": "Searches all 1,571 Homebrew Hub entries, imports the submitter's ROM, writes their title and cover, and resolves an entry to the page that plays it in a browser.",
       "terms": "The cleanest source in this directory. Homebrew Hub indexes games written by their authors for the Game Boy, published by those authors for free distribution — the rights holder is the uploader, so there is no third-party copyright being routed around. Individual entries carry their own licences, which vary; the Hub's own catalogue metadata is community-maintained and openly published. Nothing here is a commercial ROM.",
       "comments": "The only plugin in this directory built from the start for material that is unambiguously free to redistribute. One host does both jobs — `/api/search` answers queries and `/static/` serves the ROMs with no redirect off it — so the allowlist is a single host. `hh.gbdev.io`, the human-facing site those results link to, is deliberately not declared, because the plugin shows that URL and never fetches it. `metadata` proposes the Hub's title and the entry's `cover.*` image, and nothing else. It may write a title where libretro-thumbnails may not, because for homebrew the submitter *is* the publisher of record — but only a file actually named `cover.*` becomes artwork, since roughly half the entries carry in-game screenshots instead and promoting one would fill a library with gameplay stills. Resolution is exact or it refuses: three live entries are titled exactly \"Snake\", and a query landing on those names all three rather than choosing.",
       "platforms": [
@@ -374,14 +378,14 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-if-archive",
       "install": "https://github.com/BlizzHacker/rom-hub-if-archive",
-      "download": "https://github.com/BlizzHacker/rom-hub-if-archive/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-31",
+      "download": "https://github.com/BlizzHacker/rom-hub-if-archive/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "search"
       ],
       "network": [
         "ifarchive.org",
@@ -391,7 +395,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches the IF Archive's Z-machine, Glulx, TADS and Hugo game directories and imports the story file, answering RomM issue #2140.",
+      "description": "Searches thirty IF Archive game directories -- 1,410 story files across four interpreter platforms, translations and superseded releases included -- and imports the bare story file.",
       "terms": "Stated by the archive itself, and not uniformly permissive — which is why this entry does not say \"freely distributable\". The IF Archive's Terms of Use say its contents \"are the intellectual property of their original creators\" and are \"where possible, archived and distributed with permission\"; material carrying a licence is distributed under that licence, and \"any material with no attached license is presumed to be licensed for personal use only\". A great deal of interactive fiction is public domain, Creative Commons or explicitly author-released, and a great deal of the older material has no clear terms at all — the archive hosts that deliberately, as \"part of the common heritage of interactive fiction\", with a DMCA route for objectors. The archive states it \"may not be compiled for commercial distribution\". Downloading a game to play is what the archive is for; redistributing a subset is not, and only each game's own licence settles which is which. The file descriptions this plugin surfaces are separate: the archive licenses its metadata, indexes and descriptions CC BY 4.0 to the Interactive Fiction Technology Foundation. `ifarchive.org` serves no robots.txt at all (a hard 404), so there is no crawl directive to observe.",
       "comments": "Answers rommapp/romm#2140, which asks for one `interactive-fiction` platform — RomM 4.9.2 turns out to already have four (`z-machine`, `glulx`, `tads`, `hugo`, verified against a live `GET /api/platforms/supported`), so the plugin uses all four and collapses nothing: a Z-code `.z5` and a Glulx `.ulx` need different interpreters. The extension decides the platform, never the directory — `The Cruel Count's Castle.gblorb` is filed under `games/zcode` and is a Glulx game. A bare `.blb` is refused: the Blorb container does not say which runtime it holds, and two of the eleven in the game directories are not games at all (a sound-resource file and an eBook reader). ADRIFT `.taf`, Alan, Quest, AAS, Archetype and TAG are known formats with no RomM platform; they appear in search with no platform set and refuse at import naming the format. Two traps: `ifarchive.org` **302s downloads to `ukrestrict.ifarchive.org`** for glulx/tads/hugo but not for zcode, so both hosts must be declared or every non-Z-code import dies at the redirect hop; and each index entry escapes its filename two different ways — `<dt id=\"Apollo18=2B=20.zip\">` beside `href=\".../Apollo18%2B20.zip\"` — so the href is the only one that is a filename. Imports cost no HTTP request: the archive path is the URL, the platform and the name. ifdb.org is checked and deliberately untouched — its robots.txt is comment-only with no directive and no content signal, which is an absence of an answer rather than a yes.",
       "platforms": [
@@ -403,19 +407,20 @@
     },
     {
       "slug": "itch-io",
-      "name": "itch.io (free games) — NO IMPORT",
+      "name": "itch.io (free games) — play in browser, NO IMPORT",
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-itch-io",
       "install": "https://github.com/BlizzHacker/rom-hub-itch-io",
-      "download": "https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz",
-      "version": "0.3.0",
-      "ref": "v0.3.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.4.0.tar.gz",
+      "version": "0.4.0",
+      "ref": "v0.4.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
         "importer",
-        "metadata"
+        "metadata",
+        "search",
+        "stream"
       ],
       "network": [
         "itch.io",
@@ -426,7 +431,7 @@
       "search_only": true,
       "key_required": false,
       "in_tree": false,
-      "description": "Finds free games on itch.io and proposes the developer's own title and cover art. It cannot import them, and never will as built — every import is refused by design.",
+      "description": "Browses itch.io's free games with server-side platform scoping, writes the developer's title and cover, and resolves a browser game to the page that runs it. Never imports.",
       "terms": "Consent by construction, within a boundary this plugin does not cross. itch.io is a storefront where the uploader is the rights holder, so anything listed free is offered free by the person entitled to offer it. But itch.io's robots.txt `Disallow`s `/search` and `/game/download/`, and its download URLs are issued only for a POST carrying the game page's csrf_token. This plugin reads only `/games/...` browse listings, which the same robots.txt permits, and it authenticates as nobody. Note that itch.io's \"free\" filter includes name-your-own-price titles; those are refused. The `metadata` capability reads only the public game page, which the same robots.txt permits, and the cover it names is the one itch.io itself serves as that page's og:image.",
       "comments": "The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes. `metadata` is what makes it worth installing: it cannot fetch the game, but it reads the developer's own title and cover off the game page, which is what a library is missing for a title it already has. `img.itch.zone` joins the allowlist for that alone — the host fetches the cover this plugin names, so an undeclared image host would fail every enrich as a policy violation. There is no lookup by name, deliberately: robots.txt disallows /search and the browse listings are a small popularity-ordered slice, so hunting one title through them would attach the wrong developer's cover more often than the right one. Pass --source-id.",
       "platforms": [
@@ -470,14 +475,14 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-content",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-content",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "search"
       ],
       "network": [
         "buildbot.libretro.com"
@@ -486,7 +491,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches and imports the free game content libretro distributes for RetroArch — homebrew, demos and openly licensed ROMs across 29 RomM platforms.",
+      "description": "Walks all 29 of libretro's free-content directories -- 274 files across 29 RomM platforms -- and imports the exact file from the listing it already read.",
       "terms": "Content libretro publishes for RetroArch to download, used the way it is meant to be used. These directories are the back end of RetroArch's own *Load Content → Download Content* menu, served unauthenticated so that software reads them. What is in them is homebrew and demos their authors gave libretro for distribution (`Alter Ego`, `Chrono Knight`, `Sheep It Up`), openly licensed technical software (`240p Test Suite`, MIT), and free game data for engine cores (Cave Story's freeware release, the Quake shareware episode). One directory needs its own sentence: the GCE Vectrex library is **not** public domain — Smith Engineering, which designed the Vectrex, granted permission in 1992 for its ROMs, manuals and overlays to be copied and distributed **as long as it is not for profit**. That is a real grant from the actual rights holder and also a condition: free to acquire and keep, not free to sell. `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing.",
       "comments": "The broadest free-content source in this directory: 29 RomM platforms against `homebrew`'s four. There is no `.index-extended` here — the sibling `libretro-cores` plugin reads one for cores and the content tree has none (checked live: HTTP 404) — so the h5ai listing *is* the catalogue, and this plugin reads the plain `<table>` fallback h5ai ships for clients that run no JavaScript. The platform table is keyed on the directory names **this** server serves, not copied from the libretro thumbnail server, which spells two of the same machines differently (`Coleco - Colecovision` here against `Coleco - ColecoVision` there; `Nintendo - GameBoy` against `Nintendo - Game Boy`) — copying would have produced two silent 404s. An unmapped directory refuses with one of three different sentences, because “add a row” is right for only one of them: **needs mapping** for a real RomM platform, **not a platform** for `Images`/`Video`/`Utilities`, and **ambiguous** for `Nintendo - GameCube - Wii`, which is one directory holding two consoles RomM keeps separate. Search is one request when `--platform` is given and bounded by `max_systems` when it is not, because each listing is its own round trip against a 30-second host timeout. h5ai's size column is rounded (`40 KB`) and there is no byte count in the document, so it is carried as display text and never as `size_bytes`.",
       "platforms": [
@@ -553,10 +558,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-database",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-database",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-database/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-database/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "metadata"
@@ -568,9 +573,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Resolves a ROM to its No-Intro or Redump catalogue entry by hash and proposes that entry's name.",
+      "description": "Resolves the catalogue *title* for a dump from libretro's No-Intro and Redump DATs, and its genre, developer, publisher, release year, region and serial from the annotation sets alongside them.",
       "terms": "About as clean as a metadata source gets. `libretro/libretro-database` is a public repository whose DAT files exist to be read by programs like this one — it is what RetroArch itself does to build playlists. A DAT is a list of names, sizes and checksums: there is no game content in it, so no copyright is being routed around. The catalogues underneath are No-Intro's and Redump's, published openly by those projects and republished by libretro. `raw.githubusercontent.com` serves no robots.txt at all (HTTP 404), so there is no crawl directive to observe; the plugin fetches at most one file per configured set per ROM regardless.",
-      "comments": "Writes the DAT's `game (name …)` and **never** its `rom (name …)`. Those differ in the real data — the Game Boy game titled `14 Juillet (World) (Fr)` has a rom file named `14 Juillet (World) (Fr) (Aftermarket) (Unl).gb` — and the parser keeps them in separate attributes so they cannot be confused, which is the mistake libretro-thumbnails documented rather than made. Matching is by CRC-32/MD5/SHA-1 first and by an exact filename second; a hash that misses does **not** fall back to the filename, because you named a specific dump. Sets no `libretro_id`: RomM's own handler defines that field as the SHA-1 of a libretro *thumbnail* filename, so a DAT-derived value there would collide with a field RomM maintains for something else. One DAT is fetched per lookup and no caching is possible, so note the headroom: `redump/Sony - PlayStation 2.dat` is 4,060,828 bytes against the Hub's 4,194,304-byte response ceiling — about 3% — and a size refusal is reported as exactly that rather than as a miss. Arcade, DOS and the 8-bit micros are absent: those catalogues live under different directories with different keys.",
+      "comments": "Writes the DAT's `game (name …)` and **never** its `rom (name …)`. Those differ in the real data — the Game Boy game titled `14 Juillet (World) (Fr)` has a rom file named `14 Juillet (World) (Fr) (Aftermarket) (Unl).gb` — and the parser keeps them in separate attributes so they cannot be confused, which is the mistake libretro-thumbnails documented rather than made. Matching is by CRC-32/MD5/SHA-1 first and by an exact filename second; a hash that misses does **not** fall back to the filename, because you named a specific dump. Sets no `libretro_id`: RomM's own handler defines that field as the SHA-1 of a libretro *thumbnail* filename, so a DAT-derived value there would collide with a field RomM maintains for something else. One DAT is fetched per lookup and no caching is possible, so note the headroom: `redump/Sony - PlayStation 2.dat` is 4,060,828 bytes against the Hub's 4,194,304-byte response ceiling — about 3% — and a size refusal is reported as exactly that rather than as a miss. Arcade, DOS and the 8-bit micros are absent: those catalogues live under different directories with different keys. **v0.2.0 reads more than two of `metadat/`'s thirty directories.** `genre/`, `developer/`, `publisher/`, `releaseyear/`, `releasemonth/`, `franchise/`, `maxusers/`, `esrb/` and `serial/` are the same dumps annotated one fact at a time and joined by CRC-32, and each is a fraction of the catalogue it annotates — 81 KB to 333 KB for the NES against a 3.3 MB No-Intro DAT — so the four read by default cost about a third more traffic, not a doubling. Seeing any of them needed a parser fix that had been failing silently: their entries carry the title under `comment` rather than `name`, and `parse` required `name`, so every entry in every one of those files was dropped without a word. They are fetched only after a match, any of them failing costs that one fact and never the enrich, and an annotation row's `comment` never becomes the ROM's name — the catalogue's `game (name ...)` is still the only naming authority. `details = []` restores the single-request behaviour.",
       "platforms": [
         "3do",
         "3ds",
@@ -695,10 +700,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "metadata"
@@ -710,9 +715,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Proposes box art, title screens and in-game screenshots for a ROM by matching its No-Intro-style name.",
+      "description": "Attaches box art from libretro's thumbnail repositories — falling back to the title screen and then the in-game snap for the games that never had a box.",
       "terms": "Read the licence before you publish anything downstream. The libretro thumbnail packs are community-collected scans and captures of commercial game packaging and screens; the artwork is the publishers' copyright, and libretro distributes it for use in emulator frontends rather than under a licence that grants redistribution. Fetching it to illustrate your own library is the intended use. The host is public and unauthenticated, and its robots.txt does not disallow the image paths.",
-      "comments": "Metadata only — it proposes art and never touches a ROM. Matching is by exact No-Intro-style filename against the per-system index, so a name this plugin cannot spell yields no art rather than the wrong game's box. One host, verified to serve images with zero redirects, so there is no CDN hop to declare.",
+      "comments": "Metadata only — it proposes art and never touches a ROM. Matching is by exact No-Intro-style filename against the per-system index, so a name this plugin cannot spell yields no art rather than the wrong game's box. One host, verified to serve images with zero redirects, so there is no CDN hop to declare. **v0.2.0 uses all three sets, not just the box.** Every libretro system directory carries `Named_Boxarts`, `Named_Titles`, `Named_Snaps` and `Named_Logos` side by side for the same games, and this asked for one — so a ROM with a title screen and no box got no artwork at all, plus a refusal listing seven spellings it had tried in a directory that was never going to have any of them. That is not rare: measured against the live listings, DOS has 4,470 boxarts against 7,826 title screens, and 3,932 DOS games have a title or snap and no box (NES 2,870, C64 302, Amiga 239, SNES 171, Genesis 136). Box art still wins outright and `logo` is deliberately not in the default — a wordmark on transparency is lettering, not a picture of a game. Every spelling of the preferred set is probed before any spelling of the next, because the other order hands back a title screen for a game whose box art is filed under a name this ROM also has. RomM takes one image per ROM, so this is a fallback chain and not a gallery; the README says why screenshots cannot be attached as game metadata at all.",
       "platforms": [
         "3do",
         "3ds",
@@ -828,10 +833,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-ludusavi",
       "install": "https://github.com/BlizzHacker/rom-hub-ludusavi",
-      "download": "https://github.com/BlizzHacker/rom-hub-ludusavi/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-31",
+      "download": "https://github.com/BlizzHacker/rom-hub-ludusavi/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "metadata"
@@ -843,9 +848,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Records where a PC game keeps its save files and registry keys, from the ludusavi manifest, answering RomM issue #1908.",
+      "description": "Records where a PC game keeps its save files, from the ludusavi manifest, as a summary RomM will actually show.",
       "terms": "The cleanest licensing position in this directory. `mtkennerly/ludusavi-manifest` is MIT-licensed in its own repository root — use, copy and redistribute, including commercially, keeping the notice. Nothing here is a game, a ROM or an executable: the dataset is factual file paths and registry keys for 52,886 PC titles, compiled from PCGamingWiki (whose own contributions are CC BY-NC-SA 3.0) plus the Steam API for install-directory names. Anyone redistributing a large derived work should follow that chain rather than take it from a plugin. One pinned blob URL is fetched once through the host's own downloader; nothing is crawled, so no robots.txt question arises.",
-      "comments": "Answers rommapp/romm#1908, and answers half of it: it records **where** saves live, it does not move them — no backup, no Ludusavi binary, no files touched. The caveat is where the answer lands. RomM 4.9.2 gates seven of its eight `raw_*_metadata` fields on a matching provider id (`if cleaned_data[\"hltb_id\"] and raw_hltb_metadata is not None: ...`), so any of those would be silently dropped unless a fabricated id were written alongside it — which is not on. `raw_manual_metadata` is the only ungated field, so that is where the blob goes, namespaced under a `ludusavi` key. Verified on a live 4.9.2: the write is durable in the `manual_metadata` column, but `GET /api/roms/{id}` does not echo the key back, because `ManualMetadata` is a closed seven-key TypedDict. It also replaces rather than merges, since RomM takes the whole blob and `RomRef` does not hand plugins the existing one. Matching is built around one false positive: `Sonic the Hedgehog` is in the manifest as a PC release, so the platform is checked *before* the title — only dos/win/win3x/linux/mac are looked up, matching is exact equality on a unicode-normalised title, keys under four characters refuse (259 of the manifest's own are that short), and a key resolving to two titles refuses naming both (243 keys, 491 titles). The dataset arrives as a 17.4 MB `[[data_assets]]` file pinned to a commit sha — the repository publishes no releases and no tags — and is read by a YAML subset parser, because ROM Hub does not depend on PyYAML and one plugin must not add a host dependency. That parser refuses anything outside the subset rather than skipping it; it reads all 52,886 real entries with zero refusals.",
+      "comments": "Answers rommapp/romm#1908, and answers half of it: it records **where** saves live, it does not move them — no backup, no Ludusavi binary, no files touched. The caveat is where the answer lands. RomM 4.9.2 gates seven of its eight `raw_*_metadata` fields on a matching provider id (`if cleaned_data[\"hltb_id\"] and raw_hltb_metadata is not None: ...`), so any of those would be silently dropped unless a fabricated id were written alongside it — which is not on. `raw_manual_metadata` is the only ungated field, so that is where the blob goes, namespaced under a `ludusavi` key. That was the least-wrong destination and it is still not a destination: re-measured on a live 4.9.2 on 2026-08-01, a marker written into `raw_manual_metadata` answers 200 and appears nowhere in the ROM record afterwards — not under `manual_metadata`, not anywhere in the response — and the same holds for the id-gated fields even with the id written and changed in the same request. It also replaces rather than merges, since RomM takes the whole blob and `RomRef` does not hand plugins the existing one. Matching is built around one false positive: `Sonic the Hedgehog` is in the manifest as a PC release, so the platform is checked *before* the title — only dos/win/win3x/linux/mac are looked up, matching is exact equality on a unicode-normalised title, keys under four characters refuse (259 of the manifest's own are that short), and a key resolving to two titles refuses naming both (243 keys, 491 titles). The dataset arrives as a 17.4 MB `[[data_assets]]` file pinned to a commit sha — the repository publishes no releases and no tags — and is read by a YAML subset parser, because ROM Hub does not depend on PyYAML and one plugin must not add a host dependency. That parser refuses anything outside the subset rather than skipping it; it reads all 52,886 real entries with zero refusals. **v0.2.0 corrects where this writes, because the old destination was a void.** The reasoning that chose `raw_manual_metadata` holds — RomM gates seven of its eight raw fields on a matching provider id, and fabricating one to unlock a field is not on — but whether the write *lands* was never established. It does not: a marker written into `raw_manual_metadata` answers 200 and appears nowhere in the ROM record afterwards, and the same holds for the gated fields even with the id written and changed in the same request. So this plugin's entire output was invisible, which from the outside is indistinguishable from a plugin that worked. The save paths now go into `summary`, which RomM does store: save paths first, config paths only when there are none, registry keys reported separately because a registry key is not a path, and the cloud-sync line, because \"Steam Cloud syncs this\" is often the whole answer. Placeholders are left exactly as the manifest writes them — `<winAppData>` expanded here would be a claim about your filesystem the manifest does not make. `raw_metadata = true` still produces the full blob for a backend that grows a home for it.",
       "platforms": [
         "dos",
         "linux",
@@ -860,14 +865,14 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-nointro-archive",
       "install": "https://github.com/BlizzHacker/rom-hub-nointro-archive",
-      "download": "https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.2.1.tar.gz",
-      "version": "0.2.1",
-      "ref": "v0.2.1",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "search"
       ],
       "network": [
         "archive.org",
@@ -877,14 +882,16 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Reads plain HTTP directory indexes of No-Intro sets held on the Internet Archive, matching by file name.",
+      "description": "Searches 25 No-Intro directories on Archive.org -- 15,165 archives across 25 platforms, Game Boy and Super Nintendo included -- and imports from the index it already read.",
       "terms": "Plainly: these are copyrighted commercial console ROMs, and this plugin does not launder that. No-Intro sets are checksum-verified dumps of retail cartridges; the copyright belongs to the publishers, most of whom have never licensed redistribution. Whether you may download one depends on where you live and on whether you own the original media — in the United States the archival exemption courts have recognised does not extend to downloading a copy of something you do not own. The plugin circumvents no access control, paywall, login or robots directive, and `https://archive.org/download/` is a public unauthenticated listing the Archive's robots.txt does not disallow. If you want only material that is unambiguously free to redistribute, use `homebrew` instead.",
       "comments": "Formerly `myrient`. Myrient (myrient.erista.me) shut down on 31 March 2026 and now answers HTTP 200 with the same 2,334-byte notice for every path — including paths it never served — so status codes cannot detect it. The plugin therefore checks that a page actually parsed as an index, which is the only thing standing between a dead source and an HTML page filed as a ROM. Its Myrient index parser and Wayback-captured fixture are retained in case a mirror reproduces that layout. MiNERVA, the successor, `Disallow`s `/browse/` and `/rom/` and is deliberately not used.",
       "platforms": [
         "amiga",
+        "arduboy",
         "atari2600",
         "atari5200",
         "atari7800",
+        "c-plus-4",
         "c64",
         "colecovision",
         "gamegear",
@@ -893,17 +900,22 @@
         "gbc",
         "genesis",
         "intellivision",
+        "jaguar",
         "lynx",
         "n64",
         "neo-geo-pocket",
         "neo-geo-pocket-color",
         "nes",
+        "nuon",
+        "pokemon-mini",
         "sega32",
         "sms",
         "snes",
         "supergrafx",
         "tg16",
         "vectrex",
+        "vic-20",
+        "virtualboy",
         "wonderswan",
         "wonderswan-color"
       ]
@@ -946,10 +958,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-openvgdb",
       "install": "https://github.com/BlizzHacker/rom-hub-openvgdb",
-      "download": "https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.2.0.tar.gz",
-      "version": "0.2.0",
-      "ref": "v0.2.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "metadata"
@@ -964,9 +976,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Proposes a curated title — `Tetris`, not `Tetris (World) (Rev A)` — and a cover, from the Open Video Game Database, which the Hub fetches and verifies for it.",
+      "description": "Proposes a curated title — `Tetris`, not `Tetris (World) (Rev A)` — the release's own description, its developer, publisher, genre, date and region, and a cover, from the Open Video Game Database, which the Hub fetches and verifies for it.",
       "terms": "Read this one carefully, because the honest answer is in two halves. OpenVGDB is published as a public GitHub release and is bundled or downloaded by a long list of emulator frontends, OpenEmu and Provenance among them — but its repository declares no licence file and GitHub reports no licence for it, so \"freely redistributable in practice\" is accurate where \"licensed for redistribution\" would not be. The hash and filename tables are catalogue facts about dumps. The cover art is not in the database at all: it stores URLs to GameFAQs and to community projects, and the images at the other end are the publishers' copyright, hosted rather than licensed to you. Fetching one to illustrate your own library is what the database is for; republishing a library built that way is your call. `art.gametdb.com` covers are never proposed, because that host's robots.txt disallows everything.",
-      "comments": "**Install and go.** OpenVGDB publishes no API — the whole project is one 8.7 MB release asset — so this plugin declares that file as a data asset in its manifest and the Hub fetches it: the redirect to `release-assets.githubusercontent.com` is re-validated hop by hop, the one declared member is unpacked, the 40.3 MiB `openvgdb.sqlite` is checked against the sha256 in the manifest before the plugin is told where it is, and it is cached and re-verified on every later run. The download is announced at install and again before it happens; `ROM_HUB_NO_ASSET_FETCH=1` refuses it and `rom-hub plugin assets openvgdb --fetch` performs it deliberately. `db_path` still overrides everything, for a copy you already have or one you pinned yourself. The database is opened read-only through a `file:...?mode=ro` URI, because `sqlite3.connect` on a plain path creates an empty database and a typo would otherwise answer \"no match\" forever — and because a plugin that wrote to the Hub's cached copy would fail its own integrity check next run. Matching is by hash, serial, or an exact filename — never a prefix — always scoped to one system; two matches refuse rather than choose. Covers are probed before they are proposed, so a 403 on an image costs the art and not the title. Sets no provider ids: OpenVGDB's row numbers are meaningful to nothing outside your own copy. The data stops at 2021 and at OpenEmu's 43 consoles, so there is no DOS, no Amiga and nothing after the PSP. Expect titles more often than covers: measured with the Hub's own user agent, `gamefaqs.gamespot.com` (31,235 of the 43,801 covers) answers 403 behind Cloudflare while `raw.githubusercontent.com` (10,777, all arcade) answers 200 — robots permits the fetch, the site declines to serve it, and the probe turns that into a missing cover rather than a failed enrich.",
+      "comments": "**Install and go.** OpenVGDB publishes no API — the whole project is one 8.7 MB release asset — so this plugin declares that file as a data asset in its manifest and the Hub fetches it: the redirect to `release-assets.githubusercontent.com` is re-validated hop by hop, the one declared member is unpacked, the 40.3 MiB `openvgdb.sqlite` is checked against the sha256 in the manifest before the plugin is told where it is, and it is cached and re-verified on every later run. The download is announced at install and again before it happens; `ROM_HUB_NO_ASSET_FETCH=1` refuses it and `rom-hub plugin assets openvgdb --fetch` performs it deliberately. `db_path` still overrides everything, for a copy you already have or one you pinned yourself. The database is opened read-only through a `file:...?mode=ro` URI, because `sqlite3.connect` on a plain path creates an empty database and a typo would otherwise answer \"no match\" forever — and because a plugin that wrote to the Hub's cached copy would fail its own integrity check next run. Matching is by hash, serial, or an exact filename — never a prefix — always scoped to one system; two matches refuse rather than choose. Covers are probed before they are proposed, so a 403 on an image costs the art and not the title. Sets no provider ids: OpenVGDB's row numbers are meaningful to nothing outside your own copy. The data stops at 2021 and at OpenEmu's 43 consoles, so there is no DOS, no Amiga and nothing after the PSP. Expect titles more often than covers: measured with the Hub's own user agent, `gamefaqs.gamespot.com` (31,235 of the 43,801 covers) answers 403 behind Cloudflare while `raw.githubusercontent.com` (10,777, all arcade) answers 200 — robots permits the fetch, the site declines to serve it, and the probe turns that into a missing cover rather than a failed enrich. **v0.3.0 stops reading sixteen columns to write one.** A `RELEASES` row carries a description — 380 characters of real copy on the Game Boy Tetris row — plus a developer, publisher, genre and date, and all five were being selected, read, and dropped. They compose RomM's `summary` now, which is the only field on `PUT /api/roms/{id}` that will hold any of them: RomM keeps genres and companies in a `metadatum` sub-object its own providers populate, with no form field that reaches it, and a part named `genres` is accepted with a 200 and discarded. So a genre written here is one you can read, not one you can filter by, and the README says so. A NULL publisher is left out rather than printed as unknown — OpenVGDB has none for any Tetris release.",
       "platforms": [
         "3do",
         "arcade",
@@ -1021,9 +1033,9 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-retroachievements",
       "install": "https://github.com/BlizzHacker/rom-hub-retroachievements",
-      "download": "https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.2.0.tar.gz",
-      "version": "0.2.0",
-      "ref": "v0.2.0",
+      "download": "https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
       "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
@@ -1036,9 +1048,9 @@
       "search_only": false,
       "key_required": true,
       "in_tree": false,
-      "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key — and, separately, needs your RomM server to hold one of its own before it will accept the result.",
+      "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash: the `ra_id`, the title, the achievement and point counts, the publisher, developer, genre and release year, and RA's box art. Needs your RetroAchievements API key — and, separately, needs your RomM server to hold one of its own before it will accept the `ra_id`.",
       "terms": "An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.",
-      "comments": "**Live-verified 2026-07-31**, with a real key, against the real API: a Mega Drive ROM imported through `libretro-content` got RomM's `md5_hash = 30c01f5a82b51fd7e23315dd070d5818`, `API_GetGameList.php?i=1` carried that exact digest on game 17392 `~Homebrew~ Alter Ego`, and the enrich wrote `ra_id = 17392` and that title — read back afterwards from RomM's own `GET /api/roms/{id}`. **Your RomM needs its own RetroAchievements key too, and this is the part that bites**: RomM 4.9.2's `PUT /api/roms/{id}` treats an incoming `ra_id` as a request to re-identify the ROM and calls RA itself, signed with RomM's `RETROACHIEVEMENTS_API_KEY`; unset, that is a `TypeError` inside yarl and a bare HTTP 500 that names nothing. `ra_id` is the only id this plugin writes, so without that variable set on the RomM container every correct match still fails at the write. Hash matching is per-dump, not per-game: the NES build of the same game is RA 8170, and neither libretro's whole-file md5 nor its header-skipped md5 appears anywhere in RA's 1,116 NES games — console 7 is not a whole-file console *and* it is a different dump. The plugin refuses rather than guessing and says which of the two you are in. On keys: the key is per-account, read-only and resettable; rotate it if the machine changes hands. **`v0.2.0` is the release that stops storing the key in the clear.** `v0.1.0` declared `api_key` as a plain `str` and wrote it to `state.json` in plaintext, where `rom-hub plugin config` printed it back; `v0.2.0` declares it `type = \"secret\"`, so the Hub keeps it out of the plain config, redacts it from every command's output, and hands it to the plugin only in the `init` frame of the subprocess that needs it. **Upgrading is what moves an existing key** — the first run after installing `v0.2.0` migrates the plaintext into the secret store and drops it from `state.json`, announced on stderr, with no re-entry; nothing happens while `v0.1.0` is the installed version, because redaction and migration both key off the installed manifest's schema. Rotate any key that was on disk under `v0.1.0`: moving a credential out of a file does not move it out of the backups. What the store then protects is a separate question with an honest answer, printed by `rom-hub plugin secret list` — on the default file store with a generated key it is obfuscation, not secrecy.",
+      "comments": "**Live-verified 2026-07-31**, with a real key, against the real API: a Mega Drive ROM imported through `libretro-content` got RomM's `md5_hash = 30c01f5a82b51fd7e23315dd070d5818`, `API_GetGameList.php?i=1` carried that exact digest on game 17392 `~Homebrew~ Alter Ego`, and the enrich wrote `ra_id = 17392` and that title — read back afterwards from RomM's own `GET /api/roms/{id}`. **Your RomM needs its own RetroAchievements key too, and this is the part that bites**: RomM 4.9.2's `PUT /api/roms/{id}` treats an incoming `ra_id` as a request to re-identify the ROM and calls RA itself, signed with RomM's `RETROACHIEVEMENTS_API_KEY`; unset, that is a `TypeError` inside yarl and a bare HTTP 500 that names nothing. `ra_id` is the only id this plugin writes, so without that variable set on the RomM container every correct match still fails at the write. Hash matching is per-dump, not per-game: the NES build of the same game is RA 8170, and neither libretro's whole-file md5 nor its header-skipped md5 appears anywhere in RA's 1,116 NES games — console 7 is not a whole-file console *and* it is a different dump. The plugin refuses rather than guessing and says which of the two you are in. On keys: the key is per-account, read-only and resettable; rotate it if the machine changes hands. **`v0.2.0` is the release that stops storing the key in the clear.** `v0.1.0` declared `api_key` as a plain `str` and wrote it to `state.json` in plaintext, where `rom-hub plugin config` printed it back; `v0.2.0` declares it `type = \"secret\"`, so the Hub keeps it out of the plain config, redacts it from every command's output, and hands it to the plugin only in the `init` frame of the subprocess that needs it. **Upgrading is what moves an existing key** — the first run after installing `v0.2.0` migrates the plaintext into the secret store and drops it from `state.json`, announced on stderr, with no re-entry; nothing happens while `v0.1.0` is the installed version, because redaction and migration both key off the installed manifest's schema. Rotate any key that was on disk under `v0.1.0`: moving a credential out of a file does not move it out of the backups. What the store then protects is a separate question with an honest answer, printed by `rom-hub plugin secret list` — on the default file store with a generated key it is obfuscation, not secrecy. **v0.3.0 makes the second request it used to refuse.** `API_GetGameList` was already returning NumAchievements, Points, NumLeaderboards and ConsoleName beside the id and title, all four discarded; and `API_GetGame` returns a publisher, developer, genre, release year and a box art URL, which this plugin would not fetch because RPP v1 has no `raw_ra_metadata` and writing RA's payload into another provider's field would be a lie in the database. That reasoning was right and `MetadataPatch.summary` is what changed it: a second request buying four facts that *arrive* is a different trade from one buying four that get dropped. The box art needs no new allowlist entry — `retroachievements.org` serves `/Images/` as well as `media.retroachievements.org` does, measured identical at 130,898 bytes with no redirect — and RA's \"no image\" placeholder is refused by name rather than written over your covers. The big game-list response is still fetched exactly once per enrich and a test pins that; `details = false` restores the single request.",
       "platforms": [
         "3do",
         "3ds",
@@ -1141,14 +1153,15 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware",
       "install": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware",
-      "download": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "metadata",
+        "search"
       ],
       "network": [
         "downloads.scummvm.org"
@@ -1157,7 +1170,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Twelve complete adventure games the ScummVM project distributes free, because their rights holders released them.",
+      "description": "Offers the 28 freeware adventure games ScummVM publishes on its own downloads page, imports the exact archive, and gives an abbreviated archive name its real title.",
       "terms": "The cleanest terms in this directory, and each one is attributable to a named person or company. Revolution Software released *Beneath a Steel Sky* and *Lure of the Temptress* as freeware in 2003; John Passfield and Steve Stamatiadis released *Flight of the Amazon Queen* in 2004; Neil Dodwell and David Dew of Creative Reality released *DreamWeb* in 2012; Alcachofa Soft released *Dráscula*; L.K. Avalon released *Sołtys* and *Sfinx*; Dynabyte released *Nippon Safes, Inc.*; Ken and Roberta Williams placed *Mystery House* in the public domain in 1987. *Broken Sword 2.5*, *The Griffon Legend* and *God of Thunder* are free releases by their own authors. Nothing here is abandonware and nothing is a dump of retail media — it is ScummVM-ready game data the project has hosted for years. On robots: `downloads.scummvm.org`, the only host this plugin requests, publishes **no** robots.txt (HTTP 404 for /robots.txt). `www.scummvm.org` is a different host whose robots.txt does `Disallow: /frs`, and this plugin never requests anything from it — it is absent from the manifest allowlist, so the broker would refuse. The twelve-game table was read once by a human from that site's robots-permitted `/games/` page and checked in; it is not fetched at runtime.",
       "comments": "The game table is the safety model, not a convenience. `/frs/extras/` is one directory per title and only some of those titles are free games: `Blade Runner/` holds subtitles, `Toonstruck/` holds cutscene subtitles, `Elvira 2/` holds sound samples, `Broken Sword I and II/` holds a subtitle pack — all add-ons for games still on sale. So the twelve directories are an **allowlist**: a directory not in it is unreachable, and no code path can build a URL into it. `tests/fixtures/scummvm_freeware/blade_runner.html` is a real capture of one of those directories, checked in so a test can prove it. Filenames, by contrast, are read live rather than tabled, so a ScummVM re-release (`drascula-int-1.0.zip` became `1.1`) keeps working with no code change; the importer re-reads the listing, requires an exact match, and lists what the directory offers now when it refuses. Checksum sidecars and manuals are excluded by name; language and audio packs are kept, because unlike a manual they are part of playing the game. Each game states its own RomM platform — all twelve are `scummvm` today — rather than sharing a module constant, so a row added later for a DOS-only drop can say so without anyone noticing that a default stopped being true. Watch the directory names: Dráscula's is `Drascula_ The Vampire Strikes Back`, with an underscore where the title has a colon, and the server 404s a near miss rather than redirecting.",
       "platforms": [
@@ -1170,14 +1183,15 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-universal-db",
       "install": "https://github.com/BlizzHacker/rom-hub-universal-db",
-      "download": "https://github.com/BlizzHacker/rom-hub-universal-db/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-universal-db/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "metadata",
+        "search"
       ],
       "network": [
         "db.universal-team.net",
@@ -1193,7 +1207,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches Universal-Team's database of Nintendo 3DS and Nintendo DS homebrew and imports the release file its author published.",
+      "description": "Filters the whole 400-entry Universal-DB catalogue in one request, imports the author's own release, and writes their title and the icon they shipped.",
       "terms": "Homebrew distributed by its own authors, which is the same basis as the homebrew (gbdev) and demozoo plugins. Universal-DB hosts nothing: every entry points at wherever the author already publishes, so an import fetches the author's file from the author's host and nothing is mirrored or re-hosted. The database itself is an open, reviewable repository (Universal-Team/db, GPL-3.0) whose entries arrive as pull requests. 270 of the 400 live entries record a licence -- GPL-3.0 (117), MIT (78), GPL-2.0 (23), Apache-2.0, MPL-2.0, BSD, Unlicense, CC0, zlib and \"other\" -- and every search row carries it. The other 130 state none; those read \"unstated\", which is a fact about the database and not a synonym for public domain, and `require_license` restricts the plugin to the ones that state terms. Nothing here is sourced from hShop or Myrient: neither appears anywhere in the data, and the manifest allowlist is the eight hosts the data actually resolves to. db.universal-team.net serves no robots.txt (404), so there is no crawl directive to observe, and the plugin makes one request per command because the database is one document.",
       "comments": "DS and 3DS are two consoles and never collapse into one another. The eight entries published for both ship a different file per console, so search returns one row per console and importing one without --platform is refused rather than guessed. Payload choice runs on the database's own evidence and nothing else: a bare .cia or .nds is a title by definition (.cia over .3dsx, .nds over .dsi, larger build wins within a format), and an archive is taken only when the entry's own `archive` manifest -- whose keys are regexes, not literals -- says a title for that console is inside it. Where the evidence runs out the import refuses and names the files it saw: 61 of 394 entry-platform pairs, including SuDokuL (whose five bare zips include a GameCube and an x64 Windows build) and TheXTech (whose one pattern matches its program and both 48 MB asset packs). Those entries still appear in search. Three of the nine categories never appear at all -- `plugin` (Luma .3gx, injected into a commercial game), `firm` (boot-chain firmware) and `exploit` -- because none of them boots as a title. Two entries publish over plain http and are refused by name, because netpolicy permits https only and this does not work around it. `*.githubusercontent.com` is declared because a GitHub release URL is a 302 to release-assets.githubusercontent.com and the broker re-checks every hop.",
       "platforms": [

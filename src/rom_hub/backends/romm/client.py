@@ -25,10 +25,52 @@ from rom_hub.types import PROVIDER_ID_FIELDS, RAW_METADATA_FIELDS
 _EXCERPT_LIMIT = 300
 
 # What `update_rom` may write. RomM's update body also accepts `fs_name`,
-# `summary`, `url_cover` and `url_manual`; `fs_name` renames the file on
-# disk, which is not a metadata edit and is not something a plugin gets to
-# ask for in RPP v1. Narrow by construction, widened only deliberately.
-UPDATABLE_ROM_FIELDS = frozenset({"name"}) | PROVIDER_ID_FIELDS | RAW_METADATA_FIELDS
+# `url_cover` and `url_manual`, and none of the three is here: `fs_name`
+# renames the file on disk, which is not a metadata edit, and the two URL
+# fields make *RomM* fetch a plugin-named URL server-side, which is a way
+# around the Hub's allowlist and its artwork size ceiling both. See
+# `MetadataPatch`'s docstring for the measurement.
+#
+# `summary` was added on 2026-08-01 after measuring that it round-trips
+# where the eight `raw_*_metadata` fields do not. It is the only field on
+# this endpoint that can carry a release date, a developer or a genre into
+# the library at all.
+UPDATABLE_ROM_FIELDS = (
+    frozenset({"name", "summary"}) | PROVIDER_ID_FIELDS | RAW_METADATA_FIELDS
+)
+
+# `GET /api/heartbeat` -> METADATA_SOURCES flag, per provider-id field.
+#
+# The flag says whether RomM holds that provider's credentials. It is a
+# public endpoint -- measured unauthenticated, HTTP 200 -- so this is
+# always answerable, even before `authenticate()`.
+#
+# Only the fields RomM re-fetches on are listed. RomM 4.9.2's `update_rom`
+# has a "Fetch metadata from external sources" block covering flashpoint,
+# launchbox, ra, moby, ss and igdb; `sgdb_id`, `tgdb_id`, `hasheous_id`,
+# `hltb_id` and `libretro_id` are stored and nothing else, so they are
+# absent here and never gated.
+HEARTBEAT_FLAGS = {
+    "igdb_id": "IGDB_API_ENABLED",
+    "ss_id": "SS_API_ENABLED",
+    "moby_id": "MOBY_API_ENABLED",
+    "ra_id": "RA_API_ENABLED",
+    "launchbox_id": "LAUNCHBOX_API_ENABLED",
+    "flashpoint_id": "FLASHPOINT_API_ENABLED",
+}
+
+# Of those six, the fields whose re-fetch actually *fails* when the
+# provider is not configured. This is a measured set, not a derived one,
+# and the difference between it and `HEARTBEAT_FLAGS` is the whole point:
+# writing `igdb_id` to a keyless RomM answers 200 and stores the number,
+# while writing `ra_id` to one answers 500 and stores nothing. Measured
+# one field at a time against RomM 4.9.2 with every source disabled; see
+# `rom_hub.backends.base` for the table.
+#
+# Narrow by measurement. A field added here on suspicion would withhold a
+# perfectly good id and make every enrich quietly poorer, which is the
+# failure mode this module is trying to end rather than repeat.
+UNSAFE_WITHOUT_CREDENTIALS = frozenset({"ra_id"})
 
 # How many roms to ask for per `GET /api/roms` page. The server defaults
 # `limit` to 50; asking for more just means fewer round trips over the
@@ -103,6 +145,7 @@ class RommClient:
         self._token: str | None = None
         self._platform_cache: dict[str, int] = {}
         self._platforms_loaded = False
+        self._metadata_sources: dict[str, bool] | None = None
         self._client = httpx.Client(
             base_url=base_url.rstrip("/"),
             timeout=timeout,
@@ -215,6 +258,43 @@ class RommClient:
                 f"{method} {path} failed ({resp.status_code}): {_excerpt(resp)}"
             )
         return resp
+
+    # -- what this server is configured for --------------------------------
+
+    def metadata_sources(self) -> dict[str, bool]:
+        """Which metadata providers this RomM holds credentials for.
+
+        `GET /api/heartbeat` -> `METADATA_SOURCES`, a flat map of
+        `IGDB_API_ENABLED`-style flags. Public: measured unauthenticated
+        against a live 4.9.2 and answered 200, so this works before
+        `authenticate()` and is not gated on a scope.
+
+        Cached for the life of the client. An operator does not add an
+        IGDB key halfway through one `rom-hub enrich`, and asking once per
+        rom would put a request in front of every single write.
+
+        Returns `{}` -- not an exception -- when the server does not answer
+        or answers a shape this does not recognise. The caller is
+        `provider_id_policy`, whose whole job is to be a safety net; a
+        safety net that fails the operation when it cannot be consulted is
+        worse than the failure it was added to prevent.
+        """
+        if self._metadata_sources is None:
+            try:
+                payload = self._authorized_request("GET", "/api/heartbeat").json()
+            except (RommError, ValueError):
+                return {}
+            sources = (
+                payload.get("METADATA_SOURCES") if isinstance(payload, dict) else None
+            )
+            if not isinstance(sources, dict):
+                return {}
+            self._metadata_sources = {
+                str(key): bool(value)
+                for key, value in sources.items()
+                if isinstance(value, bool)
+            }
+        return dict(self._metadata_sources)
 
     # -- platforms --------------------------------------------------------
 

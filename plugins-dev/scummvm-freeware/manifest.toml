@@ -1,13 +1,22 @@
 [plugin]
 slug        = "scummvm-freeware"
 name        = "ScummVM freeware games"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 search   = "scummvm_freeware.search:Search"
 importer = "scummvm_freeware.importer:Importer"
+metadata = "scummvm_freeware.metadata:Metadata"
+
+# `metadata` makes NO request. The source is a download server: it
+# publishes archives and checksums and nothing else -- no artwork, no
+# description, no JSON. The one thing this plugin knows that a library
+# does not is ScummVM's own title for an archive called `tgttpoacs.zip`,
+# and that is checked into games.py. So `enrich` reads a table and sets
+# `name`, and there is no `artwork_url` here and will not be until the
+# source grows artwork.
 
 # One host, and it is deliberately NOT `www.scummvm.org`.
 #
@@ -22,12 +31,18 @@ importer = "scummvm_freeware.importer:Importer"
 # pages, nothing -- so it is absent from this allowlist and the broker
 # would refuse the request if a future version tried. The catalogue in
 # `games.py` was read from that site's robots-permitted `/games/` page by
-# a human, once, and checked in; it is not fetched at runtime.
+# a human -- twice now, the second time on 2026-08-01, which is what took
+# it from twelve games to twenty-eight -- and checked in; it is not
+# fetched at runtime. `www.scummvm.org/robots.txt` Disallows only `/frs`
+# and `/downloads`, so `/games/` is permitted; `/frs` is the path this
+# plugin never touches on that host.
 [permissions]
 network  = ["downloads.scummvm.org"]
 romm_api = []
 
 [config]
-# Each matched game is its own round trip and the host kills a plugin at 30s.
-max_games  = { type = "int", default = 6 }
+# How many matched games one search may list. Each *directory* is one
+# round trip -- the fourteen SLUDGE games cost one between them -- and the
+# host kills a plugin at 30s. 28 is every game in the table.
+max_games  = { type = "int", default = 16 }
 collection = { type = "str", default = "ScummVM freeware" }

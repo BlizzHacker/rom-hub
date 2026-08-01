@@ -1,7 +1,7 @@
 [plugin]
 slug        = "hasheous"
 name        = "Hasheous"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -19,5 +19,25 @@ romm_api = []
 verify_platform   = { type = "bool", default = true }
 allow_crc32       = { type = "bool", default = false }
 set_name          = { type = "bool", default = true }
-raw_metadata      = { type = "bool", default = true }
-cross_provider_ids = { type = "bool", default = false }
+# The whole lookup answer, in `raw_hasheous_metadata`. **Off by default
+# since 0.2.0**: measured on 2026-08-01 against a live RomM 4.9.2, that
+# field is accepted with a 200 and the value appears nowhere in the rom
+# afterwards -- including when `hasheous_id` is written and *changed* in
+# the same request, which rules out the provider-id gate RomM applies to
+# seven of the eight raw fields. The facts worth having are in `summary`
+# instead, which RomM does store.
+raw_metadata      = { type = "bool", default = false }
+
+# The signature row's own facts -- publisher, year, region, language, and
+# which DAT corpus verified the dump -- composed into RomM's `summary`.
+# Free: all of it was already in every lookup answer.
+summary           = { type = "bool", default = true }
+
+# Which other providers' ids to offer, per source rather than all or
+# nothing. This replaces the old `cross_provider_ids` boolean, which was
+# off by default because writing `ra_id` to a RomM with no
+# RetroAchievements key answers HTTP 500. The **host** now asks the
+# backend what it will take and withholds the rest with a reason, so a
+# plugin no longer has to guess about a library it cannot see -- and
+# mapping a dump to every other provider's id is what hasheous is for.
+provider_ids      = { type = "list[str]", default = ["igdb", "tgdb", "ra"] }

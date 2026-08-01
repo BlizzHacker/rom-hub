@@ -16,7 +16,7 @@
 > the plugin is working. See
 > [This plugin cannot import](#this-plugin-cannot-import-that-is-the-correct-answer).
 
-Implements the RPP v1 `search`, `metadata` and `importer` capabilities against
+Implements the RPP v1 `search`, `metadata`, `stream` and `importer` capabilities against
 itch.io's **free** games.
 
 | Capability | Endpoint | Does |
@@ -24,6 +24,55 @@ itch.io's **free** games.
 | `search` | `itch.io/games/free[/<facet>]?format=json` | free games matching a query |
 | `metadata` | the game page on `<developer>.itch.io` | proposes the developer's title and cover; the **Hub** fetches the image |
 | `importer` | the same game page | works out the file and platform, then **always refuses** — see below |
+| `stream` | the same game page | resolves a **browser** game to the page that runs it |
+
+## What changed in 0.4.0
+
+| | before | after |
+|---|---|---|
+| `--platform` | applied here, to cells already fetched | a **browse facet**, so itch.io scopes the listing |
+| games one search may walk | 144 (4 pages of 36) | **432** by default, **7,200** by config |
+| capabilities | search, metadata, importer(refuses) | + **stream** |
+
+**`--platform` used to make the search worse.** It was applied to cells
+that had already come back, so a page of 36 games mostly without a Linux
+build yielded two or three and the budget was spent the same. itch.io
+scopes a browse itself: `/games/free/platform-linux` is 36 Linux games,
+every one of them. All five facets were checked live on 2026-08-01 —
+including that `platform-mac` answers 301 and the real spelling is
+`platform-osx`, which is exactly the kind of detail that belongs in a
+table rather than in a caller.
+
+**`max_pages` was a 144-game ceiling** on a catalogue with hundreds of
+thousands in it. The cap is now 200, which is how deep the listing itself
+goes: page 200 answers a full 36-cell fragment and page 500 answers HTTP
+404, both checked live.
+
+## What `stream` does — and why it is the answer to this plugin's own complaint
+
+This plugin cannot import and never will (see below). For the **browser**
+half of itch.io's free catalogue that was always the wrong thing to want:
+those games were never a file you keep, they run on the page. `stream`
+resolves one to `https://<developer>.itch.io/<game>` and the host hands
+that over.
+
+**The gate is `html_embed_widget`, itch.io's own marker for a browser
+build.** A page with one renders that widget wrapping a `game_frame`; a
+download-only page renders none of it. Verified live on 2026-08-01 across
+both shapes, and both are checked in as fixtures. The browse cell's
+`web_flag` says the same thing one step earlier, which is why `search`
+already reports `browser` in `extra.platforms` — but the listing is a
+popularity-ordered slice that can be minutes stale and a developer can
+remove a web build, so the page is read before an operator is sent to it.
+
+**The target is the page and never the embed.** itch.io's robots.txt
+carries `Disallow: /embed/` and `Disallow: /embed-upload/`, and the page's
+markup hands its iframe an `html-classic.itch.zone` URL. Neither is
+returned, and neither host is in the manifest — so a future version that
+tried would fail the broker's gate rather than quietly work. Pulling the
+inner URL out of the markup to look more direct would be reaching around
+two robots directives to arrive somewhere worse than the page itch.io
+means you to open.
 
 ## Install
 
@@ -73,7 +122,7 @@ and more useful answer.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `filters` | `list[str]` | `[]` | extra browse facets appended to `/games/free`, e.g. `["tag-gameboy"]` or `["genre-puzzle"]` |
-| `max_pages` | `int` | `4` | how many 36-game browse pages one query may walk |
+| `max_pages` | `int` | `12` | how many 36-game browse pages one query may walk (capped at 200, which is as deep as the listing goes) |
 
 `filters` entries are validated as bare facets (lowercase letters, digits,
 hyphens). A value containing `/` or `..` is refused rather than pasted into a

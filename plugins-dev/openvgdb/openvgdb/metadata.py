@@ -1,7 +1,8 @@
-"""openvgdb `metadata`: a curated title and a cover, from a local database.
+"""openvgdb `metadata`: a title, a description and a cover, from a local database.
 
     RomRef -> systemID -> a ROMs row (hash, serial, or exact filename)
-           -> the best RELEASES row -> releaseTitleName + releaseCoverFront
+           -> the best RELEASES row -> releaseTitleName + a composed
+              summary + releaseCoverFront
 
 OpenVGDB is the only source in this directory that carries a **curated
 title** rather than a dump name. Its `RELEASES.releaseTitleName` for the
@@ -9,6 +10,28 @@ Game Boy dump `Tetris (World) (Rev A).gb` is `Tetris`, and that is the
 distinction `libretro-thumbnails` refused to blur when it declined to
 write a No-Intro filename into a library as a game name. A title is not a
 filename, and this plugin only ever writes the title.
+
+## What else is in that row
+
+For a long time: a title and a cover, out of a `RELEASES` row carrying
+eighteen columns. The other sixteen were selected, read, and dropped on
+the floor.
+
+Five of them are worth a library's while -- `releaseDescription`,
+`releaseDeveloper`, `releasePublisher`, `releaseGenre` and `releaseDate`
+-- and the description in particular is a real paragraph, not a tag.
+OpenVGDB's Game Boy Tetris row opens "The Soviet game sensation is now on
+your Game Boy!" and runs 380 characters.
+
+They now go into `summary`, which is the only field on RomM's update
+endpoint that will hold any of them. **That is a real limit and not a
+choice made here.** RomM keeps genres, companies, `first_release_date`
+and `player_count` in a `metadatum` sub-object that its own configured
+providers populate; `PUT /api/roms/{id}` has no form field that reaches
+it, and a part named `genres` is accepted with a 200 and discarded. So a
+genre written by this plugin is a genre an operator can *read* on the rom
+page, not one they can filter a library by. See README.md, "What cannot
+reach RomM".
 
 ## Where the database comes from
 
@@ -71,7 +94,7 @@ was never going to get.
 
 from urllib.parse import urlsplit
 
-from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
+from rom_hub_sdk import MAX_SUMMARY_CHARS, MetadataPatch, MetadataProvider, RomRef
 
 from .database import (
     DatabaseUnavailable,
@@ -225,6 +248,11 @@ class Metadata(MetadataProvider):
             if title:
                 patch["name"] = title
 
+        if bool(self.ctx.config.get("summary", True)):
+            summary = _summary(release)
+            if summary:
+                patch["summary"] = summary
+
         if bool(self.ctx.config.get("artwork", True)):
             cover = self._cover(release)
             if cover is not None:
@@ -238,6 +266,13 @@ class Metadata(MetadataProvider):
         # nothing else, and RomM has no field that means "a row in
         # somebody's local SQLite". An id written there would look like a
         # cross-reference and be a coincidence.
+        #
+        # This is not a gap the host's provider-id gate can close either.
+        # That gate decides whether an id a plugin *has* is safe to write;
+        # it cannot conjure one, and hasheous is the plugin whose whole
+        # purpose is to map a dump to other providers' ids. Running the
+        # two together is how a rom gets both a curated title and an
+        # igdb_id.
         return MetadataPatch(**patch)
 
     def _cover(self, release: dict) -> tuple[str, str] | None:
@@ -283,3 +318,103 @@ def _image_extension(url: str) -> str | None:
     path = urlsplit(url).path
     extension = path.rsplit(".", 1)[-1].lower() if "." in path else ""
     return extension if extension in _IMAGE_EXTENSIONS else None
+
+
+def _summary(release: dict) -> str | None:
+    """The description, and the facts RomM has nowhere else to put.
+
+    OpenVGDB's `RELEASES` row carries six things this plugin used to read
+    past on its way to the title: a description, a developer, a publisher,
+    a genre list, a release date and a region. Only one of the six has a
+    home in RomM -- `summary` -- and it takes prose, so the other five are
+    composed into a sentence after it rather than dropped.
+
+    That composition is doing real work and it is worth being plain about
+    what it is not: RomM keeps genres and companies in a `metadatum`
+    sub-object populated by its own providers, and `PUT /api/roms/{id}`
+    has no form field that reaches it (a part named `genres` is accepted
+    with a 200 and discarded -- measured). A genre written here is a genre
+    an operator can *read*, not one they can filter by. The plugin README
+    says so in those words.
+
+    Absent when the row is empty in all six columns, because an empty
+    summary is not a summary and `MetadataPatch` treats absent as "leave
+    RomM's alone".
+    """
+    description = _clean(release.get("releaseDescription"))
+    facts = _facts(release)
+    if not description and not facts:
+        return None
+    if not description:
+        return facts
+    if not facts:
+        return _fit(description, MAX_SUMMARY_CHARS)
+    # The facts line is short and always survives; the description is what
+    # gets trimmed if the pair does not fit. OpenVGDB's descriptions run to
+    # a few hundred characters, so this is a guard rather than a path
+    # anything real takes.
+    room = MAX_SUMMARY_CHARS - len(facts) - 2
+    return f"{_fit(description, room)}\n\n{facts}"
+
+
+def _facts(release: dict) -> str:
+    """`Developed by X. Published by Y. Released Z. Genre: ... Region: ...`
+
+    Only the parts that are actually in the row. OpenVGDB leaves
+    `releasePublisher` NULL far more often than not -- it is NULL for
+    every Tetris release in the database -- so a fixed template with
+    "Publisher: unknown" in it would be wrong on most roms.
+    """
+    parts: list[str] = []
+
+    developer = _clean(release.get("releaseDeveloper"))
+    publisher = _clean(release.get("releasePublisher"))
+    if developer and publisher and developer != publisher:
+        parts.append(f"Developed by {developer}, published by {publisher}.")
+    elif developer:
+        parts.append(f"Developed by {developer}.")
+    elif publisher:
+        parts.append(f"Published by {publisher}.")
+
+    date = _clean(release.get("releaseDate"))
+    if date:
+        # Stored as human text already -- "June 1989", "December 1993" --
+        # so it is quoted rather than parsed. A parser here would have to
+        # invent a day for a month-precision date and would then be
+        # printing a date OpenVGDB does not claim.
+        parts.append(f"Released {date}.")
+
+    genre = _clean(release.get("releaseGenre"))
+    if genre:
+        # Comma-separated in the database, with no spaces:
+        # "Miscellaneous,Puzzle,Stacking".
+        names = [item.strip() for item in genre.split(",") if item.strip()]
+        if names:
+            parts.append(f"Genre: {', '.join(names)}.")
+
+    region = _clean(release.get("regionName"))
+    if region:
+        parts.append(f"Region: {region}.")
+
+    return " ".join(parts)
+
+
+def _clean(value) -> str:
+    """A trimmed string, or "" for NULL and for anything not a string."""
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _fit(text: str, limit: int) -> str:
+    """`text`, cut at a word boundary if it is over `limit`.
+
+    Ends with a single-character ellipsis so a truncated description is
+    visibly truncated. A summary that stops mid-word with no mark looks
+    like the source's own text is corrupt.
+    """
+    if limit <= 1:
+        return text[:1]
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1]
+    spaced = cut.rsplit(" ", 1)[0]
+    return (spaced if len(spaced) > limit // 2 else cut).rstrip(" ,;:.") + "…"

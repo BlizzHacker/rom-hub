@@ -1,9 +1,29 @@
-"""Reading Aminet: its search results, and one package's `.readme`.
+"""Reading Aminet: its search results, its shelf listings, and one `.readme`.
 
-`https://aminet.net/search?query=<terms>&dir=game` is a server-side
-search across all 85,449 packages, which is the reason this source was
-picked over walking `/tree`. It answers 50 rows a page and paginates with
-`page=N`.
+Aminet answers two different pages with **the same markup**, and that is
+the fact this module is built on:
+
+    /search?query=<terms>   a server-side search across all 85,453 packages
+    /<tree>/<shelf>         one shelf's own listing -- `/game/think`
+
+Both render the result table below, both carry the `Found N matching
+packages` count line, and both paginate with `page=N` at 50 rows a page.
+So one parser serves both, and the plugin gets a *browse* it did not have.
+
+**`dir=` is not a filter. It is ignored.** This is the correction that
+made the second endpoint necessary. `?query=tetris` and
+`?query=tetris&dir=game` return the identical 134 packages, and so do
+`&dir=demo`, `&dir=mods` and `&dir=zzz` -- verified live 2026-08-01, four
+spellings, one answer. Aminet's search form emits exactly one field
+(`<input name="query">`); there is no directory parameter to send, and
+`dir` was an invented one that HTTP 200 made look like it worked. Every
+row of `comm/dlg` in a `dir=game` search was the evidence, and it was
+being thrown away client-side rather than read as a symptom.
+
+Scoping therefore happens one of two ways, and the honest one is named at
+each call site: **browse a shelf** (server-side, exact, pageable) or
+**search everything and filter here** (client-side, and it costs rows out
+of every page it drops).
 
 A row is a table row and every column is load-bearing:
 
@@ -52,6 +72,7 @@ SEARCH = f"{BASE}/search"
 
 #: Rows per page. Aminet's own, and not negotiable: `pagesize`, `limit`
 #: and `rows` were all tried against the live search and all ignored.
+#: The shelf listings use the same 50.
 PAGE_ROWS = 50
 
 #: The one string on every search page and on no other page Aminet
@@ -77,6 +98,18 @@ _DESC = re.compile(r'<a href="/package/[^"]*"\s*>([^<]*)</a>')
 _NOT_ARCHITECTURES = frozenset(
     {"aminet", "aminet_sketch_64", "pix", "blank", "back", "folder", "dir"}
 )
+
+#: `Found 910 matching packages`. Read so the walk can stop at the last
+#: page instead of asking for one past it, and so a browse can say how
+#: much of a shelf it is showing.
+_FOUND = re.compile(r"Found\s+([\d,]+)\s+matching package", re.IGNORECASE)
+
+#: A shelf path an operator or a config may name. Two or three components
+#: of the archive's own alphabet, nothing else. This becomes a URL path,
+#: so it is an allowlist of what a shelf name may contain rather than a
+#: denylist of what it may not -- the same posture
+#: `rom_hub.types.bare_filename` takes.
+_SHELF_RE = re.compile(r"\A[a-z0-9][a-z0-9_+-]*(?:/[a-z0-9][a-z0-9_+-]*)?\Z")
 
 
 class AminetError(Exception):
@@ -137,10 +170,56 @@ def readme_url(path: str) -> str:
     return f"{BASE}/" + quote(path.strip().lstrip("/"), safe="/")
 
 
-def parse_results(text: str) -> list[Package]:
-    """Every package row on one search page.
+def shelf_url(shelf: str) -> str:
+    """Where one shelf lists its own packages.
 
-    Raises for a document that is not a search page. Aminet answers a
+    `game/think` -> `https://aminet.net/game/think`, which is a real page
+    with the same result table the search returns and its own `page=N`.
+    That is the whole reason a browse is possible: `?dir=` never scoped
+    anything, and this does.
+
+    Refuses a shelf name that is not two or three of Aminet's own path
+    components. The value goes into a URL and the host re-checks the
+    result against the allowlist, but a `..` here is a caller mistake
+    worth naming rather than a string to quietly repair.
+    """
+    name = (shelf or "").strip().strip("/").lower()
+    if not _SHELF_RE.match(name):
+        raise AminetError(
+            f"{shelf!r} is not an Aminet shelf: expected something like "
+            f"'game/think' or 'demo' -- lowercase letters, digits, '_', '+' "
+            f"and '-', in one or two '/'-joined components"
+        )
+    return f"{BASE}/" + quote(name, safe="/")
+
+
+def total_matches(text: str) -> int | None:
+    """How many packages the page says it is one page of, or None.
+
+    None means the count line was not there, which `parse_results` has
+    already refused the document for -- so in practice this is an int on
+    every page the plugin acts on. It exists so a walk can stop at the
+    real last page rather than discovering it by asking for one that does
+    not exist.
+    """
+    match = _FOUND.search(text or "")
+    if not match:
+        return None
+    try:
+        return int(match.group(1).replace(",", ""))
+    except ValueError:
+        return None
+
+
+def parse_results(text: str) -> list[Package]:
+    """Every package row on one search page **or one shelf listing**.
+
+    The two pages share this markup and share the count line, so they
+    share the parser. A shelf listing that has been renamed or removed
+    answers with the site's themed error body, which this refuses for the
+    same reason a bad search does.
+
+    Raises for a document that is not one of those pages. Aminet answers a
     missing path with a 200 and a themed "not found" body -- its
     `/robots.txt` is one -- so a status code is not evidence and the
     parser has to be.

@@ -131,10 +131,24 @@ _SELECT_ROM = """
      WHERE systemID = ?
 """
 
+# Every column of a release this plugin has a use for, which since
+# 2026-08-01 is most of them.
+#
+# `releaseDescription` is the one that changes what this plugin *is*. It
+# is a real paragraph of marketing copy -- OpenVGDB's row for Game Boy
+# Tetris runs 380 characters -- and RomM's `summary` field stores it, so
+# it reaches a library rather than being read and dropped. The four
+# alongside it (developer, publisher, genre, date) have no field of their
+# own anywhere in RomM's update endpoint and are composed into the same
+# summary; see `metadata._summary`.
+#
+# `releaseCoverCart` and `releaseCoverDisc` are still not selected. A
+# cartridge photo is not a cover, and `MetadataPatch` carries one image.
 _SELECT_RELEASES = """
     SELECT r.releaseID, r.romID, r.releaseTitleName, r.releaseCoverFront,
-           r.releaseCoverBack, r.releaseDeveloper, r.releasePublisher,
-           r.releaseGenre, r.releaseDate, g.regionName AS regionName
+           r.releaseCoverBack, r.releaseDescription, r.releaseDeveloper,
+           r.releasePublisher, r.releaseGenre, r.releaseDate,
+           r.releaseReferenceURL, g.regionName AS regionName
       FROM RELEASES r
       LEFT JOIN REGIONS g ON g.regionID = r.regionLocalizedID
      WHERE r.romID = ?

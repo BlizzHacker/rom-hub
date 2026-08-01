@@ -18,6 +18,18 @@ builds a field mapping from `model_dump()`.
 before the write, so a cover that cannot be downloaded fails the enrich
 rather than applying the name and quietly dropping the image.
 
+**A provider id is the one field the library acts on, so the library gets
+a say.** Every other field in a patch is stored verbatim. A provider id
+makes RomM go and fetch from that provider, which needs that provider's
+key -- and on a RomM without one, `ra_id` answers 500 while the other ten
+answer 200 and store the number. A plugin cannot see any of that. So
+`_gate_provider_ids` asks the backend, per field, before the write:
+refused ids are dropped and their reasons carried out in
+`EnrichResult.withheld_ids`, and ids that *will* pull in real metadata are
+reported in `enriching_ids`. Dropping one id is not allowed to cost the
+name and the summary alongside it, for the same reason an artwork-less
+backend does not cost them.
+
 The one exception is a backend that has no artwork support *at all*, and
 it is not quiet: `ARTWORK` is classified optional in
 `rom_hub.backends.base`, so the cover is dropped before it is fetched,
@@ -30,7 +42,7 @@ still refuses -- an enrich that writes nothing is not a degraded enrich.
 from __future__ import annotations
 
 import mimetypes
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from rom_hub.backends.base import (
@@ -39,11 +51,19 @@ from rom_hub.backends.base import (
     LibraryBackend,
     SkippedStep,
     degrade,
+    provider_id_policy,
     require,
 )
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.paths import UnsafeDestination, dest_in_job_dir
-from rom_hub.types import MAX_ARTWORK_BYTES, MetadataPatch, RomRef
+from rom_hub.types import (
+    MAX_ARTWORK_BYTES,
+    PROVIDER_ID_FIELDS,
+    MetadataPatch,
+    RomRef,
+)
+
+_ID_FIELDS = PROVIDER_ID_FIELDS
 
 # Artwork is a cover image, not a ROM. It is fetched into memory to be
 # posted straight back out, so the ceiling is the same one MetadataPatch
@@ -67,6 +87,17 @@ class EnrichResult:
     #: Optional parts of the patch the backend could not take, dropped
     #: rather than fatal. Already spelled out in `message`.
     degraded: tuple[SkippedStep, ...] = ()
+    #: Provider ids the plugin proposed and the backend refused, mapped to
+    #: the backend's reason. Absent from `fields` because they were not
+    #: written; here rather than nowhere because "an id was silently not
+    #: written" and "the source did not know one" look identical to an
+    #: operator, and only one of them has a fix.
+    withheld_ids: dict[str, str] = field(default_factory=dict)
+    #: Provider ids that were written *and* that the backend says will
+    #: make it go and fetch that provider's own metadata. The reason a
+    #: name-only plugin becomes a full one; worth reporting for the same
+    #: reason the withheld ones are.
+    enriching_ids: dict[str, str] = field(default_factory=dict)
 
 
 def rom_ref_from(rom: dict, rom_id: int, extra: dict | None = None) -> RomRef:
@@ -143,6 +174,26 @@ def run_enrich(
         )
 
     fields = patch.form_fields()
+    fields, withheld, enriching = _gate_provider_ids(fields, backend)
+
+    if not fields and not patch.has_artwork():
+        # Every field the plugin proposed was a provider id the backend
+        # refuses. Sending an empty patch would report a change that did
+        # not happen; refusing silently would look like the plugin knew
+        # nothing. So the reasons the backend gave are the message.
+        return EnrichResult(
+            rom_id=rom.rom_id,
+            fields={},
+            artwork_bytes=0,
+            changed=False,
+            message=(
+                f"plugin {slug!r} proposed only provider ids the "
+                f"{getattr(backend, 'name', 'active')!r} backend will not "
+                f"take for rom {rom.rom_id}, so nothing was written. "
+                + "; ".join(f"{name}: {why}" for name, why in sorted(withheld.items()))
+            ),
+            withheld_ids=withheld,
+        )
 
     # The artwork decision, made before `_artwork` -- which is where the
     # cover would be fetched over the network. A backend that cannot take
@@ -174,6 +225,7 @@ def run_enrich(
                 f"{rom.rom_id}, and {str(skipped[0])}; nothing was written"
             ),
             degraded=tuple(skipped),
+            withheld_ids=withheld,
         )
 
     artwork = (
@@ -190,6 +242,14 @@ def run_enrich(
     described = ", ".join(sorted(fields)) or "no fields"
     cover = f" and {len(artwork[1])} bytes of artwork" if artwork else ""
     note = ". " + "; ".join(str(step) for step in skipped) if skipped else ""
+    if withheld:
+        note += ". Withheld " + "; ".join(
+            f"{name} ({why})" for name, why in sorted(withheld.items())
+        )
+    if enriching:
+        note += ". " + "; ".join(
+            f"{name} {why}" for name, why in sorted(enriching.items())
+        )
     return EnrichResult(
         rom_id=rom.rom_id,
         fields=fields,
@@ -197,7 +257,50 @@ def run_enrich(
         changed=True,
         message=f"rom {rom.rom_id}: updated {described}{cover}{note}",
         degraded=tuple(skipped),
+        withheld_ids=withheld,
+        enriching_ids=enriching,
     )
+
+
+def _gate_provider_ids(
+    fields: dict[str, str], backend: LibraryBackend
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """Split the patch's fields by what the backend says it will accept.
+
+    Returns `(writable, withheld, enriching)`.
+
+    A plugin knows what a provider's id *is*. It cannot know whether the
+    library on the other end holds that provider's credentials, and on
+    RomM that is the difference between a 200 and a 500 -- so the decision
+    belongs here, where the backend is, rather than behind a per-plugin
+    "write other providers' ids?" flag that every plugin author would have
+    to guess the right default for and every operator would have to set
+    once per plugin.
+
+    Withholding is a *filter*, never a failure. The patch's name, summary
+    and remaining ids are still written: losing a curated title and a
+    release date because one id would have upset the server is exactly the
+    trade `backends.base` refuses to make for artwork, and it is the same
+    trade here.
+    """
+    proposed = {name: value for name, value in fields.items() if name in _ID_FIELDS}
+    if not proposed:
+        return dict(fields), {}, {}
+
+    policy = provider_id_policy(backend)
+    writable = dict(fields)
+    withheld: dict[str, str] = {}
+    enriching: dict[str, str] = {}
+    for name in proposed:
+        verdict = policy.get(name)
+        if verdict is None:
+            continue
+        if not verdict.allowed:
+            writable.pop(name, None)
+            withheld[name] = verdict.reason
+        elif verdict.enriches:
+            enriching[name] = verdict.reason
+    return writable, withheld, enriching
 
 
 def _artwork(

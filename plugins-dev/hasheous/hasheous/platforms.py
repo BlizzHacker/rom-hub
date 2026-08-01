@@ -43,6 +43,31 @@ words. `key()` strips everything that is not a letter or a digit and
 lowercases the rest, so they agree -- and a literal comparison would have
 refused a perfectly good match.
 
+**Normalising is not enough on its own, and finding that out cost every
+NES enrich.** No-Intro has *renamed* several sets, not merely
+re-punctuated them, and hasheous's curated platform objects use a third
+vocabulary again. Measured against the live service on 2026-08-01 by
+looking up one real md5 per platform from a 636-rom library:
+
+    slug   signature.game.system                    platform.name
+    nes    Nintendo Famicom & Entertainment System  Nintendo Entertainment System
+    sms    Sega Mark III & Master System            Sega Master System
+    snes   Nintendo Super Famicom & Super Ent...    Nintendo Super Nintendo Ent...
+    2600   Atari 2600 & VCS                         Atari 2600
+    c64    Commodore C64                            Commodore 64
+    tg16   NEC PC-Engine & TurboGrafx-16            TurboGrafx-16/PC Engine
+
+`nes` and `sms` matched on **neither** name, so `verify_platform` -- which
+exists to survive a CRC-32 collision -- was refusing every correct answer
+on two consoles. The others matched on one of the two and worked by luck.
+
+So a slug maps to *every* spelling measured for it, not to the one
+libretro's DAT filenames happen to carry. Extra spellings are cheap and
+an absent one is a silent refusal; what is not cheap is a spelling that
+belongs to a *different* machine, so nothing here is added by guesswork
+-- each entry above was returned by the live service for a dump of that
+console.
+
 **What is deliberately absent.** `arcade`, `neogeoaes`, `neogeomvs`,
 `dos`, `scummvm`, `tic-80`, `wasm-4`, `acpc`, `zx81`, `cpet`,
 `handheld-electronic-lcd`, `thomson-*`, `spectravideo`, `pc-8000`,
@@ -81,9 +106,9 @@ PLATFORMS: dict[str, tuple[str, ...]] = {
     # Arduboy
     "arduboy": ("Arduboy Inc - Arduboy",),
     # Atari
-    "atari2600": ("Atari - 2600",),
+    "atari2600": ("Atari - 2600", "Atari 2600 & VCS"),
     "atari5200": ("Atari - 5200",),
-    "atari7800": ("Atari - 7800",),
+    "atari7800": ("Atari - 7800", "Atari - Atari 7800 (BIN)"),
     "atari8bit": ("Atari - 8-bit Family",),
     "atari800": ("Atari - 8-bit Family",),
     "jaguar": ("Atari - Jaguar",),
@@ -99,7 +124,7 @@ PLATFORMS: dict[str, tuple[str, ...]] = {
     # Coleco
     "colecovision": ("Coleco - ColecoVision",),
     # Commodore
-    "c64": ("Commodore - 64",),
+    "c64": ("Commodore - 64", "Commodore C64"),
     "amiga": ("Commodore - Amiga",),
     "amiga-cd32": ("Commodore - CD32",),
     "commodore-cdtv": ("Commodore - CDTV",),
@@ -124,7 +149,10 @@ PLATFORMS: dict[str, tuple[str, ...]] = {
     "xbox": ("Microsoft - Xbox",),
     "xbox360": ("Microsoft - Xbox 360",),
     # NEC
-    "tg16": ("NEC - PC Engine - TurboGrafx 16",),
+    "tg16": (
+        "NEC - PC Engine - TurboGrafx 16",
+        "TurboGrafx-16/PC Engine",
+    ),
     "supergrafx": ("NEC - PC Engine SuperGrafx",),
     "turbografx-cd": ("NEC - PC Engine CD - TurboGrafx-CD",),
     "pc-fx": ("NEC - PC-FX",),
@@ -141,10 +169,24 @@ PLATFORMS: dict[str, tuple[str, ...]] = {
     "64dd": ("Nintendo - Nintendo 64DD",),
     "nds": ("Nintendo - Nintendo DS",),
     "nintendo-dsi": ("Nintendo - Nintendo DSi",),
-    "nes": ("Nintendo - Nintendo Entertainment System",),
-    "famicom": ("Nintendo - Nintendo Entertainment System",),
-    "snes": ("Nintendo - Super Nintendo Entertainment System",),
-    "sfam": ("Nintendo - Super Nintendo Entertainment System",),
+    "nes": (
+        "Nintendo - Nintendo Entertainment System",
+        "Nintendo Famicom & Entertainment System",
+        "Nintendo Entertainment System",
+    ),
+    "famicom": (
+        "Nintendo - Nintendo Entertainment System",
+        "Nintendo Famicom & Entertainment System",
+        "Nintendo Entertainment System",
+    ),
+    "snes": (
+        "Nintendo - Super Nintendo Entertainment System",
+        "Nintendo Super Famicom & Super Entertainment System",
+    ),
+    "sfam": (
+        "Nintendo - Super Nintendo Entertainment System",
+        "Nintendo Super Famicom & Super Entertainment System",
+    ),
     "pokemon-mini": ("Nintendo - Pokemon Mini",),
     "satellaview": ("Nintendo - Satellaview",),
     "sufami-turbo": ("Nintendo - Sufami Turbo",),
@@ -162,8 +204,15 @@ PLATFORMS: dict[str, tuple[str, ...]] = {
     # Sega
     "sega32": ("Sega - 32X",),
     "gamegear": ("Sega - Game Gear",),
-    "sms": ("Sega - Master System - Mark III",),
-    "genesis": ("Sega - Mega Drive - Genesis",),
+    "sms": (
+        "Sega - Master System - Mark III",
+        "Sega Mark III & Master System",
+        "Sega Master System",
+    ),
+    "genesis": (
+        "Sega - Mega Drive - Genesis",
+        "Sega - Mega Drive - Genesis (Parent-Clone)",
+    ),
     "sega-pico": ("Sega - PICO",),
     "sg1000": ("Sega - SG-1000",),
     "segacd": ("Sega - Mega-CD - Sega CD",),

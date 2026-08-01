@@ -265,3 +265,119 @@ def test_provider_ids_and_raw_blobs_reach_romm_as_form_fields(tmp_path):
     _, fields, _ = romm.calls[0]
     assert fields["igdb_id"] == "7"
     assert '"summary"' in fields["raw_igdb_metadata"]
+
+
+# -- the provider-id gate -------------------------------------------------
+#
+# A provider id is the one field a library *acts* on rather than storing,
+# so it is the one field the library gets a say in. Measured against RomM
+# 4.9.2: ten of the eleven are stored when the provider is not configured
+# and `ra_id` answers 500, because RomM re-fetches from RetroAchievements
+# whenever it changes and has no key to do it with.
+
+
+class PolicyBackend(FakeRomm):
+    """A backend with an opinion about provider ids."""
+
+    def __init__(self, verdicts, **kwargs):
+        super().__init__(**kwargs)
+        self._verdicts = verdicts
+
+    def provider_id_policy(self):
+        return self._verdicts
+
+
+def _verdict(field, allowed=True, enriches=False, reason="because"):
+    from rom_hub.backends.base import ProviderIdVerdict
+
+    return ProviderIdVerdict(
+        field=field, allowed=allowed, enriches=enriches, reason=reason
+    )
+
+
+def test_a_refused_id_is_dropped_and_the_rest_of_the_patch_is_written(tmp_path):
+    """Losing a name and a summary because one id would have upset the
+    server is the trade `backends.base` refuses to make for artwork."""
+    plugin = FakePlugin(
+        MetadataPatch(
+            name="Kirby's Adventure",
+            summary="A platformer.",
+            provider_ids={"ra_id": 515, "igdb_id": 1074},
+        )
+    )
+    backend = PolicyBackend(
+        {
+            "ra_id": _verdict("ra_id", allowed=False, reason="no RA credentials"),
+            "igdb_id": _verdict("igdb_id"),
+        }
+    )
+    result = run_enrich(plugin, REF, backend=backend, work_dir=tmp_path)
+
+    _rom_id, fields, _artwork = backend.calls[0]
+    assert set(fields) == {"name", "summary", "igdb_id"}
+    assert result.withheld_ids == {"ra_id": "no RA credentials"}
+    assert "no RA credentials" in result.message
+
+
+def test_a_patch_of_only_refused_ids_writes_nothing_and_says_why(tmp_path):
+    plugin = FakePlugin(MetadataPatch(provider_ids={"ra_id": 515}))
+    backend = PolicyBackend(
+        {"ra_id": _verdict("ra_id", allowed=False, reason="no RA credentials")}
+    )
+    result = run_enrich(plugin, REF, backend=backend, work_dir=tmp_path)
+
+    assert backend.calls == []
+    assert result.changed is False
+    assert result.withheld_ids == {"ra_id": "no RA credentials"}
+    assert "no RA credentials" in result.message
+
+
+def test_an_id_that_makes_the_library_go_and_fetch_is_reported(tmp_path):
+    """The half worth having even on a yes: an igdb_id written to a RomM
+    that holds IGDB credentials pulls in genre, summary and screenshots,
+    and the same id written to one without them does nothing."""
+    plugin = FakePlugin(MetadataPatch(name="Kirby", provider_ids={"igdb_id": 1074}))
+    backend = PolicyBackend(
+        {"igdb_id": _verdict("igdb_id", enriches=True, reason="will fetch from IGDB")}
+    )
+    result = run_enrich(plugin, REF, backend=backend, work_dir=tmp_path)
+
+    assert result.enriching_ids == {"igdb_id": "will fetch from IGDB"}
+    assert "will fetch from IGDB" in result.message
+    assert result.withheld_ids == {}
+
+
+def test_a_backend_with_no_opinion_writes_every_id_as_given(tmp_path):
+    """`provider_id_policy` is optional, and a backend that never grows one
+    behaves exactly as it did before the gate existed."""
+    plugin = FakePlugin(MetadataPatch(provider_ids={"ra_id": 515, "moby_id": 9}))
+    backend = FakeRomm()
+    result = run_enrich(plugin, REF, backend=backend, work_dir=tmp_path)
+
+    _rom_id, fields, _artwork = backend.calls[0]
+    assert fields == {"ra_id": "515", "moby_id": "9"}
+    assert result.withheld_ids == {}
+
+
+def test_a_backend_whose_policy_raises_is_permissive_not_fatal(tmp_path):
+    """The opposite direction to `capabilities_of`, deliberately. A backend
+    that cannot say which ids are safe has told us nothing about them, and
+    withholding every id on a transport blip would make every enrich
+    quietly poorer -- where the failure this returns to is one loud 500."""
+
+    class Broken(FakeRomm):
+        def provider_id_policy(self):
+            raise RuntimeError("heartbeat unreachable")
+
+    plugin = FakePlugin(MetadataPatch(provider_ids={"ra_id": 515}))
+    backend = Broken()
+    run_enrich(plugin, REF, backend=backend, work_dir=tmp_path)
+    assert backend.calls[0][1] == {"ra_id": "515"}
+
+
+def test_the_summary_reaches_the_library_as_a_form_field(tmp_path):
+    """RomM stores `summary` where it discards every `raw_*_metadata`."""
+    plugin = FakePlugin(MetadataPatch(summary="Developed by HAL Laboratory."))
+    backend = FakeRomm()
+    run_enrich(plugin, REF, backend=backend, work_dir=tmp_path)
+    assert backend.calls[0][1] == {"summary": "Developed by HAL Laboratory."}

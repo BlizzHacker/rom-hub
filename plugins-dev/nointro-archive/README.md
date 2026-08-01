@@ -6,8 +6,76 @@ directory.
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `search` | `<base_url><directory>/` | reads the index once, caches it, matches file names |
+| `search` | `<base_url><directory>/` | reads the index once, caches it, matches and **ranks** file names |
 | `importer` | the same index | confirms the file is still listed, then plans it |
+
+## How much of No-Intro this reaches
+
+**25 directories, 25 RomM platforms, 15,165 archives.** Every number here
+was counted from the item's own `archive.org/metadata/<id>` file list on
+2026-08-01 — not estimated, and not the item's advertised contents.
+
+| | before (0.2.1) | after (0.3.0) |
+|---|---:|---:|
+| directories shipped | 12 | **25** |
+| platforms | 12 | **25** |
+| archives reachable | 6,628 | **15,165** |
+
+What was missing was not a long tail. It was the Nintendo shelf: **no Game
+Boy, no Super Nintendo**, and no Amiga or C64 either, because the twelve
+shipped directories were the twelve items in the dotted `nointro.*`
+family and that family has no `nointro.gb` and no usable `nointro.snes`
+(`nointro.snes_202203` is a single 3.2 GB .zip, which is not a directory
+of games). `identifier:nointro*` finds 71 items on Archive.org; most are
+a lone archive, a DAT-only upload or a "merged" dump with a private tree,
+and each of the thirteen added here was checked against the item's file
+list rather than read off its title.
+
+Five of them are a **subdirectory of a multi-system item**, which is the
+shape that unlocked the most machines for the least work.
+`NoIntro-Atari`'s root holds no ROMs — its five consoles are in five
+folders named after them — so `NoIntro-Atari/Atari - Lynx` is the
+directory, and `archive.org/download/NoIntro-Atari/Atari%20-%20Lynx/` is
+an ordinary index page. Same for the ColecoVision, the VIC-20 and the
+Plus/4.
+
+| added | platform | archives |
+|---|---|---:|
+| `nointro-nintendo-gameboy` | `gb` | 1,958 |
+| `nointro-snes` | `snes` | 1,746 |
+| `nointro.ca` | `amiga` | 3,169 |
+| `NoIntroArduboy` | `arduboy` | 532 |
+| `nointro.c64` | `c64` | 327 |
+| `nointro-commodore-plus4-vic20/Commodore - VIC-20` | `vic-20` | 292 |
+| `NoIntro-Coleco/Coleco - ColecoVision` | `colecovision` | 194 |
+| `NoIntro-Atari/Atari - Jaguar (J64)` | `jaguar` | 109 |
+| `NoIntro-Atari/Atari - Lynx` | `lynx` | 95 |
+| `NoIntro_PokemonMini` | `pokemon-mini` | 44 |
+| `NoIntroVirtualBoy` | `virtualboy` | 31 |
+| `NoIntroVMLabs` | `nuon` | 22 |
+| `nointro-commodore-plus4-vic20/Commodore - Plus-4` | `c-plus-4` | 18 |
+
+Three of those platforms have **no EmulatorJS core**, so a ROM imported
+under them is catalogued and not playable: `arduboy`, `nuon` and
+`pokemon-mini`. That is said here, said by `rom-hub platforms`, and
+recorded machine-readably in `rom_hub.playability.NO_EQUIVALENT` with a
+sentence per machine naming what it is and what it is not. None of them
+was remapped onto a playable slug to make the shelf look better.
+
+**`NoIntroSatellaview` (206) and `NoIntroSufamiTurbo` (13) are
+deliberately absent.** Both are Super Nintendo peripherals with their own
+RomM slugs and no core; filing them under `snes` — the obvious shortcut —
+would be a remap onto hardware they are not, since neither boots without
+the peripheral's own BIOS and mapper.
+
+### The cost, stated
+
+Reading all 25 indexes takes **34.8 seconds and 8.75 MB**, timed against
+Archive.org index by index on 2026-08-01, and the host kills a plugin at
+30 seconds. So a search with **no** `--platform` opens at most
+`max_directories` of them (default 10, about fourteen seconds) in
+configured order. With `--platform` the budget does not apply at all: one
+platform is one directory, so nothing in the list above is out of reach.
 
 ## Read this first: this plugin is not Myrient
 
@@ -68,19 +136,20 @@ table, so MiNERVA is not a `base_url` default and is not in the allowlist.
 
     rom-hub plugin install ./plugins-dev/nointro-archive
     rom-hub search "streets of rage" --platform genesis --limit 5
+    rom-hub search tetris --platform gb --limit 5
 
 ## Config
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `base_url` | `str` | `https://archive.org/download/` | mirror root; must be `https://` and its host must be in the manifest allowlist |
-| `collections` | `list[str]` | the twelve `nointro.*` items below | directories to search, **in order** |
+| `collections` | `list[str]` | the 25 directories above | directories to search, **in order** |
+| `max_directories` | `int` | `10` | how many indexes a search with **no** `--platform` may open. Measured against the host's 30-second ceiling; `--platform` ignores it |
 | `collection` | `str` | `No-Intro` | RomM collection imported ROMs are grouped into |
 
-Default `collections`: `nointro.gg`, `nointro.ms-mkiii`, `nointro.md`,
-`nointro.32x`, `nointro.tg-16`, `nointro.sg`, `nointro.atari-2600`,
-`nointro.atari-5200`, `nointro.atari-7800`, `nointro.ws`, `nointro.wsc`,
-`nointro.gbamultiboot`.
+The default `collections` order is the order a platform-less search opens
+them in, so the sets people ask for most are first; `manifest.toml`
+carries the list with its per-directory counts beside it.
 
 **Repointing `base_url` at another host also needs a `manifest.toml` edit and
 a reinstall.** That is deliberate. The allowlist is what the broker enforces;
@@ -97,10 +166,13 @@ thousands of files, served by someone giving bandwidth away.
   between `search` and `importer`, so an import that follows a search costs no
   request at all. The cache is bounded (32 directories, oldest evicted) so a
   long-lived host cannot accumulate everything it has ever seen.
-- **The walk stops as soon as `limit` results exist.** A query answered out of
-  the first directory never opens the second.
+- **A browse stops as soon as `limit` results exist.** With no query there is
+  nothing to rank, so the first directory answers it as well as three would.
+- **A query opens at least three directories before it may stop**, and at most
+  `max_directories`. That is the one place this plugin deliberately spends
+  more than it used to, and it buys the ranking below.
 - **`--platform` filters before any request.** A file's platform *is* its
-  directory here, so `--platform genesis` is one fetch instead of twelve.
+  directory here, so `--platform genesis` is one fetch instead of twenty-five.
 - **No concurrency is added.** The plugin has no sockets; `ctx.http` is an RPC
   the host serves one call at a time, and nothing here tries to work around
   that.
@@ -137,6 +209,39 @@ Subdirectories are listed but never descended into. Walking a whole mirror is
 not a thing a search should do to someone else's bandwidth; naming the
 directory in `collections` is.
 
+## Results are ranked, not taken in directory order
+
+The old walk kept the first `limit` matches it happened to meet and
+stopped. Two things followed, and both are the kind of wrong that looks
+like a thin source:
+
+- **A better match one directory down was invisible.** `batman` at
+  `--limit 2` returned two `Adventures of Batman & Robin, The (…) (Beta)`
+  rows out of the Game Gear index and never opened another directory — so
+  the Lynx's `Batman Returns`, which actually starts with the word, was
+  never seen.
+- **A beta outranked the game.** No-Intro filenames sort alphabetically
+  and `Klax (USA, Europe) (Beta).zip` sorts *before* `Klax (USA,
+  Europe).zip`, so the beta came first.
+
+Matches are now scored across every directory the walk opened:
+
+| score | means |
+|---:|---|
+| 3 | the title **is** the query, once regions, revisions and punctuation are stripped |
+| 2 | the title **starts with** the query |
+| 1 | every term appears somewhere in the filename |
+
+then ties break on the shorter filename (which prefers the plain release
+over its `(Rev 1) (Beta)` siblings) and then on configured directory
+order. Three tiers rather than a similarity score, because the useful
+distinction is coarse and a metric would invent precision the data does
+not have.
+
+Grouping in the host then collapses regional variants of one game into a
+single row with a variant count, so casting a wider net costs an operator
+nothing on screen.
+
 ## Platform mapping
 
 The only thing a directory index says about a ROM's platform is which
@@ -154,6 +259,7 @@ set:
 | `nointro.ca` | Commodore **Amiga** (`amiga`) | anything starting "ca" |
 | `nointro.ms-mkiii` | Master System / Mark III (`sms`) | — |
 | `nointro.md` | Mega Drive, which RomM files as `genesis` | — |
+| `NoIntro-Atari/Atari - Lynx` | the Lynx subdirectory of a five-console item | the item root, which holds no ROMs |
 
 The table is checked **before any request**: a `collections` entry nobody
 mapped is a configuration error, not a per-result oddity, and paying for a

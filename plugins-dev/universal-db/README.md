@@ -1,20 +1,32 @@
 # Universal-DB plugin for ROM Hub — 3DS and DS homebrew
 
-Implements the RPP v1 `search` and `importer` capabilities against
-[Universal-DB](https://db.universal-team.net), Universal-Team's open database of
-Nintendo 3DS and Nintendo DS **homebrew** — software written by hobbyists for
-those consoles and published by the people who wrote it.
+Implements the RPP v1 `search`, `importer` and `metadata` capabilities
+against [Universal-DB](https://db.universal-team.net), Universal-Team's open
+database of Nintendo 3DS and Nintendo DS **homebrew** — software written by
+hobbyists for those consoles and published by the people who wrote it.
 
 | Capability | Reads | Does |
 |---|---|---|
 | `search` | `db.universal-team.net/data/full.json` | filters the whole catalogue by title, author, console and category |
 | `importer` | the same document | plans the one release file that is a title on the console you asked for |
+| `metadata` | the same document | proposes the author's title and the icon they shipped; the **Hub** fetches the image |
+
+## Coverage: all of it, and that was already true
+
+**400 entries, one 1.66 MB document, one request.** The site publishes no
+paginated or per-system JSON (`data/3ds.json`, `data/ds.json` and
+`data/index.json` all 404), so reading the whole thing is both the cheapest
+and the only way to ask — and it means this plugin has never had a partial
+view to widen. What 0.2.0 adds is not reach but **depth**: a `metadata`
+capability, and a process-level cache so `search` then `enrich` reads the
+document once rather than twice.
 
 ## Install
 
     rom-hub plugin install ./plugins-dev/universal-db
     rom-hub search "wordle" --limit 5
     rom-hub import universal-db wordle-ds --platform nds
+    rom-hub enrich universal-db 42
 
 ## Config
 
@@ -23,6 +35,51 @@ those consoles and published by the people who wrote it.
 | `category` | `str` | `""` | restrict to one kind of entry: `game`, `app`, `utility`, `emulator`, `media`, `save-tool`. Empty means no filter |
 | `require_license` | `bool` | `false` | hide, and refuse to import, entries whose licence the database does not state |
 | `collection` | `str` | `Homebrew` | RomM collection imported ROMs are grouped into |
+| `set_name` | `bool` | `true` | `metadata` only: write the database's title over the library's |
+
+## What `metadata` sets — and what it cannot
+
+**`name`**, from the database's own title, and **`artwork_url`**, pointing
+at the icon its author shipped. Nothing else, and the "nothing else" is
+worth being blunt about.
+
+Every entry here carries a description, a long description, a category, a
+version, an update date, an author and usually a licence. **None of that
+reaches RomM.** RomM 4.9.2's update endpoint takes a name, a set of
+provider ids and a cover; it accepts all eight `raw_*_metadata` fields
+with HTTP 200 and **stores none of them** — verified against a live
+4.9.2. So routing this richness through one of those would be a write
+that reports success and changes nothing, which is worse than not doing
+it. The data stays in `SearchResult.extra`, where an operator can read
+it, and this capability proposes the two things a library will keep.
+
+**Why a title is worth writing here.** An import lands as
+`Universal-Updater.3dsx` or `PKCount.cia`; the database's `title` is what
+the author called it. For homebrew the author *is* the publisher of
+record, which is the same argument the `homebrew` plugin makes. Still
+config, defaulting on, for anyone who has curated their own spelling.
+
+**`icon` before `image`, and not because of size.** 364 of 400 entries
+publish a 48×48 `icon` — the picture the console's own home menu shows
+for that title, which is as close to box art as this material has. 399
+publish an `image`, the 2D banner, and **26 of those are the author's
+GitHub avatar**: a picture of an organisation rather than of a game. So
+the icon wins where there is one, the banner is the fallback, and an
+entry with neither gets no `artwork_url` — which `MetadataPatch` reads as
+"leave RomM's alone".
+
+**Two entries' artwork is deliberately unreachable.** A census of all 400
+on 2026-08-01 found every icon and banner on a host this plugin already
+declares, except one on `nawiasdev.eu` and one on `i.imgur.com`. Widening
+where this plugin may go, permanently, to reach two covers is the wrong
+trade, so those fall through to no artwork rather than to a broker
+refusal.
+
+**Resolution is exact or it is a refusal.** `--source-id <slug>` looks the
+entry up directly. Without one it matches the rom's name against the
+database's titles once case and punctuation are gone — an equality test,
+not a prefix one, so `Snake` cannot pick up `SnakeDS` — and a title that
+lands on more than one entry refuses and names them rather than choosing.
 
 ## Why this source is legitimately redistributable
 
@@ -187,6 +244,14 @@ Description is deliberately not searched: it is a sentence of prose per entry,
 and including it would make a two-letter query return most of the database — the
 mistake the Archive.org plugin made when a bare term reached its default field
 and answered `Die Hard` for `sonic`.
+
+## The database is read once per process
+
+`full.json` is 1.66 MB and three capabilities read it. Without a cache,
+searching and then enriching would pull the whole catalogue twice for one
+operator action. It is held for the life of the plugin subprocess, which
+is the life of one command; nothing here keeps it between runs, and
+`clear_cache()` exists for the test suite and for nothing else.
 
 ## Network
 

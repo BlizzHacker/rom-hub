@@ -38,6 +38,8 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 from retroachievements.consoles import NeedsMapping  # noqa: E402
 from retroachievements.metadata import (  # noqa: E402
     API,
+    GAME_API,
+    IMAGE_BASE,
     ApiFailed,
     Metadata,
     NoMatch,
@@ -50,6 +52,14 @@ from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "retroachievements"
 GAME_LIST = json.loads((FIXTURES / "get_game_list_console_1.json").read_text())
 
+# `API_GetGame.php`'s shape, on the same terms as the game-list fixture:
+# RetroAchievements' own published mock, from `api-js`'s
+# `src/game/getGame.test.ts`, kept exactly as published. Two warts come
+# with it and both are the point of having it -- every value is a JSON
+# *string*, including `ID` and `Flags`, and `Publisher` carries a trailing
+# space ("Activision ") that a summary must not reproduce.
+GAME_DETAILS = json.loads((FIXTURES / "get_game_4247.json").read_text())
+
 # The two hashes RA publishes for "Elemental Master" (console 1, id 4247).
 ELEMENTAL_MASTER = "32e1a15161ef1f070b023738353bde51"
 GLEY_LANCER = "8bd4a97783cda077c342173df0a9b51e"
@@ -58,21 +68,49 @@ KEY = "abc123DEFghi456"
 
 
 class FakeRA:
-    """Answers like retroachievements.org/API does, from the real shape."""
+    """Answers like retroachievements.org/API does, from the real shape.
 
-    def __init__(self, payload=None, status_code=200, text=None, raises=None):
+    Routed by URL since the plugin makes two calls: the game list, and
+    `API_GetGame.php` for the four catalogue fields the list does not
+    carry. `details` is what the second one answers; `None` makes it a
+    404, which is the case where the enrich has to keep going on what the
+    first call gave.
+    """
+
+    def __init__(
+        self,
+        payload=None,
+        status_code=200,
+        text=None,
+        raises=None,
+        details=GAME_DETAILS,
+        details_status=200,
+    ):
         self.payload = GAME_LIST if payload is None else payload
         self.status_code = status_code
         self.text = text
         self.raises = raises
+        self.details = details
+        self.details_status = details_status
         self.calls: list[tuple[str, dict]] = []
 
     def get(self, url, params=None):
         self.calls.append((url, dict(params or {})))
         if self.raises is not None:
             raise self.raises
+        if url == GAME_API:
+            if self.details is None:
+                return HttpResponse(status_code=404, text="")
+            return HttpResponse(
+                status_code=self.details_status, text=json.dumps(self.details)
+            )
         body = self.text if self.text is not None else json.dumps(self.payload)
         return HttpResponse(status_code=self.status_code, text=body)
+
+    @property
+    def list_calls(self) -> list[tuple[str, dict]]:
+        """Only the game-list requests, for the tests that count them."""
+        return [call for call in self.calls if call[0] == API]
 
 
 def _provider(http=None, config=None):
@@ -129,15 +167,26 @@ def test_the_hash_comparison_ignores_case():
     assert patch.provider_ids == {"ra_id": 4247}
 
 
-def test_exactly_one_request_is_made():
-    """RA's own documentation asks callers to cache this endpoint rather
-    than hammer it, and API_GetGame would add nothing storable."""
+def test_exactly_one_game_list_request_is_made():
+    """RA asks callers to cache this endpoint rather than hammer it.
+
+    The game list is fetched once per enrich and never twice, whatever
+    else the plugin goes on to do -- it is the big response (every game on
+    a console, with every hash) and the one RA's documentation is about.
+    """
     provider, http = _provider()
     provider.enrich(_ref())
-    assert len(http.calls) == 1
-    url, params = http.calls[0]
+    assert len(http.list_calls) == 1
+    url, params = http.list_calls[0]
     assert url == API
     assert params["i"] == "1" and params["h"] == "1"
+
+
+def test_details_off_makes_no_second_request():
+    """The switch for an operator enriching a whole library at once."""
+    provider, http = _provider(config={"details": False})
+    provider.enrich(_ref())
+    assert [url for url, _ in http.calls] == [API]
 
 
 def test_the_key_is_sent_as_y_and_the_username_only_when_set():
@@ -167,20 +216,99 @@ def test_no_raw_metadata_is_written_because_rpp_v1_has_no_field_for_it():
 
 
 def test_the_patch_touches_nothing_it_did_not_learn():
-    """Absent means leave alone. A hash hit teaches an id and a title, so
-    the patch carries an id and a title -- not an empty artwork field that
-    would blank a cover another plugin already set."""
-    provider, _ = _provider()
+    """Absent means leave alone.
+
+    A game RA carries no box art for gets no artwork field at all, rather
+    than an empty one that would blank a cover another plugin set.
+    """
+    provider, _ = _provider(FakeRA(details={"Genre": "Racing"}))
     patch = provider.enrich(_ref())
     assert patch.artwork_url is None and patch.artwork_base64 is None
-    assert set(patch.form_fields()) == {"ra_id", "name"}
+    assert set(patch.form_fields()) == {"ra_id", "name", "summary"}
 
 
-def test_set_name_false_writes_the_id_alone():
+def test_set_name_false_writes_the_id_and_what_it_learned():
     provider, _ = _provider(config={"set_name": False})
     patch = provider.enrich(_ref())
     assert patch.name is None
-    assert patch.form_fields() == {"ra_id": "4247"}
+    assert patch.form_fields()["ra_id"] == "4247"
+    assert "name" not in patch.form_fields()
+
+
+# -- the summary and the cover -------------------------------------------
+
+
+def test_the_summary_carries_the_counts_and_then_the_catalogue_facts():
+    provider, _ = _provider()
+    summary = provider.enrich(_ref()).summary
+    assert summary == (
+        "44 achievements worth 500 points on RetroAchievements. "
+        "Developed by David Crane, published by Activision. "
+        "Released 1980. Genre: Racing. Console: Atari 2600."
+    )
+
+
+def test_a_trailing_space_in_ras_own_data_is_not_reproduced():
+    """RA publishes `"Publisher": "Activision "`, space and all."""
+    provider, _ = _provider()
+    assert "Activision." in provider.enrich(_ref()).summary
+
+
+def test_a_leaderboard_count_of_zero_is_left_out():
+    """Elemental Master has 44 achievements and 0 leaderboards."""
+    provider, _ = _provider()
+    assert "leaderboard" not in provider.enrich(_ref()).summary
+
+
+def test_leaderboards_are_named_when_there_are_some():
+    provider, _ = _provider()
+    summary = provider.enrich(_ref(extra={"source_id": GLEY_LANCER})).summary
+    assert "33 leaderboards." in summary
+
+
+def test_without_the_second_call_the_counts_still_arrive():
+    provider, _ = _provider(config={"details": False})
+    assert provider.enrich(_ref()).summary == (
+        "44 achievements worth 500 points on RetroAchievements. "
+        "Console: Mega Drive."
+    )
+
+
+def test_the_box_art_url_is_built_on_the_host_already_allowlisted():
+    provider, _ = _provider()
+    patch = provider.enrich(_ref())
+    assert patch.artwork_url == IMAGE_BASE + "/Images/026365.png"
+    assert patch.artwork_filename == "cover.png"
+
+
+def test_ras_no_image_placeholder_is_not_written_over_a_real_cover():
+    provider, _ = _provider(FakeRA(details={**GAME_DETAILS, "ImageBoxArt": "/Images/000002.png"}))
+    assert provider.enrich(_ref()).artwork_url is None
+
+
+def test_a_failed_second_call_does_not_cost_the_id_that_already_matched():
+    """The hash matched. Losing a correct ra_id to a rate limit on an
+    optional call would be absurd."""
+    provider, _ = _provider(FakeRA(details=None))
+    patch = provider.enrich(_ref())
+    assert patch.provider_ids == {"ra_id": 4247}
+    assert patch.summary == (
+        "44 achievements worth 500 points on RetroAchievements. "
+        "Console: Mega Drive."
+    )
+    assert patch.artwork_url is None
+
+
+def test_summary_false_leaves_romms_description_alone():
+    provider, _ = _provider(config={"summary": False})
+    patch = provider.enrich(_ref())
+    assert patch.summary is None
+    assert "summary" not in patch.form_fields()
+
+
+def test_artwork_false_proposes_no_cover():
+    provider, _ = _provider(config={"artwork": False})
+    assert provider.enrich(_ref()).artwork_url is None
 
 
 # -- the no-key path ----------------------------------------------------

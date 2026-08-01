@@ -1,7 +1,7 @@
 [plugin]
 slug        = "if-archive"
 name        = "IF Archive (Interactive Fiction)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -31,10 +31,17 @@ network  = ["ifarchive.org", "ukrestrict.ifarchive.org"]
 romm_api = []
 
 [config]
-# Exactly the four runtime directories RomM 4.9.2 has a platform slug for.
-# Widening this is supported -- `zcode/german`, `adrift` -- and honest: a
+# Empty means the plugin's own default: the four runtime directories RomM
+# 4.9.2 has a platform slug for, plus the twenty-six subdirectories the
+# archive nests under them. Those subdirectories are where translations
+# and superseded releases live -- `zcode/old` alone holds 59 mapped story
+# files -- and reading only the four roots reached 1,158 of the 1,410
+# story files the thirty hold.
+#
+# Widening further is supported -- `adrift`, `alan` -- and honest: a
 # format with no RomM platform still appears in search and refuses at
-# import naming itself. Each entry costs one index page per search, and the
-# `zcode` one is 491 KB, so the list is capped at 12.
-directories = { type = "list[str]", default = ["zcode", "glulx", "tads", "hugo"] }
+# import naming itself. Each entry costs one index page per search; thirty
+# is 1,251 KB and 4.4 seconds over one connection (measured 2026-08-01),
+# and the list is capped at 40.
+directories = { type = "list[str]", default = [] }
 collection  = { type = "str", default = "IF Archive" }

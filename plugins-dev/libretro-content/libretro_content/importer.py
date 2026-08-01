@@ -24,7 +24,7 @@ claim the download then fails to meet.
 
 from rom_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
 
-from .buildbot import BuildbotError, directory_url, file_url, parse_listing
+from .buildbot import LISTINGS, BuildbotError, file_url
 from .filenames import safe_filename
 from .platforms import platform_for, why_unmapped
 
@@ -67,17 +67,15 @@ class Importer(ImportProvider):
         return slug
 
     def _listed_name(self, directory: str, filename: str) -> str:
-        url = directory_url(directory)
-        response = self.ctx.http.get(url)
-        if response.status_code != 200:
-            raise ImportRefused(
-                f"the libretro buildbot returned HTTP {response.status_code} for "
-                f"{url!r}, so {filename!r} could not be confirmed"
-            )
+        # From the process cache when a search already read this
+        # directory, which is the ordinary case: the runner loads both
+        # capabilities into one interpreter.
         try:
-            items = parse_listing(response.text)
+            items = LISTINGS.get(self.ctx.http, directory)
         except BuildbotError as exc:
-            raise ImportRefused(str(exc)) from exc
+            raise ImportRefused(
+                f"{exc} -- so {filename!r} could not be confirmed"
+            ) from exc
 
         for item in items:
             if not item.is_dir and item.name == filename:

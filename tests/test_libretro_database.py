@@ -43,6 +43,32 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "libretro_database"
 GAME_BOY = (FIXTURES / "nintendo-game-boy.dat").read_text(encoding="utf-8")
 PLAYSTATION = (FIXTURES / "sony-playstation.dat").read_text(encoding="utf-8")
 
+# The annotation sets, on the same terms as the catalogues above: entries
+# copied verbatim from the live `metadat/<kind>/Nintendo - Game Boy.dat`
+# on 2026-08-01, with that file's own header. Only the choice of three
+# games is ours.
+#
+# `releaseyear` and `releasemonth` deliberately carry **one** of the
+# three. libretro really does have a year for `Tetris 2 (USA)` and none
+# for `Tetris (World) (Rev 1)`, and a fixture that filled the gap in
+# would be testing a corpus that does not exist.
+ANNOTATIONS = {
+    kind: (FIXTURES / f"gb-{kind}.dat").read_text(encoding="utf-8")
+    for kind in (
+        "genre",
+        "developer",
+        "publisher",
+        "releaseyear",
+        "releasemonth",
+        "maxusers",
+        "franchise",
+    )
+}
+
+# The catalogue plus every annotation set, which is what a default enrich
+# of a Game Boy rom actually fetches.
+GB_ALL = {"no-intro": GAME_BOY, **ANNOTATIONS}
+
 TETRIS_CRC = "46DF91AD"
 TETRIS_MD5 = "982ED5D2B12A0377EB14BCDC4123744E"
 TETRIS_SHA1 = "74591CC9501AF93873F9A5D3EB12DA12C0723BBC"
@@ -236,10 +262,23 @@ def test_libretro_id_is_never_set_because_romm_means_something_else_by_it():
 
 
 def test_the_url_names_the_set_the_file_and_the_ref():
-    provider, http = _provider()
+    provider, http = _provider(details=[])
     provider.enrich(_ref())
     assert http.calls == [
         RAW + "master/metadat/no-intro/Nintendo%20-%20Game%20Boy.dat"
+    ]
+
+
+def test_the_catalogue_is_fetched_before_any_annotation_set():
+    """The name is the valuable half; the annotations hang off a match."""
+    provider, http = _provider()
+    provider.enrich(_ref())
+    assert http.calls[0].endswith("/metadat/no-intro/Nintendo%20-%20Game%20Boy.dat")
+    assert [url.split("/metadat/")[1].split("/")[0] for url in http.calls[1:]] == [
+        "genre",
+        "developer",
+        "publisher",
+        "releaseyear",
     ]
 
 
@@ -269,7 +308,9 @@ def test_a_playstation_rom_is_looked_up_in_redump():
 
 
 def test_narrowing_sets_narrows_which_files_are_fetched():
-    provider, http = _provider(FakeRaw({"redump": PLAYSTATION}), sets=["redump"])
+    provider, http = _provider(
+        FakeRaw({"redump": PLAYSTATION}), sets=["redump"], details=[]
+    )
     provider.enrich(
         _ref(platform="psx", filename="Ridge Racer (Europe) (Track 01).bin", name="")
     )
@@ -352,3 +393,112 @@ def test_the_manifest_declares_exactly_the_one_host_that_is_fetched():
     )
     assert manifest["permissions"]["network"] == ["raw.githubusercontent.com"]
     assert RAW.startswith("https://raw.githubusercontent.com/")
+
+
+# -- the annotation sets -------------------------------------------------
+#
+# `metadat/` carries far more than the two catalogues this plugin read.
+# `genre/`, `developer/`, `publisher/`, `releaseyear/` and four more are
+# the same dumps annotated one fact at a time, keyed by CRC-32, and much
+# smaller than the catalogues they annotate.
+
+
+def test_the_summary_carries_the_annotation_sets_joined_by_crc():
+    provider, _ = _provider(FakeRaw(GB_ALL))
+    # No `Region:` -- the DAT's own entry for this dump carries no
+    # `region` line, and inventing "World" from the filename is not this
+    # plugin's job.
+    assert provider.enrich(_ref()).summary == "Developed by Nintendo. Genre: Puzzle."
+
+
+def test_one_company_is_named_once_rather_than_twice():
+    """libretro has Nintendo as both developer and publisher of Tetris."""
+    provider, _ = _provider(FakeRaw(GB_ALL))
+    assert provider.enrich(_ref()).summary.count("Nintendo") == 1
+
+
+def test_a_year_and_a_month_become_a_month_not_a_date():
+    """No day is invented: libretro records a year and a month and that
+    is the whole of what it records."""
+    provider, _ = _provider(
+        FakeRaw(GB_ALL), details=["releaseyear", "releasemonth"]
+    )
+    summary = provider.enrich(_ref(name="Tetris 2 (USA)", filename="")).summary
+    assert summary == "Released December 1993. Region: USA."
+
+
+def test_a_year_with_no_month_is_just_the_year():
+    provider, _ = _provider(FakeRaw(GB_ALL), details=["releaseyear"])
+    summary = provider.enrich(_ref(name="Tetris 2 (USA)", filename="")).summary
+    assert "Released 1993." in summary
+
+
+def test_a_game_the_annotation_set_has_no_row_for_loses_only_that_fact():
+    """libretro has no `releaseyear` for Tetris (World) (Rev 1)."""
+    provider, _ = _provider(FakeRaw(GB_ALL))
+    summary = provider.enrich(_ref()).summary
+    assert "Released" not in summary
+    assert "Genre: Puzzle." in summary
+
+
+def test_details_names_which_directories_to_read():
+    provider, http = _provider(FakeRaw(GB_ALL), details=["franchise", "maxusers"])
+    summary = provider.enrich(_ref()).summary
+    assert "Franchise: Tetris." in summary
+    assert "2 players." in summary
+    assert not any("/metadat/genre/" in url for url in http.calls)
+
+
+def test_a_single_player_is_singular():
+    provider, _ = _provider(FakeRaw(GB_ALL), details=["maxusers"])
+    summary = provider.enrich(
+        _ref(name="Kirby's Dream Land (USA, Europe)", filename="")
+    ).summary
+    assert "1 player." in summary
+
+
+def test_details_off_costs_one_request_and_the_serial_still_arrives():
+    """The catalogue entry carries its own region and serial; those cost
+    nothing extra because the match already read them."""
+    provider, http = _provider(
+        FakeRaw({"redump": PLAYSTATION}), sets=["redump"], details=[]
+    )
+    patch = provider.enrich(
+        _ref(platform="psx", filename="Ridge Racer (Europe) (Track 01).bin", name="")
+    )
+    assert len(http.calls) == 1
+    assert patch.summary == "Region: Europe. Serial: SCES-00001."
+
+
+def test_a_missing_annotation_file_does_not_fail_the_enrich():
+    """Not every console has every annotation directory, and the name is
+    already resolved by the time they are asked for."""
+    provider, _ = _provider(FakeRaw({"no-intro": GAME_BOY}))
+    patch = provider.enrich(_ref(name="Tetris 2 (USA)", filename=""))
+    assert patch.name == "Tetris 2 (USA)"
+    assert patch.summary == "Region: USA."
+
+
+def test_an_unknown_details_name_is_refused_by_name():
+    provider, _ = _provider(FakeRaw(GB_ALL), details=["developper"])
+    with pytest.raises(NoMatch, match="developper"):
+        provider.enrich(_ref())
+
+
+def test_summary_false_leaves_romms_description_alone():
+    provider, http = _provider(FakeRaw(GB_ALL), summary=False)
+    patch = provider.enrich(_ref())
+    assert patch.summary is None
+    # And nothing was fetched for a summary that was not going to be sent.
+    assert len(http.calls) == 1
+
+
+def test_the_annotation_entries_never_supply_the_name():
+    """Their `comment` is a title too, and it is not the one that matched.
+
+    The catalogue's `game (name ...)` is what gets written, exactly as
+    before; an annotation row is a fact about a dump, not a naming
+    authority.
+    """
+    provider, _ = _provider(FakeRaw(GB_ALL))
+    assert provider.enrich(_ref()).name == "Tetris (World) (Rev 1)"

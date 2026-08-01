@@ -377,3 +377,146 @@ def test_every_kind_stays_inside_the_allowlist(kind):
     }[kind]
     provider, _ = _provider(FakeLibretro(kind=directory), config={"art_kind": kind})
     check_url(provider.enrich(_ref()).artwork_url, ["thumbnails.libretro.com"])
+
+
+# -- the fallback chain -------------------------------------------------
+#
+# This is what turned "libretro has no boxart for rom 1, here are the
+# seven spellings I tried in a directory that was never going to have
+# one" into a title screen. `FakeLibretro` serves exactly one set, so a
+# fake built with `Named_Titles` is a system with title screens and no
+# box art -- which is arcade, and most of every computer platform.
+
+
+def test_box_art_still_wins_when_there_is_any():
+    provider, http = _provider(FakeLibretro(kind="Named_Boxarts"))
+    patch = provider.enrich(_ref())
+    assert "/Named_Boxarts/" in patch.artwork_url
+    # And nothing beyond the first hit was ever asked for.
+    assert all("/Named_Titles/" not in url for url in http.calls)
+
+
+def test_a_title_screen_is_used_where_there_is_no_box():
+    provider, _ = _provider(FakeLibretro(kind="Named_Titles"))
+    assert "/Named_Titles/" in provider.enrich(_ref()).artwork_url
+
+
+def test_a_snap_is_used_where_there_is_neither():
+    provider, _ = _provider(FakeLibretro(kind="Named_Snaps"))
+    assert "/Named_Snaps/" in provider.enrich(_ref()).artwork_url
+
+
+def test_a_logo_is_not_reached_for_by_default():
+    """A wordmark on transparency is lettering, not a picture of a game."""
+    provider, _ = _provider(FakeLibretro(kind="Named_Logos"))
+    with pytest.raises(NoThumbnail):
+        provider.enrich(_ref())
+
+
+def test_every_spelling_of_the_preferred_set_is_tried_before_the_next_set():
+    """The other order would hand back a title screen for a game whose box
+    art is filed under a spelling this rom also has."""
+    provider, http = _provider(FakeLibretro(kind="Named_Snaps"))
+    provider.enrich(_ref())
+    kinds = [url.split("/")[-2] for url in http.calls]
+    # No Named_Titles request appears before the last Named_Boxarts one.
+    assert kinds.index("Named_Titles") > max(
+        i for i, k in enumerate(kinds) if k == "Named_Boxarts"
+    )
+
+
+def test_art_kind_singular_still_means_only_that_one():
+    """An operator who named one set was being specific."""
+    provider, http = _provider(
+        FakeLibretro(kind="Named_Titles"), config={"art_kind": "boxart"}
+    )
+    with pytest.raises(NoThumbnail):
+        provider.enrich(_ref())
+    assert all("/Named_Boxarts/" in url for url in http.calls)
+
+
+def test_art_kinds_sets_the_chain_and_its_order():
+    provider, http = _provider(
+        FakeLibretro(kind="Named_Logos"), config={"art_kinds": ["snap", "logo"]}
+    )
+    assert "/Named_Logos/" in provider.enrich(_ref()).artwork_url
+    assert all("/Named_Boxarts/" not in url for url in http.calls)
+
+
+def test_an_unknown_kind_in_the_chain_is_refused_before_any_request():
+    provider, http = _provider(config={"art_kinds": ["boxart", "screenshot"]})
+    with pytest.raises(NoThumbnail, match="not one of"):
+        provider.enrich(_ref())
+    assert http.calls == []
+
+
+def test_an_empty_chain_says_so_rather_than_finding_nothing():
+    provider, http = _provider(config={"art_kinds": []})
+    with pytest.raises(NoThumbnail, match="art_kinds is empty"):
+        provider.enrich(_ref())
+    assert http.calls == []
+
+
+def test_a_missing_directory_for_a_fallback_set_is_not_a_fault():
+    """Not every system carries all four sets.
+
+    A 404 on the *listing* is the same kind of answer as a 404 on a file:
+    move to the next set. Raising is what made the chain abort on the
+    first system that happened to lack Named_Titles.
+    """
+    provider, _ = _provider(FakeLibretro(kind="Named_Snaps"))
+    patch = provider.enrich(_ref(name="Super Mario World", filename=""))
+    assert "/Named_Snaps/" in patch.artwork_url
+
+
+def test_the_refusal_names_every_set_it_looked_in():
+    provider, _ = _provider(FakeLibretro(kind="Named_Logos"))
+    with pytest.raises(NoThumbnail) as exc:
+        provider.enrich(_ref(name="Not A Real Game", filename=""))
+    message = str(exc.value)
+    assert "Named_Boxarts, Named_Titles, Named_Snaps" in message
+
+
+def test_an_unreadable_listing_does_not_fail_the_enrich():
+    """Found by running this against a real library, not by reading code.
+
+    `ctx.http` refuses a response over 4 MiB and libretro's NES
+    `Named_Titles` listing is 4,297,395 bytes. While this plugin read one
+    directory the ceiling was never reached; the moment the chain reached
+    for a second set, every NES enrich died on a `ResponseTooLarge` raised
+    out of a *fallback*, after the probe ladder had already missed.
+    """
+
+    class Ceiling(FakeLibretro):
+        def get(self, url, params=None):
+            if url.endswith("/") and "/Named_Titles/" in url:
+                self.calls.append(url)
+                raise RuntimeError(
+                    "ResponseTooLarge: response from %r exceeded the "
+                    "4194304-byte limit at 4297395 bytes" % url
+                )
+            return super().get(url, params)
+
+    provider, _ = _provider(Ceiling(kind="Named_Snaps"))
+    # The snap listing is still readable, so the chain gets there.
+    patch = provider.enrich(_ref(name="Super Mario World", filename=""))
+    assert "/Named_Snaps/" in patch.artwork_url
+
+
+def test_the_refusal_says_a_listing_could_not_be_read():
+    """"No match" and "the fallback could not run" are different problems
+    and only one of them is about the name."""
+
+    class AllTooBig(FakeLibretro):
+        def get(self, url, params=None):
+            if url.endswith("/"):
+                self.calls.append(url)
+                raise RuntimeError("ResponseTooLarge: 4297395 bytes")
+            return super().get(url, params)
+
+    provider, _ = _provider(AllTooBig(kind="Named_Logos"))
+    with pytest.raises(NoThumbnail) as exc:
+        provider.enrich(_ref(name="Not A Real Game", filename=""))
+    message = str(exc.value)
+    assert "could not be read" in message
+    assert "4 MiB" in message

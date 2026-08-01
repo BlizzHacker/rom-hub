@@ -25,12 +25,23 @@ from scummvm_freeware.downloads import (  # noqa: E402
     is_payload,
     parse_listing,
 )
-from scummvm_freeware.games import GAMES, game_for, slug_for_directory  # noqa: E402
+from scummvm_freeware.games import (  # noqa: E402
+    DIRECTORIES,
+    GAMES,
+    game_for,
+    slug_for_directory,
+    slugs_for_directory,
+)
+from scummvm_freeware.metadata import (  # noqa: E402
+    Ambiguous,
+    Metadata,
+    NoMatch,
+)
 from scummvm_freeware.importer import ImportRefused, Importer  # noqa: E402
 from scummvm_freeware.search import Search  # noqa: E402
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
-from rom_hub.types import SearchResult  # noqa: E402
+from rom_hub.types import RomRef, SearchResult  # noqa: E402
 
 
 def fixture(name: str) -> str:
@@ -132,8 +143,19 @@ def test_a_document_that_is_not_an_index_raises():
 
 
 def test_the_directory_index_is_an_exact_inversion():
+    """One-game directories invert; engine shelves refuse to.
+
+    `SLUDGE` holds fourteen games, so there is no single slug for it and
+    answering with whichever sorted first would be a guess.
+    `slugs_for_directory` is the plural form and is what the code uses.
+    """
     for slug, game in GAMES.items():
-        assert slug_for_directory(game.directory) == slug
+        slugs = slugs_for_directory(game.directory)
+        assert slug in slugs
+        if len(slugs) == 1:
+            assert slug_for_directory(game.directory) == slug
+        else:
+            assert slug_for_directory(game.directory) is None
         assert game_for(slug) is game
 
 
@@ -295,3 +317,149 @@ def test_urls_are_quoted_once_and_never_carry_a_raw_space():
     assert url.startswith("https://downloads.scummvm.org/frs/extras/")
     assert " " not in url
     assert "%2520" not in url
+
+
+# ------------------------------------------------------- the engine shelves
+
+#: `/frs/extras/SLUDGE/` verbatim (2026-08-01): 35 archives for fourteen
+#: games, five of which ScummVM's own freeware page does not name. It is
+#: the fixture that makes the difference between a directory allowlist and
+#: a file allowlist visible.
+SLUDGE = fixture("sludge.html")
+SLUDGE_PAGES = {"SLUDGE": SLUDGE}
+
+
+def sludge_slugs():
+    return set(slugs_for_directory("SLUDGE"))
+
+
+def test_the_table_is_scummvms_own_published_list():
+    """28 games over 15 directories, up from 12 over 12."""
+    assert len(GAMES) == 28
+    assert len(DIRECTORIES) == 15
+    assert len(slugs_for_directory("SLUDGE")) == 14
+
+
+def test_an_engine_shelf_offers_only_the_files_its_games_name():
+    """`SLUDGE/` lists 35 archives; the games page names 30.
+
+    A directory allowlist would offer all 35. Five of them are not on
+    ScummVM's list, and offering a file nobody vouched for is the exact
+    thing the twelve-row version of this table existed to prevent.
+    """
+    search, _ = make_search(
+        SLUDGE_PAGES, config={"max_games": 28}, fallback=EMPTY_INDEX
+    )
+    results = [
+        r for r in search.search("", None, 500) if r.extra["game"] in sludge_slugs()
+    ]
+    offered = {r.extra["filename"] for r in results}
+    every_payload = {
+        d.filename for d in parse_listing(SLUDGE) if is_payload(d.filename)
+    }
+    assert offered < every_payload, (
+        "the shelf holds archives no game in the table claims"
+    )
+    claimed = set()
+    for slug in sludge_slugs():
+        claimed |= set(GAMES[slug].files)
+    assert offered == claimed
+
+
+def test_one_directory_is_read_once_however_many_of_its_games_matched():
+    """Fourteen SLUDGE games used to be fourteen identical round trips."""
+    search, http = make_search(
+        SLUDGE_PAGES, config={"max_games": 28}, fallback=EMPTY_INDEX
+    )
+    search.search("", None, 500)
+    assert http.calls.count(directory_url("SLUDGE")) == 1
+
+
+def test_an_unclaimed_archive_refuses_at_import_by_name():
+    importer, _ = make_importer(SLUDGE_PAGES)
+    with pytest.raises(ImportRefused, match="engine shelf"):
+        importer.plan(
+            SearchResult(source_id="full-moon/cubert.zip", title="x")
+        )
+
+
+def test_a_games_own_archive_still_imports():
+    importer, _ = make_importer(SLUDGE_PAGES)
+    plan = importer.plan(
+        SearchResult(source_id="full-moon/fullmoon.zip", title="Full Moon")
+    )
+    assert plan.files[0].filename == "fullmoon.zip"
+    assert plan.files[0].url == (
+        "https://downloads.scummvm.org/frs/extras/SLUDGE/fullmoon.zip"
+    )
+
+
+def test_a_directory_per_title_row_still_offers_the_whole_directory():
+    """The twelve original rows enumerate no files on purpose: ScummVM
+    re-releases those archives and a list would break on the next bump."""
+    assert GAMES["soltys"].files == ()
+    assert GAMES["soltys"].offers("soltys-en-v1.0.zip")
+    assert GAMES["soltys"].offers("anything-scummvm-ships-later.zip")
+
+
+# ------------------------------------------------------------------ metadata
+
+
+def rom(**kwargs):
+    base = {"rom_id": 1, "name": "", "filename": "", "platform": None, "extra": {}}
+    base.update(kwargs)
+    return RomRef(**base)
+
+
+def make_metadata(config=None):
+    # `metadata` makes no request at all, so it gets an http that would
+    # fail loudly if one were ever attempted.
+    return Metadata(PluginContext(config=config or {}, http=None))
+
+
+def test_enrich_gives_an_abbreviated_archive_its_real_title():
+    """`tgttpoacs.zip` is 'The Game That Takes Place on a Cruise Ship'."""
+    patch = make_metadata().enrich(rom(filename="tgttpoacs.zip"))
+    assert patch.name == "The Game That Takes Place on a Cruise Ship"
+
+
+def test_enrich_makes_no_request():
+    """There is nothing to fetch: the source publishes no metadata at all."""
+    meta = make_metadata()
+    assert meta.enrich(rom(filename="nsc.zip")).name == "Nathan's Second Chance"
+
+
+def test_enrich_sets_a_name_and_never_artwork():
+    """downloads.scummvm.org publishes archives and checksums. There is no
+    cover here to propose and inventing one would be this plugin asserting
+    something it has no standing to assert."""
+    patch = make_metadata().enrich(rom(filename="atw.zip"))
+    assert patch.name == "Above The Waves"
+    assert patch.artwork_url is None
+    assert patch.artwork_base64 is None
+    assert not patch.has_artwork()
+    assert patch.form_fields() == {"name": "Above The Waves"}
+
+
+def test_a_search_result_source_id_resolves_through_its_slug_half():
+    patch = make_metadata().enrich(
+        rom(extra={"source_id": "soltys/soltys-en-v1.0.zip"})
+    )
+    assert patch.name == "Sołtys"
+
+
+def test_a_rom_named_after_a_directory_per_title_archive_matches_on_title():
+    patch = make_metadata().enrich(rom(name="God of Thunder"))
+    assert patch.name == "God of Thunder"
+
+
+def test_a_rom_this_plugin_does_not_carry_refuses_rather_than_guessing():
+    with pytest.raises(NoMatch):
+        make_metadata().enrich(rom(name="Blade Runner"))
+    with pytest.raises(NoMatch, match="not one of"):
+        make_metadata().enrich(rom(extra={"source_id": "monkey-island"}))
+
+
+def test_a_rom_with_nothing_to_go_on_says_how_to_help():
+    with pytest.raises(NoMatch, match="--source-id"):
+        make_metadata().enrich(rom())

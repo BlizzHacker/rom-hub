@@ -1,12 +1,26 @@
-"""Aminet plugin, replayed against captured search pages and readmes.
+"""Aminet plugin, replayed against captured pages and readmes.
 
-`tests/fixtures/aminet/` holds two verbatim `aminet.net/search?dir=game`
-pages and two `.readme` files. The search pages are there for what they
-really contain: fifty rows in *two different markups* (light rows and dark
-rows differ), four architectures in one directory, and near-identical
-filenames targeting different computers. The two readmes are the same
-game built for two machines -- `ppc-amigaos` and `ppc-morphos` -- which is
-exactly the confusion the platform table exists to prevent.
+`tests/fixtures/aminet/` holds verbatim `aminet.net` bodies of four
+shapes and two `.readme` files.
+
+* **search pages** (`search_*.html`) for what they really contain: fifty
+  rows in *two different markups* (light rows and dark rows differ), four
+  architectures in one directory, and near-identical filenames targeting
+  different computers;
+* **shelf listings** (`shelf_game_think_p1.html`,
+  `shelf_game_race_p1.html`) -- `aminet.net/game/think?page=1`, captured
+  2026-08-01. Same table, same count line, and the endpoint that makes a
+  browse possible at all. `think` says "Found 910"; `race` says "Found
+  75", so one is a shelf with 19 pages and the other is a shelf that ends
+  on page 2, which is what makes the stop conditions testable;
+* **the search form** (`search_form_no_query.html`) -- what
+  `?dir=game` with no `query` actually returns. No count line, no rows.
+  This is the fixture that pins the bug: an empty query used to be sent
+  to `/search`, and this is what came back.
+
+The two readmes are the same game built for two machines --
+`ppc-amigaos` and `ppc-morphos` -- which is exactly the confusion the
+platform table exists to prevent.
 
 No test opens a socket.
 """
@@ -27,6 +41,8 @@ from aminet.archive import (  # noqa: E402
     parse_readme,
     parse_results,
     readme_url,
+    shelf_url,
+    total_matches,
 )
 from aminet.importer import ImportRefused, Importer  # noqa: E402
 from aminet.platforms import (  # noqa: E402
@@ -37,7 +53,7 @@ from aminet.platforms import (  # noqa: E402
     platform_for,
     why_unmapped,
 )
-from aminet.search import Search  # noqa: E402
+from aminet.search import DEFAULT_SHELVES, Search  # noqa: E402
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 from rom_hub.types import SearchResult  # noqa: E402
@@ -60,30 +76,43 @@ STEEL_SKY = fixture("search_steel_sky_game.html")
 NO_MATCHES = fixture("search_no_matches.html")
 #: aminet.net/robots.txt -- HTTP 200 whose body is a themed error page.
 NOT_FOUND_200 = fixture("not_found_200.html")
+#: `aminet.net/game/think?page=1` -- "Found 910 matching packages".
+SHELF_THINK = fixture("shelf_game_think_p1.html")
+#: `aminet.net/game/race?page=1` -- "Found 75", so page 2 is the last.
+SHELF_RACE = fixture("shelf_game_race_p1.html")
+#: `aminet.net/search?dir=game` with no `query`: the search *form*.
+SEARCH_FORM = fixture("search_form_no_query.html")
 README_ABRICK = fixture("readme_abrick.txt")
 README_MOS = fixture("readme_abandondedbricks.txt")
 
 
 class FakeHttp:
-    """Search pages by page number, readmes by path."""
+    """Search pages by page number, shelf listings by shelf, readmes by path."""
 
-    def __init__(self, pages=None, readmes=None, status=200):
+    def __init__(self, pages=None, readmes=None, status=200, shelves=None):
         self.pages = pages if pages is not None else {1: TETRIS}
         self.readmes = readmes or {}
+        self.shelves = shelves or {}
         self.status = status
         self.calls: list[tuple[str, dict]] = []
 
     def get(self, url, params=None):
         params = params or {}
         self.calls.append((url, params))
+        page = int(params.get("page", 1))
         if url == SEARCH:
-            page = int(params.get("page", 1))
             # A page the test did not stock answers the way Aminet does
             # when the results have run out: a real search page carrying
             # "Found 0 matching packages" and no table.
             return HttpResponse(
                 status_code=self.status, text=self.pages.get(page, NO_MATCHES)
             )
+        for shelf, bodies in self.shelves.items():
+            if shelf_url(shelf) == url:
+                body = bodies.get(page) if isinstance(bodies, dict) else bodies
+                return HttpResponse(
+                    status_code=self.status, text=body or NO_MATCHES
+                )
         for path, body in self.readmes.items():
             if readme_url(path) == url:
                 return HttpResponse(status_code=self.status, text=body)
@@ -96,8 +125,8 @@ DEFAULT_READMES = {
 }
 
 
-def make_search(pages=None, config=None, status=200):
-    http = FakeHttp(pages, DEFAULT_READMES, status)
+def make_search(pages=None, config=None, status=200, shelves=None):
+    http = FakeHttp(pages, DEFAULT_READMES, status, shelves)
     return Search(PluginContext(config=config or {}, http=http)), http
 
 
@@ -237,13 +266,35 @@ def test_the_shelf_table_matches_aminets_own_tree():
 # --------------------------------------------------------------------- search
 
 
-def test_the_query_and_the_game_scope_go_to_the_server():
+def test_the_query_goes_to_the_server_and_dir_does_not():
+    """`dir=` never scoped anything, so it is no longer sent.
+
+    Verified live 2026-08-01: `?query=tetris`, `&dir=game`, `&dir=demo`
+    and `&dir=zzz` return the identical 134 packages. Sending it made the
+    plugin *look* server-scoped -- its README said so -- while every
+    non-game row arrived anyway and was thrown away here. A parameter a
+    server ignores is not a filter, and continuing to send one would keep
+    the claim alive in the request log.
+    """
     search, http = make_search()
     search.search("tetris", None, 5)
     url, params = http.calls[0]
     assert url == SEARCH
     assert params["query"] == "tetris"
-    assert params["dir"] == "game"
+    assert "dir" not in params
+
+
+def test_the_search_form_is_what_an_empty_query_used_to_get():
+    """The fixture that pins the bug this release fixes.
+
+    `?dir=game` with no `query` is not a zero-result search. It is the
+    search *form*: no count line, no rows. `parse_results` refuses it --
+    correctly -- so a browse used to fail outright rather than return
+    nothing.
+    """
+    with pytest.raises(AminetError) as exc:
+        parse_results(SEARCH_FORM)
+    assert "matching package" in str(exc.value)
 
 
 def test_results_carry_the_architecture_whether_or_not_it_maps():
@@ -314,6 +365,98 @@ def test_a_non_200_search_raises():
     search, _ = make_search(status=502)
     with pytest.raises(AminetError):
         search.search("tetris", None, 5)
+
+
+# ---------------------------------------------------------------------- browse
+
+
+def test_an_empty_query_browses_shelves_instead_of_searching():
+    """The whole point of the shelf endpoint: a browse that works.
+
+    Before this, an empty query went to `/search` with no `query`, and
+    Aminet answered with the form. Now it goes to `/game/2play`, which is
+    a real listing scoped by the server.
+    """
+    search, http = make_search(shelves={"game/2play": {1: SHELF_THINK}})
+    results = search.search("", None, 5)
+    assert len(results) == 5
+    url, params = http.calls[0]
+    assert url == shelf_url(DEFAULT_SHELVES[0])
+    assert params == {"page": 1}
+    assert all(call[0] != SEARCH for call in http.calls)
+
+
+def test_a_browse_walks_from_one_shelf_to_the_next():
+    """`game/race` ends at 75 packages; the walk moves on rather than
+    asking for a page that is not there."""
+    search, http = make_search(
+        config={"shelves": ["game/race", "game/think"], "max_pages": 4},
+        shelves={
+            "game/race": {1: SHELF_RACE, 2: SHELF_RACE},
+            "game/think": {1: SHELF_THINK},
+        },
+    )
+    search.search("", None, 500)
+    asked = [(url, params.get("page")) for url, params in http.calls]
+    assert asked[:2] == [
+        (shelf_url("game/race"), 1),
+        (shelf_url("game/race"), 2),
+    ]
+    assert (shelf_url("game/think"), 1) in asked
+
+
+def test_the_count_line_stops_the_walk_at_the_real_last_page():
+    """`Found 75` over 50 rows a page means two pages exist and no more.
+
+    Without reading the count, a full page 2 would look like "there may
+    be more" and cost a third request for a page Aminet does not have.
+    """
+    assert total_matches(SHELF_RACE) == 75
+    assert total_matches(SHELF_THINK) == 910
+    assert total_matches("no count line here") is None
+
+
+def test_a_browse_needs_no_client_side_shelf_filter():
+    """The shelf is the scope, so every row of it is on that shelf."""
+    search, _ = make_search(shelves={"game/2play": {1: SHELF_THINK}})
+    results = search.search("", None, 50)
+    assert results
+    assert {r.extra["directory"] for r in results} == {"game/think"}
+
+
+def test_the_default_browse_is_the_fourteen_game_shelves():
+    assert len(DEFAULT_SHELVES) == 14
+    assert all(holds_games(shelf) is True for shelf in DEFAULT_SHELVES)
+    for excluded in ("game/data", "game/edit", "game/hint", "game/patch"):
+        assert excluded not in DEFAULT_SHELVES
+
+
+def test_a_shelf_aminet_does_not_have_is_refused_before_the_request():
+    search, http = make_search(config={"shelves": ["game/roguelike"]})
+    with pytest.raises(AminetError) as exc:
+        search.search("", None, 5)
+    assert "game/roguelike" in str(exc.value)
+    assert http.calls == []
+
+
+def test_a_shelf_name_cannot_be_a_path_or_a_url():
+    for bad in ("../etc/passwd", "game/../util", "https://evil.example/x", ""):
+        with pytest.raises(AminetError):
+            shelf_url(bad)
+    assert shelf_url("game/think") == "https://aminet.net/game/think"
+
+
+def test_every_browse_url_is_inside_the_declared_allowlist():
+    from rom_hub.manifest import parse_manifest
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = parse_manifest(
+        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    ).network
+    for shelf in DEFAULT_SHELVES:
+        assert url_allowed(shelf_url(shelf), allowlist)
+    # And a host nobody declared is refused, so the check is doing work.
+    assert not url_allowed("https://mos.aminet.net/game/think", allowlist)
 
 
 # ------------------------------------------------------------------- importer

@@ -64,8 +64,20 @@ from rom_hub_sdk.context import DataAssetUnavailable, PluginContext  # noqa: E40
 
 
 def context(config=None, assets=True) -> PluginContext:
+    """A plugin context, with the blob switched **on**.
+
+    `raw_metadata` defaults to false in the plugin now, because
+    `raw_manual_metadata` is accepted with a 200 and stored nowhere RomM
+    will show or return -- measured twice, including paired with a changed
+    provider id to rule out the id gate. The blob-building code is still
+    the richest thing here and is still under test, so the default is
+    overridden for these tests and pinned separately by
+    `test_the_blob_is_off_by_default_because_romm_does_not_keep_it`.
+    """
+    merged = {"raw_metadata": True}
+    merged.update(config or {})
     return PluginContext(
-        config=dict(config or {}),
+        config=merged,
         # No http at all. If this plugin ever calls ctx.http, the test
         # suite finds out by AttributeError rather than by a live request.
         http=None,
@@ -422,14 +434,14 @@ def test_the_patch_touches_exactly_one_field_and_it_is_the_ungated_one():
     assert patch.provider_ids == {}
     assert patch.name is None
     assert patch.artwork_url is None and patch.artwork_base64 is None
-    assert set(patch.form_fields()) == {"raw_manual_metadata"}
+    assert set(patch.form_fields()) == {"raw_manual_metadata", "summary"}
 
 
 def test_absent_means_leave_alone_is_preserved():
     """Everything the plugin does not know stays out of the request, so a
     curated name or igdb_id on the rom is untouched."""
     fields = Metadata(context()).enrich(rom(name="Fallout")).form_fields()
-    assert list(fields) == ["raw_manual_metadata"]
+    assert sorted(fields) == ["raw_manual_metadata", "summary"]
     written = json.loads(fields["raw_manual_metadata"])
     assert list(written) == [BLOB_KEY]
 
@@ -464,3 +476,58 @@ def test_the_manifest_pins_the_dataset_to_a_commit_with_a_sha256():
     assert "/master/" not in asset.url and "/main/" not in asset.url
     assert manifest.network == ["raw.githubusercontent.com"]
     assert set(manifest.capabilities) == {"metadata"}
+
+
+# ----------------------------------------------- the field RomM keeps
+
+
+def test_the_blob_is_off_by_default_because_romm_does_not_keep_it():
+    """`raw_manual_metadata` answers 200 and is stored nowhere RomM will
+    show or return -- measured on a live 4.9.2 on 2026-08-01, twice,
+    the second time paired with a *changed* provider id in the same
+    request to rule out the id gate that governs the other seven fields.
+
+    So the default write is the summary, which does arrive.
+    """
+    patch = Metadata(
+        PluginContext(config={}, http=None, data_assets={"manifest.yaml": str(FIXTURE)})
+    ).enrich(rom(name="Fallout"))
+    assert patch.raw_metadata == {}
+    assert list(patch.form_fields()) == ["summary"]
+
+
+def test_the_summary_names_the_save_paths_a_person_would_read():
+    patch = Metadata(context()).enrich(rom(name="Fallout"))
+    assert patch.summary.startswith("Saves: ")
+    assert "ludusavi-manifest" in patch.summary
+
+
+def test_the_placeholders_are_left_exactly_as_the_manifest_writes_them():
+    """`<winAppData>` expanded here would be a claim about the operator's
+    filesystem that the manifest does not make."""
+    patch = Metadata(context()).enrich(rom(name="Fallout"))
+    assert "<" in patch.summary and ">" in patch.summary
+
+
+def test_cloud_sync_is_named_because_it_is_often_the_whole_answer():
+    patch = Metadata(context()).enrich(rom(name="!Anyway!"))
+    assert "Cloud saves: steam." in patch.summary
+
+
+def test_registry_keys_are_reported_separately_from_files():
+    """Same split the blob makes, for the same reason: a registry key is
+    not a path and a reader must not be told it is."""
+    patch = Metadata(context()).enrich(
+        rom(name="Accounting+", extra={"source_id": "Accounting+"})
+    )
+    assert "Registry: HKEY_CURRENT_USER/Software/Crows Crows Crows/Accounting+." in (
+        patch.summary
+    )
+    assert "Saves:" not in patch.summary
+
+
+def test_summary_false_and_raw_false_is_a_refusal_not_an_empty_write():
+    """An enrich that writes nothing is not a degraded enrich."""
+    provider = Metadata(context({"summary": False, "raw_metadata": False}))
+    with pytest.raises(NoSaveData, match="nowhere for it to go"):
+        provider.enrich(rom(name="Fallout"))

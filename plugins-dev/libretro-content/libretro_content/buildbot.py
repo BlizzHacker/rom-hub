@@ -97,6 +97,48 @@ def parse_listing(text: str) -> list[Item]:
     return items
 
 
+class ListingCache:
+    """Directory listings already fetched in this process.
+
+    One listing is one round trip and the whole source is 29 of them, so
+    a search that walks the lot and an import that follows it should not
+    pay twice. Shared between `search` and `importer`, which the runner
+    loads into the same interpreter.
+
+    Unbounded on purpose: the ceiling is the 29 directories in
+    `platforms.SYSTEMS` and their listings total 131 KB (measured
+    2026-08-01), so there is nothing here for an eviction policy to
+    protect against.
+    """
+
+    def __init__(self):
+        self._listings: dict[str, list[Item]] = {}
+        self.fetches = 0
+
+    def get(self, http, system: str) -> list[Item]:
+        cached = self._listings.get(system)
+        if cached is not None:
+            return cached
+        url = directory_url(system)
+        self.fetches += 1
+        response = http.get(url)
+        if response.status_code != 200:
+            raise BuildbotError(
+                f"the libretro buildbot returned HTTP {response.status_code} "
+                f"for {url!r}"
+            )
+        items = parse_listing(response.text)
+        self._listings[system] = items
+        return items
+
+    def clear(self) -> None:
+        self._listings.clear()
+
+
+#: One cache per plugin process.
+LISTINGS = ListingCache()
+
+
 def directory_url(system: str) -> str:
     """Where one system's listing lives.
 

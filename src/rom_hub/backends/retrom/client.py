@@ -80,7 +80,14 @@ CUSTOM_LAYOUT = 2
 # it wrote; quietly discarding `moby_id` would make that report false, and
 # the operator would have no way to find out except by reading the library
 # afterwards.
-WRITABLE_FIELDS = frozenset({"name", "igdb_id"})
+#
+# `summary` is the Hub's name for a game's description, and Retrom has had
+# a column for it all along -- `game_metadata()` above already reads field
+# 3 as `description`. The field number is not a guess: `GameMetadata` and
+# `UpdatedGameMetadata` share their numbering, which is the same fact the
+# existing writes for `name` (2), `cover_url` (4) and `igdb_id` (7) each
+# rely on, since every one of those numbers was taken from the read path.
+WRITABLE_FIELDS = frozenset({"name", "summary", "igdb_id"})
 
 
 class RetromError(BackendError):
@@ -461,16 +468,18 @@ class RetromClient:
         if unknown:
             raise RetromError(
                 f"refusing to update game {game_id}: Retrom's GameMetadata "
-                f"has no field for {unknown}. It stores name, description, "
-                f"cover/background/icon urls and one provider id "
-                f"(igdb_id) -- see models/metadata.proto. The write was "
-                f"refused rather than partly applied, because a report of "
-                f"what was written has to be true."
+                f"has no field for {unknown}. It stores name, description "
+                f"(the Hub's `summary`), cover/background/icon urls and one "
+                f"provider id (igdb_id) -- see models/metadata.proto. The "
+                f"write was refused rather than partly applied, because a "
+                f"report of what was written has to be true."
             )
 
         message = proto.varint_field(1, game_id)
         if "name" in fields:
             message += proto.string_field(2, str(fields["name"]))
+        if "summary" in fields:
+            message += proto.string_field(3, str(fields["summary"]))
         if "igdb_id" in fields:
             raw = str(fields["igdb_id"]).strip()
             try:

@@ -326,6 +326,30 @@ _MAX_PROVIDER_ID_CHARS = 64
 
 _MAX_ROM_NAME_CHARS = 500
 
+# The one prose field RomM actually *stores*, and the reason this model
+# grew past "a title and a picture".
+#
+# `Body_update_rom_api_roms__id__put` declares `summary` alongside `name`,
+# and unlike the eight `raw_*_metadata` fields -- which RomM 4.9.2 accepts
+# with a 200 and then does not persist -- this one round-trips. Measured
+# against a live RomM 4.9.2 on 2026-08-01:
+#
+#   PUT summary="A probe summary written by rom-hub."  -> 200
+#   GET /api/roms/{id}                                 -> that exact string
+#   PUT name=<unchanged>, no summary part              -> 200, summary kept
+#
+# So it is a real column, it is partial-update-safe in the same way `name`
+# is, and it is where a source's release date, developer, publisher, genre
+# and player count can reach an operator's library. Nothing else on that
+# endpoint can carry them: `metadatum` (genres, companies, first_release_
+# date, player_count) is populated by RomM's own providers and has no form
+# field at all.
+#
+# Bounded because a plugin composes it. RomM's column is TEXT and would
+# take far more; a summary is a paragraph, and a plugin that sends a
+# megabyte of one is a plugin that has gone wrong.
+MAX_SUMMARY_CHARS = 8 * 1024
+
 # Each raw blob is serialised into one form field. protocol.MAX_MESSAGE_CHARS
 # (8 MiB) already bounds the whole reply, but a per-field bound keeps one
 # enormous blob from being the entire budget.
@@ -369,16 +393,64 @@ class MetadataPatch(BaseModel):
     FetchPlan URL -- or as `artwork_base64`, bytes the plugin already has.
     Never both: two sources for one file is an ambiguity the host would
     have to resolve by guessing.
+
+    **What is deliberately not here.** RomM's update endpoint also takes
+    `fs_name`, `url_cover` and `url_manual`, and none of the three is a
+    field a plugin gets to set. `fs_name` renames the file on disk, which
+    is not a metadata edit at all. `url_cover` and `url_manual` are worse
+    than they look: measured against RomM 4.9.2, writing `url_cover` makes
+    *RomM* go and fetch that URL server-side -- `path_cover_large` went
+    from "" to a stored image seconds later -- so a plugin-named URL would
+    be fetched by a process the Hub does not control, bypassing both the
+    allowlist check and `MAX_ARTWORK_BYTES`. The Hub fetching the cover
+    itself, which is what `artwork_url` already does, is strictly the
+    safer arrangement and produces the same stored cover.
+
+    Structured metadata is not here either, and not for want of trying.
+    RomM keeps genres, companies, `first_release_date`, `player_count` and
+    `average_rating` in a `metadatum` sub-object that its own providers
+    populate; `PUT /api/roms/{id}` has no form field for any of it, and a
+    part named `genres` is accepted with a 200 and discarded (measured).
+    `summary` is the one prose field that survives, so a source's release
+    date, developer and genre reach the library through that or not at
+    all. Each plugin's README says which of its data cannot arrive.
     """
 
     name: str | None = Field(
         default=None, min_length=1, max_length=_MAX_ROM_NAME_CHARS
+    )
+    #: A description of the game. Absent means leave RomM's alone; see
+    #: MAX_SUMMARY_CHARS for what was measured about this field.
+    summary: str | None = Field(
+        default=None, min_length=1, max_length=MAX_SUMMARY_CHARS
     )
     provider_ids: dict[str, int | str] = Field(default_factory=dict)
     raw_metadata: dict[str, dict | list] = Field(default_factory=dict)
     artwork_url: str | None = None
     artwork_base64: str | None = None
     artwork_filename: str = DEFAULT_ARTWORK_FILENAME
+
+    @field_validator("summary", mode="before")
+    @classmethod
+    def _summary_is_prose(cls, v):
+        """Trim, and refuse a summary that is only whitespace.
+
+        A source with no description should leave the field absent, which
+        means "leave RomM's alone". A plugin that instead forwards the
+        empty string it found would write a blank over whatever an
+        operator (or IGDB) had put there -- the exact erasure the absent/
+        empty distinction exists to prevent, arriving through the one
+        field where a source legitimately has nothing to say quite often.
+        """
+        if isinstance(v, str):
+            trimmed = v.strip()
+            if not trimmed:
+                raise ValueError(
+                    "summary is blank; leave it unset to keep RomM's "
+                    "existing description rather than erasing it"
+                )
+            return trimmed
+        return v
 
     @field_validator("provider_ids", mode="before")
     @classmethod
@@ -512,6 +584,8 @@ class MetadataPatch(BaseModel):
         fields: dict[str, str] = {}
         if self.name is not None:
             fields["name"] = self.name
+        if self.summary is not None:
+            fields["summary"] = self.summary
         for key, value in self.provider_ids.items():
             fields[key] = str(value)
         for key, value in self.raw_metadata.items():

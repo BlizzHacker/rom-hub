@@ -1,21 +1,18 @@
 """ludusavi `metadata`: where a game keeps its saves.
 
     RomRef -> is this a PC platform? -> normalised title keys
-           -> exactly one manifest entry -> a raw_manual_metadata blob
+           -> exactly one manifest entry -> a summary a library will show
 
 Nothing is fetched. The manifest arrives as a `[[data_assets]]` file the
 host has already downloaded and hash-verified, so this capability opens no
 socket and makes no `ctx.http` call at all.
 
-Three decisions here are the careful half of a choice that could have gone
-the other way, and one of them is a compromise this module is not going to
-pretend otherwise about.
+**This plugin used to write only a `raw_manual_metadata` blob, and that
+blob does not arrive.** The reasoning behind it was careful and the
+conclusion was wrong, so both halves are worth keeping written down.
 
-**Where the data goes: `raw_manual_metadata`, and the reason is not
-aesthetic.** RPP's `MetadataPatch` has no save-location field, and neither
-does RomM — there is no right answer here, only a least-wrong one. RomM
-4.9.2 accepts eight `raw_*_metadata` form fields, and **seven of them are
-gated on a provider id**::
+RomM 4.9.2 accepts eight `raw_*_metadata` form fields, and **seven of
+them are gated on a provider id**::
 
     if cleaned_data["hltb_id"] and raw_hltb_metadata is not None:
         cleaned_data["hltb_metadata"] = raw_hltb_metadata
@@ -23,25 +20,34 @@ gated on a provider id**::
     if raw_manual_metadata is not None:
         cleaned_data["manual_metadata"] = raw_manual_metadata
 
-(`backend/endpoints/roms/__init__.py`, read out of a running 4.9.2.) So a
-blob written to `raw_hltb_metadata` is silently dropped unless an
-`hltb_id` is written with it — and writing a fabricated HowLongToBeat id
-into somebody's library to make our own data stick would be exactly the
-"stuff it somewhere structurally wrong to make it appear" that must not
-happen. `raw_manual_metadata` is the only field with no id gate, and it is
-also the only one of the eight that does not claim to be a named
-third-party provider's data. It is where this goes.
+(`backend/endpoints/roms/__init__.py`, read out of a running 4.9.2.)
+`raw_manual_metadata` is the only one with no id gate and the only one
+that does not claim to be a named third party's data, so it was the
+least-wrong home — and inventing an `hltb_id` to unlock a different field
+would have been putting a fabricated provider id in somebody's library.
 
-**Two things about that are honestly bad, and are in the README as well as
-here.** First, RomM's response schema for `manual_metadata` is a closed
-`TypedDict` of seven keys, so `GET /api/roms/{id}` does **not** echo the
-`ludusavi` key back — verified against a live 4.9.2, where the database
-column holds the whole blob and the API response holds only the keys the
-schema knows. The write lands; RomM 4.9.2 does not show it. Second, RomM's
-update endpoint takes the whole blob for a field and `RomRef` deliberately
-does not hand a plugin the library's existing metadata, so this
-**replaces** any hand-entered `manual_metadata` on that rom rather than
-merging with it.
+What was not established is whether the write *lands*. It does not.
+Measured on 2026-08-01 against a live 4.9.2: `PUT` with a marker inside
+`raw_manual_metadata` answers 200, and the marker appears nowhere in the
+rom record afterwards -- not under `manual_metadata`, not anywhere in the
+response at all. Repeated for `raw_hasheous_metadata` and
+`raw_igdb_metadata` paired with a *changed* provider id in the same
+request, to rule out the id gate: the id lands, the blob does not. So
+`raw_metadata` is **off by default** now. Writing into a void is one
+thing; letting an operator believe their save paths are in their library
+is worse.
+
+`summary` is where this goes instead, because RomM stores that -- the
+same measurement, opposite result. It is one paragraph rather than a
+structured document, which means the blob is still the richer artefact
+and `raw_metadata = true` still produces it for a backend that grows a
+home for it.
+
+One thing about the blob remains honestly bad and is in the README:
+RomM's update endpoint takes the whole value for a field and `RomRef`
+deliberately does not hand a plugin the library's existing metadata, so
+enabling it **replaces** any hand-entered `manual_metadata` on that rom
+rather than merging with it.
 
 **Matching refuses far more often than it guesses.** See `titles.py`. The
 platform is checked before anything else, a key has to be at least four
@@ -53,9 +59,9 @@ the operator knows the answer and the library's name does not say it.
 
 import json
 
-from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
+from rom_hub_sdk import MAX_SUMMARY_CHARS, MetadataPatch, MetadataProvider, RomRef
 
-from .manifest_data import ManifestUnreadable, find
+from .manifest_data import CONFIG_TAG, SAVE_TAG, ManifestUnreadable, find
 from .platforms import PC_PLATFORMS, describe, is_pc_platform
 from .titles import MIN_KEY_CHARS, candidates, normalise
 
@@ -153,13 +159,23 @@ class Metadata(MetadataProvider):
                         f"write. If you know where this game saves, "
                         f"PCGamingWiki is where the manifest is compiled from"
                     )
-                return MetadataPatch(
-                    raw_metadata={
+                patch: dict = {}
+                if self._summary():
+                    patch["summary"] = _summary(game)
+                if self._raw_metadata():
+                    patch["raw_metadata"] = {
                         "raw_manual_metadata": {
                             BLOB_KEY: self._blob(game, key, origin)
                         }
                     }
-                )
+                if not patch:
+                    raise NoSaveData(
+                        f"the ludusavi manifest has an entry for "
+                        f"{game.title!r}, and both `summary` and "
+                        f"`raw_metadata` are switched off, so there is "
+                        f"nowhere for it to go. Nothing was written"
+                    )
+                return MetadataPatch(**patch)
 
         if not tried:
             shown = ", ".join(repr(text) for text, _ in labels)
@@ -179,6 +195,27 @@ class Metadata(MetadataProvider):
         )
 
     # -- configuration ---------------------------------------------------
+
+    def _summary(self) -> bool:
+        return bool(self.ctx.config.get("summary", True))
+
+    def _raw_metadata(self) -> bool:
+        """Whether to send the full blob as well. Off by default now.
+
+        Not because the blob is wrong -- it is the richest thing this
+        plugin has -- but because it does not arrive. See the module
+        docstring: `raw_manual_metadata` is accepted with a 200 and stored
+        nowhere RomM will show or return, measured twice on 2026-08-01,
+        including paired with a *changed* provider id in the same request
+        to rule out the id gate. Sending it by default is spending bytes
+        to write into a void and, worse, letting an operator believe their
+        save paths are in their library.
+
+        Left switchable rather than deleted: a different RomM version, or
+        a backend that grows a home for it, would make it worth having
+        again, and the blob-building code is the part that took the work.
+        """
+        return bool(self.ctx.config.get("raw_metadata", False))
 
     def _platforms(self) -> frozenset[str]:
         configured = self.ctx.config.get("platforms")
@@ -237,6 +274,74 @@ class Metadata(MetadataProvider):
                 f"description; nothing was written"
             )
         return blob
+
+
+# -- the one form a library will actually show ---------------------------
+
+#: How many paths a summary names before it says how many more there are.
+#: A summary is read by a person standing in front of a rom page; a
+#: fourteen-line list of globs is a blob with worse formatting.
+SUMMARY_PATHS = 3
+
+
+def _summary(game) -> str:
+    """Where this game keeps its saves, in the field RomM stores.
+
+    The blob is richer and the blob does not arrive. This is the whole of
+    what a library will show, so it is written for someone reading a rom
+    page rather than for a consumer parsing JSON: the save paths first,
+    the config paths only if there are no save paths, a count when there
+    are more than `SUMMARY_PATHS`, and the cloud-sync note last because
+    "Steam Cloud syncs this" is often the entire answer somebody wanted.
+
+    Ludusavi's placeholders are left exactly as the manifest writes them.
+    `<winAppData>` expanded to a path on *this* machine would be a claim
+    about the operator's filesystem that the manifest does not make.
+    """
+    saves = [location for location in game.files if SAVE_TAG in location.tags]
+    kind = "Saves"
+    if not saves:
+        saves = [location for location in game.files if CONFIG_TAG in location.tags]
+        kind = "Config"
+    if not saves:
+        saves = list(game.files)
+        kind = "Files"
+
+    parts: list[str] = []
+    if saves:
+        shown = [location.where for location in saves[:SUMMARY_PATHS]]
+        line = f"{kind}: {'; '.join(shown)}"
+        remaining = len(saves) - len(shown)
+        if remaining > 0:
+            line += f" (+{remaining} more)"
+        parts.append(line + ".")
+
+    if game.registry:
+        keys = [location.where for location in game.registry[:SUMMARY_PATHS]]
+        line = f"Registry: {'; '.join(keys)}"
+        remaining = len(game.registry) - len(keys)
+        if remaining > 0:
+            line += f" (+{remaining} more)"
+        parts.append(line + ".")
+
+    syncing = sorted(store for store, syncs in game.cloud.items() if syncs)
+    if syncing:
+        parts.append(f"Cloud saves: {', '.join(syncing)}.")
+
+    parts.append(
+        "Paths are ludusavi's placeholders and globs; see "
+        f"{SOURCE_URL} for what each expands to."
+    )
+    return _fit(" ".join(parts))
+
+
+def _fit(text: str) -> str:
+    """Trimmed to the patch's ceiling, at a word, with a visible mark."""
+    if len(text) <= MAX_SUMMARY_CHARS:
+        return text
+    cut = text[: MAX_SUMMARY_CHARS - 1]
+    spaced = cut.rsplit(" ", 1)[0]
+    return (spaced if len(spaced) > MAX_SUMMARY_CHARS // 2 else cut).rstrip(" ;,.") + "…"
 
 
 __all__ = ["Metadata", "ManifestUnreadable", "NoSaveData"]

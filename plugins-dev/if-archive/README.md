@@ -27,10 +27,46 @@ Checked against a live RomM 4.9.2 rather than assumed: `GET
 /api/platforms/supported` returns 458 slugs and exactly four of them are IF
 runtimes.
 
+## How much of the archive this reaches
+
+**Thirty directories, 1,410 mapped story files** — counted by parsing
+every index on 2026-08-01, not estimated.
+
+| | before (0.1.0) | after (0.2.0) |
+|---|---:|---:|
+| directories read | 4 | **30** |
+| mapped story files | 1,158 | **1,410** |
+
+The four runtime roots were never the whole shelf. The archive nests
+translations and superseded releases one level down, and that is where
+the missing quarter lives: `zcode/old` holds 59 mapped story files,
+`glulx/old` 46, `zcode/spanish` 42, `zcode/italian` 20, `zcode/french`
+19. Twenty-six such subdirectories exist across the four runtimes and
+none of them was in the default list.
+
+They were also the *cheap* part. Thirty indexes is 1,251 KB and 4.4
+seconds over one keep-alive connection, against the host's 30-second
+ceiling — and **914 KB of that is the four roots**, which were being read
+already. The twenty-six subdirectories are 338 KB between them.
+
+Not every one pays off, and the fixtures say so both ways:
+`zcode/german` is 19 files of which 16 are mapped Z-code, and `hugo/old`
+is two files of which **neither** is a story file. Thirty directories are
+not thirty wins.
+
+**`--platform` deliberately does not narrow the directory list.** That is
+the obvious optimisation here and it would be wrong: the extension
+decides the runtime, never the directory. `The Cruel Count's Castle.gblorb`
+sits in `games/zcode/` and is a **Glulx** game; `zenspeak.blb` sits there
+and is not a game at all. A `--platform glulx` search that skipped
+`zcode/` on the strength of its name would silently lose exactly the
+files this plugin already goes to some trouble not to misfile.
+
 ## What it does
 
-- Reads the IF Archive's own directory indexes — `zcode`, `glulx`, `tads`
-  and `hugo` by default — and searches them by title.
+- Reads the IF Archive's own directory indexes — the `zcode`, `glulx`,
+  `tads` and `hugo` runtimes and their twenty-six subdirectories by
+  default — and searches them by title.
 - Imports one bare story file. The URL, the platform and the filename all
   come from the archive path, so an import makes **no HTTP request of its
   own**.
@@ -87,16 +123,31 @@ anybody can start.
 
 | key | type | default | what it does |
 |---|---|---|---|
-| `directories` | `list[str]` | `["zcode", "glulx", "tads", "hugo"]` | which of the archive's game directories to search. Each one is a separate index page per search (the `zcode` one is 491 KB), so the list is capped at 12. |
+| `directories` | `list[str]` | `[]` — meaning the thirty below | which of the archive's game directories to search. Each one is a separate index page per search (the `zcode` one is 491 KB), so the list is capped at 40. |
 | `collection` | `str` | `"IF Archive"` | the library collection imports are filed under. |
 
-Widening `directories` is supported and honest. There are 92 directories
-under `if-archive/games/`, and pointing this at `adrift`, `alan`, `quest`
-or `aas` will find the games — they appear in search with no platform set,
+The default thirty are the four runtime roots plus every subdirectory the
+archive nests under them:
+
+    zcode  zcode/old  zcode/danish  zcode/dutch  zcode/french
+    zcode/german  zcode/italian  zcode/lojban  zcode/russian
+    zcode/slovenian  zcode/spanish  zcode/swedish
+    glulx  glulx/old  glulx/french  glulx/german  glulx/italian
+    glulx/russian  glulx/spanish  glulx/swedish
+    tads  tads/old  tads/czech  tads/german  tads/italian
+    tads/russian  tads/spanish  tads/swedish
+    hugo  hugo/old
+
+That list is **checked in rather than discovered**. Discovering it means
+parsing each root's `subdirlist` and then fetching whatever it named,
+which is a plugin choosing at runtime which URLs to request; a new
+language directory is one line in `if_archive/index.py` instead.
+
+Widening further is supported and honest. There are 96 directories under
+`if-archive/games/`, and pointing this at `adrift`, `alan`, `quest` or
+`aas` will find the games — they appear in search with no platform set,
 and refuse at import with a message naming the format and saying RomM has
-no slug for it. `zcode/german`, `zcode/french` and the other nine `zcode`
-subdirectories work the same way and *do* import, because their contents
-are ordinary Z-machine files.
+no slug for it.
 
 ## The source's terms, in plain language
 
@@ -180,7 +231,7 @@ a file called `Apollo18+20.zip`, and `The=20=Cruel=20=Count=27=s=20=Castle`
 round-trips through nothing at all. This plugin reads the `href` and
 percent-decodes it once.
 
-Related: 40 of the 1,509 files in the four runtime directories have a
+Related: 40 of the 1,509 files in the four runtime roots have a
 percent-encoded `href`, and **decoded, every one of them is a filename the
 Hub already accepts** — `Escape!.zblorb`, `Ancient Treasure, Secret
 Spider.zblorb`, `Apollo18+20.zip`. Refusing names containing `%`, or

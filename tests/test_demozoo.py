@@ -68,7 +68,20 @@ from demozoo.productions import (  # noqa: E402
     require_importable,
     type_id_for,
 )
-from demozoo.search import MAX_LIMIT, Search, SearchError  # noqa: E402
+from demozoo.metadata import (  # noqa: E402
+    MEDIA_HOST,
+    Ambiguous,
+    Metadata,
+    NoMatch,
+    _strip_extension,
+)
+from demozoo.search import (  # noqa: E402
+    DEFAULT_MAX_REQUESTS,
+    MAX_LIMIT,
+    MAX_REQUESTS_CAP,
+    Search,
+    SearchError,
+)
 
 from rom_hub.manifest import parse_manifest  # noqa: E402
 from rom_hub.netpolicy import url_allowed  # noqa: E402
@@ -117,6 +130,19 @@ def make_search(bodies, config=None, status=200):
 def make_importer(bodies, config=None, status=200):
     http = FakeHttp(bodies, status)
     return Importer(PluginContext(config=config or {}, http=http)), http
+
+
+def make_metadata(bodies, config=None, status=200):
+    http = FakeHttp(bodies, status)
+    return Metadata(PluginContext(config=config or {}, http=http)), http
+
+
+def rom(**kwargs):
+    from rom_hub.types import RomRef
+
+    base = {"rom_id": 1, "name": "", "filename": "", "platform": None, "extra": {}}
+    base.update(kwargs)
+    return RomRef(**base)
 
 
 # ------------------------------------------------------------- platforms
@@ -393,6 +419,7 @@ def test_the_manifest_declares_the_scene_org_redirect_target():
         "demozoo.org",
         "files.scene.org",
         "fujiology.org",
+        "media.demozoo.org",
     ]
     assert url_allowed("https://archive.scene.org/pub/parties/x.zip", ALLOWLIST)
 
@@ -642,5 +669,121 @@ def test_a_name_with_no_extension_survives_intact():
 
 def test_the_manifest_declares_search_and_importer_and_no_romm_scopes():
     manifest = parse_manifest(MANIFEST)
-    assert set(manifest.capabilities) == {"search", "importer"}
+    assert set(manifest.capabilities) == {"search", "importer", "metadata"}
     assert manifest.romm_api == []
+
+
+# -------------------------------------------------------------- metadata
+
+#: `?title=Desert Dream` -- five productions, one per machine, which is
+#: exactly the scene's habit of reusing a title.
+TITLE_DESERT_DREAM = fixture("search_title_desert_dream.json")
+#: The same query narrowed to Amiga OCS/ECS: one production.
+TITLE_DESERT_DREAM_AMIGA = fixture("search_title_desert_dream_amiga.json")
+#: Kefrens' Desert Dream, with its screenshots.
+PROD_DESERT_DREAM = fixture("prod_142_desert_dream.json")
+
+
+def test_enrich_proposes_demozoos_title_and_its_screenshot():
+    meta, http = make_metadata(
+        [TITLE_DESERT_DREAM_AMIGA, PROD_DESERT_DREAM]
+    )
+    patch = meta.enrich(rom(name="dd.lha", platform="amiga"))
+    assert patch.name == "Desert Dream"
+    assert patch.artwork_url.startswith(MEDIA_HOST)
+    assert patch.artwork_filename.endswith(".png")
+    assert len(http.calls) >= 2
+
+
+def test_the_screenshot_is_the_standard_rendering_not_the_original():
+    """An original is the production's own framebuffer; MetadataPatch caps
+    artwork at 8 MB and Demozoo's own site shows the standard one."""
+    meta, _ = make_metadata([TITLE_DESERT_DREAM_AMIGA, PROD_DESERT_DREAM])
+    patch = meta.enrich(rom(name="Desert Dream", platform="amiga"))
+    assert "/screens/s/" in patch.artwork_url
+
+
+def test_a_source_id_skips_matching_entirely():
+    meta, http = make_metadata([PROD_DESERT_DREAM])
+    patch = meta.enrich(rom(extra={"source_id": "142"}))
+    assert patch.name == "Desert Dream"
+    assert len(http.calls) == 1
+    assert http.calls[0][0].endswith("/142/")
+
+
+def test_a_title_the_scene_reuses_refuses_rather_than_choosing():
+    """Five productions are called Desert Dream. Seven are called Second
+    Reality. Picking one would attach another group's screenshot."""
+    meta, _ = make_metadata([TITLE_DESERT_DREAM])
+    with pytest.raises(Ambiguous, match="not a choice"):
+        meta.enrich(rom(name="Desert Dream"))
+
+
+def test_the_platform_narrows_the_lookup_and_makes_it_singular():
+    meta, http = make_metadata([TITLE_DESERT_DREAM_AMIGA, PROD_DESERT_DREAM])
+    meta.enrich(rom(name="Desert Dream", platform="amiga"))
+    sent = [params for _, params in http.calls if "title" in params]
+    assert sent, "the title lookup should have run"
+    assert all("platform" in params for params in sent)
+
+
+def test_a_rom_named_after_its_file_still_resolves():
+    """RomM names a rom after the file it was uploaded as, so a scene
+    import comes back as `dd.lha` while the production is Desert Dream."""
+    meta, _ = make_metadata([TITLE_DESERT_DREAM_AMIGA, PROD_DESERT_DREAM])
+    patch = meta.enrich(rom(filename="desert dream.lha", platform="amiga"))
+    assert patch.name == "Desert Dream"
+
+
+def test_a_dot_in_a_real_title_is_not_mistaken_for_an_extension():
+    assert _strip_extension("dd.lha") == "dd"
+    assert _strip_extension("Mr. Driller") == "Mr. Driller"
+    assert _strip_extension("Wolfenstein 3.D") == "Wolfenstein 3.D"
+
+
+def test_a_title_demozoo_does_not_have_refuses_and_says_why():
+    meta, _ = make_metadata(['{"count": 0, "results": []}'])
+    with pytest.raises(NoMatch, match="exact match"):
+        meta.enrich(rom(name="Nothing At All"))
+
+
+def test_set_name_off_still_proposes_the_screenshot():
+    meta, _ = make_metadata(
+        [TITLE_DESERT_DREAM_AMIGA, PROD_DESERT_DREAM], config={"set_name": False}
+    )
+    patch = meta.enrich(rom(name="Desert Dream", platform="amiga"))
+    assert patch.name is None
+    assert "name" not in patch.form_fields()
+    assert patch.artwork_url is not None
+
+
+def test_the_artwork_url_is_inside_the_declared_allowlist():
+    meta, _ = make_metadata([TITLE_DESERT_DREAM_AMIGA, PROD_DESERT_DREAM])
+    patch = meta.enrich(rom(name="Desert Dream", platform="amiga"))
+    assert url_allowed(patch.artwork_url, ALLOWLIST)
+
+
+def test_a_screenshot_on_an_undeclared_host_is_ignored_not_named():
+    """The gate is doing work. A plugin that names a URL it knows the host
+    will refuse turns a shrug into an error."""
+    detail = json.loads(PROD_DESERT_DREAM)
+    detail["screenshots"] = [
+        {"standard_url": "https://evil.example/screen.png",
+         "original_url": "https://evil.example/screen.png"}
+    ]
+    meta, _ = make_metadata([TITLE_DESERT_DREAM_AMIGA, json.dumps(detail)])
+    patch = meta.enrich(rom(name="Desert Dream", platform="amiga"))
+    assert patch.artwork_url is None
+    assert not url_allowed("https://evil.example/screen.png", ALLOWLIST)
+
+
+# ------------------------------------------------------- request budget
+
+
+def test_the_request_budget_was_raised_and_is_still_bounded():
+    """demozoo.org publishes `Crawl-delay: 10`; a plugin that could be
+    configured into a hundred calls per command would deserve blocking."""
+    assert DEFAULT_MAX_REQUESTS == 12
+    search, http = make_search(WINDOWS_DEMO, config={"max_requests": 500})
+    search.search("", None, MAX_LIMIT)
+    assert len(http.calls) == MAX_REQUESTS_CAP
