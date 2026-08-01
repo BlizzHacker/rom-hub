@@ -265,8 +265,9 @@ verified live.
 
 ## Install
 
-    rom-hub plugin install https://github.com/<you>/rom-hub-archive-org --ref v0.1.0
-    rom-hub import archive-org rubik_202308
+    rom-hub plugin install https://github.com/<you>/rom-hub-archive-org --ref v0.3.0
+    rom-hub search sonic --platform genesis
+    rom-hub import archive-org Sonic_The_Hedgehog_W_REV01_h1C
 
 ## Config
 
