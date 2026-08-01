@@ -93,6 +93,31 @@ inside it.
   write because the match is by hash, which is the strongest identification
   available; turn it off if you curate names yourself.
 
+### RomM needs its own RetroAchievements key to accept `ra_id`
+
+**This is a precondition on your RomM server, not on this plugin, and without it
+every successful match still fails at the write.** Measured live against RomM
+4.9.2: `PUT /api/roms/{id}` does not simply store the `ra_id` it is handed. It
+treats the field as a request to re-identify the ROM and calls RA itself —
+`update_rom` → `meta_ra_handler.get_rom_by_id` → `get_game_extended_details` —
+signing that call with **RomM's** `RETROACHIEVEMENTS_API_KEY`. When that
+variable is unset the key is `None`, yarl refuses to build the query string, and
+the request ends as:
+
+    TypeError: Invalid variable type: value should be str, int or float,
+    got None of type <class 'NoneType'>
+
+which reaches the Hub as a bare `PUT /api/roms/2 failed (500): Internal Server
+Error`. Nothing in that message names RetroAchievements, so the symptom looks
+like a Hub fault and is not one — the hash matched, the patch was correct, and
+the server rejected it for a reason of its own.
+
+`ra_id` is the only provider id this plugin writes, so on a RomM with no RA key
+of its own the plugin **cannot** succeed. Set `RETROACHIEVEMENTS_API_KEY` on the
+RomM container (the same per-account key works; `GET /api/heartbeat` then
+reports `METADATA_SOURCES.RA_API_ENABLED: true`) before enriching. With it set,
+the same request succeeds and both fields land.
+
 ## What it does not set, and why
 
 **No `raw_*_metadata`.** RPP v1 has exactly eight of those fields, belonging to
@@ -198,14 +223,75 @@ This plugin's own code is MIT (see `LICENSE`).
 
 ## Verification status
 
-The offline tests run against RetroAchievements' **own published response
-shapes**, taken from the two places the project publishes them openly on GitHub
-— the sample in `RetroAchievements/api-docs` (`docs/v1/get-game-list.md`) and
-the mock in `RetroAchievements/api-js` (`src/console/getGameList.test.ts`).
-They are not a capture we made from the live API: the endpoint needs a key, and
-no key was available when this plugin was written. **The live path is therefore
-unverified.** The no-key refusal path *has* been exercised end to end through
-the Hub's CLI.
+**The live path has been exercised end to end against the real API**, with a
+real RetroAchievements web API key, on 2026-07-31. What that run establishes,
+precisely:
+
+- `rom-hub import libretro-content "Sega - Mega Drive - Genesis/aepd.bin"`
+  filed the ROM into a disposable RomM 4.9.2, which computed
+  `md5_hash = 30c01f5a82b51fd7e23315dd070d5818` for it;
+- `API_GetGameList.php?i=1&h=1&f=1` returned 607 Mega Drive games carrying 950
+  hashes, one of which is that exact digest, on game `17392`
+  `~Homebrew~ Alter Ego`;
+- `rom-hub enrich retroachievements 2 --source-id 30c01f5a…` reported
+  `rom 2: updated name, ra_id`, and `GET /api/roms/2` afterwards returned
+  `ra_id = 17392` and `name = "~Homebrew~ Alter Ego"` — RomM's own API, read
+  back after the fact, not the Hub's report of its own work.
+
+So `ID`-as-a-JSON-string really does arrive that way and really is coerced, the
+hash comparison really does match on a live list, and the two fields really do
+land. The `secret` handling was exercised on the same run: the key went in
+through `rom-hub plugin secret set retroachievements api_key --env`, and
+`state.json` does not contain it.
+
+**What the run also established, by failing:** writing `ra_id` to a RomM with no
+`RETROACHIEVEMENTS_API_KEY` of its own is a 500 every time — see [RomM needs its
+own RetroAchievements key](#romm-needs-its-own-retroachievements-key-to-accept-ra_id).
+That is the whole reason this section could not have been written from the
+offline tests. Nothing in the fixtures could have surfaced it, because the
+fixtures stop at the plugin's own output.
+
+**Still unverified, and named rather than implied:** every console except Mega
+Drive. The match is one code path, so a hit on console 1 is a hit on console 53,
+but the *table* in `consoles.py` is only confirmed where a live lookup has
+actually run. The 401 branch has not been exercised against a genuinely rejected
+key, and neither has the >4 MiB refusal.
+
+The offline tests continue to run against RetroAchievements' **own published
+response shapes**, taken from the two places the project publishes them openly
+on GitHub — the sample in `RetroAchievements/api-docs`
+(`docs/v1/get-game-list.md`) and the mock in `RetroAchievements/api-js`
+(`src/console/getGameList.test.ts`). The live run agrees with both.
+
+### The NES is the trap this verification walked into
+
+The obvious thing to reach for is the NES build of the same game —
+`~Homebrew~ Alter Ego` is also RA game `8170` on console 7. **That chain cannot
+close, and the failure is instructive rather than incidental.** Measured on the
+same run:
+
+| | |
+|---|---|
+| libretro's `Alter Ego.nes`, RomM's `md5_hash` | `1f21f648af663fbd3c864b7283d994c7` |
+| the same file with the 16-byte iNES header skipped | `baf72625249378213dd2c0abafd1309a` |
+| RA's only published hash for game `8170` | `32bff38b91f5eb2cb523d4266b74f7b2` |
+
+Neither digest appears **anywhere** in the 1,116 NES games with achievements —
+checked against every hash in the full list, not just that game's. Two separate
+things are true at once: console 7 is not in `WHOLE_FILE_MD5`, so the whole-file
+md5 was never going to match; and the header-skipped digest does not match
+either, because libretro distributes a different build of Alter Ego from the one
+RA registered. A hash match is a match on *one dump*, not on a game.
+
+The plugin got this right without being told. Fed the NES md5 it refused before
+writing anything, and named the correct one of its two reasons:
+
+    no RetroAchievements game on console 7 carries the hash 1f21f648… — For
+    this console RetroAchievements does NOT hash the whole file … so RomM's
+    md5 will never match no matter how well known the game is.
+
+That message is the reason the miss took minutes to diagnose instead of hours,
+and it is now live-verified too.
 
 ## Notes
 
