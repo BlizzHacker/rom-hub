@@ -1,0 +1,40 @@
+[plugin]
+slug        = "if-archive"
+name        = "IF Archive (Interactive Fiction)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "if_archive.search:Search"
+importer = "if_archive.importer:Importer"
+
+# Two hosts, one archive, and the second one is not optional.
+#
+# `ifarchive.org` serves the directory indexes this plugin parses, and
+# serves Z-machine story files directly with HTTP 200.
+#
+# `ukrestrict.ifarchive.org` is where it **302s a download** for the other
+# three runtime directories. Verified 2026-07-31: 8 of 8 sampled files in
+# `games/glulx`, `games/tads` and `games/hugo` answer 302 to that host,
+# while 8 of 8 in `games/zcode` answer 200 directly. The Hub re-checks every
+# redirect hop against this list rather than following it blindly, so a
+# manifest that declared only `ifarchive.org` would import Z-code games
+# perfectly and fail every Glulx, TADS and Hugo import at the hop -- with a
+# message about an undeclared host, not about the archive.
+#
+# `ifdb.org` is deliberately absent. See README.md: the plugin does not
+# crawl it, and a host it never requests has no business in an allowlist a
+# reviewer reads as a complete account of where this plugin causes traffic.
+[permissions]
+network  = ["ifarchive.org", "ukrestrict.ifarchive.org"]
+romm_api = []
+
+[config]
+# Exactly the four runtime directories RomM 4.9.2 has a platform slug for.
+# Widening this is supported -- `zcode/german`, `adrift` -- and honest: a
+# format with no RomM platform still appears in search and refuses at
+# import naming itself. Each entry costs one index page per search, and the
+# `zcode` one is 491 KB, so the list is capped at 12.
+directories = { type = "list[str]", default = ["zcode", "glulx", "tads", "hugo"] }
+collection  = { type = "str", default = "IF Archive" }

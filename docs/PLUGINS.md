@@ -100,11 +100,11 @@ backend's — so it cannot drift out of step with either.
 
 Each entry below names its own public repository. Every `repository`, `install`
 and `download` URL on this page is a real address rather than a placeholder —
-but three of them are **new and not yet created**: `aminet`,
-`libretro-content` and `scummvm-freeware` were added in this repository first,
-and their repositories have to be published and tagged `v0.1.0` before
-`rom-hub plugin install <slug>` will work for them. `pytest -m live` is the
-check that says which.
+but five of them are **new and not yet created**: `aminet`,
+`if-archive`, `libretro-content`, `ludusavi` and `scummvm-freeware` were added
+in this repository first, and their repositories have to be published and
+tagged `v0.1.0` before `rom-hub plugin install <slug>` will work for them.
+`pytest -m live` is the check that says which.
 
 They also have a **development copy** in this repository's `plugins-dev/`
 directory, which is what the offline test suite runs against. The published
@@ -143,6 +143,7 @@ and neither can this directory change it for you.
 | ❗ [Demozoo (demoscene)](https://github.com/BlizzHacker/rom-hub-demozoo) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-demozoo)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `demozoo.org`, `files.scene.org`, `archive.scene.org`, `fujiology.org` |
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | — | `hh3.gbdev.io` |
+| ✔ [IF Archive (Interactive Fiction)](https://github.com/BlizzHacker/rom-hub-if-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-if-archive)) | 0.1.0 | 2026-07-31 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-if-archive/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `ifarchive.org`, `ukrestrict.ifarchive.org` |
 | ❗ [itch.io (free games) — NO IMPORT](https://github.com/BlizzHacker/rom-hub-itch-io) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-itch-io)) | 0.3.0 | 2026-07-29 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
 | ✔ [libretro cheat files](https://github.com/BlizzHacker/rom-hub-libretro-cheats) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cheats)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.1.0.tar.gz) | `assets` | Gaseous · Retrom · RomM | — | `api.github.com`, `raw.githubusercontent.com` |
 | ✔ [libretro content (buildbot)](https://github.com/BlizzHacker/rom-hub-libretro-content) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-content)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | — | `buildbot.libretro.com` |
@@ -222,6 +223,18 @@ Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports th
 **Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
 
 **Network requested.** `hh3.gbdev.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ IF Archive (Interactive Fiction) — `if-archive`
+
+Searches the IF Archive's Z-machine, Glulx, TADS and Hugo game directories and imports the story file, answering RomM issue #2140.
+
+**Source terms.** Stated by the archive itself, and not uniformly permissive — which is why this entry does not say "freely distributable". The IF Archive's Terms of Use say its contents "are the intellectual property of their original creators" and are "where possible, archived and distributed with permission"; material carrying a licence is distributed under that licence, and "any material with no attached license is presumed to be licensed for personal use only". A great deal of interactive fiction is public domain, Creative Commons or explicitly author-released, and a great deal of the older material has no clear terms at all — the archive hosts that deliberately, as "part of the common heritage of interactive fiction", with a DMCA route for objectors. The archive states it "may not be compiled for commercial distribution". Downloading a game to play is what the archive is for; redistributing a subset is not, and only each game's own licence settles which is which. The file descriptions this plugin surfaces are separate: the archive licenses its metadata, indexes and descriptions CC BY 4.0 to the Interactive Fiction Technology Foundation. `ifarchive.org` serves no robots.txt at all (a hard 404), so there is no crawl directive to observe.
+
+**Comments.** Answers rommapp/romm#2140, which asks for one `interactive-fiction` platform — RomM 4.9.2 turns out to already have four (`z-machine`, `glulx`, `tads`, `hugo`, verified against a live `GET /api/platforms/supported`), so the plugin uses all four and collapses nothing: a Z-code `.z5` and a Glulx `.ulx` need different interpreters. The extension decides the platform, never the directory — `The Cruel Count's Castle.gblorb` is filed under `games/zcode` and is a Glulx game. A bare `.blb` is refused: the Blorb container does not say which runtime it holds, and two of the eleven in the game directories are not games at all (a sound-resource file and an eBook reader). ADRIFT `.taf`, Alan, Quest, AAS, Archetype and TAG are known formats with no RomM platform; they appear in search with no platform set and refuse at import naming the format. Two traps: `ifarchive.org` **302s downloads to `ukrestrict.ifarchive.org`** for glulx/tads/hugo but not for zcode, so both hosts must be declared or every non-Z-code import dies at the redirect hop; and each index entry escapes its filename two different ways — `<dt id="Apollo18=2B=20.zip">` beside `href=".../Apollo18%2B20.zip"` — so the href is the only one that is a filename. Imports cost no HTTP request: the archive path is the URL, the platform and the name. ifdb.org is checked and deliberately untouched — its robots.txt is comment-only with no directive and no content signal, which is an absence of an answer rather than a yes.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+
+**Network requested.** `ifarchive.org`, `ukrestrict.ifarchive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ❗ itch.io (free games) — NO IMPORT — `itch-io`
 
