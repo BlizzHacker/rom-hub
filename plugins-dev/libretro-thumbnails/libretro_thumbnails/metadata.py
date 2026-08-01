@@ -144,12 +144,19 @@ class Metadata(MetadataProvider):
         if override or not self._index_fallback():
             raise NoThumbnail(self._refusal(rom, system, kinds, names))
 
+        unreadable: list[str] = []
         for kind in kinds:
-            found = self._from_index(system, kind, [rom.name, rom.filename])
+            listing = self._index(system, kind)
+            if listing is None:
+                unreadable.append(KINDS[kind])
+                continue
+            found = self._from_index(system, kind, [rom.name, rom.filename], listing)
             if found is not None:
                 return MetadataPatch(artwork_url=self._url(system, kind, found))
 
-        raise NoThumbnail(self._refusal(rom, system, kinds, names, indexed=True))
+        raise NoThumbnail(
+            self._refusal(rom, system, kinds, names, indexed=True, unreadable=unreadable)
+        )
 
     # -- configuration ---------------------------------------------------
 
@@ -234,7 +241,7 @@ class Metadata(MetadataProvider):
             f"for {url!r}; nothing was proposed for this rom"
         )
 
-    def _from_index(self, system: str, kind: str, labels) -> str | None:
+    def _from_index(self, system: str, kind: str, labels, listing) -> str | None:
         """Second chance: read the directory and match on the title alone.
 
         Probing only finds a file whose *spelling* the library already
@@ -248,7 +255,6 @@ class Metadata(MetadataProvider):
         if not wanted:
             return None
 
-        listing = self._index(system, kind)
         matches = [name for name in listing if match_key(name) in wanted]
         if not matches:
             return None
@@ -257,9 +263,36 @@ class Metadata(MetadataProvider):
         preferred = self._preferred_region(labels)
         return min(matches, key=lambda n: self._rank(n, preferred))
 
-    def _index(self, system: str, kind: str) -> list[str]:
+    def _index(self, system: str, kind: str) -> list[str] | None:
+        """The directory listing, `[]` if there is none, `None` if unreadable.
+
+        Three outcomes rather than two, and the third was found by running
+        this against a real library rather than by reading the code.
+
+        `ctx.http` refuses a response over 4 MiB, and libretro's NES
+        `Named_Titles` listing is **4,297,395 bytes** -- 16,172 entries.
+        `Named_Boxarts` for the same system is 13,418 entries and fits, so
+        while this plugin read one directory the ceiling was never
+        reached; the moment the chain reached for a second set, every
+        single NES enrich died on a `ResponseTooLarge` raised out of a
+        *fallback*, after the probe ladder had already missed.
+
+        A listing this plugin cannot read is not a failure of the enrich.
+        It means "no answer available from this set" -- the same thing a
+        404 means -- so it is `None`, the chain moves on, and the refusal
+        at the end names it so nobody debugs a match that never had a
+        chance to happen. Any other HTTP status still raises: a 503 is the
+        service being unwell and probing it seven more times would be both
+        rude and useless.
+        """
         url = BASE + quote(system, safe="") + "/" + KINDS[kind] + "/"
-        response = self.ctx.http.get(url)
+        try:
+            response = self.ctx.http.get(url)
+        except RuntimeError:
+            # The broker's own refusals -- the size ceiling above, a
+            # timeout, an allowlist block -- arrive as RuntimeError
+            # carrying the host's message.
+            return None
         if response.status_code == 404:
             # This system has no directory for this set at all, which is
             # ordinary -- not every system carries all four. An answer,
@@ -302,16 +335,26 @@ class Metadata(MetadataProvider):
     # -- refusals --------------------------------------------------------
 
     @staticmethod
-    def _refusal(rom, system, kinds, names, indexed=False) -> str:
+    def _refusal(rom, system, kinds, names, indexed=False, unreadable=()) -> str:
         tried = ", ".join(repr(n) for n in names)
         sets = ", ".join(KINDS[kind] for kind in kinds)
-        extra = (
-            " Every one of those directories was listed too, and no entry "
-            "matches this title once tags, punctuation and articles are "
-            "ignored."
-            if indexed
-            else ""
-        )
+        extra = ""
+        if indexed:
+            extra = (
+                " Those directories were listed too, and no entry matches "
+                "this title once tags, punctuation and articles are ignored."
+            )
+        if unreadable:
+            # Named, because "no match" and "the fallback could not run" are
+            # different problems and only one of them is about the name.
+            # libretro's NES Named_Titles listing is 4,297,395 bytes and
+            # ctx.http refuses anything over 4 MiB.
+            extra += (
+                f" The listing for {', '.join(unreadable)} could not be read "
+                f"(the Hub caps a plugin's response at 4 MiB and libretro's "
+                f"largest directory indexes are over it), so the title match "
+                f"never ran for {'that set' if len(unreadable) == 1 else 'those sets'}."
+            )
         return (
             f"libretro has no image for rom {rom.rom_id} "
             f"({rom.name or rom.filename!r}) under {system!r} in {sets}. "

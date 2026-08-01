@@ -461,3 +461,43 @@ def test_an_answer_with_no_signature_proposes_no_summary():
 def test_summary_false_leaves_romms_description_alone():
     provider, _ = _provider(summary=False)
     assert provider.enrich(_ref()).summary is None
+
+
+# -- what the live service actually calls each machine -------------------
+
+
+@pytest.mark.parametrize(
+    "slug,system",
+    [
+        # Measured against the live service on 2026-08-01, one real md5 per
+        # platform out of a 636-rom library. `nes` and `sms` matched on
+        # neither the signature name nor the platform name before this, so
+        # `verify_platform` was refusing every correct answer on two
+        # consoles -- a guard against CRC-32 collisions, blocking SHA-1
+        # matches.
+        ("nes", "Nintendo Famicom & Entertainment System"),
+        ("nes", "Nintendo Entertainment System"),
+        ("sms", "Sega Mark III & Master System"),
+        ("sms", "Sega Master System"),
+        ("snes", "Nintendo Super Famicom & Super Entertainment System"),
+        ("atari2600", "Atari 2600 & VCS"),
+        ("atari7800", "Atari - Atari 7800 (BIN)"),
+        ("c64", "Commodore C64"),
+        ("tg16", "TurboGrafx-16/PC Engine"),
+        ("genesis", "Sega - Mega Drive - Genesis (Parent-Clone)"),
+    ],
+)
+def test_the_names_the_live_service_returns_are_accepted(slug, system):
+    from hasheous.platforms import expected_keys, key
+
+    assert key(system) in expected_keys(slug)
+
+
+def test_a_different_console_is_still_refused():
+    """The point of the guard survives the widening: extra spellings for
+    one machine must not become spellings for another."""
+    from hasheous.platforms import expected_keys, key
+
+    assert key("Nintendo Famicom & Entertainment System") not in expected_keys("snes")
+    assert key("Sega Master System") not in expected_keys("genesis")
+    assert key("Atari 2600 & VCS") not in expected_keys("atari7800")

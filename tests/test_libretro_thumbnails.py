@@ -475,3 +475,48 @@ def test_the_refusal_names_every_set_it_looked_in():
         provider.enrich(_ref(name="Not A Real Game", filename=""))
     message = str(exc.value)
     assert "Named_Boxarts, Named_Titles, Named_Snaps" in message
+
+
+def test_an_unreadable_listing_does_not_fail_the_enrich():
+    """Found by running this against a real library, not by reading code.
+
+    `ctx.http` refuses a response over 4 MiB and libretro's NES
+    `Named_Titles` listing is 4,297,395 bytes. While this plugin read one
+    directory the ceiling was never reached; the moment the chain reached
+    for a second set, every NES enrich died on a `ResponseTooLarge` raised
+    out of a *fallback*, after the probe ladder had already missed.
+    """
+
+    class Ceiling(FakeLibretro):
+        def get(self, url, params=None):
+            if url.endswith("/") and "/Named_Titles/" in url:
+                self.calls.append(url)
+                raise RuntimeError(
+                    "ResponseTooLarge: response from %r exceeded the "
+                    "4194304-byte limit at 4297395 bytes" % url
+                )
+            return super().get(url, params)
+
+    provider, _ = _provider(Ceiling(kind="Named_Snaps"))
+    # The snap listing is still readable, so the chain gets there.
+    patch = provider.enrich(_ref(name="Super Mario World", filename=""))
+    assert "/Named_Snaps/" in patch.artwork_url
+
+
+def test_the_refusal_says_a_listing_could_not_be_read():
+    """"No match" and "the fallback could not run" are different problems
+    and only one of them is about the name."""
+
+    class AllTooBig(FakeLibretro):
+        def get(self, url, params=None):
+            if url.endswith("/"):
+                self.calls.append(url)
+                raise RuntimeError("ResponseTooLarge: 4297395 bytes")
+            return super().get(url, params)
+
+    provider, _ = _provider(AllTooBig(kind="Named_Logos"))
+    with pytest.raises(NoThumbnail) as exc:
+        provider.enrich(_ref(name="Not A Real Game", filename=""))
+    message = str(exc.value)
+    assert "could not be read" in message
+    assert "4 MiB" in message
