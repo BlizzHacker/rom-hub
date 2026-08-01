@@ -848,10 +848,20 @@ def _cmd_import(args) -> int:
                 backend=backend,
                 queue=queue,
                 download_dir=downloads_dir(root),
+                warn_unplayable=not args.allow_unplayable,
             )
     finally:
         fetcher.close()
         backend.close()
+
+    # Before the outcome line, not after it. This is the sentence that
+    # explains why an import that says DONE will do nothing when clicked,
+    # and a reader who stops at the first line has to have read it. On
+    # stderr regardless of how the job ended, because it is a warning about
+    # a *successful* import -- putting it on stdout would mean a shell
+    # pipeline collecting job output silently swallowed it.
+    for warning in outcome.warnings:
+        print(f"warning: {warning}", file=sys.stderr)
 
     stream = sys.stdout if outcome.state in _SUCCESS_STATES else sys.stderr
     # ASCII only: a Windows console defaults to cp1252, and this project has
@@ -1509,6 +1519,15 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "collection to add it to, overriding the plugin's; refused up "
             "front if the active backend has no collections"
+        ),
+    )
+    importer.add_argument(
+        "--allow-unplayable",
+        action="store_true",
+        help=(
+            "do not warn when the platform has no emulator core. The import "
+            "happens either way -- this only silences the notice, for a "
+            "catalogue you are building on purpose ('rom-hub platforms')"
         ),
     )
     importer.set_defaults(func=_cmd_import)

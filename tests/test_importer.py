@@ -1060,3 +1060,130 @@ def test_a_non_2xx_download_raises_download_error_naming_the_status(tmp_path):
     ) as downloader:
         with pytest.raises(DownloadError, match="404"):
             downloader.download("https://allowed.example/g.bin", tmp_path / "g.bin")
+
+
+# -- importing something that cannot be played ----------------------------
+#
+# The pipeline warns and imports. It never refuses: cataloguing a platform
+# with no emulator core is a legitimate use of a library, and several
+# plugins in the directory exist to do only that. What it must not do is
+# stay quiet, because a ROM that imports cleanly and then does nothing when
+# clicked explains itself nowhere else.
+
+
+def _dead_plan():
+    """A plan filed under Dreamcast, which RomM has no EmulatorJS core for."""
+    return FetchPlan(
+        files=[FetchFile(url="https://allowed.example/g.zip", filename="g.zip")],
+        platform="dc",
+    )
+
+
+def test_a_platform_with_no_core_warns_and_still_imports(tmp_path, queue, upload):
+    romm = FakeRomm(platforms={"dc": 7})
+    res = _run(tmp_path, FakePlugin(_dead_plan()), romm, queue)
+
+    assert res.state is JobState.DONE, "the warning must not become a refusal"
+    assert res.rom_id == 999
+    assert len(res.warnings) == 1
+    assert "'dc'" in res.warnings[0]
+    assert "no EmulatorJS core" in res.warnings[0]
+    assert len(upload.calls) == 1
+
+
+def test_a_playable_platform_warns_about_nothing(tmp_path, queue, upload):
+    res = _run(tmp_path, FakePlugin(_plan()), FakeRomm(), queue)
+    assert res.warnings == ()
+
+
+def test_the_warning_reaches_the_job_row_not_only_the_return_value(
+    tmp_path, queue, upload
+):
+    """`rom-hub jobs` is where an operator looks weeks later, by which
+    point the console line is long gone."""
+    romm = FakeRomm(platforms={"dc": 7})
+    res = _run(tmp_path, FakePlugin(_dead_plan()), romm, queue)
+    assert "'dc'" in (queue.get(res.job_id).notes or "")
+
+
+def test_the_warning_is_on_the_row_even_when_the_job_later_fails(
+    tmp_path, queue, upload
+):
+    """The platform was unplayable regardless of what the download did."""
+    romm = FakeRomm(platforms={"dc": 7})
+    res = _run(
+        tmp_path,
+        FakePlugin(_dead_plan()),
+        romm,
+        queue,
+        downloader=FakeDownloader(error=DownloadError("network is down")),
+    )
+    assert res.state is JobState.FAILED
+    assert "'dc'" in (queue.get(res.job_id).notes or "")
+
+
+def test_allow_unplayable_silences_the_warning_and_changes_nothing_else(
+    tmp_path, queue, upload
+):
+    romm = FakeRomm(platforms={"dc": 7})
+    res = _run(
+        tmp_path, FakePlugin(_dead_plan()), romm, queue, warn_unplayable=False
+    )
+    assert res.warnings == ()
+    assert res.state is JobState.DONE
+    assert len(upload.calls) == 1
+
+
+def test_the_warning_is_raised_before_a_single_byte_is_fetched(tmp_path, queue, upload):
+    """The point of warning early is a 700 MB Dreamcast rip nobody wanted.
+
+    Proved by failing the download: the note is on the row even though no
+    byte ever arrived, which can only be true if it was written first.
+    """
+    romm = FakeRomm(platforms={"dc": 7})
+    downloader = FakeDownloader(error=DownloadError("refused"))
+    res = _run(tmp_path, FakePlugin(_dead_plan()), romm, queue, downloader)
+    assert queue.get(res.job_id).notes
+    assert downloader.calls, "the download was still attempted, just after the notice"
+
+
+def test_a_netplay_only_platform_warns_about_netplay_rather_than_absence(
+    tmp_path, queue, upload
+):
+    """`3ds` has a core, but only in RomM's nightly build and only when
+    netplay is on. Reporting it as "no core" would send an operator
+    looking for something that is there."""
+    romm = FakeRomm(platforms={"3ds": 7})
+    plan = FetchPlan(
+        files=[FetchFile(url="https://allowed.example/g.zip", filename="g.zip")],
+        platform="3ds",
+    )
+    res = _run(tmp_path, FakePlugin(plan), romm, queue)
+    assert len(res.warnings) == 1
+    assert "netplay" in res.warnings[0]
+    assert res.state is JobState.DONE
+
+
+def test_a_degraded_collection_and_an_unplayable_platform_both_survive(
+    tmp_path, queue, upload
+):
+    """`set_notes` overwrites the column and there are now two writers.
+
+    Before the notes were accumulated, whichever fired second erased the
+    other and the job row told half the story.
+    """
+    romm = FakeRomm(platforms={"dc": 7}, capabilities=(IMPORT, SCAN))
+    plan = FetchPlan(
+        files=[FetchFile(url="https://allowed.example/g.zip", filename="g.zip")],
+        platform="dc",
+        collection="Archive.org",
+    )
+    res = _run(tmp_path, FakePlugin(plan), romm, queue)
+
+    notes = queue.get(res.job_id).notes or ""
+    assert "collection" in notes
+    assert "'dc'" in notes
+    # And the two stay in their own channels: a skipped step is a shortfall
+    # in the run, an unplayable platform is a fact about the result.
+    assert len(res.degraded) == 1
+    assert len(res.warnings) == 1

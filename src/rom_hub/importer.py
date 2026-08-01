@@ -72,6 +72,7 @@ from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_fil
 from rom_hub.jobs import Job, JobQueue, JobState
 from rom_hub.netpolicy import PolicyViolation, check_url
 from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.playability import import_warning
 from rom_hub.types import FetchPlan, SearchResult
 
 USER_AGENT = "rom-hub/0.1 (+https://github.com/rommapp/romm)"
@@ -266,6 +267,15 @@ class ImportResult:
     #: structured, for a caller that wants to branch on it rather than
     #: read it. Empty on an import that did everything the plan asked.
     degraded: tuple[SkippedStep, ...] = ()
+    #: Things that are true about the *result* rather than about the run.
+    #: A `SkippedStep` says part of the job did not happen; one of these
+    #: says the whole job happened and the operator still needs to know
+    #: something -- today, that the platform it landed on has no emulator
+    #: core, so the ROM is in the library and will not start. Kept apart
+    #: from `degraded` because merging them would make "the import was
+    #: reduced" and "the import was complete and is unplayable" read as
+    #: the same event, and only one of them is a shortfall.
+    warnings: tuple[str, ...] = ()
 
 
 class _ImportFailure(Exception):
@@ -289,6 +299,7 @@ def run_import(
     downloader: Downloader | None = None,
     scanner: Scanner | None = None,
     job_id: int | None = None,
+    warn_unplayable: bool = True,
 ) -> ImportResult:
     """Import one search result into the library, recording progress in `queue`.
 
@@ -299,6 +310,12 @@ def run_import(
     one: that is what a retry is, and reusing the id is what lets the
     partially downloaded bytes under `download_dir/<job_id>/` be resumed
     instead of re-fetched.
+
+    `warn_unplayable` defaults on, and defaults are the whole point of it:
+    an operator who has not thought about emulator cores is exactly the
+    one who should be told the ROM they are importing will not start. Set
+    it False to import a platform you already know is catalogue-only
+    without being told again. It has never gated the import itself.
 
     Never raises for an import that failed -- the failure is the return
     value and the job record. Only a caller error (an unknown `job_id`)
@@ -349,6 +366,7 @@ def run_import(
                 download_dir=download_dir,
                 downloader=downloader,
                 scanner=scanner,
+                warn_unplayable=warn_unplayable,
             )
         except _ImportFailure as exc:
             return _fail(queue, job.id, str(exc))
@@ -398,6 +416,7 @@ def _import(
     download_dir: Path,
     downloader: Downloader,
     scanner: Scanner,
+    warn_unplayable: bool = True,
 ) -> ImportResult:
     slug = _slug_of(plugin)
     # What to call the library server in anything an operator will read.
@@ -456,6 +475,19 @@ def _import(
         raise _ImportFailure(str(exc)) from exc
 
     skipped: list[SkippedStep] = []
+    warnings: list[str] = []
+
+    # `set_notes` overwrites the column, and there are now two independent
+    # reasons to write to it -- a degraded collection and an unplayable
+    # platform. Accumulating and rewriting the join is what keeps the
+    # second from erasing the first; the alternative was a job row that
+    # said only whichever thing happened to be noticed last.
+    notes: list[str] = []
+
+    def note(line: str) -> None:
+        notes.append(line)
+        queue.set_notes(job.id, " | ".join(notes))
+
     collection_skip: SkippedStep | None = None
     if plan.collection:
         collection_skip = degrade(
@@ -466,7 +498,37 @@ def _import(
             # On the row now, not at the end: the note is true from this
             # point regardless of how the job finishes, and a job that
             # later fails on something else should still show it.
-            queue.set_notes(job.id, str(collection_skip))
+            note(str(collection_skip))
+
+    # 1b. Will the thing about to be imported actually play?
+    #
+    #     Asked here, before a byte is fetched, because the answer is worth
+    #     having *early* -- an operator who did not know a Dreamcast rip
+    #     cannot be played in RomM's web player would rather find out now
+    #     than after a 700 MB download and a click that does nothing.
+    #
+    #     It does not refuse, and that is the design rather than a
+    #     softening of it. A library is not only a player: cataloguing an
+    #     Apple II disk, a ScummVM package or an interactive-fiction story
+    #     file is a legitimate thing to want, and several plugins in this
+    #     directory exist to do exactly that. Refusing would substitute the
+    #     host's judgement for the operator's on a question the host cannot
+    #     answer. Staying quiet, though, is the failure mode this whole
+    #     project is built against -- so it warns, once, naming the
+    #     platform, and the ROM lands.
+    #
+    #     `warn_unplayable=False` is how the CLI's --allow-unplayable
+    #     reaches here. It suppresses the sentence, never the import; there
+    #     has never been an import for it to enable.
+    if warn_unplayable:
+        unplayable = import_warning(plan.platform)
+        if unplayable:
+            warnings.append(unplayable)
+            # On the job row now rather than at the end. The note is true
+            # from this point regardless of how the job finishes, and a
+            # job that later fails on something else should still carry it
+            # -- the platform was wrong either way.
+            note(unplayable)
 
     # 2. Slug -> integer platform id. Never guess: a wrong id files the ROM
     #    under the wrong system, which is worse than a visible failure.
@@ -563,6 +625,7 @@ def _import(
             rom_id=existing_id,
             message=message,
             degraded=tuple(skipped),
+            warnings=tuple(warnings),
         )
 
     # 5. Upload. The return value is deliberately discarded: RomM's
@@ -688,6 +751,7 @@ def _import(
         rom_id=rom_ids[0] if rom_ids else None,
         message=message,
         degraded=tuple(skipped),
+        warnings=tuple(warnings),
     )
 
 
