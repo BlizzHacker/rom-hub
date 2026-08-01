@@ -1520,6 +1520,44 @@ live search covers whatever the plugin reached and is current. `--live`
 forces the old path, and a missing or unreadable catalogue degrades to it
 silently.
 
+### `softwarelibrary` (250,398): measured, deliberately not built
+
+The next largest source. Everything below was measured live on 2026-08-01,
+and it is written down because the next person should start from data.
+
+**Enumeration is affordable.** A lean two-field read costs **155 bytes per
+document**, so the host's 4 MiB cap holds ~17,800 — and `item_size` is
+present on **all 250,398** items (`NOT item_size:[* TO *]` matches zero),
+so `archive_org.index._collect`'s existing window partitioning covers the
+collection with roughly 26 windows and ~52 requests. `numFound` was stable
+across repeated calls. Two to four minutes of polite requests, not hours.
+
+**The unit decomposition is the unsolved part, and it is not a detail.**
+`census` needs units whose declared totals *sum* to the collection's, or
+the headline number is a lie in the direction that flatters. Sub-collections
+look like the obvious answer and are not a partition — they **overlap**. In
+one 500-item sample, 440 items were in `softwarelibrary_apple` *and* 433 in
+`softwarelibrary_apple_contribs` *and* all 500 in `softwarelibrary` itself.
+Summing `softwarelibrary_c64` (98,843), `_apple` (42,273), `_msdos`
+(23,200), `_atari` (15,570), `_amiga` (13,206) and `_zx_spectrum` (12,305)
+double-counts, and a catalogue built on them would report more entries than
+the collection has while claiming to be complete.
+
+`item_size` windows *are* disjoint by construction and each one's
+`declared_total` can be had from its own `rows=0` request — a genuine
+independent denominator, and the sum is checkable against 250,398. That is
+the design worth building. It was not built here because it is a different
+shape from the No-Intro census (where the source's own items were already
+disjoint), it needs its own verification, and shipping a 250k catalogue
+whose arithmetic had not been proved is precisely the failure this whole
+section exists to prevent.
+
+So `softwarelibrary` remains served by `archive-org`'s live search, which
+is honest about being a search. Note also that 220,228 of the items carry
+an `emulator` field and 244,457 are downloadable, so the useful scope is
+most but not all of it — another reason the unit design has to be settled
+before a number is published.
+
 ---
 
 ## The Archive.org plugin
