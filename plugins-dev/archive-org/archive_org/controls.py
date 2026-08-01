@@ -131,14 +131,21 @@ def plain_text(value) -> str:
     as a list of strings rather than one. Tags are dropped rather than
     rendered: what is wanted is the sentence, and a library field is not
     a place to put someone else's markup.
+
+    **Strip, unescape, strip again.** One pass in either order leaves a
+    hole. Unescaping first and then stripping loses `a &lt; b`, which is
+    prose and not a tag. Stripping first and then unescaping turns
+    `&lt;b&gt;` into a `<b>` that was never in the source -- markup
+    smuggled past the filter by being written as text. Doing both, in
+    that order, keeps the prose and lets nothing through: the second pass
+    removes anything the unescape created, and by then there is nothing
+    left to unescape into a third.
     """
     if isinstance(value, (list, tuple)):
         value = " ".join(str(v) for v in value if v is not None)
     if not isinstance(value, str):
         return ""
-    # Unescape after stripping tags, so an escaped `&lt;b&gt;` in the
-    # source cannot become a tag that was never there.
-    text = html.unescape(_TAG.sub(" ", value))
+    text = _TAG.sub(" ", html.unescape(_TAG.sub(" ", value)))
     return _SPACE.sub(" ", text).strip()[:MAX_TEXT_CHARS]
 
 

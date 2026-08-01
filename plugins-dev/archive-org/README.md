@@ -1,11 +1,147 @@
 # Archive.org plugin for ROM Hub
 
-Implements the RPP v1 `search` and `importer` capabilities:
+Implements four RPP v1 capabilities:
 
 | Capability | Endpoint | Does |
 |---|---|---|
 | `search` | `advancedsearch.php` | items in the configured collections, matched **on title** |
 | `importer` | `metadata/<identifier>` | picks the payload file and the RomM platform |
+| `metadata` | `metadata/<identifier>` | title, cover, and **how the game is controlled** |
+| `stream` | `metadata/<identifier>` | resolves an item to the page that plays it |
+
+## The Console Living Room
+
+`https://archive.org/details/consolelivingroom` is **24,746 items**, and until
+v0.3.0 this plugin could not see one of them: its default scope was
+`softwarelibrary`, which is a different collection. Measured —
+`softwarelibrary` holds 250,382 items, the Console Living Room 24,746, and
+**212** items are in both. The default is now both collections.
+
+What is in there, from a census of every `emulator` value (132 distinct):
+
+| machine | items | downloadable | plays in RomM? |
+|---|---:|---:|---|
+| Mega Drive / Genesis (`genesis`, `megadriv`, `megadrij`) | 12,445 | **11,893** | yes |
+| Atari 2600 (`a2600`, `a2600p`) | 3,026 | **2,514** | yes |
+| PlayStation (`psx`) | 2,688 | 97 | yes |
+| Atari 7800 (`a7800`) | 720 | 9 | yes |
+| Master System (`sms`, `smsj`, `sms-phaser`) | 574 | 21 | yes |
+| Game Gear (`gamegear`) | 445 | 19 | yes |
+| Game Boy Advance (`gba`) | 382 | **382** | yes |
+| Game Boy Color (`gbcolor`) | 363 | **363** | yes |
+| NES (`nes`, `nesp`, `nespal`) | 361 | **361** | yes |
+| TurboGrafx-16 (`tg16`) | 310 | **310** | yes |
+| ColecoVision (`coleco`) | 265 | 32 | yes |
+| Neo Geo Pocket Color (`ngpc`) | 228 | **228** | yes |
+| SNES (`snes`, `snesp`) | 221 | **221** | yes |
+| Game Boy (`gameboy`) | 218 | **218** | yes |
+| Atari 5200 (`a5200`) | 218 | 6 | yes |
+| WonderSwan (`wswan`, `wscolor`) | 322 | 60 | yes |
+| Vectrex (`vectrex`) | 151 | 151 | **no core** |
+| Intellivision (`intv`, `intv2`, `intvsrs`) | 185 | 3 | netplay only |
+| SG-1000 (`sg1000`) | 116 | 46 | **no core** |
+| Odyssey 2 (`odyssey2`) | 132 | 10 | **no core** |
+| Channel F (`channelf`) | 48 | 3 | **no core** |
+| Arcadia 2001 (`arcadia`) | 58 | 0 | **no core** |
+
+24,746 items in total, **17,930 of them downloadable**. The 6,816 that are not
+are Archive.org's `stream_only` items; the `stream` capability is what makes
+those reachable, and the importer refuses them by name.
+
+The **Genesis, NES and SNES rows are the prize**: ~12,500 downloadable ROMs on
+machines RomM's own EmulatorJS player runs, which means they work on every
+RomM client including the Xbox app.
+
+Point it somewhere else if you want to:
+
+    rom-hub plugin config archive-org collections consolelivingroom
+    rom-hub search archive-org sonic --platform genesis --limit 500
+
+## Reaching a whole collection
+
+`advancedsearch.php` refuses to page past 10,000 results:
+
+    rows=100 page=101  ->  {"error": "[DEEP_PAGING] Requested results would
+                            exceed the deep paging limit for this service,
+                            10000 results; ..."}
+
+and the error itself names the way out — *"You may request any number of
+results at one time if you do NOT specify any page."* Verified live: `rows=11000`
+with no `page` returned all **10,045** downloadable Mega Drive items in about
+two seconds. So a small read pages, and a bulk read does not.
+
+**The scrape API is not used, and that is a finding rather than a preference.**
+`/services/search/v1/scrape` is what Archive.org's own error message points at.
+It does page the whole collection with a cursor — 24,746 items in 137 seconds
+over 25 requests — but:
+
+- **it silently ignores a field filter.** Asked for
+  `collection:(consolelivingroom) AND emulator:("genesis")` it answers
+  `total=24746` and the first page comes back 36 genesis, 20 nes, 12 a2600. All
+  33 per-emulator queries returned identical results. A filter that is accepted
+  and ignored is worse than one that is refused.
+- **its result set is not reliably the one you asked for.** Consecutive requests
+  on one connection returned each other's totals — `collection:(nasa)` and
+  `collection:(consolelivingroom)` both answered `208822` in one run and both
+  answered `24746` in another, depending only on which query went first.
+
+Both reproduced more than once. See `archive_org/index.py`.
+
+## Controls
+
+Archive.org tells a reader which key is which console button, because the
+reader is holding a keyboard. That travels into the library, and **what is
+carried was measured before it was designed**:
+
+| field | items | shape | carried |
+|---|---:|---|---|
+| `controller` | 405 | structured: `joystick`, `paddle`, `keypad`, `driving` | verbatim |
+| `emulator_instructions` | 1,818 | prose, 8 distinct texts, one per machine | always |
+| `notes` | 14,317 | prose, *usually* control boilerplate | when it reads as control text |
+
+**16,127 of 24,746 items carry at least one.** Coverage is very uneven and the
+plugin does not pretend otherwise: 10,382 of 10,557 Genesis items have `notes`,
+and **1** of 219 SNES items does. A rom that gets no control blob is the normal
+case for several platforms.
+
+`notes` is gated because it is also where an uploader writes *"Unofficial boxart
+by me"*. The gate requires the text to name both something you press and
+something on a controller; across the 72 distinct `notes` texts in a 4,000-item
+sample it admits 10 covering 3,937 items and rejects 62 covering 63.
+`emulator_instructions` is **not** gated, and that is evidence-based too: the
+same gate rejects two of its eight texts (Socrates, Arcadia) which plainly are
+instructions written without the word "button".
+
+**The prose is never parsed into a key-to-button table.** It looks parseable —
+*"There are three buttons, A, B and C, which are CONTROL, ALT/OPTION and
+SPACE"* — and a parser for the ten common boilerplates could be written. It
+would then be a table this plugin invented, sitting in a field that says it came
+from Archive.org, and the first reworded sentence would turn it into a *wrong*
+table rather than a missing one. Archive.org publishes sentences; this carries
+sentences.
+
+It lands in `raw_metadata["raw_manual_metadata"]["archive_org_controls"]` —
+the only one of RPP's eight raw blobs that is not the name of a metadata
+provider, so putting Archive.org's text there claims nothing untrue about where
+it came from. It is written **only** when there is something real to write:
+`MetadataPatch` reads an absent field as "leave the library alone", and an empty
+one as "replace what is there with nothing".
+
+    rom-hub enrich archive-org 4211 --source-id whac-a-critter-usa-unl
+
+## Streaming the other half
+
+6,816 items will not download, and they are not junk — Archive.org plays them
+in the browser with Emularity, and an item's `/details/` page **is** the
+emulator. The importer refuses those by name and points at the capability that
+can still play them:
+
+    rom-hub stream archive-org <identifier> --open
+
+The target carries the platform, the `controller` value and the instruction
+text, because a browser-bound player is exactly where a keyboard mapping
+matters. It never invents a media URL: Archive.org serves the item, not a
+stream.
 
 ## How search matches
 
@@ -47,8 +183,10 @@ verified live.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `collections` | `list[str]` | `["softwarelibrary"]` | Archive.org collections to scope searches to |
+| `collections` | `list[str]` | `["softwarelibrary", "consolelivingroom"]` | Archive.org collections to scope searches to |
 | `collection` | `str` | `"Archive.org"` | RomM collection imported ROMs are grouped into |
+| `downloadable_only` | `bool` | `false` | drop `stream_only` items from search — for bulk importing, where seeing items the importer will refuse is noise |
+| `max_rows` | `int` | `50000` | ceiling on a single bulk request, so a typo cannot ask Archive.org for a million rows |
 
 ## How the importer routes
 
@@ -74,6 +212,33 @@ Adding a mapping is a one-line change to `archive_org/platforms.py`. Note that
 Archive.org's emulator ids are *not* a hierarchy — `vice-pet` is a PET, not a
 C64, and `pce-atarist-color` is an Atari ST, not a Mac — so add exact keys
 rather than reaching for a prefix rule.
+
+### What is still deliberately unmapped
+
+The census found 132 distinct `emulator` values in the Console Living Room. 83
+keys are mapped. The rest raise "needs mapping" on purpose:
+
+- **~60 MAME romset names** — `galaxian`, `mspacman`, `outrun`, `tmnt2`,
+  `bublbobl` — one or two items each, ~120 in total. They are almost certainly
+  `arcade`, and "almost certainly" is not the standard this table is held to:
+  the key is a *game* id rather than a *machine* id, so the family cannot be
+  closed by inspection.
+- **Six machines RomM has no slug for**: `bally` (Bally Astrocade, 20),
+  `apfm1000` (15), `gamepock` (11), `socrates` (8), `sv8000` (7), `fgtlayer` (4).
+- **Composite values** — `gameboy,gb` and
+  `dosbox,dosbox_drive_d,emularity_win31/win31.zip`, one item each. Splitting on
+  the comma is exactly the prefix rule this table refuses.
+- **`genisis`** — one item, and a misspelling. Mapping a typo teaches the table
+  to accept typos.
+- **Ambiguous targets** — `ruffle-swf` (Flash), `cloudpilot-*` (PalmOS), `v86`
+  (a JavaScript x86 that boots whatever you give it).
+
+Twelve of the machines this now imports to have **no EmulatorJS core** — the
+Vectrex, the SG-1000, the Odyssey 2, the Channel F and friends. They import,
+they appear in the library, and they do nothing when played. That is a fine
+thing to want from a catalogue, so the Hub warns rather than refuses; each one
+has a line in `rom_hub.playability.NO_EQUIVALENT` saying which machine it is and
+why no playable slug is the same hardware.
 
 ## Notes
 
