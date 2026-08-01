@@ -340,6 +340,14 @@ def run_import(
     if scanner is None:
         scanner = backend
 
+    # Owned here rather than in `_import` so that a failure -- raised from
+    # any of a dozen places -- still carries it. An import that warned
+    # "this platform has no emulator core" and then failed on the download
+    # warned truthfully: the platform is unplayable whichever way the fetch
+    # went, and the operator should not hear it only on the attempts that
+    # happen to succeed.
+    warnings: list[str] = []
+
     try:
         if job_id is None:
             job = queue.enqueue(
@@ -367,9 +375,10 @@ def run_import(
                 downloader=downloader,
                 scanner=scanner,
                 warn_unplayable=warn_unplayable,
+                warnings=warnings,
             )
         except _ImportFailure as exc:
-            return _fail(queue, job.id, str(exc))
+            return _fail(queue, job.id, str(exc), tuple(warnings))
         except Exception as exc:  # noqa: BLE001
             # A step nobody anticipated still failed an import, and the
             # operator needs it in the job record rather than on a console
@@ -377,7 +386,10 @@ def run_import(
             # unexpected failure's class is usually the most informative
             # thing about it.
             return _fail(
-                queue, job.id, f"unexpected {type(exc).__name__} during import: {exc}"
+                queue,
+                job.id,
+                f"unexpected {type(exc).__name__} during import: {exc}",
+                tuple(warnings),
             )
     finally:
         if owns_downloader:
@@ -399,10 +411,19 @@ def _backend_name(backend: LibraryBackend) -> str:
     return name if isinstance(name, str) and name else "the library"
 
 
-def _fail(queue: JobQueue, job_id: int, message: str) -> ImportResult:
+def _fail(
+    queue: JobQueue,
+    job_id: int,
+    message: str,
+    warnings: tuple[str, ...] = (),
+) -> ImportResult:
     queue.set_state(job_id, JobState.FAILED, error=message)
     return ImportResult(
-        job_id=job_id, state=JobState.FAILED, rom_id=None, message=message
+        job_id=job_id,
+        state=JobState.FAILED,
+        rom_id=None,
+        message=message,
+        warnings=warnings,
     )
 
 
@@ -417,8 +438,11 @@ def _import(
     downloader: Downloader,
     scanner: Scanner,
     warn_unplayable: bool = True,
+    warnings: list[str] | None = None,
 ) -> ImportResult:
     slug = _slug_of(plugin)
+    # `run_import` owns this list; see the comment where it is created.
+    warnings = warnings if warnings is not None else []
     # What to call the library server in anything an operator will read.
     # These messages used to say "RomM" outright, which was true when RomM
     # was the only backend and became a lie the moment it was not: an
@@ -475,7 +499,6 @@ def _import(
         raise _ImportFailure(str(exc)) from exc
 
     skipped: list[SkippedStep] = []
-    warnings: list[str] = []
 
     # `set_notes` overwrites the column, and there are now two independent
     # reasons to write to it -- a degraded collection and an unplayable

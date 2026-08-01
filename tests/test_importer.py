@@ -1187,3 +1187,18 @@ def test_a_degraded_collection_and_an_unplayable_platform_both_survive(
     # in the run, an unplayable platform is a fact about the result.
     assert len(res.degraded) == 1
     assert len(res.warnings) == 1
+
+
+def test_an_unplayable_platform_is_reported_even_when_the_import_fails(
+    tmp_path, queue, upload
+):
+    """The commonest way to meet this warning is a platform the library has
+    no shelf for at all, which fails at `platform_id` two steps later. If
+    the notice only survived a success, the operator would be told the slug
+    is unknown and never told it is also unplayable."""
+    romm = FakeRomm(platforms={})
+    res = _run(tmp_path, FakePlugin(_dead_plan()), romm, queue)
+
+    assert res.state is JobState.FAILED
+    assert len(res.warnings) == 1
+    assert "'dc'" in res.warnings[0]
