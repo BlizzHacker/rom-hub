@@ -2,6 +2,14 @@
 
 A crashed or hung plugin costs its own results and nothing else. The caller
 always learns how many sources actually answered.
+
+`limit` here is, and has always been, **per source**: it is the number
+handed to each plugin's `search()`. That is the right shape for this layer
+-- a plugin has to be told how much work to do before it starts -- but it
+is the wrong shape for a person, because ten sources at 25 apiece is 250
+rows. Merging and paging the combined set is `rom_hub.grouping`'s job, and
+`fanout_limit()` below is how a caller works out what per-source number
+will actually fill the page it wants.
 """
 
 import functools
@@ -13,6 +21,37 @@ from .types import SearchResult
 
 MAX_PARALLEL = 8
 
+#: Never ask a source for less than this, however small the page. A source
+#: that returns three rows for a query is not one worth a second round
+#: trip, and grouping only ever *reduces* the row count -- so a page of 5
+#: games can easily need 40 rows to fill.
+MIN_FANOUT = 50
+
+#: And never more than this, however large the page. Every row here is
+#: work done by a subprocess against somebody else's server; a `--limit`
+#: typo must not turn into a thousand-row scrape of ten catalogues.
+MAX_FANOUT = 500
+
+#: How many raw rows to ask each source for, per merged row wanted. Real
+#: listings collapse hard -- eight `Batman Returns` rows become one -- so
+#: asking for a page's worth would return well under a page.
+FANOUT_FACTOR = 4
+
+
+def fanout_limit(limit: int, offset: int = 0, per_source: int | None = None) -> int:
+    """How many results to ask each source for, to fill one merged page.
+
+    An estimate, and honestly one: nothing can know a query's collapse
+    ratio before running it. What matters is that it is *stated* -- the
+    caller can override it with `per_source`, and a source that returns
+    exactly this many is reported as capped rather than quietly treated as
+    exhaustive.
+    """
+    if per_source is not None:
+        return max(1, per_source)
+    wanted = max(0, offset) + max(0, limit)
+    return max(MIN_FANOUT, min(MAX_FANOUT, wanted * FANOUT_FACTOR))
+
 
 @dataclass
 class PluginStatus:
@@ -20,6 +59,14 @@ class PluginStatus:
     ok: bool
     count: int = 0
     error: str | None = None
+    capped: bool = False
+    """Whether this source returned exactly as many results as it was
+    allowed, which means there were probably more it did not send.
+
+    Reported rather than inferred away, for the same reason the responded
+    count is: a merged listing that silently dropped a source's tail is
+    indistinguishable from a complete one, and this project's rule is that
+    a partial answer must say it is partial."""
 
 
 @dataclass
@@ -38,6 +85,11 @@ class SearchOutcome:
     @property
     def complete(self) -> bool:
         return self.responded == self.total
+
+    @property
+    def capped(self) -> list[str]:
+        """Sources that filled their quota, and so probably had more."""
+        return [s.slug for s in self.statuses if s.capped]
 
 
 def _default_factory(
@@ -73,9 +125,14 @@ def search_all(
     factory = process_factory or functools.partial(
         _default_factory, allow_unsandboxed=allow_unsandboxed
     )
-    candidates = [
-        p for p in plugins if p.enabled and "search" in p.manifest.capabilities
-    ]
+    # Sorted, so the merged listing is reproducible: grouping's tie-breaks
+    # are stable sorts over this order, and "the same query printed a
+    # different order the second time" is indistinguishable from a bug in
+    # the grouping itself.
+    candidates = sorted(
+        (p for p in plugins if p.enabled and "search" in p.manifest.capabilities),
+        key=lambda p: p.slug,
+    )
 
     def run(plugin) -> tuple[PluginStatus, list[SearchResult]]:
         try:
@@ -95,7 +152,15 @@ def search_all(
                 kwargs["secrets"] = secrets_for(plugin)
             with factory(plugin, fetcher, timeout, **kwargs) as proc:
                 results = proc.search(query, platform, limit)
-            return PluginStatus(plugin.slug, True, len(results)), results
+            return (
+                PluginStatus(
+                    plugin.slug,
+                    True,
+                    len(results),
+                    capped=limit > 0 and len(results) >= limit,
+                ),
+                results,
+            )
         except Exception as exc:  # noqa: BLE001 - isolation is the point
             return PluginStatus(plugin.slug, False, 0, f"{type(exc).__name__}: {exc}"), []
 
