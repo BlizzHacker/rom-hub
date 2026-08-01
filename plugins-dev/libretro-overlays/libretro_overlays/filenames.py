@@ -1,33 +1,34 @@
-"""Turning an upstream filename into one `FetchFile.filename` accepts.
+"""Checking a repository path, rather than repairing one.
 
-The same job `libretro-cores`' module of this name does, and held to the
-same two properties, for the same reasons.
+This module used to sanitise: it took an upstream name, replaced whatever
+the host would refuse, and handed back something that would install. That
+was right while an overlay was a single flat `.cfg` beside flat images,
+and it is wrong now.
 
-**Deterministic.** The same upstream name always produces the same
-result, including when truncated, because `FetchPlan` refuses two files
-whose names collide and a plan must not depend on iteration order to be
-valid.
+An overlay's `.cfg` references its sprites **by name**:
 
-**Extension-preserving.** An overlay is a `.cfg` beside its `.png`, and
-RetroArch loads each by extension; a truncation that ate one would leave
-a file nothing opens.
+    overlay0_desc0_overlay = img/dpad-left.png
 
-What differs from the cores version is what the input looks like. A
-buildbot core filename is already close to bare. These names come out of
-a repository tree -- `DualShock_Full.cfg`, `flat-n64.cfg`, `gb-4k.cfg`,
-and the `.png` files beside them -- and the punctuation they carry is
-mostly punctuation `rom_hub.types.bare_filename` permits, which this
-module therefore leaves alone. The characters it does replace are the
-ones that make a path.
+Rename the sprite and the overlay stops working, silently, in a way that
+looks like a broken download rather than a rename. So this plugin
+installs an overlay's files verbatim or refuses the overlay, and this
+module's job is to answer *which* -- before a plan is built, with a
+message that names the offending path.
+
+The rules being checked are the host's own, restated here only in the
+sense that a plugin should fail with an explanation rather than have its
+plan rejected. `rom_hub.types` validates all of it again on arrival and
+`rom_hub.paths` again before anything is opened; nothing here is what
+makes an install safe.
 """
 
 import posixpath
-import re
 
-# Mirrors rom_hub.types._ALLOWED_PUNCTUATION. Everything outside it --
-# including the separators and the colon that make a path -- becomes "_".
-_ALLOWED = re.compile(r"[^\w .\-()\[\]+,'!&~@#=]", re.UNICODE)
-_RUNS = re.compile(r"_{2,}")
+# Mirrors `rom_hub.types._ALLOWED_PUNCTUATION`. Everything a path
+# component may contain besides alphanumerics, which are tested with
+# `str.isalnum` because it is unicode-aware -- this repository carries
+# Japanese and accented names an ASCII allowlist would drop.
+_ALLOWED_PUNCTUATION = frozenset(" .-_()[]+,'!&~@#=")
 
 _RESERVED_STEMS = frozenset(
     {"CON", "PRN", "AUX", "NUL"}
@@ -35,41 +36,77 @@ _RESERVED_STEMS = frozenset(
     | {f"LPT{i}" for i in range(1, 10)}
 )
 
-MAX_CHARS = 200
+#: `rom_hub.types._MAX_FILENAME_CHARS`.
+MAX_COMPONENT_CHARS = 200
+
+#: `rom_hub.types.MAX_SUBDIR_COMPONENTS` and `MAX_SUBDIR_CHARS`.
+MAX_SUBDIR_COMPONENTS = 8
+MAX_SUBDIR_CHARS = 240
 
 
-def safe_filename(raw: str, fallback: str = "overlay.cfg") -> str:
-    """A bare, host-acceptable filename derived from `raw`.
+class PathNotExpressible(Exception):
+    """This repository path cannot be installed under its own name."""
 
-    `raw` may be a path within a repository tree; only the last component
-    is used. The host re-validates the result with `bare_filename` and
-    `dest_in_job_dir` regardless -- this is the plugin being well-behaved,
-    not the thing that makes it safe.
+
+def split_repo_path(path: str) -> tuple[str | None, str]:
+    """A repository path split into `(subdir, filename)`.
+
+    `subdir` is None for a file at the repository root, which is what
+    `FetchFile` wants for a flat destination.
     """
-    if not isinstance(raw, str):
-        return fallback
-    name = posixpath.basename(raw.replace("\\", "/").strip())
-    name = _RUNS.sub("_", _ALLOWED.sub("_", name))
-    # Leading dots and spaces make hidden or oddly-sorted files; trailing
-    # ones are refused outright by the host on Windows grounds.
-    name = name.strip(". ")
-    if not name:
-        return fallback
+    directory, _, name = path.rpartition("/")
+    return (directory or None), name
 
-    stem, dot, suffix = name.rpartition(".")
-    if not dot:
-        stem, suffix = name, ""
 
-    if stem.upper() in _RESERVED_STEMS:
-        # "NUL.cfg" opens the null device on Windows and writes nowhere.
-        stem = "_" + stem
+def check_component(component: str) -> None:
+    """One path component, against the rules the host applies to a name."""
+    if not component:
+        raise PathNotExpressible("a path component is empty")
+    if len(component) > MAX_COMPONENT_CHARS:
+        raise PathNotExpressible(
+            f"{component!r} is longer than the {MAX_COMPONENT_CHARS} "
+            f"characters a path component may be"
+        )
+    bad = sorted(
+        {c for c in component if not (c.isalnum() or c in _ALLOWED_PUNCTUATION)}
+    )
+    if bad:
+        raise PathNotExpressible(
+            f"{component!r} contains characters a host will not write: {bad!r}"
+        )
+    if not component.strip(". "):
+        raise PathNotExpressible(f"{component!r} is only dots and spaces")
+    if component != component.rstrip(". "):
+        raise PathNotExpressible(f"{component!r} ends in a dot or a space")
+    if component.split(".")[0].upper() in _RESERVED_STEMS:
+        raise PathNotExpressible(
+            f"{component!r} is a Windows reserved device name"
+        )
 
-    if suffix:
-        keep = MAX_CHARS - len(suffix) - 1
-        stem = stem[:keep] if keep > 0 else stem[:1]
-        name = f"{stem}.{suffix}"
-    else:
-        name = stem[:MAX_CHARS]
 
-    name = name.strip(". ")
-    return name or fallback
+def check_repo_path(subdir: str | None, filename: str) -> None:
+    """The whole destination: every directory component, then the name."""
+    if subdir is not None:
+        if len(subdir) > MAX_SUBDIR_CHARS:
+            raise PathNotExpressible(
+                f"the directory {subdir!r} is longer than the "
+                f"{MAX_SUBDIR_CHARS} characters a subdirectory may be"
+            )
+        parts = subdir.split("/")
+        if len(parts) > MAX_SUBDIR_COMPONENTS:
+            raise PathNotExpressible(
+                f"the directory {subdir!r} nests {len(parts)} deep, over the "
+                f"{MAX_SUBDIR_COMPONENTS} a plugin may ask for"
+            )
+        for part in parts:
+            check_component(part)
+    check_component(filename)
+
+
+def is_expressible(path: str) -> bool:
+    """True when `path` can be installed verbatim. For a filter, not a gate."""
+    try:
+        check_repo_path(*split_repo_path(posixpath.normpath(path)))
+    except PathNotExpressible:
+        return False
+    return True
