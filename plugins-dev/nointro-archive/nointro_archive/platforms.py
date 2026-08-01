@@ -95,11 +95,62 @@ DIRECTORY_PLATFORMS: dict[str, str] = {
     "nointro-coleco/coleco - colecovision": "colecovision",
     "nointro-commodore-plus4-vic20/commodore - vic-20": "vic-20",
     "nointro-commodore-plus4-vic20/commodore - plus-4": "c-plus-4",
-    # `NoIntro-Atari` also carries `Atari - 2600`, `Atari - 5200` and
-    # `Atari - 7800`, which are deliberately absent: the dotted
-    # `nointro.atari-*` items are the same three machines from a 2025
-    # rebuild rather than a 2019 one, and two directories mapping to one
-    # platform would list every Atari game twice.
+    # --- Reachable only through the census. -------------------------------
+    #
+    # Everything below was enumerated by `census.py` and is unreachable
+    # from the shipped `collections` list. It is mapped here because a
+    # directory this plugin can name the machine for should not be
+    # catalogued as "platform unknown" merely because nobody typed it into
+    # a config key.
+    #
+    # **These overlap the sets above, and that is now the right answer.**
+    # The note that used to sit here said `NoIntro-Atari/Atari - 2600` was
+    # deliberately unmapped because "two directories mapping to one
+    # platform would list every Atari game twice". That was correct when a
+    # search concatenated directories and printed the result. It is wrong
+    # now: `rom_hub.grouping` merges on a matching sha1 before it looks at
+    # a name, and Archive.org publishes a sha1 for every file -- measured,
+    # `nointro-2600` and `NoIntro-Atari` share **523 byte-identical
+    # archives**, which collapse on proof rather than on hope. Refusing to
+    # catalogue a set because a deduplicator might have to do its job is
+    # how a catalogue stays incomplete on purpose.
+    "nointro-2600": "atari2600",
+    "nointro-atari/atari - 2600": "atari2600",
+    "nointro-atari/atari - 5200": "atari5200",
+    "nointro-atari/atari - 7800": "atari7800",
+    # Three older uploads of sets the dotted items also carry. Kept for the
+    # same reason: the overlap is measurable and the deduplicator measures
+    # it. `NoIntroSegaMegaDriveGenesis2019July30` and its January sibling
+    # share 1,726 hashes with each other and none with `nointro.md`, which
+    # is a 2025 rebuild -- so the three together are a wider corpus than
+    # any one of them, not three copies of one.
+    "nointrosegamegadrivegenesis2019july30": "genesis",
+    "nointrosegamegadrivegenesis2019jan26": "genesis",
+    "nointrocommodoreamiga2018oct12mia31": "amiga",
+    # The C64 item keeps its three dump families in subdirectories. All
+    # three are the same machine: PP is the Preservation Project's disk
+    # images, Tapes are tape dumps, and the bare directory is cartridges
+    # and cracked releases.
+    "nointro-commodore-64_202302/commodore - 64": "c64",
+    "nointro-commodore-64_202302/commodore - 64 (pp)": "c64",
+    "nointro-commodore-64_202302/commodore - 64 (tapes)": "c64",
+    # Two more WonderSwan uploads, one flat and one with the two machines
+    # in subdirectories.
+    "nointro-bandai-wonderswanwonderswan-color/bandai - wonderswan": "wonderswan",
+    "nointro-bandai-wonderswanwonderswan-color/bandai - wonderswan color":
+        "wonderswan-color",
+    "nointro_bandiwonderswan": "wonderswan",
+    "nointro_bandiwonderswancolor": "wonderswan-color",
+    # The other spelling of the Virtual Boy item already mapped above.
+    "nointro_virtualboy": "virtualboy",
+    # **And an item whose title is simply wrong.** `NoIntroNintendo` is
+    # labelled "No Intro - Nintendo" and is a Virtual Boy set: 3-D Tetris,
+    # Bound High, Galactic Pinball, Innsmouth no Yakata. Not a guess from
+    # the titles -- 31 of its 34 files are byte-identical with
+    # `NoIntroVirtualBoy`, which is what the census's hashes are for. A
+    # name-based mapper would have filed this under "Nintendo" or refused
+    # it; the evidence says Virtual Boy.
+    "nointronintendo": "virtualboy",
     # --- Myrient's own No-Intro layout, kept so the plugin can be repointed
     #     at any mirror that reproduces it. myrient.erista.me itself is gone
     #     (see README); these keys are the directory names it used. --------
@@ -144,3 +195,19 @@ def platform_for(directory: str) -> str | None:
     refusal naming the directory. It never means "use a default".
     """
     return DIRECTORY_PLATFORMS.get(normalise(directory))
+
+
+def known_directories() -> list[str]:
+    """Every directory this plugin can name the machine for.
+
+    The table's own keys, which are case-folded. Callers match against
+    them case-insensitively and keep the caller's spelling for the URL --
+    Archive.org's paths are case-sensitive and the table is not.
+
+    Exists so `importer` can accept a source id the census produced. The
+    census enumerates all 71 `identifier:nointro*` items; `collections`
+    lists 25 directories. Without this the Hub would catalogue a ROM and
+    then refuse to import it because nobody had typed its directory into a
+    *search* config key.
+    """
+    return list(DIRECTORY_PLATFORMS)

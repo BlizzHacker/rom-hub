@@ -363,12 +363,46 @@ def test_the_lynx_subdirectory_parses_as_an_ordinary_index():
     assert http.calls == [LYNX_URL]
 
 
-def test_the_two_atari_2600_directories_are_not_both_mapped():
-    """`NoIntro-Atari/Atari - 2600` and `nointro.atari-2600` are the same
-    machine from two rebuilds. Mapping both would list every Atari game
-    twice, so only the newer dotted item is in the table."""
+def test_every_atari_2600_directory_is_mapped_now_that_a_deduplicator_exists():
+    """Three items carry an Atari 2600 set and all three are mapped.
+
+    This assertion is the reverse of what it used to be, and the reversal
+    is the point. The old rule kept `NoIntro-Atari/Atari - 2600` and
+    `nointro-2600` out of the table because "mapping both would list every
+    Atari game twice" -- true of a search that concatenates directories and
+    prints the result.
+
+    It stopped being true when the census landed. `rom_hub.grouping` merges
+    on a matching sha1 *before* it consults a name, Archive.org publishes a
+    sha1 for every file it holds, and `census.py` puts them in `extra`
+    under the keys grouping reads. Measured against the live corpus,
+    `nointro-2600` and `NoIntro-Atari` share 523 byte-identical archives.
+    So the duplication is detected on evidence, and leaving 1,400 real
+    files uncatalogued to avoid a merge the deduplicator performs anyway is
+    incompleteness chosen on purpose.
+    """
     assert platform_for("nointro.atari-2600") == "atari2600"
-    assert platform_for("NoIntro-Atari/Atari - 2600") is None
+    assert platform_for("NoIntro-Atari/Atari - 2600") == "atari2600"
+    assert platform_for("nointro-2600") == "atari2600"
+
+
+def test_an_item_whose_title_lies_is_mapped_from_hash_evidence():
+    """`NoIntroNintendo` is titled "No Intro - Nintendo" and is a Virtual
+    Boy set: 31 of its 34 files are byte-identical with `NoIntroVirtualBoy`.
+    A mapper reading the title would have filed it under the wrong thing or
+    refused it; the census's hashes are what settled it."""
+    assert platform_for("NoIntroNintendo") == "virtualboy"
+    assert platform_for("NoIntroVirtualBoy") == "virtualboy"
+
+
+def test_the_peripherals_stay_unmapped_and_that_is_still_deliberate():
+    """Satellaview and Sufami Turbo are SNES peripherals with their own RomM
+    slugs and no EmulatorJS core. The census catalogues their files -- they
+    are real and they are counted -- but filing them under `snes` would be
+    a remap onto hardware they are not, so they stay unmapped and the
+    report lists them as such."""
+    assert platform_for("NoIntro_Satellaview") is None
+    assert platform_for("NoIntroSufamiTurbo") is None
 
 
 # ------------------------------------------------------------------ ranking
@@ -544,11 +578,42 @@ def test_metadata_files_are_refused_even_when_asked_for_by_name():
         )
 
 
-def test_a_source_id_outside_the_configured_directories_is_refused():
+def test_a_source_id_in_no_directory_this_plugin_knows_is_refused():
+    """Refused before any request, and the message names both places a
+    directory could have come from."""
     importer, http = make_importer()
     with pytest.raises(ImportRefused, match="does not name a file"):
-        importer.plan(SearchResult(source_id="nointro.md/Sonic.7z", title="x"))
+        importer.plan(SearchResult(source_id="nowhere.at.all/Sonic.7z", title="x"))
     assert http.calls == []
+
+
+def test_a_mapped_directory_imports_even_when_it_is_not_in_collections():
+    """The Hub must not refuse to import a row it just catalogued.
+
+    `rom-hub catalogue build` enumerates all 71 `identifier:nointro*` items;
+    `collections` lists 25 directories. The split therefore falls back to
+    the platform table, so a census row from an item nobody typed into a
+    *search* config key is still importable. Still exact-match: an unmapped
+    directory fails, as the test above shows.
+    """
+    importer, http = make_importer(
+        bodies={"https://archive.org/download/nointro.md/": ARCHIVE_ORG},
+        # `nointro.md` is deliberately absent from the configured list.
+        config={"collections": ["nointro.gg"]},
+    )
+    directory, name = importer._split("nointro.md/5 in One FunPak (USA).7z")
+    assert (directory, name) == ("nointro.md", "5 in One FunPak (USA).7z")
+
+
+def test_the_longest_matching_directory_wins():
+    """`NoIntro-Atari` and `NoIntro-Atari/Atari - Lynx` are both real
+    directories and the first is a prefix of the second. Matching the short
+    one on a Lynx source id would leave a name with a slash in it."""
+    importer, _ = make_importer(config={"collections": []})
+    assert importer._split("NoIntro-Atari/Atari - Lynx/Klax (USA).zip") == (
+        "NoIntro-Atari/Atari - Lynx",
+        "Klax (USA).zip",
+    )
 
 
 def test_an_empty_source_id_is_refused():
