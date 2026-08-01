@@ -12,21 +12,23 @@ run offline.
 | `emulators` | <https://github.com/BlizzHacker/rom-hub-emulators> | `v0.1.0` |
 | `hasheous` | <https://github.com/BlizzHacker/rom-hub-hasheous> | `v0.1.0` |
 | `homebrew` | <https://github.com/BlizzHacker/rom-hub-homebrew> | `v0.2.0` |
+| `if-archive` | <https://github.com/BlizzHacker/rom-hub-if-archive> | `v0.1.0` |
 | `itch-io` | <https://github.com/BlizzHacker/rom-hub-itch-io> | `v0.3.0` |
 | `libretro-content` | <https://github.com/BlizzHacker/rom-hub-libretro-content> | `v0.1.0` |
 | `libretro-cores` | <https://github.com/BlizzHacker/rom-hub-libretro-cores> | `v0.1.0` |
 | `libretro-database` | <https://github.com/BlizzHacker/rom-hub-libretro-database> | `v0.1.0` |
 | `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.1.0` |
+| `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.1.0` |
 | `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.2.1` |
 | `openvgdb` | <https://github.com/BlizzHacker/rom-hub-openvgdb> | `v0.2.0` |
 | `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.1.0` |
 | `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.1.0` |
 
-**`aminet`, `demozoo`, `emulators`, `libretro-content` and
-`scummvm-freeware` are new and their repositories do not exist yet.**
-Everything else on this page resolves; those five have to be created and tagged
-`v0.1.0` before `rom-hub plugin install <slug>` will work for them, and
-`pytest -m live` is what will say so.
+**`aminet`, `demozoo`, `emulators`, `if-archive`, `libretro-content`,
+`ludusavi` and `scummvm-freeware` are new and their repositories do not
+exist yet.** Everything else on this page resolves; those seven have to be
+created and tagged `v0.1.0` before `rom-hub plugin install <slug>` will work
+for them, and `pytest -m live` is what will say so.
 
 `catalog/plugins.json` points at those repositories, pinned to those tags, and
 that is what `rom-hub plugin install <slug>` clones. **Nothing installs from

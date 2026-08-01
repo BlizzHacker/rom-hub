@@ -375,6 +375,31 @@
       "comments": "Metadata only — it proposes art and never touches a ROM. Matching is by exact No-Intro-style filename against the per-system index, so a name this plugin cannot spell yields no art rather than the wrong game's box. One host, verified to serve images with zero redirects, so there is no CDN hop to declare."
     },
     {
+      "slug": "ludusavi",
+      "name": "Ludusavi (save locations)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-ludusavi",
+      "install": "https://github.com/BlizzHacker/rom-hub-ludusavi",
+      "download": "https://github.com/BlizzHacker/rom-hub-ludusavi/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-31",
+      "rpp_version": "1",
+      "capabilities": [
+        "metadata"
+      ],
+      "network": [
+        "raw.githubusercontent.com"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Records where a PC game keeps its save files and registry keys, from the ludusavi manifest, answering RomM issue #1908.",
+      "terms": "The cleanest licensing position in this directory. `mtkennerly/ludusavi-manifest` is MIT-licensed in its own repository root — use, copy and redistribute, including commercially, keeping the notice. Nothing here is a game, a ROM or an executable: the dataset is factual file paths and registry keys for 52,886 PC titles, compiled from PCGamingWiki (whose own contributions are CC BY-NC-SA 3.0) plus the Steam API for install-directory names. Anyone redistributing a large derived work should follow that chain rather than take it from a plugin. One pinned blob URL is fetched once through the host's own downloader; nothing is crawled, so no robots.txt question arises.",
+      "comments": "Answers rommapp/romm#1908, and answers half of it: it records **where** saves live, it does not move them — no backup, no Ludusavi binary, no files touched. The caveat is where the answer lands. RomM 4.9.2 gates seven of its eight `raw_*_metadata` fields on a matching provider id (`if cleaned_data[\"hltb_id\"] and raw_hltb_metadata is not None: ...`), so any of those would be silently dropped unless a fabricated id were written alongside it — which is not on. `raw_manual_metadata` is the only ungated field, so that is where the blob goes, namespaced under a `ludusavi` key. Verified on a live 4.9.2: the write is durable in the `manual_metadata` column, but `GET /api/roms/{id}` does not echo the key back, because `ManualMetadata` is a closed seven-key TypedDict. It also replaces rather than merges, since RomM takes the whole blob and `RomRef` does not hand plugins the existing one. Matching is built around one false positive: `Sonic the Hedgehog` is in the manifest as a PC release, so the platform is checked *before* the title — only dos/win/win3x/linux/mac are looked up, matching is exact equality on a unicode-normalised title, keys under four characters refuse (259 of the manifest's own are that short), and a key resolving to two titles refuses naming both (243 keys, 491 titles). The dataset arrives as a 17.4 MB `[[data_assets]]` file pinned to a commit sha — the repository publishes no releases and no tags — and is read by a YAML subset parser, because ROM Hub does not depend on PyYAML and one plugin must not add a host dependency. That parser refuses anything outside the subset rather than skipping it; it reads all 52,886 real entries with zero refusals."
+    },
+    {
       "slug": "nointro-archive",
       "name": "No-Intro sets on Archive.org",
       "author": "BlizzHacker",
