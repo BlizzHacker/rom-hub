@@ -1,2 +1,0 @@
-$ ROM_HUB_BACKEND=romm rom-hub enrich libretro-thumbnails 26
-rom 26: updated no fields and 358071 bytes of artwork
