@@ -5,11 +5,11 @@ repository -- the licence from its `LICENSE`/`COPYING` file via
 `GET /repos/{owner}/{repo}/license`, read in full rather than taken from
 GitHub's SPDX summary, and the asset names from
 `GET /repos/{owner}/{repo}/releases/latest`. The original four were
-verified 2026-07-29 and re-verified 2026-08-01; the seven added in 0.2.0
+verified 2026-07-29 and re-verified 2026-08-01; the eight added in 0.2.0
 were verified 2026-08-01.
 
 Reading the licence file rather than the SPDX field is not ceremony.
-Five of these eleven projects report `NOASSERTION`, and the five answers
+Five of these twelve projects report `NOASSERTION`, and the five answers
 are all different: ares is ISC with third-party notices appended, PPSSPP
 is GPL-2.0 with a PSPSDK BSD notice at the top of the same file, MAME's
 COPYING says "MAME as a whole is made available under the terms of the
@@ -53,9 +53,9 @@ URL and the host fetches it once, for the operator who asked. But an
 operator is entitled to read what they are installing without leaving the
 terminal.
 
-**One API call per project, and there are eleven.** Unauthenticated
+**One API call per project, and there are twelve.** Unauthenticated
 GitHub API requests are capped at 60 per hour per address, so a full
-`cores list` now costs eleven of that budget where it used to cost four.
+`cores list` now costs twelve of that budget where it used to cost four.
 That is roughly five listings an hour, shared with anything else on the
 same address. The `only` config key is the answer and it is worth knowing
 about before the 403 arrives; `releases.fetch_release` says so when it

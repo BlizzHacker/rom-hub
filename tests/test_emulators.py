@@ -1,23 +1,21 @@
 """emulators, replayed against captured GitHub release documents.
 
-`tests/fixtures/emulators/` holds five verbatim bodies of
-`GET https://api.github.com/repos/{owner}/{repo}/releases/latest`,
-captured 2026-07-29:
+`tests/fixtures/emulators/` holds a verbatim body of
+`GET https://api.github.com/repos/{owner}/{repo}/releases/latest` for
+every project this plugin offers -- twelve of them, plus the Dolphin 404
+body. The original four were captured 2026-07-29 and the eight added in
+0.2.0 on 2026-08-01.
 
-    duckstation_latest.json   stenzek/duckstation   tag `latest`, 14 assets
-    mgba_latest.json          mgba-emu/mgba         tag `0.10.5`, 17 assets
-    pcsx2_latest.json         PCSX2/pcsx2           tag `v2.6.3`,  6 assets
-    melonds_latest.json       melonDS-emu/melonDS   tag `1.1`,    10 assets
-    dolphin_latest_404.json   dolphin-emu/dolphin   the 404 body
-
-All four release fixtures are here because one would not prove anything.
-The whole risk this plugin manages is that four projects spell the same
-machine four different ways in the same release alongside installers,
-debug symbols and console homebrew ports -- so the tests that matter are
-the ones asserting that the Linux x86_64 pattern picks
-`DuckStation-x64.AppImage` out of fourteen candidates *and*
-`melonDS-1.1-appimage-x86_64.zip` out of ten, and that neither of them
-ever picks a `-symbols` archive or an `-installer.exe`.
+Every project has a fixture because one would not prove anything. The
+whole risk this plugin manages is that twelve projects spell the same
+machine twelve different ways, in releases that also carry installers,
+debug symbols, delta-update manifests, console homebrew ports and
+byte-identical duplicates under legacy names. So the tests that matter
+are the ones asserting that the Linux x86_64 pattern picks
+`DuckStation-x64.AppImage` out of fourteen candidates, that xemu's picks
+`xemu-0.8.136-x86_64.AppImage` and not `xemu-0.8.136-dbg-x86_64.AppImage`
+out of eighteen, and that no pattern anywhere ever selects a `-symbols`,
+a `-pdb`, an `-installer.exe` or a `.zsync`.
 
 The Dolphin fixture is the 404 body, which is not an error state: it is
 what GitHub returns for a repository that publishes no releases, and the
@@ -55,11 +53,14 @@ from rom_hub.netpolicy import url_allowed  # noqa: E402
 from rom_hub.types import CoreArtifact, bare_filename  # noqa: E402
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 
+#: project_id -> owner/repo, taken from the table rather than restated,
+#: so a project added to `projects.py` without a fixture fails loudly here
+#: instead of silently falling through to the 404 body.
+REPOS = {p.project_id: p.repo for p in PROJECTS}
+
 BODIES = {
-    "stenzek/duckstation": (FIXTURES / "duckstation_latest.json").read_text("utf-8"),
-    "mgba-emu/mgba": (FIXTURES / "mgba_latest.json").read_text("utf-8"),
-    "PCSX2/pcsx2": (FIXTURES / "pcsx2_latest.json").read_text("utf-8"),
-    "melonDS-emu/melonDS": (FIXTURES / "melonds_latest.json").read_text("utf-8"),
+    repo: (FIXTURES / f"{pid}_latest.json").read_text("utf-8")
+    for pid, repo in REPOS.items()
 }
 DOLPHIN_404 = (FIXTURES / "dolphin_latest_404.json").read_text("utf-8")
 
@@ -73,6 +74,14 @@ ASSET_COUNTS = {
     "mgba-emu/mgba": 17,
     "PCSX2/pcsx2": 6,
     "melonDS-emu/melonDS": 10,
+    "ares-emulator/ares": 7,
+    "hrydgard/ppsspp": 10,
+    "flyinghead/flycast": 6,
+    "Vita3K/Vita3K": 11,
+    "xemu-project/xemu": 18,
+    "cemu-project/Cemu": 4,
+    "mamedev/mame": 7,
+    "simple64/simple64": 1,
 }
 
 
@@ -115,6 +124,17 @@ def test_captured_tags_are_what_upstream_published():
     assert parse_release(BODIES["mgba-emu/mgba"], "x").tag == "0.10.5"
     assert parse_release(BODIES["PCSX2/pcsx2"], "x").tag == "v2.6.3"
     assert parse_release(BODIES["melonDS-emu/melonDS"], "x").tag == "1.1"
+    # Two projects do not do numbered releases at all, and printing what
+    # they actually tagged is more honest than substituting a date.
+    assert parse_release(BODIES["Vita3K/Vita3K"], "x").tag == "continuous"
+    assert parse_release(BODIES["mamedev/mame"], "x").tag == "mame0289"
+
+
+def test_every_project_in_the_table_has_a_fixture():
+    """A project added without one would silently be tested against the
+    Dolphin 404 body, which is a passing test that proves nothing."""
+    assert set(REPOS.values()) == set(BODIES)
+    assert set(ASSET_COUNTS) == set(BODIES)
 
 
 # --------------------------------------------------------- asset selection
@@ -289,14 +309,34 @@ def test_duckstations_non_commercial_no_derivatives_terms_are_spelled_out():
 def test_the_default_target_lists_every_project_that_builds_for_it():
     cores, http = make_cores()
     listed = cores.list()
+    # ares is absent and that is the point of this list: it publishes
+    # Windows and macOS builds and `ares-source.tar.gz`, so Linux is a
+    # target it does not build for rather than one this plugin missed.
+    # MAME and simple64 are Windows-only for the same kind of reason.
     assert [c.core_id for c in listed] == [
         "duckstation",
         "mgba",
         "pcsx2",
         "melonds",
+        "ppsspp",
+        "flycast",
+        "vita3k",
+        "xemu",
+        "cemu",
     ]
-    assert len(http.calls) == 4
+    assert len(http.calls) == len(PROJECTS)
     assert all(c.startswith("https://api.github.com/repos/") for c in http.calls)
+
+
+def test_a_full_listing_costs_one_api_call_per_project():
+    """Worth pinning rather than leaving implicit: unauthenticated GitHub
+    API requests are 60 an hour per address, so twelve projects is roughly
+    five listings an hour shared with everything else on that address.
+    `only` is the answer and it narrows the requests, not just the
+    output."""
+    cores, http = make_cores()
+    cores.list()
+    assert len(http.calls) == len(PROJECTS) == 12
 
 
 def test_a_target_only_some_projects_build_for_lists_only_those():
@@ -306,9 +346,30 @@ def test_a_target_only_some_projects_build_for_lists_only_those():
     assert [c.core_id for c in cores.list()] == ["mgba"]
 
 
-def test_macos_lists_the_three_that_ship_a_mac_build():
+def test_macos_universal_lists_only_the_projects_that_ship_one_fat_build():
     cores, _ = make_cores({"target": "macos/universal"})
-    assert [c.core_id for c in cores.list()] == ["duckstation", "pcsx2", "melonds"]
+    assert [c.core_id for c in cores.list()] == [
+        "duckstation",
+        "pcsx2",
+        "melonds",
+        "ares",
+        "ppsspp",
+        "flycast",
+        "xemu",
+    ]
+
+
+def test_the_per_architecture_mac_targets_are_not_synonyms_for_universal():
+    """Vita3K and Cemu publish a separate file per Mac architecture, so
+    they have `macos/x86_64` cells and no `macos/universal` one. Nothing
+    is listed twice under two names, which is what makes three macOS
+    targets honest rather than confusing."""
+    universal = {c.core_id for c in make_cores({"target": "macos/universal"})[0].list()}
+    x86 = {c.core_id for c in make_cores({"target": "macos/x86_64"})[0].list()}
+    arm = {c.core_id for c in make_cores({"target": "macos/arm64"})[0].list()}
+    assert x86 == {"vita3k", "cemu"}
+    assert arm == {"vita3k"}
+    assert universal.isdisjoint(x86 | arm)
 
 
 def test_only_narrows_the_catalogue():
@@ -326,18 +387,14 @@ def test_only_naming_a_project_that_does_not_exist_is_refused_by_name():
 
 
 def test_one_project_being_down_does_not_empty_the_catalogue():
-    """Four projects mean four independent calls. A row that says why is
-    better than a listing that silently lost a quarter of itself."""
+    """Twelve projects mean twelve independent calls. A row that says why
+    is better than a listing that silently lost one of them."""
     broken = dict(BODIES)
     broken["PCSX2/pcsx2"] = "<html>502 Bad Gateway</html>"
     cores, _ = make_cores(http=FakeGitHub(bodies=broken))
     listed = cores.list()
-    assert [c.core_id for c in listed] == [
-        "duckstation",
-        "mgba",
-        "pcsx2",
-        "melonds",
-    ]
+    assert "pcsx2" in [c.core_id for c in listed]
+    assert len(listed) == 9
     pcsx2 = next(c for c in listed if c.core_id == "pcsx2")
     assert "unavailable" in pcsx2.name
     assert pcsx2.version is None
@@ -346,12 +403,14 @@ def test_one_project_being_down_does_not_empty_the_catalogue():
 def test_the_version_column_is_the_upstream_tag_verbatim():
     cores, _ = make_cores()
     versions = {c.core_id: c.version for c in cores.list()}
-    assert versions == {
-        "duckstation": "latest",
-        "mgba": "0.10.5",
-        "pcsx2": "v2.6.3",
-        "melonds": "1.1",
-    }
+    assert versions["duckstation"] == "latest"
+    assert versions["mgba"] == "0.10.5"
+    assert versions["pcsx2"] == "v2.6.3"
+    assert versions["melonds"] == "1.1"
+    # Vita3K's release really is tagged `continuous`. Printing that is
+    # honest about a project that does not do numbered releases, where
+    # substituting a date would invent a version upstream never issued.
+    assert versions["vita3k"] == "continuous"
 
 
 def test_every_listed_core_validates_as_a_core_artifact():
@@ -589,5 +648,25 @@ def test_the_manifest_declares_cores_and_asks_for_no_romm_scopes():
 
 
 def test_declined_projects_are_recorded_rather_than_merely_absent():
-    assert set(DECLINED) == {"dolphin"}
+    assert set(DECLINED) == {"dolphin", "retroarch", "bizhawk"}
     assert set(DECLINED).isdisjoint(BY_ID)
+
+
+@pytest.mark.parametrize(
+    "project_id,evidence",
+    [
+        # Each reason has to be checkable from the text, not asserted.
+        ("dolphin", "404"),
+        ("retroarch", "retroarch-sourceonly-1.22.2.tar.xz"),
+        ("bizhawk", "minefield"),
+    ],
+)
+def test_each_refusal_carries_its_own_evidence(project_id, evidence):
+    assert evidence in DECLINED[project_id]
+
+
+def test_asking_for_a_declined_project_gets_the_reason_not_a_shrug():
+    for project_id in DECLINED:
+        with pytest.raises(UnknownProject) as exc:
+            project_for(project_id)
+        assert len(str(exc.value)) > 200, project_id
