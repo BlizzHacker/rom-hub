@@ -116,7 +116,7 @@ kept in step and how to check.
 
     rom-hub plugin browse                # list what's here
     rom-hub plugin install archive-org   # by slug, resolved through this directory
-    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
+    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.3.0
 
 Installing by slug takes the repository **and** the tag from this directory, so
 the two forms above fetch the same commit — which the Hub then records as a
