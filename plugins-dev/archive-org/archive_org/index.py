@@ -60,7 +60,42 @@ scrape endpoint is therefore **not used**. That is a finding about
 Archive.org, not a preference, and it is why this module reaches
 collection scale through `advancedsearch.php` alone.
 
-## 3. Be a considerate client
+## 3. The host caps a response at 4 MiB, and that is the real ceiling
+
+Neither of the limits above is what actually stops a plugin reading a
+whole collection. `ctx.http` is an RPC and the host refuses a response
+over `broker.fetcher.MAX_RESPONSE_BYTES`::
+
+    ResponseTooLarge: response from 'https://archive.org/advancedsearch.php'
+    exceeded the 4194304-byte limit at 4198942 bytes; bulk transfer is a
+    host concern, not a ctx.http one
+
+That is the right rule -- an untrusted subprocess must not be able to ask
+the host to buffer arbitrary amounts -- so the plugin is what has to fit
+inside it. Two measurements decide how, taken against the 11,893
+downloadable Mega Drive items:
+
+    7 fields incl. notes   5,482,997 bytes   461 bytes/doc   over
+    6 fields, no notes     3,093,609 bytes   260 bytes/doc   under
+    5 fields               1,827,164 bytes   154 bytes/doc
+
+So `notes` -- the control boilerplate, ~400 characters of it repeated on
+every Mega Drive item -- is nearly half the payload. It is asked for only
+while the result set is small enough to afford it; past that the
+`has_controls` flag on a search result goes quiet rather than the search
+failing, and `metadata` still reads the field per item.
+
+And past ~14,000 documents even the lean field set will not fit, which is
+why `_collect` **partitions the query** rather than paging it. `item_size`
+is indexed, is present on all 24,746 items of the collection (checked:
+`NOT item_size:[* TO *]` matches zero), and a numeric range splits any
+query into two disjoint halves that between them lose nothing. Bisect
+until each half fits, then read each half with one page-less request.
+That is the only shape that gets past 10,000 *and* stays under 4 MiB,
+because `page` cannot reach past 10,000 and the page-less form has no
+offset to chunk with.
+
+## 4. Be a considerate client
 
 Everything here is a GET against a free public service that rate-limits,
 so: responses are cached for the life of the process (`Index` is
@@ -78,9 +113,8 @@ import json
 ENDPOINT = "https://archive.org/advancedsearch.php"
 
 #: Fields asked for on every index read. `emulator` is what platform
-#: routing needs, `collection` is what tells import from stream, and
-#: `notes` is one of the three places Archive.org keeps control
-#: information -- see `controls.py`. All four are indexed, verified live.
+#: routing needs and `collection` is what tells import from stream. All
+#: are indexed, verified live.
 FIELDS = (
     "identifier",
     "title",
@@ -88,8 +122,46 @@ FIELDS = (
     "item_size",
     "emulator",
     "emulator_ext",
-    "notes",
 )
+
+#: `notes` is one of the three places Archive.org keeps control
+#: information -- see `controls.py` -- and is ~400 characters of
+#: boilerplate on every Mega Drive item, which is nearly half the bytes of
+#: a large response. Asked for only when the result set can afford it.
+NOTES_FIELD = "notes"
+
+#: The host's own ceiling on one `ctx.http` response. Copied rather than
+#: imported: a plugin has no access to `rom_hub`, by design.
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+
+#: Measured against the live service, over 11,893 documents. Rounded up
+#: from 461 and 260 -- an underestimate here is a failed request.
+BYTES_PER_DOC_WITH_NOTES = 512
+BYTES_PER_DOC = 288
+
+#: Two thirds of the cap. The per-document figures are averages over one
+#: corpus and a collection of unusually long titles would beat them, so
+#: the margin is what keeps a miscalculation from being a failure.
+BUDGET = 0.66
+
+
+def _rows_that_fit(with_notes: bool) -> int:
+    per_doc = BYTES_PER_DOC_WITH_NOTES if with_notes else BYTES_PER_DOC
+    return int(MAX_RESPONSE_BYTES * BUDGET / per_doc)
+
+
+#: ~5,400 with `notes`, ~9,600 without.
+SAFE_ROWS_WITH_NOTES = _rows_that_fit(True)
+SAFE_ROWS = _rows_that_fit(False)
+
+#: Bigger than any Archive.org item by a wide margin (4 TiB), and the
+#: upper bound the size bisection starts from.
+MAX_ITEM_SIZE = 2**42
+
+#: A bisection that cannot terminate must stop anyway. Reached only if a
+#: single `item_size` value holds more documents than fit in one
+#: response, which no observed collection does.
+MAX_PARTITION_REQUESTS = 200
 
 #: Above this, a read stops using `page` and asks for the whole result set
 #: in one request. Under it, `page` is kept: it is the natural resume
@@ -224,10 +296,14 @@ class Index:
     def fetch(self, q: str, limit: int, *, page: int | None = None) -> list[dict]:
         """Up to `limit` documents for `q`.
 
-        `page` is honoured only while the whole ask stays inside
-        Archive.org's deep-paging limit. Past that the request is sent
-        **without** `page`, because that is the only form the service
-        answers -- see this module's docstring.
+        Three shapes, and which one runs is decided by size alone:
+
+        * **paged** -- `page` given and the whole ask inside Archive.org's
+          deep-paging limit. The natural resume point for a search box.
+        * **one request** -- no `page`, and a result set that fits in one
+          response. The common bulk case.
+        * **partitioned** -- a result set too big for one response, split
+          on `item_size` until each half fits. The only way past 10,000.
         """
         limit = max(1, min(int(limit), self._max_rows))
         paged = page is not None and (page * limit) <= DEEP_PAGING_LIMIT
@@ -244,11 +320,27 @@ class Index:
         if key in self._cache:
             return self._cache[key]
 
-        rows = limit
+        if paged or limit <= SAFE_ROWS_WITH_NOTES:
+            docs = self._read(q, limit, page if paged else None, with_notes=True)
+        else:
+            docs = self._collect(q, limit)
+        self._cache[key] = docs
+        return docs
+
+    # -- one query, one response ----------------------------------------
+
+    def _read(
+        self, q: str, rows: int, page: int | None, *, with_notes: bool
+    ) -> list[dict]:
+        """`rows` documents in one response, retrying and then shrinking.
+
+        A caller that asked for 4,000 and can be given 1,000 is better
+        served than one given an exception, so a request that fails twice
+        halves `rows` and tries again.
+        """
         for _ in range(HALVINGS + 1):
-            docs = self._attempt(q, rows, page if paged else None)
+            docs = self._attempt(q, rows, page, with_notes=with_notes)
             if docs is not None:
-                self._cache[key] = docs
                 return docs
             if rows <= 1:
                 break
@@ -261,9 +353,136 @@ class Index:
             f"as something that is not JSON; try again, or narrow the query."
         )
 
+    # -- more than one response's worth ---------------------------------
+
+    def _collect(self, q: str, limit: int) -> list[dict]:
+        """`limit` documents for `q`, however many responses that takes.
+
+        The result set is peeled off in `item_size` order: ask where the
+        N-th smallest document sits, take everything up to that size, then
+        start the next window one byte above it. `item_size` is indexed,
+        numeric, and present on **every** item of the collection this was
+        measured against (`NOT item_size:[* TO *]` matches zero), so the
+        windows are disjoint, ordered, and between them lose nothing.
+
+        **Why a rank lookup rather than a bisection on the size range.**
+        Bisecting `[0, 2**42]` is the obvious implementation and is far too
+        slow: item sizes are heavily skewed small, so the first fifteen
+        splits all put the entire corpus in the lower half, and each one
+        costs a round trip. There is a 30-second wall-clock budget on a
+        plugin call (`broker.host`), which that spends before reading a
+        single document. Asking the service where the N-th document sits
+        -- `sort[]=item_size asc, rows=1, page=N` -- costs one request and
+        lands the boundary exactly, so a window is one lookup plus one
+        read. Measured at 0.65s for the lookup.
+
+        **Which is why the window size is what it is.** `page` on that
+        lookup is subject to the same 10,000-result deep-paging limit as
+        everything else, so a window may not exceed it -- and `SAFE_ROWS`,
+        the response-budget ceiling, is 9,611. The two constraints are
+        compatible only because the byte budget is the tighter one.
+
+        `notes` is dropped for the whole read as soon as the total says it
+        will not fit, rather than per window: a field present on some
+        results and absent from others, depending on where a boundary
+        landed, would be a worse answer than one consistently absent.
+        """
+        total = self.total(q)
+        with_notes = total is not None and total <= SAFE_ROWS_WITH_NOTES
+        ceiling = min(SAFE_ROWS_WITH_NOTES if with_notes else SAFE_ROWS,
+                      DEEP_PAGING_LIMIT)
+
+        if total is not None and total <= ceiling:
+            return self._read(q, min(limit, total), None, with_notes=with_notes)
+
+        out: list[dict] = []
+        seen: set = set()
+        low = 0
+        requests = 0
+
+        while len(out) < limit and requests < MAX_PARTITION_REQUESTS:
+            window = f"{q} AND item_size:[{low} TO {MAX_ITEM_SIZE}]"
+            wanted = min(ceiling, limit - len(out))
+            boundary = self._size_at_rank(window, ceiling)
+            requests += 1
+
+            if boundary is None:
+                # Fewer than `ceiling` documents left: the tail is one read.
+                part = self._read(window, wanted, None, with_notes=with_notes)
+                self._absorb(part, out, seen, limit)
+                break
+
+            bounded = f"{q} AND item_size:[{low} TO {boundary}]"
+            part = self._read(bounded, wanted, None, with_notes=with_notes)
+            requests += 1
+            before = len(out)
+            self._absorb(part, out, seen, limit)
+            if len(out) == before:
+                # No progress -- an empty window, or every document in it
+                # already seen. Advancing anyway is what keeps this from
+                # spinning; the alternative is a loop that cannot end.
+                if boundary <= low:
+                    break
+            low = boundary + 1
+
+        return out
+
+    @staticmethod
+    def _absorb(part: list[dict], out: list[dict], seen: set, limit: int) -> None:
+        """Add `part` to `out`, skipping identifiers already there.
+
+        Windows are disjoint by construction, so this should never drop
+        anything -- it is here because "should never" and "does not" are
+        different claims when the boundaries come from a remote service.
+        """
+        for doc in part:
+            identifier = doc.get("identifier")
+            if identifier in seen:
+                continue
+            seen.add(identifier)
+            out.append(doc)
+            if len(out) >= limit:
+                return
+
+    def _size_at_rank(self, q: str, rank: int) -> int | None:
+        """`item_size` of the `rank`-th smallest document, or None.
+
+        None means there are fewer than `rank` documents -- which is the
+        signal that the remaining window fits in one read, so it is a
+        result rather than a failure.
+        """
+        if rank < 1 or rank > DEEP_PAGING_LIMIT:
+            return None
+        response = self._http.get(
+            ENDPOINT,
+            params={
+                "q": q,
+                "rows": 1,
+                "page": rank,
+                "output": "json",
+                "fl[]": ["item_size"],
+                "sort[]": "item_size asc",
+            },
+        )
+        if response.status_code != 200:
+            return None
+        try:
+            body = response.json()
+        except (ValueError, json.JSONDecodeError):
+            return None
+        if not isinstance(body, dict) or body.get("error"):
+            return None
+        docs = (body.get("response") or {}).get("docs") or []
+        if not docs or not isinstance(docs[0], dict):
+            return None
+        size = docs[0].get("item_size")
+        return size if isinstance(size, int) else None
+
     # -- one attempt ----------------------------------------------------
 
-    def _attempt(self, q: str, rows: int, page: int | None) -> list[dict] | None:
+    def _attempt(
+        self, q: str, rows: int, page: int | None, *, with_notes: bool = True
+    ) -> list[dict] | None:
         """`rows` documents, or None for "ask again, smaller".
 
         None rather than an exception because the caller's response to a
@@ -271,7 +490,8 @@ class Index:
         readable. A *permanent* problem -- a query the service rejects --
         raises instead, since halving `rows` will never fix it.
         """
-        params = {"q": q, "fl[]": list(FIELDS), "rows": rows, "output": "json"}
+        fields = list(FIELDS) + ([NOTES_FIELD] if with_notes else [])
+        params = {"q": q, "fl[]": fields, "rows": rows, "output": "json"}
         if page is not None:
             params["page"] = page
 

@@ -14,6 +14,7 @@ do.
 
 import copy
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -27,6 +28,8 @@ from archive_org import controls  # noqa: E402
 from archive_org.index import (  # noqa: E402
     DEEP_PAGING_LIMIT,
     MAX_ROWS,
+    SAFE_ROWS,
+    SAFE_ROWS_WITH_NOTES,
     Index,
     IndexUnavailable,
     build_query,
@@ -112,17 +115,11 @@ def test_browsing_a_collection_with_no_query_is_still_possible():
 # -- index.py: what the live service actually does ----------------------
 
 
-def test_a_bulk_read_omits_page_because_page_is_what_imposes_the_ceiling():
-    """The whole reason this module exists.
-
-    `advancedsearch.php` refuses page 101 of 100 and the error names the
-    escape: ask for any number of results at once, without a page.
-    """
+def test_a_read_that_fits_in_one_response_is_one_request():
     http = FakeHttp(fixture("search_clr_page.json"))
-    Index(http).fetch("collection:(consolelivingroom)", 20000)
-    _, params = http.calls[0]
-    assert "page" not in params
-    assert params["rows"] == 20000
+    Index(http).fetch("collection:(consolelivingroom)", 25)
+    assert len(http.calls) == 1
+    assert http.calls[0][1]["rows"] == 25
 
 
 def test_a_small_read_may_still_be_paged():
@@ -174,9 +171,139 @@ def test_one_query_is_only_asked_once():
 
 
 def test_a_config_typo_cannot_ask_archive_org_for_a_million_rows():
+    """Two ceilings, and the tighter one wins: `max_rows` bounds what an
+    operator may ask for, and the response budget bounds what may be asked
+    of the service in one go."""
     http = FakeHttp(fixture("search_clr_page.json"))
     Index(http, max_rows=10**9).fetch("collection:(consolelivingroom)", 10**9)
-    assert http.calls[0][1]["rows"] == MAX_ROWS
+    asked = [params["rows"] for _, params in http.calls]
+    assert max(asked) <= SAFE_ROWS
+    assert SAFE_ROWS_WITH_NOTES < SAFE_ROWS < MAX_ROWS < 10**9
+
+
+class CorpusHttp:
+    """A stand-in Archive.org holding `n` documents of known sizes.
+
+    Enough of the service to exercise the bisection: it honours
+    `item_size:[lo TO hi]`, counts for `rows=0`, and truncates to `rows`.
+    Nothing here talks to anything.
+    """
+
+    RANGE = re.compile(r"item_size:\[(\d+) TO (\d+)\]")
+
+    def __init__(self, n: int):
+        self.docs = [
+            {
+                "identifier": f"item-{i:06d}",
+                "title": f"Item {i}",
+                "collection": ["consolelivingroom"],
+                "item_size": i * 977 % 4_000_000,
+                "emulator": "genesis",
+                "emulator_ext": "md",
+            }
+            for i in range(n)
+        ]
+        self.calls = []
+
+    def _matching(self, q):
+        match = self.RANGE.search(q)
+        if not match:
+            return self.docs
+        low, high = int(match.group(1)), int(match.group(2))
+        return [d for d in self.docs if low <= d["item_size"] <= high]
+
+    def get(self, url, params=None):
+        self.calls.append((url, params))
+        docs = self._matching(params["q"])
+        if params.get("sort[]"):
+            docs = sorted(docs, key=lambda d: d["item_size"])
+        rows = int(params.get("rows", 0))
+        page = params.get("page")
+        if page is not None:
+            if int(page) * rows > 10000:
+                return HttpResponse(status_code=200,
+                                    text=json.dumps({"error": "[DEEP_PAGING]"}))
+            start = (int(page) - 1) * rows
+            docs = docs[start:start + rows]
+            return HttpResponse(status_code=200, text=json.dumps(
+                {"response": {"numFound": len(self._matching(params["q"])),
+                              "docs": docs}}))
+        body = {"response": {"numFound": len(docs), "docs": docs[:rows]}}
+        return HttpResponse(status_code=200, text=json.dumps(body))
+
+
+def test_no_request_a_bulk_read_makes_can_be_refused_for_deep_paging():
+    """The whole reason this module exists.
+
+    `advancedsearch.php` refuses page 101 of 100. Reading documents
+    therefore drops `page` entirely; the one place it survives is the
+    rank lookup that finds a window boundary, at `rows=1`, where
+    `page * rows` stays inside the limit by construction.
+    """
+    http = CorpusHttp(20000)
+    Index(http).fetch("collection:(consolelivingroom)", 20000)
+    assert http.calls
+    for _, params in http.calls:
+        page = int(params.get("page") or 1)
+        assert page * int(params.get("rows") or 0) <= DEEP_PAGING_LIMIT
+        if page > 1:
+            assert int(params["rows"]) == 1
+
+
+def test_documents_are_read_without_a_page_at_all():
+    http = CorpusHttp(20000)
+    Index(http).fetch("collection:(consolelivingroom)", 20000)
+    reads = [p for _, p in http.calls if int(p.get("rows") or 0) > 1]
+    assert reads
+    assert all("page" not in p for p in reads)
+
+
+def test_a_result_set_too_big_for_one_response_is_split_until_it_fits():
+    """Past ~14,000 documents no field set fits in the host's 4 MiB cap,
+    and `page` cannot reach past 10,000. Splitting the query is the only
+    shape left."""
+    http = CorpusHttp(20000)
+    docs = Index(http).fetch("collection:(consolelivingroom)", 20000)
+    assert len(docs) == 20000
+    assert len({d["identifier"] for d in docs}) == 20000
+    assert len(http.calls) > 1
+
+
+def test_the_partitions_are_disjoint_so_nothing_is_counted_twice():
+    http = CorpusHttp(20000)
+    Index(http).fetch("collection:(consolelivingroom)", 20000)
+    reads = [
+        p for _, p in http.calls
+        if int(p.get("rows", 0)) > 1 and not p.get("sort[]")
+    ]
+    spans = []
+    for params in reads:
+        match = CorpusHttp.RANGE.search(params["q"])
+        if match:
+            spans.append((int(match.group(1)), int(match.group(2))))
+    assert len(spans) > 1
+    for (_, first_high), (second_low, _) in zip(spans, spans[1:]):
+        assert first_high < second_low
+
+
+def test_notes_is_dropped_for_the_whole_read_once_it_will_not_fit():
+    """~400 characters of control boilerplate on every Mega Drive item is
+    nearly half the bytes of a large response. A field present on some
+    results and absent from others, depending on where a bisection landed,
+    would be a worse answer than one consistently absent."""
+    big = CorpusHttp(20000)
+    Index(big).fetch("collection:(consolelivingroom)", 20000)
+    assert all("notes" not in p["fl[]"] for _, p in big.calls if "fl[]" in p)
+
+    small = CorpusHttp(100)
+    Index(small).fetch("collection:(consolelivingroom)", 100)
+    assert all("notes" in p["fl[]"] for _, p in small.calls if "fl[]" in p)
+
+
+def test_a_bulk_read_stops_at_the_limit_it_was_given():
+    http = CorpusHttp(20000)
+    docs = Index(http).fetch("collection:(consolelivingroom)", 12000)
+    assert len(docs) == 12000
 
 
 def test_total_reads_numfound_from_a_rows_zero_response():
@@ -521,3 +648,16 @@ def test_every_stream_target_is_inside_the_declared_allowlist():
     provider = Stream(PluginContext(config={}, http=FakeHttp(item)))
     target = provider.resolve(SearchResult(source_id="x", title="X"))
     check_url(target.target, ALLOWLIST)
+
+
+def test_an_ask_bigger_than_one_reply_frame_is_refused_not_truncated():
+    """Measured from both sides: 11,893 results came back intact, and all
+    24,746 exceeded the 8 MiB RPP frame -- which the host reports as the
+    stream being desynchronised. Truncating instead would answer "how big
+    is this collection" with a number this plugin made up."""
+    from archive_org.search import MAX_RESULTS
+
+    search, http = _search()
+    with pytest.raises(SearchRefused, match="downloadable_only"):
+        search.search("", None, MAX_RESULTS + 1)
+    assert http.calls == []

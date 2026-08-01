@@ -87,6 +87,41 @@ over 25 requests — but:
 
 Both reproduced more than once. See `archive_org/index.py`.
 
+### The limits that actually bind are the Hub's, not Archive.org's
+
+Three of them, all found by running into them, and all correct rules that the
+plugin has to fit inside rather than argue with:
+
+| limit | value | what it does | how this fits |
+|---|---|---|---|
+| `ctx.http` response | 4 MiB | `ResponseTooLarge` | drop `notes` when the ask is big; partition the query |
+| plugin call | 30 s wall clock | the process is killed | one rank lookup + one read per window, not a bisection |
+| RPP reply frame | 8 MiB chars | *"the stream is now desynchronised"* | refuse an ask over 12,000 results |
+
+The response cap is why a large read partitions rather than pages. `page`
+cannot reach past 10,000 and the page-less form has no offset to chunk with, so
+the *query* is split: ask where the N-th smallest item sits
+(`sort[]=item_size asc, rows=1, page=N`, 0.65s), take everything up to that
+size, start the next window one byte above. `item_size` is on every one of the
+24,746 items — `NOT item_size:[* TO *]` matches zero — so the windows are
+disjoint and lose nothing.
+
+The wall clock is why it is a rank lookup and not a bisection on the size
+range: sizes are skewed small, so bisecting `[0, 2**42]` puts the whole corpus
+in the lower half fifteen times running and spends the entire budget before
+reading a document.
+
+The reply frame is why an ask over **12,000** results is refused rather than
+truncated. A result serialises to 467–602 characters, measured; 11,893 came
+back intact and 24,746 did not. Truncating would answer "how big is this
+collection" with a number the plugin made up, so the refusal names the knobs
+instead — filter by platform, set `downloadable_only`, or scope `collections`.
+
+Measured end to end through the CLI, against the live service:
+
+    rom-hub search "" --platform genesis --limit 12000
+    1 of 1 sources responded, 11893 results          # 7.4 s
+
 ## Controls
 
 Archive.org tells a reader which key is which console button, because the

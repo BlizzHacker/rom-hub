@@ -51,6 +51,25 @@ DEFAULT_COLLECTIONS = ["softwarelibrary", "consolelivingroom"]
 
 STREAM_ONLY = "stream_only"
 
+#: What one `search` reply can carry, and it is the host's limit rather
+#: than Archive.org's.
+#:
+#: `protocol.MAX_MESSAGE_CHARS` caps an RPP frame at 8 MiB, and a
+#: `SearchResult` from this plugin serialises to 467-602 characters --
+#: measured over two captured pages, the larger figure being the one with
+#: long titles and four-entry collection lists. 8 MiB / 602 is about
+#: 13,900, so 12,000 leaves a real margin. Verified from the other side
+#: too: 11,893 results (every downloadable Mega Drive item) came back
+#: intact, and asking for all 24,746 did not -- it exceeded the frame,
+#: which the host reports as *"the stream is now desynchronised and the
+#: peer must be killed"*.
+#:
+#: Asking for more is **refused**, not quietly truncated. Truncation would
+#: answer "how big is this collection" with a number this plugin made up,
+#: and the operator would have no way to tell. The refusal names the two
+#: knobs that make the ask fit.
+MAX_RESULTS = 12000
+
 
 class SearchRefused(Exception):
     """This search cannot be run, and the message says why."""
@@ -95,6 +114,17 @@ class Search(SearchProvider):
         config = self.ctx.config or {}
         collections = config.get("collections") or DEFAULT_COLLECTIONS
         downloadable_only = bool(config.get("downloadable_only"))
+
+        if limit > MAX_RESULTS:
+            raise SearchRefused(
+                f"one search reply can carry about {MAX_RESULTS} results -- "
+                f"the Hub caps an RPP message at 8 MiB and a result costs "
+                f"~600 characters -- and {limit} were asked for. Narrow the "
+                f"ask rather than losing part of the answer silently: filter "
+                f"by platform, set downloadable_only=true to drop the "
+                f"stream-only items, or scope `collections` to one "
+                f"collection."
+            )
 
         emulators = None
         wanted = (platform or "").strip()
