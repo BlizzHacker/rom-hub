@@ -387,6 +387,10 @@ def _report_catalog_health(merged: MergedCatalog, stream=None) -> None:
     command "succeeded".
     """
     stream = stream or sys.stderr
+    if merged.stale and merged.complete:
+        # Reachable but not current. `coverage()` says so on one line
+        # rather than letting "N of N reachable" read as "up to date".
+        print(f"  ~ {merged.coverage()}", file=stream)
     if not merged.complete:
         print(f"  ! {merged.coverage()}", file=stream)
         for status in merged.failures:

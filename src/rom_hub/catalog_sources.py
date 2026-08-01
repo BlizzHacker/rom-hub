@@ -294,8 +294,19 @@ class MergedCatalog:
         return [e.entry for e in self.entries]
 
     def coverage(self) -> str:
-        """The one line a caller must print when anything is missing."""
-        return f"{self.reachable} of {self.total} catalog(s) reachable"
+        """The one line a caller must print when anything is missing.
+
+        A stale source counts as reachable, because it did answer -- but
+        it is named in the same breath rather than left to a later line.
+        "3 of 3 reachable" on its own would read as "this is current",
+        which is the one thing a day-old copy is not.
+        """
+        line = f"{self.reachable} of {self.total} catalog(s) reachable"
+        stale = self.stale
+        if stale:
+            names = ", ".join(s.source.name for s in stale)
+            line += f"; {len(stale)} serving a stale cached copy ({names})"
+        return line
 
 
 def human_age(seconds: float | None) -> str:
@@ -606,7 +617,10 @@ def _fetch_text(source: CatalogSource, root: Path, *, transport=None) -> str:
         downloader.download(source.location, incoming)
         return incoming.read_text(encoding="utf-8")
     except DownloadError as exc:
-        raise CatalogSourceError(f"{source.name}: {exc}") from exc
+        # No source name in front of it: `SourceStatus` already carries the
+        # source, and every caller prints the two together, so adding one
+        # here produced "offline: offline: downloading ... failed".
+        raise CatalogSourceError(str(exc)) from exc
     except (OSError, UnicodeDecodeError) as exc:
         raise CatalogSourceError(
             f"{source.name}: the catalog fetched from {source.location!r} "

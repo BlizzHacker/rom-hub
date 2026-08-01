@@ -396,6 +396,25 @@ def test_a_failed_refresh_serves_the_stale_copy_and_says_how_old_it_is(tmp_path)
     assert "24" in status.summary()
 
 
+def test_coverage_names_a_stale_source_rather_than_reading_as_up_to_date(tmp_path):
+    """"2 of 2 reachable" alone would read as "this is current".
+
+    A stale source did answer, so it counts as reachable -- but a day-old
+    copy is exactly the fact that explains a missing plugin, so it is said
+    on the same line rather than left to a later one.
+    """
+    add_source(tmp_path, "yesterday", CATALOG_URL)
+    load_all(tmp_path, transport=serving(catalog_text()))
+
+    merged = load_all(
+        tmp_path, transport=refusing(), now=time.time() + 60 * 60 * 24
+    )
+    assert merged.complete
+    assert "2 of 2 catalog(s) reachable" in merged.coverage()
+    assert "stale cached copy" in merged.coverage()
+    assert "yesterday" in merged.coverage()
+
+
 def test_a_source_that_never_succeeded_has_no_stale_copy_to_serve(tmp_path):
     entries, status = load_source(remote(), tmp_path, transport=refusing())
     assert entries == []
