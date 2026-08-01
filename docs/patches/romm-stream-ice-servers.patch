@@ -1,0 +1,93 @@
+--- a/webrtc.py
++++ b/webrtc.py
+@@ -7,12 +7,89 @@
+ import asyncio
+ import json
+ import logging
++import os
+ 
+ import runner_retroarch
+ 
+ log = logging.getLogger('webrtc')
+ 
+-ICE_SERVERS = [{'urls': 'stun:stun.l.google.com:19302'}]
++# Google's public STUN was hardcoded here, and STUN alone cannot relay: it
++# discovers a peer's reflexive address and stops. Behind symmetric NAT or
++# CGNAT -- which is exactly where a remote client sits -- both ends gather
++# candidates that never pair, and the session fails in a way that looks
++# from the client like a flaky network rather than a missing relay.
++#
++# A TURN server is the relay, and this box already runs one. So the list
++# is configuration rather than a constant, and the credentials live in the
++# environment (the unit file or the compose env file), never in this file:
++# a long-term credential committed next to the code is a credential that
++# ends up in every backup and every clone.
++#
++#   ROMM_STREAM_ICE_SERVERS  complete JSON list; wins over everything below
++#   ROMM_STREAM_STUN_URLS    comma-separated stun: URLs
++#   ROMM_STREAM_TURN_URLS    comma-separated turn:/turns: URLs
++#   ROMM_STREAM_TURN_USER    long-term credential username
++#   ROMM_STREAM_TURN_PASS    long-term credential password
++#
++# With none of them set the behaviour is byte-for-byte what it was, so
++# deploying this file on its own changes nothing until a relay is
++# actually configured.
++DEFAULT_STUN_URLS = ('stun:stun.l.google.com:19302',)
++
++
++def _csv(value):
++    return [item.strip() for item in (value or '').split(',') if item.strip()]
++
++
++def ice_servers(env=None):
++    """The ICE server list for this process, read from the environment.
++
++    Every failure here degrades to the previous behaviour and says so on
++    the log, because the alternative is a server that refuses to start
++    over a misconfigured relay -- turning "remote clients cannot connect"
++    into "nobody can play at all".
++    """
++    env = os.environ if env is None else env
++
++    raw = (env.get('ROMM_STREAM_ICE_SERVERS') or '').strip()
++    if raw:
++        try:
++            servers = json.loads(raw)
++        except ValueError as e:
++            log.error('ROMM_STREAM_ICE_SERVERS is not valid JSON (%s); '
++                      'using the default STUN server', e)
++        else:
++            if isinstance(servers, list) and servers:
++                return servers
++            log.error('ROMM_STREAM_ICE_SERVERS must be a non-empty JSON '
++                      'list; using the default STUN server')
++
++    stun = _csv(env.get('ROMM_STREAM_STUN_URLS')) or list(DEFAULT_STUN_URLS)
++    servers = [{'urls': url} for url in stun]
++
++    turn = _csv(env.get('ROMM_STREAM_TURN_URLS'))
++    user = (env.get('ROMM_STREAM_TURN_USER') or '').strip()
++    password = env.get('ROMM_STREAM_TURN_PASS') or ''
++    if turn:
++        if user and password:
++            servers.append({'urls': turn, 'username': user,
++                            'credential': password})
++        else:
++            # A TURN URL without credentials is not a weaker relay, it is
++            # no relay at all: a coturn running lt-cred-mech refuses the
++            # allocation outright, and from the client the failure is
++            # indistinguishable from having configured no TURN server.
++            # Better to say so once at startup than to look relayed and
++            # not be.
++            log.error('ROMM_STREAM_TURN_URLS is set but '
++                      'ROMM_STREAM_TURN_USER/ROMM_STREAM_TURN_PASS is not; '
++                      'ignoring it, because an unauthenticated allocation '
++                      'is refused and would look like a bad network')
++    return servers
++
++
++ICE_SERVERS = ice_servers()
++log.info('ICE servers: %s', [s.get('urls') for s in ICE_SERVERS])
+ 
+ 
+ def _media_players(display_num: int):

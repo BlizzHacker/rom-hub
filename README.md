@@ -132,7 +132,7 @@ implementation and a CLI command:
 | `search` | `rom-hub search <query>` | fans out across every enabled plugin |
 | `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection |
 | `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to the library |
-| `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
+| `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated target and hands it over — prints what to do with it, `--open`s it, or emits it as JSON |
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 | `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
 | `assets` | `rom-hub assets list\|install <plugin> [<asset>]` | lists a plugin's shaders, overlays, cheats and controller profiles **with each one's licence**, installs one to disk. No library involved |
@@ -346,15 +346,40 @@ plugin's manifest declares) or from bytes the plugin already has. It lands in
 
     rom-hub stream archive-org msdos_Oregon_Trail_The_1990
     url     https://archive.org/details/msdos_Oregon_Trail_The_1990
-    title   The Oregon Trail
+    title   Oregon Trail, The
     type    text/html
     emulator        dosbox
+    identifier      msdos_Oregon_Trail_The_1990
     stream_only     true
+    play    open this URL in a browser to play it
 
-That is the whole command, on purpose. `romm-stream` is a separate service;
-the Hub resolves and validates a target and hands it over rather than building
-a second streaming transport of its own. Items Archive.org marks `stream_only`
-are exactly the ones `import` refuses, so this is where they go.
+Add `--open` and the Hub opens it, which for this item *is* playing it: an
+Archive.org `/details/` page runs the emulator in the page. Items Archive.org
+marks `stream_only` are exactly the ones `import` refuses, so this is where
+they go.
+
+A target that is a *handle* rather than a URL — an identifier for some other
+service — is printed for whoever issued it and never opened. The Hub does not
+guess a URL around an opaque string.
+
+For a rom your library already holds there is no plugin to ask:
+
+    rom-hub stream --library-rom 42
+    url     http://romm.example:8080/rom/42/ejs
+
+That is the library's own in-browser player, built from your backend settings.
+
+`--json` prints the same handover for a launcher to consume. `--server
+http://stream.example:8090` (or `$ROM_HUB_STREAM_SERVER`) additionally asks a
+`romm-stream` server, over its read-only routing endpoints, whether *it* could
+play the platform — it never starts a session there.
+
+**The Hub is not a streaming server.** `romm-stream` is, and it is a separate
+service; the Hub resolves, validates and hands over rather than building a
+second transport. It also cannot start a `romm-stream` session for a
+plugin-resolved target, because that server's session routes take a rom on its
+own disk or a library rom id plus credentials — not a URL. See
+`docs/DESIGN.md` for the whole boundary.
 
 ## Emulator cores
 

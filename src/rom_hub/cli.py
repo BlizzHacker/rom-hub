@@ -17,6 +17,8 @@ one is active and what it can do.
 
 import argparse
 import getpass
+import importlib
+import json
 import os
 import sys
 from pathlib import Path
@@ -52,6 +54,17 @@ from .metadata import EnrichError, rom_ref_from, run_enrich
 from .registry import Registry, RegistryError
 from .sandbox import probe
 from .secrets import SecretError
+from .stream import (
+    STREAM_SERVER_ENV,
+    StreamError,
+    StreamOutcome,
+    StreamServerClient,
+    library_handover,
+    library_player_path,
+    open_handover,
+    open_library_url,
+    plan_handover,
+)
 from .types import KNOWN_ASSET_KINDS, SearchResult
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
@@ -925,14 +938,76 @@ def _cmd_enrich(args) -> int:
     return EXIT_OK
 
 
-def _cmd_stream(args) -> int:
-    """Resolve one item to a stream target and print it.
+def stream_server_base() -> str:
+    """The operator's `romm-stream`, if they run one. Configuration only.
 
-    Deliberately the whole command. `romm-stream` is a separate service and
-    integrating it is not this capability's job: the contract is "a plugin
-    resolves an item, the host validates the answer", and printing the
-    validated answer is exactly as far as the Hub goes.
+    Read at call time like every other setting, and empty by default: an
+    operator with no stream server must not have `rom-hub stream` try to
+    reach one.
     """
+    return env.get(STREAM_SERVER_ENV).strip()
+
+
+def _print_outcome(outcome, as_json: bool) -> None:
+    """One printer for both ways into `stream`, so `--json` has one schema."""
+    if as_json:
+        print(json.dumps(outcome.as_dict(), indent=2, sort_keys=True))
+        return
+
+    target = outcome.handover.target
+    print(f"{target.kind}\t{target.target}")
+    if target.title:
+        print(f"title\t{target.title}")
+    if target.mime_type:
+        print(f"type\t{target.mime_type}")
+    for key in sorted(target.extra):
+        print(f"{key}\t{target.extra[key]}")
+    print(f"play\t{outcome.handover.how}")
+    if outcome.route is not None:
+        print(f"server\t{outcome.route.describe()}")
+    for note in outcome.notes:
+        print(f"note\t{note}")
+    if outcome.opened:
+        print(f"opened\t{outcome.opened}")
+
+
+def _cmd_stream(args) -> int:
+    """Resolve one item to a stream target and hand it over.
+
+    Two ways in, one handover. A plugin resolves an item the operator does
+    not have (`rom-hub stream archive-org <id>`), or the operator names a
+    rom their own library already holds (`--library-rom <id>`), and either
+    way the host decides what the answer can be given to and -- with
+    `--open` -- gives it.
+
+    What it deliberately does not do is stream. `romm-stream` is the
+    streaming server; the Hub resolves, validates and hands over. When a
+    stream server is configured the Hub asks it, read-only, whether the
+    platform is playable there, because that is the one question it can
+    answer for a target it has never seen. See `rom_hub.stream`.
+    """
+    as_json = getattr(args, "json", False)
+
+    if args.library_rom is not None:
+        if args.plugin or args.source_id:
+            print(
+                "error: --library-rom names a rom your library already has, "
+                "so there is no plugin to resolve it; drop the plugin and "
+                "source id, or drop --library-rom",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+        return _stream_from_library(args, as_json)
+
+    if not args.plugin or not args.source_id:
+        print(
+            "error: name a plugin and a source id (rom-hub stream <plugin> "
+            "<source_id>), or use --library-rom <id> for a rom your library "
+            "already holds",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+
     plugin = Registry(default_root()).get(args.plugin)
     refusal = _require_capability(plugin, "stream")
     if refusal:
@@ -943,6 +1018,7 @@ def _cmd_stream(args) -> int:
         source_id=args.source_id,
         # The identifier is all the CLI knows; the plugin looks the rest up.
         title=args.source_id,
+        platform=args.platform,
         plugin=plugin.slug,
     )
 
@@ -962,14 +1038,113 @@ def _cmd_stream(args) -> int:
     finally:
         fetcher.close()
 
-    print(f"{target.kind}\t{target.target}")
-    if target.title:
-        print(f"title\t{target.title}")
-    if target.mime_type:
-        print(f"type\t{target.mime_type}")
-    for key in sorted(target.extra):
-        print(f"{key}\t{target.extra[key]}")
+    allowlist = list(plugin.manifest.network)
+    try:
+        handover = plan_handover(target, allowlist, source=plugin.slug)
+    except StreamError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    notes: list[str] = []
+    opened = ""
+    if args.open:
+        try:
+            opened = open_handover(handover, allowlist)
+        except StreamError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return EXIT_ERROR
+
+    outcome = StreamOutcome(
+        handover=handover,
+        route=_ask_stream_server(args, target, notes),
+        opened=opened,
+        notes=notes,
+    )
+    _print_outcome(outcome, as_json)
     return EXIT_OK
+
+
+def _ask_stream_server(args, target, notes: list[str]):
+    """Ask a configured `romm-stream` whether it could play this platform.
+
+    Optional in the `backends.degrade` sense: the operator's answer -- the
+    resolved target -- is already in hand, so a stream server that is down
+    or not configured must never turn this command into a failure.
+    """
+    base = args.server or stream_server_base()
+    if not base:
+        return None
+    platform = args.platform or target.extra.get("platform", "")
+    if not platform:
+        notes.append(
+            "a stream server is configured but this target names no "
+            "platform, so there was nothing to ask it about; pass "
+            "--platform <slug> to ask"
+        )
+        return None
+    try:
+        with StreamServerClient(base) as client:
+            return client.route(platform)
+    except StreamError as exc:
+        notes.append(f"stream server not asked: {exc}")
+        return None
+
+
+def _stream_from_library(args, as_json: bool) -> int:
+    """Hand over the library's own player for a rom it already holds.
+
+    No plugin, no subprocess and no connection: the URL is the configured
+    backend's base plus the id the operator typed. See
+    `stream.library_player_url` for why it is not pre-flighted.
+    """
+    name = env.get("ROM_HUB_BACKEND") or backends.DEFAULT_BACKEND
+    try:
+        # Refuse on the player table first: a backend with no player must
+        # not be told instead that it is unconfigured.
+        library_player_path(name)
+        handover = library_handover(
+            name, _backend_base_url(name), args.library_rom
+        )
+    except (BackendError, StreamError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    opened = ""
+    if args.open:
+        try:
+            opened = open_library_url(handover.url)
+        except StreamError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return EXIT_ERROR
+
+    _print_outcome(
+        StreamOutcome(handover=handover, opened=opened), as_json
+    )
+    return EXIT_OK
+
+
+def _backend_base_url(name: str) -> str:
+    """The active backend's base URL, without connecting.
+
+    `library_player_url` needs the base URL and nothing else, and opening
+    a backend would authenticate -- a round trip and a token spent to
+    build a string.
+
+    Backends spell `settings_from_env()` differently on purpose: one that
+    authenticates returns a `(url, user, password)` triple, one that does
+    not returns the URL alone. Both shapes are accepted here rather than
+    made uniform, because each is correct for the backend that chose it
+    and the only thing this function wants is the URL either way.
+    """
+    module = importlib.import_module(f"rom_hub.backends.{name}.backend")
+    settings_from_env = getattr(module, "settings_from_env", None)
+    if settings_from_env is None:
+        raise BackendError(
+            f"backend {name!r} does not expose its connection settings, so "
+            f"the Hub cannot build its player URL"
+        )
+    settings = settings_from_env()
+    return settings if isinstance(settings, str) else settings[0]
 
 
 def _with_cores_plugin(args, action):
@@ -1532,12 +1707,63 @@ def build_parser() -> argparse.ArgumentParser:
     )
     enrich.set_defaults(func=_cmd_enrich)
 
-    stream = sub.add_parser(
-        "stream", help="resolve one item to a stream target and print it"
+    streamer = sub.add_parser(
+        "stream",
+        help="resolve one item to a stream target and hand it over",
+        description=(
+            "Resolve an item to a playable target and say what to do with "
+            "it -- or, with --open, do it. The Hub is not a streaming "
+            "server: it resolves, validates and hands over."
+        ),
     )
-    stream.add_argument("plugin", help="slug of an installed stream plugin")
-    stream.add_argument("source_id", help="the plugin's id for the item")
-    stream.set_defaults(func=_cmd_stream)
+    streamer.add_argument(
+        "plugin", nargs="?", help="slug of an installed stream plugin"
+    )
+    streamer.add_argument(
+        "source_id", nargs="?", help="the plugin's id for the item"
+    )
+    streamer.add_argument(
+        "--library-rom",
+        type=int,
+        default=None,
+        metavar="ID",
+        help=(
+            "skip the plugins: hand over the active backend's own "
+            "in-browser player for a rom the library already holds"
+        ),
+    )
+    streamer.add_argument(
+        "--open",
+        action="store_true",
+        help=(
+            "open the resolved URL in a browser; refused for a target that "
+            "is a handle rather than a URL"
+        ),
+    )
+    streamer.add_argument(
+        "--json",
+        action="store_true",
+        help="print the handover as JSON, for a launcher to consume",
+    )
+    streamer.add_argument(
+        "--platform",
+        default=None,
+        help=(
+            "platform slug for this item, used to ask a configured stream "
+            "server whether it could play it"
+        ),
+    )
+    streamer.add_argument(
+        "--server",
+        default=None,
+        metavar="URL",
+        help=(
+            f"a romm-stream server to ask about playability, overriding "
+            f"${STREAM_SERVER_ENV}; only its read-only routing endpoints "
+            f"are called and no session is started"
+        ),
+    )
+    streamer.set_defaults(func=_cmd_stream)
 
     cores = sub.add_parser("cores", help="list and install emulator cores")
     csub = cores.add_subparsers(dest="cores_command", required=True)
