@@ -21,7 +21,7 @@ run offline.
 | `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.1.0` |
 | `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.2.1` |
 | `openvgdb` | <https://github.com/BlizzHacker/rom-hub-openvgdb> | `v0.2.0` |
-| `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.1.0` |
+| `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.2.0` |
 | `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.1.0` |
 
 **`aminet`, `demozoo`, `emulators`, `if-archive`, `libretro-content`,

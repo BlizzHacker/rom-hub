@@ -10,7 +10,7 @@ Implements the RPP v1 `metadata` capability: identifies a ROM by its hash on
 
 ## Install
 
-    rom-hub plugin install ./plugins-dev/retroachievements
+    rom-hub plugin install retroachievements
     rom-hub plugin secret set retroachievements api_key     # prompts; nothing echoed
     rom-hub enrich retroachievements 42 --source-id <md5>
 
@@ -54,14 +54,32 @@ result or POST it somewhere could. That is unchanged by any of the above and is
 not what this protects against: a plugin already runs arbitrary code. What
 changed is accidental disclosure, which is the way credentials actually escape.
 
-### Upgrading from a version that stored it in the clear
+### Upgrading from v0.1.0, which stored it in the clear
 
-Nothing breaks and nothing is silently dropped. If your `state.json` still has
-a plaintext `api_key` from before this type existed, the next command that runs
-this plugin moves it into the secret store, removes it from the plain config,
-and prints one line on stderr saying so — naming the field, never the value.
-Until it does, the value is still redacted from every command's output and
-`rom-hub plugin secret list` flags it as `STILL IN PLAIN CONFIG`.
+**You do not re-enter the key. The Hub moves it for you.** `v0.1.0` declared
+`api_key` as a plain `str`, so anyone who configured this plugin before `v0.2.0`
+has their key sitting in `state.json` in plaintext. Nothing about that breaks and
+nothing is silently dropped: the first command that *runs* this plugin —
+`enrich`, or anything else that starts its subprocess — reads the plaintext,
+writes it to the secret store, removes it from the plain config, and prints one
+line on stderr saying so, naming the field and never the value. The run itself
+behaves identically. (`rom_hub.secrets.migrate_plaintext`, called from
+`prepare_secrets` at every subprocess-start site, so an operator who never
+reinstalls still gets moved over.)
+
+**Installing `v0.2.0` is what arms this, and nothing happens before you do.**
+Both the migration and the redaction key off the *installed* manifest's schema,
+so while `v0.1.0` is the installed version the Hub has no way to know `api_key`
+is a credential: it is not redacted from `rom-hub plugin config`, and
+`rom-hub plugin secret list` does not mention it. Upgrade first. In the window
+after upgrading but before the next run, the value is already redacted from every
+command's output and `secret list` flags it `STILL IN PLAIN CONFIG`.
+
+The one path that *does* cost you a re-entry is `rom-hub plugin secret clear`:
+it deletes from the store **and** drops un-migrated plaintext from the config, so
+running it before the migration has happened discards the key outright. That is
+deliberate — otherwise "cleared" would be a lie for exactly the operator most
+likely to be running it — but if you have not migrated yet, clear means gone.
 
 **Rotate it anyway** if that `state.json` was ever committed, shared or backed
 up. Moving a credential out of a file does not move it out of the copies.
@@ -298,3 +316,15 @@ and it is now live-verified too.
 The plugin opens no sockets. `ctx.http` is an RPC back to the Hub, which checks
 every URL against this plugin's declared allowlist (`retroachievements.org`,
 and nothing else) before fetching anything.
+
+---
+
+## Seen working
+
+The cover art and titles in this library were written by metadata plugins like this one. Where a tile still shows a placeholder, no art database carried that game — homebrew and interactive fiction mostly are not in one.
+
+![RomM populated by ROM Hub plugins](https://raw.githubusercontent.com/BlizzHacker/rom-hub/master/docs/screenshots/romm.png)
+
+Full showcase — all three backends (RomM, Gaseous, Retrom), every command transcript, and an honest account of what the pictures do *not* show: **[https://github.com/BlizzHacker/rom-hub/blob/master/docs/SHOWCASE.md](https://github.com/BlizzHacker/rom-hub/blob/master/docs/SHOWCASE.md)**
+
+Part of [ROM Hub](https://github.com/BlizzHacker/rom-hub) — install with `rom-hub plugin install retroachievements`.

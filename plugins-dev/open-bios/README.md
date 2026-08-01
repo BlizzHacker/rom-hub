@@ -156,3 +156,13 @@ sits next to the evidence for it.
 MIT (this plugin's own code). The firmware it installs carries the licence
 of the project that publishes it, listed above and printed by `rom-hub
 firmware list`.
+
+---
+
+## Seen working
+
+This plugin installs into a local directory rather than a library backend, so it does not appear in the screenshots. The command transcripts in the showcase show it listing and installing real files, with sizes and hashes.
+
+Full showcase — all three backends (RomM, Gaseous, Retrom), every command transcript, and an honest account of what the pictures do *not* show: **[https://github.com/BlizzHacker/rom-hub/blob/master/docs/SHOWCASE.md](https://github.com/BlizzHacker/rom-hub/blob/master/docs/SHOWCASE.md)**
+
+Part of [ROM Hub](https://github.com/BlizzHacker/rom-hub) — install with `rom-hub plugin install open-bios`.
