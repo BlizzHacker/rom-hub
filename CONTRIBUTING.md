@@ -231,6 +231,79 @@ An entry must:
 - set `status`: `ok`, `caveat` (works, read the comments) or `broken`;
 - leave `in_tree` `false` unless your plugin has no published repository at all.
 
+An entry may carry **only** the fields above. The loader rejects an unknown
+field rather than ignoring it — same default-deny posture as `manifest.toml` —
+so a key nothing reads cannot sit in a directory looking like it means
+something.
+
+## Publishing your own catalog
+
+You do not have to be listed here. The Hub reads an **ordered list of
+directories**, and anybody can host one:
+
+    rom-hub catalog add mine https://git.moveweight.com/wade/rom-hub-catalog/raw/branch/main/plugins.json
+    rom-hub catalog list
+    rom-hub plugin browse            # merged, with a SOURCE column
+    rom-hub catalog remove mine
+
+A source is an **https URL or a local path**. http is refused: a catalog is a
+list of places to fetch code from, and over http anyone on the path rewrites
+that list and every install URL you would then trust. A local path is fine for
+a directory you keep on a share.
+
+**The file is the same format as `catalog/plugins.json`** — `catalog_version`
+`"1"`, an optional `updated` date, and a `plugins` array whose entries carry
+exactly the fields listed above. Nothing else is accepted at either level. The
+easiest way to start one is to copy this repository's file, empty the array,
+and add your own entries; `python scripts/render_directory.py` will render your
+own page from it if you want one.
+
+### What hosting a catalog does and does not let you do
+
+**Does:** put your plugin's name, description and repository in front of
+anybody who added your directory, and decide which repository and tag
+`rom-hub plugin install <your-slug>` clones.
+
+**Does not:** grant a permission. The network allowlist that is enforced comes
+from the plugin's own `manifest.toml`, read at install time by the registry
+and enforced by the broker — which never reads a catalog at all. Your entry's
+`network` field is a copy for a human to read before installing. If it could
+reach the broker, adding your directory would hand you every plugin on that
+host, so it cannot.
+
+**Does not:** shadow a plugin that ships with rom-hub. The bundled directory
+is always first and **first source wins**, so an entry of yours that reuses an
+existing slug is dropped and the collision is printed — by `plugin browse`, by
+`catalog list`, and again by `plugin install`. Pick your own slugs.
+
+### What your users will see
+
+Installing from a directory other than the bundled one prints a notice above
+the install saying the plugin came from your catalog and that this project does
+not vouch for it. That is not a judgement about you; it is the difference
+between "the project listed this" and "somebody did", and the operator is
+entitled to know which they are agreeing to.
+
+`plugin browse` marks every entry with the directory it came from, and reports
+`N of M catalog(s) reachable` when one of them could not be read — so a
+directory of yours that is down looks like a directory that is down, rather
+than like plugins that do not exist. A fetched catalog is cached for six hours
+(`ROM_HUB_CATALOG_TTL`), and a fetch that fails falls back to the cached copy
+and says how old it is.
+
+### Rules the fetch is held to
+
+Worth knowing if you are hosting one, because each of these will fail your
+directory rather than degrade it:
+
+- **https, and no redirect off your host.** Every hop is re-checked against
+  the hostname in the URL your users added, so a catalog that 302s to a CDN on
+  a different domain will not load. Serve it from the host you publish.
+- **8 MiB.** Bigger than any plugin directory should be, and bounded so an
+  endless response cannot become an endless allocation.
+- **Strictly valid.** One malformed entry fails the whole file — for your
+  directory only; everyone else's still loads.
+
 ---
 
 # Changing the Hub

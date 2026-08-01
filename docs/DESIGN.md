@@ -342,6 +342,7 @@ inherited leak.
 | `rom-hub cores list\|install <plugin> [<core>]` | list a plugin's cores, or download one into the configured cores directory |
 | `rom-hub firmware list\|install <plugin> [<firmware>] [--no-library]` | list a plugin's BIOS/firmware **with each item's licence**, or install one into the configured firmware directory and the library |
 | `rom-hub assets list|install <plugin> [<asset>] [--kind]` | list a plugin's support files **with each item's licence**, or download one into the directory configured for its kind. No library server is involved |
+| `rom-hub catalog list\|add\|remove\|refresh` | the ordered list of plugin directories the Hub reads. The bundled one is always first and cannot be removed; anything added is an https URL or a local path, and comes after it — see [The plugin directory is plural, and none of it is trusted](#the-plugin-directory-is-plural-and-none-of-it-is-trusted) |
 | `rom-hub jobs [--state]` | the persisted import queue, with failure reasons |
 
 `--source-id` exists because RomM does not record which plugin an import came
@@ -367,6 +368,8 @@ the deployment target's own storage, never on a workstation system drive.
 | In-flight downloads | deployment target `/opt/rom-hub/var/downloads/` |
 | Fetched artwork, in transit | `$ROM_HUB_HOME/var/artwork/<rom_id>/` |
 | Plugin data assets | `$ROM_HUB_HOME/var/plugin-data/<slug>/` |
+| Configured plugin directories | `$ROM_HUB_HOME/catalog-sources.json` — beside `state.json`, because it is configuration somebody typed and must survive clearing a cache |
+| Fetched directories, cached | `$ROM_HUB_HOME/var/catalogs/<hash of the URL>.json` — keyed on the location, so renaming a source cannot serve it another source's bytes |
 | Imported ROMs | `/mnt/library/roms` (RomM's existing library) |
 | Harvested cores | `$ROM_HUB_HOME/var/cores/` by default; `ROM_HUB_CORES_DIR` points it at `/opt/romm-stream/cores` on the deployment target |
 | Installed firmware | `$ROM_HUB_HOME/var/firmware/<slug>/` by default; `ROM_HUB_FIRMWARE_DIR` points it at whatever `system/` or `bios/` directory the operator's emulator already reads |
@@ -1182,6 +1185,97 @@ seccomp filter stops it too, so an author who reaches for `httpx` anyway gets a
 Mitigation: ship a **`requests`-shaped adapter** over `ctx.http`, so the idiom
 plugin authors already know (`ctx.http.get(url).json()`) works unchanged. The
 constraint stays; the unfamiliarity does not.
+
+### The plugin directory is plural, and none of it is trusted
+
+The directory used to be one file in this repository, which made the
+ecosystem closed: only whoever shipped the repository could publish a plugin,
+and somebody keeping their plugins on their own Gitea (say
+`git.moveweight.com`) could not be found at all. `rom-hub catalog add` fixes
+that — an ordered list of directories, each an https URL or a local path, the
+bundled one always first. `src/rom_hub/catalog_sources.py`.
+
+That turns a file the project wrote into **attacker-influenced input**, so
+what a directory *is* has to be stated exactly.
+
+**What a catalog can cause to happen.** Exactly one thing: it can put a name,
+a description and a URL in front of a human, and — if that human types
+`rom-hub plugin install <slug>` — decide which repository and which tag are
+cloned. That is real influence and it is why the notice at install time
+exists, but it is the whole list.
+
+**What a catalog cannot cause to happen.** It cannot grant a permission. An
+installed plugin's network allowlist is read from its own `manifest.toml` at
+install time and enforced by the broker, which does not import
+`catalog_sources` and never has. The `network` field in a directory entry is a
+copy for a human to read before installing; if it could reach the broker,
+adding one source would hand its author every plugin on the host.
+`test_catalog_cannot_widen_permissions` pins that for the bundled file and
+`test_a_remote_catalog_cannot_widen_an_installed_plugins_reach` pins it for a
+fetched one, with a fixture that asks for a host the manifest does not.
+
+It also cannot: run code (nothing in a catalog is executed), reach a plugin
+(no capability is handed a catalog entry), change where anything is written,
+or make the Hub fetch from anywhere other than the one host the *operator*
+typed.
+
+#### A catalog URL is a different trust class from `ctx.http`
+
+Worth writing down because the two look alike and are not.
+
+`ctx.http` is **plugin-supplied**: a sandboxed subprocess of somebody else's
+code names a URL, and the host may fetch it only if that plugin's manifest
+declared the host — a declaration the operator reviewed at install time. The
+allowlist is the point, and `netpolicy.check_url` is what makes it real.
+
+A catalog URL is **operator-supplied**: it is typed into `rom-hub catalog
+add`, a command that does nothing else, with no plugin in the loop. There is
+no manifest to consult and no allowlist that would mean anything — the
+operator naming the host *is* the authorisation, exactly as it is for
+`rom-hub plugin install https://...`. Gating it behind some other allowlist
+would be theatre.
+
+So the policy does not carry over. The machinery does, where it makes sense:
+
+| | applied to a catalog URL | why |
+|---|---|---|
+| https only (`netpolicy.ALLOWED_SCHEMES`) | yes | over http anyone on the path rewrites the list, and every install URL a reader then trusts comes from it |
+| hostname validation (`netpolicy.url_allowed`) | yes, against the one host named | the thing contacted must be the thing the operator read; userinfo is refused outright rather than stripped |
+| redirect re-checking (`importer.HttpDownloader`) | yes | a 302 to another host is not the source that was added |
+| size bound | yes (`MAX_CATALOG_BYTES`) | an endless response must not become an endless allocation |
+| the plugin's manifest allowlist | **no** | there is no plugin; see above |
+| strict parsing (`parse_catalog`) | yes, and now unknown-field-rejecting | a key this build does not read is a claim nobody will check |
+
+#### Collisions: first source wins, and the collision is shown
+
+The bundled directory is first and cannot be removed, so a third-party
+directory can add plugins but never replace one this project ships.
+
+*Last wins* was rejected outright: it would make adding any source a
+one-command supply-chain swap of a slug people type from memory. *Refuse and
+require disambiguation* was rejected because it hands every third-party
+catalog a veto — claim the popular slugs and the operator's whole directory
+stops working. First-wins has neither failure, and its cost is the right one:
+a stranger cannot offer a "better" build of a bundled plugin under the same
+slug, which is exactly the claim an attacker would make.
+
+Nothing about it is silent. The losing entry is dropped, and the collision is
+printed by `plugin browse`, by `catalog list`, and again by `plugin install`
+when the slug being installed is one of them.
+
+#### Staleness and partial answers
+
+Fetched directories are cached for six hours (`ROM_HUB_CATALOG_TTL`). A fetch
+that fails falls back to the cached copy and reports its age, because
+degrading to a known-old answer beats degrading to nothing — but only if the
+caller is told, which is what `SourceStatus.stale_seconds` carries.
+
+A source that cannot be read at all costs its own plugins and nothing else,
+and the listing says so: `1 of 2 catalog(s) reachable`, followed by which one
+failed and why. This is the rule `search` already follows ("N of M sources
+responded") and it matters more here, because a plugin missing from `browse`
+does not read as a source that failed — it reads as a plugin that does not
+exist.
 
 ### Rejected alternatives
 
