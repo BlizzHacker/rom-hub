@@ -600,6 +600,48 @@ def _cmd_plugin_list(args) -> int:
     return 0
 
 
+def _parse_config_assignment(raw: str, schema: dict) -> tuple[str, object]:
+    """`KEY=VALUE` from the command line, coerced to the declared type.
+
+    The declared type is the only thing consulted. A `list[str]` field takes
+    a comma-separated value because that is what fits on a command line,
+    and an `int` field refuses `"seven"` here rather than letting a string
+    reach a plugin that will index with it.
+    """
+    key, sep, value = raw.partition("=")
+    key = key.strip()
+    if not sep:
+        raise ValueError(f"{raw!r} is not KEY=VALUE")
+    spec = schema.get(key)
+    if spec is None:
+        declared = ", ".join(schema) or "(none)"
+        raise ValueError(
+            f"no config field named {key!r} is declared by this plugin "
+            f"(it declares: {declared})"
+        )
+    declared = spec.get("type", "str") if isinstance(spec, dict) else "str"
+    if declared == "list[str]":
+        return key, [part.strip() for part in value.split(",") if part.strip()]
+    if declared == "int":
+        try:
+            return key, int(value.strip())
+        except ValueError:
+            raise ValueError(
+                f"{key!r} is declared int, and {value.strip()!r} is not one"
+            ) from None
+    if declared == "bool":
+        lowered = value.strip().lower()
+        if lowered in ("1", "true", "yes", "on"):
+            return key, True
+        if lowered in ("0", "false", "no", "off"):
+            return key, False
+        raise ValueError(
+            f"{key!r} is declared bool, and {value.strip()!r} is not one "
+            f"(use true/false)"
+        )
+    return key, value
+
+
 def _cmd_plugin_config(args) -> int:
     """Dump one plugin's settings, with every secret redacted.
 
@@ -607,13 +649,41 @@ def _cmd_plugin_config(args) -> int:
     an answer that is safe to screenshot. A `secret`-typed field is never
     printed, whatever it holds -- including a legacy plaintext value that
     has not been migrated yet.
+
+    `--set KEY=VALUE` writes one non-secret field. Secrets are refused here
+    and sent to `plugin secret set`, which is the path that puts them in the
+    OS keyring instead of `state.json` -- accepting one here would silently
+    downgrade where it is stored.
     """
-    plugin = Registry(default_root()).get(args.slug)
+    registry = Registry(default_root())
+    plugin = registry.get(args.slug)
     schema = plugin.manifest.config_schema or {}
     secret_keys = set(secrets.secret_fields(plugin.manifest))
     if not schema:
         print(f"plugin {plugin.slug!r} declares no config")
         return EXIT_OK
+
+    if getattr(args, "set", None):
+        config = dict(plugin.config or {})
+        for assignment in args.set:
+            try:
+                key, value = _parse_config_assignment(assignment, schema)
+            except ValueError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return EXIT_ERROR
+            if key in secret_keys:
+                print(
+                    f"error: {key!r} is declared secret; set it with "
+                    f"'rom-hub plugin secret set {plugin.slug} {key}' so it "
+                    f"lands in the keyring rather than in state.json",
+                    file=sys.stderr,
+                )
+                return EXIT_ERROR
+            config[key] = value
+            print(f"set {key} = {value!r} for {plugin.slug}")
+        registry.set_config(plugin.slug, config)
+        plugin = registry.get(args.slug)
+        print()
 
     shown = secrets.redact_config(plugin.manifest, plugin.config)
     print(f"{'KEY':<24} {'TYPE':<10} VALUE")
@@ -1684,9 +1754,19 @@ def build_parser() -> argparse.ArgumentParser:
     assets.set_defaults(func=_cmd_plugin_assets)
 
     config = psub.add_parser(
-        "config", help="show a plugin's settings (secrets redacted)"
+        "config", help="show or change a plugin's settings (secrets redacted)"
     )
     config.add_argument("slug", help="slug of an installed plugin")
+    config.add_argument(
+        "--set",
+        action="append",
+        metavar="KEY=VALUE",
+        help=(
+            "set one declared, non-secret config field, then print the "
+            "result; repeatable. A list[str] field takes a comma-separated "
+            "value. Secrets are refused here -- use 'plugin secret set'"
+        ),
+    )
     config.set_defaults(func=_cmd_plugin_config)
 
     secret = psub.add_parser(

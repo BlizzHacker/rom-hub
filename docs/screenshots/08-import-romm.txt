@@ -1,2 +1,0 @@
-$ ROM_HUB_BACKEND=romm rom-hub import nointro-archive "nointro.gg/Sonic Chaos (USA, Europe, Brazil) (En).7z"
-job 110: DONE - imported 1 file(s) as rom id(s) [45]
