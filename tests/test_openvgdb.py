@@ -163,9 +163,70 @@ def test_a_partial_patch_never_blanks_a_curated_field(db):
     """No provider ids, no raw metadata: OpenVGDB has none, so none are sent."""
     provider, _ = _provider(artwork=False)
     patch = provider.enrich(_ref())
-    assert patch.form_fields() == {"name": "Tetris"}
+    assert set(patch.form_fields()) == {"name", "summary"}
+    assert patch.form_fields()["name"] == "Tetris"
     assert patch.provider_ids == {}
     assert patch.raw_metadata == {}
+
+
+# -- the summary ---------------------------------------------------------
+
+
+def test_the_summary_carries_the_description_and_then_the_facts(db):
+    """Five columns that used to be read and dropped, in one field."""
+    provider, _ = _provider(artwork=False)
+    summary = provider.enrich(_ref(filename="Tetris (USA).gb")).summary
+
+    assert summary.startswith("The Soviet game sensation is now on your Game Boy!")
+    # The facts sentence follows the description, after a blank line.
+    description, facts = summary.split("\n\n")
+    assert facts == (
+        "Developed by Bullet Proof Software. Released June 1989. "
+        "Genre: Miscellaneous, Puzzle, Stacking. Region: USA."
+    )
+    assert "\n" not in facts
+
+
+def test_a_null_publisher_is_left_out_rather_than_named_unknown(db):
+    """OpenVGDB's `releasePublisher` is NULL for every Tetris release."""
+    provider, _ = _provider(artwork=False)
+    assert "Published by" not in provider.enrich(_ref()).summary
+
+
+def test_the_genre_list_is_split_on_the_comma_the_database_uses(db):
+    """Stored as `Miscellaneous,Puzzle,Stacking`, with no spaces."""
+    provider, _ = _provider(artwork=False)
+    assert "Genre: Miscellaneous, Puzzle, Stacking." in provider.enrich(_ref()).summary
+
+
+def test_summary_false_leaves_romms_description_alone(db):
+    provider, _ = _provider(artwork=False, summary=False)
+    patch = provider.enrich(_ref())
+    assert patch.summary is None
+    assert "summary" not in patch.form_fields()
+
+
+def test_a_release_with_neither_description_nor_facts_proposes_no_summary():
+    """Absent, not blank: a blank would erase whatever RomM already had."""
+    from openvgdb.metadata import _summary
+
+    assert _summary({"releaseTitleName": "Something"}) is None
+    assert _summary({"releaseDescription": "   "}) is None
+
+
+def test_an_over_long_description_is_trimmed_at_a_word_and_marked():
+    from openvgdb.metadata import MAX_SUMMARY_CHARS, _summary
+
+    summary = _summary(
+        {
+            "releaseDescription": "word " * 4000,
+            "releaseDeveloper": "Someone",
+        }
+    )
+    assert len(summary) <= MAX_SUMMARY_CHARS
+    # The facts survive intact; the description is what gives way.
+    assert summary.endswith("Developed by Someone.")
+    assert "…" in summary
 
 
 # -- choosing between releases -------------------------------------------

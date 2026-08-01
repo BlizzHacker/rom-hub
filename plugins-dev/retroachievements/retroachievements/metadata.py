@@ -1,6 +1,9 @@
 """RetroAchievements `metadata`: a game identified by its hash, or nothing.
 
-    RomRef -> a hash + a console -> API_GetGameList.php -> MetadataPatch
+    RomRef -> a hash + a console -> API_GetGameList.php -> id, title,
+              achievement count, points, leaderboards
+                                -> API_GetGame.php     -> publisher,
+              developer, genre, release year, box art
 
 One request, one exact comparison, and no second guess. That last part is
 the design:
@@ -28,14 +31,27 @@ much.
 RA, not as a KeyError -- as a sentence naming the config key and where to
 get a value for it.
 
-One call per enrich, deliberately. `API_GetGameList.php` carries `Title`,
-`ID` and `Hashes` together, so `API_GetGame.php` would add a second
-request for fields RPP v1 has nowhere to put -- there is no
-`raw_ra_metadata` among its eight `raw_*_metadata` fields, and writing
-RA's payload into one belonging to another provider would be a lie in the
-database. RetroAchievements also asks in its own documentation that this
-endpoint be cached rather than hammered; one request is the least this
-plugin can do and still work.
+**This plugin made one call per enrich, deliberately, and now makes two.**
+The old reasoning was sound and it expired. `API_GetGame.php` returns a
+publisher, a developer, a genre, a release year and a box art URL, and
+none of the five had anywhere to go: RPP v1 has no `raw_ra_metadata`
+among its eight `raw_*_metadata` fields, and writing RA's payload into
+one belonging to another provider would be a lie in the database. A
+second request that buys nothing storable is a second request for
+nothing.
+
+`MetadataPatch.summary` is what changed. RomM stores it -- measured, where
+the raw blobs are accepted and dropped -- so those four facts now reach a
+library, and the fifth turns this from a plugin that proposes no artwork
+into one that proposes real box art. `details = false` puts it back to one
+request for an operator enriching a whole library, and says in the README
+what that costs.
+
+The big response is still fetched once. `API_GetGameList.php` is every
+game on a console with every hash, and it is the endpoint RA's own
+documentation asks callers to cache rather than hammer; `API_GetGame` is
+one game. A test pins that the game list is requested exactly once per
+enrich whatever else happens.
 """
 
 import json
@@ -50,6 +66,24 @@ from .consoles import (  # noqa: F401  (NeedsMapping re-exported)
 )
 
 API = "https://retroachievements.org/API/API_GetGameList.php"
+
+# The optional second call. See `Metadata._details` for why this plugin
+# refused to make one until `MetadataPatch` grew a field to hold what it
+# returns.
+GAME_API = "https://retroachievements.org/API/API_GetGame.php"
+
+# Where RA's images live. `API_GetGame` returns `ImageBoxArt` as a path --
+# `/Images/026365.png` -- and it has to be joined to a host.
+#
+# **`retroachievements.org` and not `media.retroachievements.org`,
+# deliberately.** Both serve it: measured 2026-08-01, both answer 200 with
+# `image/png` and identical 130,898 bytes for `/Images/026365.png`, and
+# `curl -w %{num_redirects}` reports 0 for each. The main host is already
+# in this plugin's `network` allowlist for the API, so using it means real
+# box art arrives without widening the permission an operator approved.
+# A second allowlist entry that buys the same bytes is a second allowlist
+# entry for nothing.
+IMAGE_BASE = "https://retroachievements.org"
 
 # Where a hash may arrive. `RomRef.extra` is whatever the host put there;
 # `source_id` is what the CLI's --source-id fills in, and is the route that
@@ -88,6 +122,20 @@ class Metadata(MetadataProvider):
         patch: dict = {"provider_ids": {"ra_id": game["id"]}}
         if self._set_name() and game["title"]:
             patch["name"] = game["title"]
+
+        details = self._details(game["id"], api_key) if self._want_details() else {}
+
+        if self._want_summary():
+            summary = _summary(game, details)
+            if summary:
+                patch["summary"] = summary
+
+        if self._want_artwork():
+            cover = _box_art(details)
+            if cover is not None:
+                patch["artwork_url"] = cover
+                patch["artwork_filename"] = "cover.png"
+
         return MetadataPatch(**patch)
 
     # -- configuration ---------------------------------------------------
@@ -113,6 +161,24 @@ class Metadata(MetadataProvider):
 
     def _only_with_achievements(self) -> bool:
         return bool(self.ctx.config.get("only_with_achievements", True))
+
+    def _want_summary(self) -> bool:
+        return bool(self.ctx.config.get("summary", True))
+
+    def _want_details(self) -> bool:
+        """Whether to make the second call.
+
+        Off means the summary is built from the game-list response alone
+        -- achievement count, points, leaderboards and console -- which is
+        still four facts more than a title. An operator running this over
+        a whole library who would rather not double the request count has
+        a switch, and turning it off costs the four `API_GetGame` fields
+        and the box art, which is stated in the README.
+        """
+        return bool(self.ctx.config.get("details", True))
+
+    def _want_artwork(self) -> bool:
+        return bool(self.ctx.config.get("artwork", True))
 
     def _username(self) -> str:
         return str(self.ctx.config.get("username") or "").strip()
@@ -229,6 +295,13 @@ class Metadata(MetadataProvider):
         `api-js/src/console/getGameList.ts` -- and a `ra_id` posted to RomM
         as `"4247"` rather than `4247` is a different value in a column
         RomM parses as an integer.
+
+        The counts alongside it were always in this response and were
+        always discarded, because until `MetadataPatch` grew `summary`
+        there was nowhere in RomM to put them. `NumAchievements`,
+        `Points`, `NumLeaderboards` and `ConsoleName` are the four that
+        say something a library reader wants: how much there is to do in
+        this game and on what.
         """
         raw = entry.get("ID")
         try:
@@ -247,7 +320,61 @@ class Metadata(MetadataProvider):
         return {
             "id": game_id,
             "title": title.strip() if isinstance(title, str) else "",
+            "achievements": _count(entry.get("NumAchievements")),
+            "points": _count(entry.get("Points")),
+            "leaderboards": _count(entry.get("NumLeaderboards")),
+            "console": _text(entry.get("ConsoleName")),
         }
+
+    # -- the second call, and what it is for -----------------------------
+
+    def _details(self, game_id: int, api_key: str) -> dict:
+        """`API_GetGame.php` -- publisher, developer, genre, release year.
+
+        **A second request, which this plugin used to refuse to make.** The
+        reason it refused was specific and it has expired: those fields had
+        nowhere to go. RPP v1 has no `raw_ra_metadata` among its eight raw
+        blobs, writing RA's payload into another provider's would be a lie
+        in the database, and RomM's `metadatum` -- where a genre belongs --
+        has no form field at all. So a second call bought four values that
+        would be read and dropped, against an API whose own documentation
+        asks to be cached rather than hammered.
+
+        `summary` changed that. It is one field, it is prose, and RomM
+        stores it, so `Publisher`, `Developer`, `Genre` and `Released` now
+        reach the library. One extra GET per enrich is a fair price for
+        four facts that arrive; it was not a fair price for four that did
+        not.
+
+        The response shape is RA's own, not inferred: `api-js/src/game/
+        models/game.model.ts` names every key, and `getGame.ts` documents
+        a full example response. Raw JSON is PascalCase; the camelCase in
+        that model is what RA's client renames it to.
+
+        Failure here is not failure of the enrich. The hash already
+        matched, the `ra_id` is already known, and losing a correct id to
+        a rate limit on an optional second call would be absurd -- so this
+        returns `{}` and the summary is built from what the first call
+        gave.
+        """
+        try:
+            response = self.ctx.http.get(
+                GAME_API, params={"i": str(game_id), "y": api_key}
+            )
+        except RuntimeError:
+            return {}
+        if response.status_code != 200:
+            return {}
+        try:
+            payload = response.json()
+        except (ValueError, json.JSONDecodeError):
+            return {}
+        if not isinstance(payload, dict):
+            return {}
+        for key in _ERROR_KEYS:
+            if payload.get(key):
+                return {}
+        return payload
 
     # -- the miss --------------------------------------------------------
 
@@ -284,3 +411,112 @@ class Metadata(MetadataProvider):
             f"{rom.rom_id}'s title, because a wrong ra_id is a wrong id that "
             f"an achievements client will believe later"
         )
+
+
+# -- turning two responses into one summary ------------------------------
+
+
+def _summary(game: dict, details: dict) -> str | None:
+    """What RA knows, in the one field RomM will store it in.
+
+    Two sources, and the order is deliberate. The achievement counts come
+    first because they are the reason somebody installs this plugin: an
+    operator scanning a library wants to know which roms have a set worth
+    playing and how big it is. The catalogue facts follow.
+
+    Absent when neither source said anything, because a blank summary
+    would erase whatever RomM already had.
+    """
+    parts: list[str] = []
+
+    achievements = game.get("achievements") or 0
+    points = game.get("points") or 0
+    if achievements:
+        line = f"{achievements} achievement{'' if achievements == 1 else 's'}"
+        if points:
+            line += f" worth {points} point{'' if points == 1 else 's'}"
+        parts.append(line + " on RetroAchievements.")
+    leaderboards = game.get("leaderboards") or 0
+    if leaderboards:
+        parts.append(
+            f"{leaderboards} leaderboard{'' if leaderboards == 1 else 's'}."
+        )
+
+    developer = _text(details.get("Developer"))
+    publisher = _text(details.get("Publisher"))
+    if developer and publisher and developer != publisher:
+        parts.append(f"Developed by {developer}, published by {publisher}.")
+    elif developer:
+        parts.append(f"Developed by {developer}.")
+    elif publisher:
+        parts.append(f"Published by {publisher}.")
+
+    released = _text(details.get("Released"))
+    if released:
+        # RA stores this as free text -- "1980", "1989-06-14", "October
+        # 1991" -- so it is quoted rather than parsed. Parsing it would
+        # mean inventing a precision RA does not claim.
+        parts.append(f"Released {released}.")
+
+    genre = _text(details.get("Genre"))
+    if genre:
+        parts.append(f"Genre: {genre}.")
+
+    console = _text(details.get("ConsoleName")) or _text(game.get("console"))
+    if console:
+        parts.append(f"Console: {console}.")
+
+    return " ".join(parts) or None
+
+
+def _box_art(details: dict) -> str | None:
+    """The `ImageBoxArt` URL, or None.
+
+    RA returns a path, and returns `/Images/000002.png` -- its placeholder
+    -- for a game with no box art on file. That placeholder is a grey
+    "no image" tile, and writing it over a library's covers would be worse
+    than leaving them alone, so it is refused by name.
+
+    Nothing is probed. Unlike libretro's thumbnails, this URL was not
+    guessed from the rom's name: RA handed it back for the game whose hash
+    already matched, so a 404 here would be RA contradicting itself rather
+    than a spelling this plugin got wrong. The host fetches it, and a
+    failure there is a real failure worth seeing.
+    """
+    raw = _text(details.get("ImageBoxArt"))
+    if not raw.startswith("/Images/") or not raw.lower().endswith(".png"):
+        return None
+    if raw in _PLACEHOLDER_IMAGES:
+        return None
+    return IMAGE_BASE + raw
+
+
+#: RA's "this game has no image" tiles, which are real 200s and real PNGs
+#: and are not covers.
+_PLACEHOLDER_IMAGES = frozenset({"/Images/000001.png", "/Images/000002.png"})
+
+
+def _text(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _count(value) -> int:
+    """A non-negative integer, or 0.
+
+    RA is inconsistent about whether a number arrives as a number or as a
+    string -- the game-list response carries `"ID": "4247"` beside
+    `"ConsoleID": 1` in the same array -- so both are accepted and
+    anything else is 0 rather than an exception. A missing count is not
+    worth failing an enrich whose id and title are both correct.
+    """
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return value if value >= 0 else 0
+    if isinstance(value, str):
+        try:
+            parsed = int(value.strip())
+        except ValueError:
+            return 0
+        return parsed if parsed >= 0 else 0
+    return 0

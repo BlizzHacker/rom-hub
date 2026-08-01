@@ -946,10 +946,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-openvgdb",
       "install": "https://github.com/BlizzHacker/rom-hub-openvgdb",
-      "download": "https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.2.0.tar.gz",
-      "version": "0.2.0",
-      "ref": "v0.2.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "metadata"
@@ -1021,9 +1021,9 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-retroachievements",
       "install": "https://github.com/BlizzHacker/rom-hub-retroachievements",
-      "download": "https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.2.0.tar.gz",
-      "version": "0.2.0",
-      "ref": "v0.2.0",
+      "download": "https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
       "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [

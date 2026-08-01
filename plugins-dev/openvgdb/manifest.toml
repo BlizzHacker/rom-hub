@@ -1,7 +1,7 @@
 [plugin]
 slug        = "openvgdb"
 name        = "OpenVGDB"
-version     = "0.2.0"
+version     = "0.3.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -62,3 +62,9 @@ db_path  = { type = "str", default = "" }
 artwork  = { type = "bool", default = true }
 set_name = { type = "bool", default = true }
 region   = { type = "str", default = "" }
+
+# The release's own description, plus its developer, publisher, genre,
+# date and region composed into a sentence after it. On by default: those
+# six columns were being read and thrown away, and `summary` is the only
+# field on RomM's update endpoint that can hold any of them.
+summary  = { type = "bool", default = true }
