@@ -1,0 +1,104 @@
+{
+ "files": [
+  {
+   "crc32": "ee9733b7",
+   "filecount": "1",
+   "format": "7z",
+   "md5": "5e3b37ca2a070569ce1fa97e5990931b",
+   "mtime": "1747533151",
+   "name": "1941 - Counter Attack (Japan).7z",
+   "sha1": "ec6c1d3780c52c1bdc44656757bdc031bd8e45e0",
+   "size": "597868",
+   "source": "original",
+   "viruscheck": "1747533606"
+  },
+  {
+   "crc32": "ce71f665",
+   "filecount": "1",
+   "format": "7z",
+   "md5": "292501e8ae2b28eea2ae8c1aae9f8e61",
+   "mtime": "1747533195",
+   "name": "Aldynes - The Misson Code for Rage Crisis (Japan) (En).7z",
+   "sha1": "ccae792c0dea936d8293804441355472096afb58",
+   "size": "444072",
+   "source": "original",
+   "viruscheck": "1747533606"
+  },
+  {
+   "crc32": "a2fc01df",
+   "filecount": "1",
+   "format": "7z",
+   "md5": "8ff5f3b4619aa33b9c28cefa36c136ea",
+   "mtime": "1747533209",
+   "name": "Battle Ace (Japan) (En).7z",
+   "sha1": "36b2b63bba21154f258a1bceca0ad25a21e70dfe",
+   "size": "283906",
+   "source": "original",
+   "viruscheck": "1747533606"
+  },
+  {
+   "crc32": "5c542e8a",
+   "filecount": "1",
+   "format": "7z",
+   "md5": "90282a010fc5fb9ae0e36a9fc3a58ae9",
+   "mtime": "1747533216",
+   "name": "Daimakaimura (Japan) (En).7z",
+   "sha1": "4657801f64186c841f1ee99999cf7df42c1c0eeb",
+   "size": "635277",
+   "source": "original",
+   "viruscheck": "1747533606"
+  },
+  {
+   "crc32": "c446b183",
+   "filecount": "1",
+   "format": "7z",
+   "md5": "234a65a406cfc01e0b37fb3b9beb5cf4",
+   "mtime": "1747533222",
+   "name": "Madou King Granzort (Japan) (En).7z",
+   "sha1": "f95d1d7443acfc740f9310cf6eb5c3a416a2db52",
+   "size": "332091",
+   "source": "original",
+   "viruscheck": "1747533606"
+  },
+  {
+   "btih": "9d0937c2b1b05c7c5c70dafc54def21c1e1c1468",
+   "crc32": "f0986fa9",
+   "format": "Archive BitTorrent",
+   "md5": "669b2aa5ac9695f7d7e5a66d2ffd2ddd",
+   "mtime": "1747685620",
+   "name": "nointro.sg_archive.torrent",
+   "sha1": "a2a1632afa495eaf5f46ef4a5156a701f17f4f1e",
+   "size": "2496",
+   "source": "metadata"
+  },
+  {
+   "format": "Metadata",
+   "md5": "fbb31064b3006dab7f1be28002f5fa3d",
+   "name": "nointro.sg_files.xml",
+   "source": "original",
+   "summation": "md5"
+  },
+  {
+   "crc32": "b4508c62",
+   "format": "Metadata",
+   "md5": "8e39bbf7a8e6bb845140d4c366f6929d",
+   "mtime": "1747533225",
+   "name": "nointro.sg_meta.sqlite",
+   "sha1": "b1daad28ec338713207f538337b7458668e2e76a",
+   "size": "32768",
+   "source": "original"
+  },
+  {
+   "crc32": "b7c24539",
+   "format": "Metadata",
+   "md5": "a1032a48a1deeb574b6ecb0e82a4fe2a",
+   "mtime": "1747685619",
+   "name": "nointro.sg_meta.xml",
+   "sha1": "324a76eae9a6d08d2ccfa5ace3cd44a8935e948d",
+   "size": "1118",
+   "source": "original"
+  }
+ ],
+ "files_count": 9,
+ "item_size": 2329596
+}
