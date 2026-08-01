@@ -44,9 +44,10 @@ from .broker.fetcher import HttpxFetcher
 from .broker.host import PluginCallError, PluginProcess
 from .catalog import CatalogError, load_catalog, symbol_for
 from .cores import CoreError, find_core, install_core
-from .dispatcher import search_all
+from .dispatcher import fanout_limit, search_all
 from .emuassets import AssetInstallError, find_asset, install_asset
 from .firmware import FirmwareError, find_firmware, install_firmware
+from .grouping import group_results, paginate
 from .importer import run_import
 from .jobs import JobQueue, JobState
 from .manifest import ManifestError
@@ -866,12 +867,81 @@ def _cmd_plugin_disable(args) -> int:
     return 0
 
 
+def _search_size(size_bytes: int | None) -> str:
+    return f"{size_bytes / 1_048_576:.1f} MB" if size_bytes else "-"
+
+
+def _expanded_rows(args, page) -> set[int]:
+    """Which printed row numbers should list their variants.
+
+    Row numbers are **absolute** -- `#26` is the first row of
+    `--offset 25` -- so an operator can copy a number off one page and
+    expand it from the next command without recounting.
+    """
+    if getattr(args, "all_variants", False):
+        return {page.offset + i + 1 for i in range(len(page.groups))}
+    raw = getattr(args, "expand", None)
+    if not raw:
+        return set()
+    if str(raw).strip().lower() == "all":
+        return {page.offset + i + 1 for i in range(len(page.groups))}
+    wanted = set()
+    for part in str(raw).replace(",", " ").split():
+        try:
+            wanted.add(int(part))
+        except ValueError:
+            print(
+                f"note: --expand {part!r} is not a row number or 'all'; ignored",
+                file=sys.stderr,
+            )
+    return wanted
+
+
+def _print_flat(results) -> None:
+    """The pre-grouping listing, unchanged, for `--no-group`."""
+    for r in results:
+        flag = " [stream-only]" if r.extra.get("stream_only") == "true" else ""
+        print(
+            f"{r.plugin:<14} {r.platform or '-':<12} "
+            f"{_search_size(r.size_bytes):>10}  {r.title}{flag}"
+        )
+
+
+def _print_groups(page, expand: set[int]) -> None:
+    for index, group in enumerate(page.groups, start=page.offset + 1):
+        sources = group.sources
+        source_cell = sources[0] if len(sources) == 1 else f"{len(sources)} sources"
+        variants = (
+            f"  [{group.variant_count} variants]" if group.variant_count > 1 else ""
+        )
+        flag = " [stream-only]" if group.stream_only else ""
+        print(
+            f"{index:>4}  {source_cell:<14} {group.platform or '-':<12} "
+            f"{_search_size(group.size_bytes):>10}  {group.title}{variants}{flag}"
+        )
+        if index not in expand:
+            continue
+        for variant in group.variants:
+            vflag = " [stream-only]" if variant.stream_only else ""
+            print(
+                f"        - {variant.label:<24} {', '.join(variant.sources):<28} "
+                f"{_search_size(variant.size_bytes):>10}  "
+                f"{variant.primary.title}{vflag}"
+            )
+
+
 def _cmd_search(args) -> int:
     plugins = Registry(default_root()).installed()
     searchable = [p for p in plugins if p.enabled and "search" in p.manifest.capabilities]
     if not searchable:
         print("no plugins available for search — install one with 'rom-hub plugin install'")
         return 0
+
+    # `--limit` counts merged rows; each source has to be asked for more
+    # than that, because grouping only ever collapses. `--per-source` is
+    # the override for anyone who wants to say exactly how much work the
+    # fan-out is allowed to be.
+    per_source = fanout_limit(args.limit, args.offset, args.per_source)
 
     fetcher = HttpxFetcher()
     try:
@@ -880,7 +950,7 @@ def _cmd_search(args) -> int:
             fetcher=fetcher,
             query=args.query,
             platform=args.platform,
-            limit=args.limit,
+            limit=per_source,
             allow_unsandboxed=allow_unsandboxed(),
             assets_for=prepare_assets,
             secrets_for=prepare_secrets,
@@ -888,13 +958,41 @@ def _cmd_search(args) -> int:
     finally:
         fetcher.close()
 
-    for r in outcome.results:
-        size = f"{r.size_bytes / 1_048_576:.1f} MB" if r.size_bytes else "-"
-        flag = " [stream-only]" if r.extra.get("stream_only") == "true" else ""
-        print(f"{r.plugin:<14} {r.platform or '-':<12} {size:>10}  {r.title}{flag}")
+    if args.no_group:
+        _print_flat(outcome.results)
+        print()
+        print(
+            f"{outcome.responded} of {outcome.total} sources responded, "
+            f"{len(outcome.results)} results"
+        )
+    else:
+        groups = group_results(outcome.results, args.query)
+        page = paginate(groups, args.limit, args.offset)
+        _print_groups(page, _expanded_rows(args, page))
+        print()
+        shown = (
+            f" (showing {page.first}-{page.last} of {page.total_groups})"
+            if page.total_groups
+            else ""
+        )
+        print(
+            f"{outcome.responded} of {outcome.total} sources responded, "
+            f"{page.total_results} results in {page.total_groups} games{shown}"
+        )
+        if page.has_more:
+            print(f"  next page: --offset {page.last}")
+        if any(g.variant_count > 1 for g in page.groups):
+            print("  variants:  --expand <#>  |  --all-variants  |  --no-group")
 
-    print()
-    print(f"{outcome.responded} of {outcome.total} sources responded, {len(outcome.results)} results")
+    # Partial answers stay partial: grouping reorganises what came back, it
+    # cannot know what a source that failed would have said.
+    if outcome.capped:
+        print(
+            f"  note: {', '.join(outcome.capped)} returned the full "
+            f"{per_source} results asked for -- there may be more; raise "
+            f"--per-source",
+            file=sys.stderr,
+        )
     for status in outcome.statuses:
         if not status.ok:
             print(f"  ! {status.slug}: {status.error}", file=sys.stderr)
@@ -1840,10 +1938,54 @@ def build_parser() -> argparse.ArgumentParser:
     )
     platforms.set_defaults(func=_cmd_platforms)
 
-    search = sub.add_parser("search", help="search across enabled plugins")
+    search = sub.add_parser(
+        "search",
+        help="search across enabled plugins, merged and grouped by game",
+    )
     search.add_argument("query")
     search.add_argument("--platform", default=None)
-    search.add_argument("--limit", type=int, default=25)
+    search.add_argument(
+        "--limit",
+        type=int,
+        default=25,
+        help=(
+            "how many GAMES to show. Counts merged rows, not raw results: "
+            "before grouping this was a per-source limit, so ten sources at "
+            "--limit 25 meant 250 rows"
+        ),
+    )
+    search.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="skip this many merged rows -- paging over the combined set",
+    )
+    search.add_argument(
+        "--per-source",
+        type=int,
+        default=None,
+        dest="per_source",
+        help=(
+            "how many raw results to ask each source for (default: enough "
+            "to fill the page, since grouping collapses rows)"
+        ),
+    )
+    search.add_argument(
+        "--expand",
+        default=None,
+        metavar="ROW",
+        help="list the variants of these row numbers, or 'all'",
+    )
+    search.add_argument(
+        "--all-variants",
+        action="store_true",
+        help="expand every row on the page",
+    )
+    search.add_argument(
+        "--no-group",
+        action="store_true",
+        help="do not merge anything: one line per raw result, as before",
+    )
     search.set_defaults(func=_cmd_search)
 
     importer = sub.add_parser(
