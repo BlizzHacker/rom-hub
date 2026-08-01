@@ -1153,14 +1153,15 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware",
       "install": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware",
-      "download": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "metadata",
+        "search"
       ],
       "network": [
         "downloads.scummvm.org"
@@ -1169,7 +1170,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Twelve complete adventure games the ScummVM project distributes free, because their rights holders released them.",
+      "description": "Offers the 28 freeware adventure games ScummVM publishes on its own downloads page, imports the exact archive, and gives an abbreviated archive name its real title.",
       "terms": "The cleanest terms in this directory, and each one is attributable to a named person or company. Revolution Software released *Beneath a Steel Sky* and *Lure of the Temptress* as freeware in 2003; John Passfield and Steve Stamatiadis released *Flight of the Amazon Queen* in 2004; Neil Dodwell and David Dew of Creative Reality released *DreamWeb* in 2012; Alcachofa Soft released *Dráscula*; L.K. Avalon released *Sołtys* and *Sfinx*; Dynabyte released *Nippon Safes, Inc.*; Ken and Roberta Williams placed *Mystery House* in the public domain in 1987. *Broken Sword 2.5*, *The Griffon Legend* and *God of Thunder* are free releases by their own authors. Nothing here is abandonware and nothing is a dump of retail media — it is ScummVM-ready game data the project has hosted for years. On robots: `downloads.scummvm.org`, the only host this plugin requests, publishes **no** robots.txt (HTTP 404 for /robots.txt). `www.scummvm.org` is a different host whose robots.txt does `Disallow: /frs`, and this plugin never requests anything from it — it is absent from the manifest allowlist, so the broker would refuse. The twelve-game table was read once by a human from that site's robots-permitted `/games/` page and checked in; it is not fetched at runtime.",
       "comments": "The game table is the safety model, not a convenience. `/frs/extras/` is one directory per title and only some of those titles are free games: `Blade Runner/` holds subtitles, `Toonstruck/` holds cutscene subtitles, `Elvira 2/` holds sound samples, `Broken Sword I and II/` holds a subtitle pack — all add-ons for games still on sale. So the twelve directories are an **allowlist**: a directory not in it is unreachable, and no code path can build a URL into it. `tests/fixtures/scummvm_freeware/blade_runner.html` is a real capture of one of those directories, checked in so a test can prove it. Filenames, by contrast, are read live rather than tabled, so a ScummVM re-release (`drascula-int-1.0.zip` became `1.1`) keeps working with no code change; the importer re-reads the listing, requires an exact match, and lists what the directory offers now when it refuses. Checksum sidecars and manuals are excluded by name; language and audio packs are kept, because unlike a manual they are part of playing the game. Each game states its own RomM platform — all twelve are `scummvm` today — rather than sharing a module constant, so a row added later for a DOS-only drop can say so without anyone noticing that a default stopped being true. Watch the directory names: Dráscula's is `Drascula_ The Vampire Strikes Back`, with an underscore where the title has a colon, and the server 404s a near miss rather than redirecting.",
       "platforms": [

@@ -1,17 +1,54 @@
 # ScummVM freeware plugin for ROM Hub
 
-Implements the RPP v1 `search` and `importer` capabilities against
-`https://downloads.scummvm.org/frs/extras/` — twelve complete adventure games
-the ScummVM project distributes free, because their rights holders said so.
+Implements the RPP v1 `search`, `importer` and `metadata` capabilities
+against `https://downloads.scummvm.org/frs/extras/` — **twenty-eight**
+complete adventure games the ScummVM project distributes free, because
+their rights holders said so.
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `search` | `/frs/extras/<game>/` | matches a table of twelve games, then lists the matching directories |
-| `importer` | `/frs/extras/<game>/` | re-reads the listing, then plans the exact archive |
+| `search` | `/frs/extras/<directory>/` | matches a table of twenty-eight games, then lists the matching directories |
+| `importer` | the same listing | re-reads it, then plans the exact archive |
+| `metadata` | **nothing** | reads the table and gives an archive its real title |
 
 Beneath a Steel Sky. Flight of the Amazon Queen. Lure of the Temptress.
 Dráscula. DreamWeb. Sołtys. Sfinx. Mystery House. Nippon Safes, Inc. Broken
-Sword 2.5. The Griffon Legend. God of Thunder.
+Sword 2.5. The Griffon Legend. God of Thunder — and, new in 0.2.0, the
+sixteen SLUDGE, Wintermute and WAGE games on the same page: Above The
+Waves, Cubert Badbone P.I., Frasse and the Peas of Kejick, Full Moon, The
+Interview, Lepton's Quest, Life Flashes By, Mandy Christmas Adventure,
+Nathan's Second Chance, Out Of Order, Robin's Rescue, Sam and Max
+Flintlocked, The Game That Takes Place on a Cruise Ship, The Secret of
+Tremendous Corporation, Helga Deep In Trouble, and the WAGE collection.
+
+## What changed in 0.2.0
+
+| | before | after |
+|---|---:|---:|
+| games | 12 | **28** |
+| directories read | 12 | 15 |
+| games one search may list | 6 | **16** (capped at 28) |
+| capabilities | search, importer | + **metadata** |
+
+**The sixteen came from re-reading the source, not from widening a rule.**
+`www.scummvm.org/games/` — whose heading is literally "Download freeware
+games" — names 28 games where this table carried 12. The ones it was
+missing all live in engine directories rather than one-per-title ones, and
+that is the reason they were skipped: `SLUDGE/`, `Wintermute/` and `WAGE/`
+hold many authors' games together, and a directory allowlist cannot
+describe them.
+
+**So those rows name their archives.** `SLUDGE/` lists 35 files where the
+games page names 30; `Wintermute/` lists 17 where it names one. A row with
+an empty file list offers whatever its directory lists — which is what
+keeps a ScummVM re-release (`drascula-int-1.0.zip` becoming `-1.1.zip`)
+working with no code change — and a row with a file list offers exactly
+those names. Five SLUDGE archives and sixteen Wintermute ones stay
+unreachable because nobody vouched for them, which is the same rule the
+twelve-row version applied one level up.
+
+One directory is also read **once** however many of its games matched. The
+fourteen SLUDGE games used to be fourteen identical round trips.
 
 ## Why this material is legitimate
 
@@ -80,7 +117,7 @@ audio pack knows what they asked for.
     rom-hub search scummvm-freeware "steel sky"
     rom-hub search scummvm-freeware drascula
 
-Matching is done **in memory** against the twelve titles and slugs, so a query
+Matching is done **in memory** against the twenty-eight titles and slugs, so a query
 nobody's title contains costs zero requests and a one-word query typically
 costs one. Only the games that matched have their directory listed.
 
@@ -101,11 +138,36 @@ Everything lands in the `ScummVM freeware` RomM collection by default.
 
 ## Platform
 
-All twelve are filed under RomM's `scummvm` platform, which is what they are:
+All twenty-eight are filed under RomM's `scummvm` platform, which is what they are:
 ScummVM-ready game data, not dumps of the original floppies or CDs. The slug is
 stated **per row** rather than as one module constant, so a row added later for
 a DOS-only or Amiga-only freeware drop can say so without anyone having to
 notice that a shared default stopped being true. `--platform` overrides.
+
+## What `metadata` sets
+
+**`name`, and nothing else, and it makes no request at all.**
+
+That is the honest shape of it. The source is a download server:
+`downloads.scummvm.org` publishes archives and checksums and nothing else
+— no cover art, no description, no release date, no JSON of any kind. The
+one thing this plugin knows that a library does not is ScummVM's own title
+for the archive, and that is checked into `games.py`. There is no
+`artwork_url` here and there will not be one until the source grows
+artwork; fetching a cover from somewhere else would be this plugin
+asserting something it has no standing to assert.
+
+**One field is still worth a capability here**, because of what these
+archives are called. An import lands as `atw.zip`, `tgttpoacs.zip`,
+`nsc.zip`, `gotfree.zip` — fourteen of the twenty-eight games are on an
+engine shelf where the archive name is an abbreviation nobody would
+recognise. *The Game That Takes Place on a Cruise Ship* is a real title
+and `tgttpoacs.zip` is what a library shows without this.
+
+Matching is by archive name first (exact, from the table, so a rom named
+`frasse-2.03.zip` resolves with no guessing at all) and then by title, for
+the twelve directory-per-title rows whose archives are deliberately not
+enumerated.
 
 ## This plugin is catalogue-only
 
@@ -138,7 +200,7 @@ a DOS drop; it is not a way to make this one look better.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `max_games` | `int` | `6` | Hard bound on directory listings per search (capped at 12) |
+| `max_games` | `int` | `16` | Hard bound on matched games per search (capped at 28, which is all of them). One *directory* is one round trip, so the fourteen SLUDGE games cost one between them |
 | `collection` | `str` | `ScummVM freeware` | RomM collection imports are filed under |
 
 ## Notes for the next person
