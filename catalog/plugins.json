@@ -432,10 +432,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-open-bios",
       "install": "https://github.com/BlizzHacker/rom-hub-open-bios",
-      "download": "https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.1.1.tar.gz",
+      "version": "0.1.1",
+      "ref": "v0.1.1",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "firmware"
@@ -487,10 +487,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-retroachievements",
       "install": "https://github.com/BlizzHacker/rom-hub-retroachievements",
-      "download": "https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-retroachievements/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "metadata"
@@ -504,7 +504,7 @@
       "in_tree": false,
       "description": "Adds RetroAchievements set data to a ROM, keyed by the game's hash. Needs your RetroAchievements API key — and, separately, needs your RomM server to hold one of its own before it will accept the result.",
       "terms": "An account-gated API used as its operator intends. RetroAchievements issues every registered user a Web API key and documents this API for third-party clients, so using it with your own key is sanctioned — but it is your key and your account's rate limit, and the terms are between you and RetroAchievements. The data returned (set names, achievement counts) is community-authored and remains theirs. The plugin proposes no artwork and does not touch RA's media host.",
-      "comments": "**Live-verified 2026-07-31**, with a real key, against the real API: a Mega Drive ROM imported through `libretro-content` got RomM's `md5_hash = 30c01f5a82b51fd7e23315dd070d5818`, `API_GetGameList.php?i=1` carried that exact digest on game 17392 `~Homebrew~ Alter Ego`, and the enrich wrote `ra_id = 17392` and that title — read back afterwards from RomM's own `GET /api/roms/{id}`. **Your RomM needs its own RetroAchievements key too, and this is the part that bites**: RomM 4.9.2's `PUT /api/roms/{id}` treats an incoming `ra_id` as a request to re-identify the ROM and calls RA itself, signed with RomM's `RETROACHIEVEMENTS_API_KEY`; unset, that is a `TypeError` inside yarl and a bare HTTP 500 that names nothing. `ra_id` is the only id this plugin writes, so without that variable set on the RomM container every correct match still fails at the write. Hash matching is per-dump, not per-game: the NES build of the same game is RA 8170, and neither libretro's whole-file md5 nor its header-skipped md5 appears anywhere in RA's 1,116 NES games — console 7 is not a whole-file console *and* it is a different dump. The plugin refuses rather than guessing and says which of the two you are in. On keys: the key is per-account, read-only and resettable; rotate it if the machine changes hands. **Note the published `v0.1.0` tag — the one this entry installs — still declares `api_key` as a plain `str`, so it is stored in the clear in `state.json`.** The `type = \"secret\"` handling described in the plugin's README is implemented and verified but is not in a tagged release yet; until one ships, treat the key on disk as plaintext."
+      "comments": "**Live-verified 2026-07-31**, with a real key, against the real API: a Mega Drive ROM imported through `libretro-content` got RomM's `md5_hash = 30c01f5a82b51fd7e23315dd070d5818`, `API_GetGameList.php?i=1` carried that exact digest on game 17392 `~Homebrew~ Alter Ego`, and the enrich wrote `ra_id = 17392` and that title — read back afterwards from RomM's own `GET /api/roms/{id}`. **Your RomM needs its own RetroAchievements key too, and this is the part that bites**: RomM 4.9.2's `PUT /api/roms/{id}` treats an incoming `ra_id` as a request to re-identify the ROM and calls RA itself, signed with RomM's `RETROACHIEVEMENTS_API_KEY`; unset, that is a `TypeError` inside yarl and a bare HTTP 500 that names nothing. `ra_id` is the only id this plugin writes, so without that variable set on the RomM container every correct match still fails at the write. Hash matching is per-dump, not per-game: the NES build of the same game is RA 8170, and neither libretro's whole-file md5 nor its header-skipped md5 appears anywhere in RA's 1,116 NES games — console 7 is not a whole-file console *and* it is a different dump. The plugin refuses rather than guessing and says which of the two you are in. On keys: the key is per-account, read-only and resettable; rotate it if the machine changes hands. **`v0.2.0` is the release that stops storing the key in the clear.** `v0.1.0` declared `api_key` as a plain `str` and wrote it to `state.json` in plaintext, where `rom-hub plugin config` printed it back; `v0.2.0` declares it `type = \"secret\"`, so the Hub keeps it out of the plain config, redacts it from every command's output, and hands it to the plugin only in the `init` frame of the subprocess that needs it. **Upgrading is what moves an existing key** — the first run after installing `v0.2.0` migrates the plaintext into the secret store and drops it from `state.json`, announced on stderr, with no re-entry; nothing happens while `v0.1.0` is the installed version, because redaction and migration both key off the installed manifest's schema. Rotate any key that was on disk under `v0.1.0`: moving a credential out of a file does not move it out of the backups. What the store then protects is a separate question with an honest answer, printed by `rom-hub plugin secret list` — on the default file store with a generated key it is obfuscation, not secrecy."
     },
     {
       "slug": "retroarch-autoconfig",
