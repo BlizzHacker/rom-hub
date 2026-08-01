@@ -29,7 +29,7 @@ the live service::
 
 So a bulk read omits `page` entirely and asks for the whole result set in
 one response. `page` is still used for small asks, where it is the natural
-resume point -- see `PAGE_CEILING`.
+resume point -- see `Index.fetch`.
 
 ## 2. The scrape API is the documented answer and the wrong one
 
@@ -163,10 +163,10 @@ MAX_ITEM_SIZE = 2**42
 #: response, which no observed collection does.
 MAX_PARTITION_REQUESTS = 200
 
-#: Above this, a read stops using `page` and asks for the whole result set
-#: in one request. Under it, `page` is kept: it is the natural resume
-#: point, it lets a caller stop early, and it keeps an ordinary search box
-#: asking for ordinary-sized things.
+#: What a caller is told to stay under if it wants to keep using `page`.
+#: Not enforced -- `page` works up to the deep-paging limit and the
+#: refusal below quotes that -- but it is the size at which asking for one
+#: request at a time stops being the sensible shape.
 PAGE_CEILING = 1000
 
 #: `advancedsearch.php` refuses to page past this. Not a number this
@@ -302,8 +302,10 @@ class Index:
           deep-paging limit. The natural resume point for a search box.
         * **one request** -- no `page`, and a result set that fits in one
           response. The common bulk case.
-        * **partitioned** -- a result set too big for one response, split
-          on `item_size` until each half fits. The only way past 10,000.
+        * **partitioned** -- a result set too big for one response, read
+          as consecutive `item_size` windows. The only way past 10,000,
+          because `page` cannot reach there and the page-less form has no
+          offset to chunk with.
         """
         limit = max(1, min(int(limit), self._max_rows))
         paged = page is not None and (page * limit) <= DEEP_PAGING_LIMIT
