@@ -334,7 +334,7 @@ inherited leak.
 |---|---|
 | `rom-hub plugin browse\|install\|list\|enable\|disable` | plugin lifecycle |
 | `rom-hub plugin assets <slug> [--fetch]` | the data assets a plugin declares, whether they are cached, and (with `--fetch`) get them now |
-| `rom-hub search <query> [--platform] [--limit]` | fan out across enabled `search` plugins |
+| `rom-hub search <query> [--platform] [--limit] [--offset] [--per-source] [--expand] [--all-variants] [--no-group]` | fan out across enabled `search` plugins, then **merge, group and page** the combined set — see [Search that scales](#search-that-scales) |
 | `rom-hub import <plugin> <source_id> [--platform] [--collection]` | plan → download → dedup → upload → collection |
 | `rom-hub enrich <plugin> <rom_id> [--source-id]` | enrich → fetch artwork → `PUT /api/roms/{id}` |
 | `rom-hub stream <plugin> <source_id> [--open] [--json] [--platform] [--server]` | resolve one item to a validated stream target and hand it over: print what to do with it, `--open` it, or emit it as JSON for a launcher |
@@ -1216,6 +1216,164 @@ constraint stays; the unfamiliarity does not.
    [`capabilities()`](#capabilities-is-what-makes-degradation-honest)).
 
 Steps 5–8 are entirely host-side. The plugin's involvement ends at step 4.
+
+---
+
+## Search that scales
+
+Step 3 above says "normalised, merged". This section is what that means,
+because the naive reading of it — concatenate the lists — produces a listing
+nobody can use.
+
+### The two problems, both observed
+
+**Duplicates dominate.** A real Game Gear shelf in the demo library returns
+*Batman Returns* eight times, *Aladdin* four times, *Desert Assault* and
+*Agassi* twice. Every one of those rows is a genuinely distinct ROM — a
+different region, a different revision, a different dump — and the result still
+reads as broken. Live against No-Intro's Game Gear directory, `sonic` returns
+**47 rows**, of which twenty-one are dated *Sonic Spinball* betas.
+
+**Concatenation does not scale.** `search_all` fanned out and extended one
+list. `--limit` was applied *per plugin*, so ten sources at `--limit 25` was 250
+rows in fan-out order, with no paging and no cross-source merging. Console
+Living Room alone holds roughly ten thousand downloadable Genesis ROMs.
+
+### One row per game, variants underneath
+
+`rom_hub.grouping` turns the flat list into `GameGroup`s: one row per game per
+platform, with a variant count, expandable with `--expand <#>`. It **never
+discards a row** — `--no-group` prints the raw listing, `group.results` still
+contains every result, and the count printed next to a collapsed row is the
+count of what is inside it.
+
+Two questions are answered separately, and keeping them apart is most of the
+design:
+
+| Question | Answer | Type |
+|---|---|---|
+| Which results are the same **game**? | `(platform, normalised title)` | `GameGroup` |
+| Which results are the same **dump** of it? | region + revision + disc + dump flags, and any hash | `Variant` |
+
+Cross-**source** duplicates (the identical ROM from `archive-org` and
+`nointro-archive`) and cross-**variant** ones (USA vs Europe vs Rev 1) are
+different problems. The first collapses to one variant listing two sources; the
+second stays several variants under one game.
+
+### How identity is decided
+
+**1. A matching strong hash is proof.** sha256, sha1 or md5 in a result's
+`extra`: two results carrying the same one are the same bytes, whatever the two
+catalogues chose to call the file. This merges names that would never have met.
+
+**2. A conflicting hash is disproof, and it outranks the name.** Two rows named
+identically whose digests disagree are two different dumps that a catalogue
+named carelessly, and they stay two rows. **CRC-32 counts here even though it
+does not count as proof** — the same asymmetry `plugins-dev/hasheous` already
+applies to metadata identity, and for the same reason: 32 bits is far too weak
+to assert "these are the same file" and quite strong enough to refuse it.
+
+**3. Otherwise the parsed name decides**, via `rom_hub.romnames`.
+
+No-Intro/GoodTools/TOSEC naming is highly structured — `(USA)`, `(Europe)`,
+`(Rev 1)`, `(Beta)`, `[!]` — and parsing it is the obvious lever. Two rules
+govern that parser:
+
+**Parse to group, never to discard.** This project has already shipped a
+filename validator strict enough to drop every GoodTools `[!]` name it saw —
+the *verified good dump* marker, i.e. exactly the ROMs people want most — and
+nothing said so. Nothing in `romnames` filters. `parse()` is total: a name that
+matches no pattern at all becomes a title with no tags and gets its own group.
+The worst outcome of a parse failure is a row that failed to merge.
+`tests/test_romnames.py` pins `[!]` first, before anything else.
+
+**Wrongly merging two different games is worse than showing two rows.** Every
+normalisation in `normalise_title` is one that can be justified without
+reference to any particular title: case, Latin accents, `&` vs "and",
+punctuation, and the leading/trailing article (`The Legend of Zelda` ≡ `Legend
+of Zelda, The`). Deliberately absent, and each absence is a test:
+
+- **Roman numerals are not folded to digits.** `Final Fantasy II` and `Final
+  Fantasy 2` stay two rows. Folding them correctly requires knowing which
+  trailing token is a numeral; folding them wrongly merges different games.
+- **Trailing numbers are not stripped.** `Sonic the Hedgehog` and `Sonic the
+  Hedgehog 2` are different games and nothing is worth risking that.
+- **Subtitles are not stripped**, and near-identical names are not guessed at.
+  `Agassi Tennis` and `Andre Agassi Tennis` stay two rows even though they are
+  plausibly one game — the merge that would fix it would also merge things that
+  are not.
+
+Two further conservative choices, both of which cost rows:
+
+- **Tags are read only as a suffix.** Every convention here writes them that
+  way. A source that puts prose *after* its tags is one this parser declines to
+  interpret: the whole title becomes the group key, which means more rows.
+- **A platform nobody stated is never merged into one that was.** "Unknown" is
+  not evidence, and guessing which console a ROM is for is how a library ends up
+  wrong in a way nobody can see. Unknown-platform groups sort last.
+- **An unrecognised tag still distinguishes a variant.** `(Sega Channel)` means
+  nothing to this parser, so a row carrying it stays separate from one that does
+  not, rather than merging on the strength of a pattern that did not match.
+
+### Ordering and paging
+
+Groups are ordered **relevance, then platform, then title** — relevance in four
+coarse bands (exact, prefix, all tokens as words, all tokens as substrings)
+rather than a score fine enough to reorder two titles on an irrelevant
+difference. Within a group, variants are ordered verified-dump-first, then by a
+region preference, then newest revision first. That ordering is **display only**:
+a bad dump sorts last and is still listed.
+
+`--limit`/`--offset` page the **merged** set. `--limit` therefore now counts
+games, not raw results — a change in meaning from the pre-grouping flag, stated
+in `--help` and here. Because grouping only ever collapses, each source has to
+be asked for more than a page's worth; `dispatcher.fanout_limit()` computes that
+(4× the page, floored at 50 and capped at 500) and `--per-source` overrides it.
+
+### Honesty is unchanged
+
+Grouping reorganises what came back. It cannot know what a source that failed
+would have said, and it must not look like it does:
+
+- the `N of M sources responded` line and the per-plugin stderr failures are
+  printed exactly as before, alongside the grouped listing;
+- a source that returned *exactly* as many results as it was allowed is now
+  reported as **capped** (`PluginStatus.capped`), because a merged listing that
+  silently dropped a source's tail is otherwise indistinguishable from a
+  complete one;
+- `--no-group` prints the pre-grouping listing, so nobody has to trust the
+  grouping in order to see the raw set.
+
+### Cost
+
+Grouping is linear in results — a cached parse and a handful of dictionary
+operations each — plus one sort of the groups. Measured on synthetic fan-outs on
+one workstation: **1k rows in 15 ms, 10k in 169 ms, 50k in 0.92 s, 100k in
+2.1 s** (~50k rows/s), and 50k rows with no two titles alike in 1.5 s. The
+fan-out it follows is network-bound and orders of magnitude slower, so this is
+not the bottleneck at any size the Hub actually sees.
+
+Union-find is what makes the two merge rules order-independent: a hash can join
+two rows the names would have kept apart, and a name can join two rows neither
+of which carries a hash. Each set carries the digests its members claim, and a
+union is *refused* when two sets disagree about any digest kind they both know —
+which is how a conflicting CRC-32 can split two identically-named rows without
+ever being allowed to merge two differently-named ones.
+
+### Live proof
+
+Against No-Intro's Game Gear directory (`nointro-archive`, one source, one
+platform, so nothing here is a platform artefact):
+
+```
+$ rom-hub search sonic --no-group      →  47 results
+$ rom-hub search sonic                 →  47 results in 11 games
+```
+
+`Sonic Spinball` collapses 21 rows to one; `Sonic The Hedgehog` (4),
+`Sonic The Hedgehog 2` (3) and `Sonic The Hedgehog - Triple Trouble` (2) stay
+**three** rows, which is the case this design is most concerned with getting
+wrong. `--expand 5` lists all 21 Spinball betas, each with its own date.
 
 ---
 

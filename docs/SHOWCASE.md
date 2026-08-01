@@ -74,7 +74,7 @@ document was captured on Linux, with the filter active.
 
 | Capability | Command | What a plugin returns |
 |---|---|---|
-| `search` | `rom-hub search <query>` | search results, fanned out across every enabled plugin at once |
+| `search` | `rom-hub search <query>` | search results, fanned out across every enabled plugin at once, then merged into one row per game with its variants reachable underneath |
 | `importer` | `rom-hub import <plugin> <id>` | a `FetchPlan`: which URLs, which platform, which collection |
 | `metadata` | `rom-hub enrich <plugin> <rom_id>` | a `MetadataPatch`: fields to set, and the URL a cover lives at |
 | `stream` | `rom-hub stream <plugin> <id>` | a stream target, for items that may be played but not downloaded |

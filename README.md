@@ -137,7 +137,7 @@ implementation and a CLI command:
 
 | Capability | Command | What it does |
 |---|---|---|
-| `search` | `rom-hub search <query>` | fans out across every enabled plugin |
+| `search` | `rom-hub search <query>` | fans out across every enabled plugin, then merges the results into one row per game per platform -- variants and cross-source duplicates collapse behind a count, `--expand <#>` opens one, `--no-group` turns it off. `--limit`/`--offset` page the merged set |
 | `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection, warning first if the platform has no emulator core |
 | `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to the library |
 | `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated target and hands it over — prints what to do with it, `--open`s it, or emits it as JSON |
