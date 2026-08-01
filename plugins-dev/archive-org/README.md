@@ -304,7 +304,7 @@ rather than reaching for a prefix rule.
 
 ### What is still deliberately unmapped
 
-The census found 132 distinct `emulator` values in the Console Living Room. 83
+The census found 132 distinct `emulator` values in the Console Living Room. 82
 keys are mapped. The rest raise "needs mapping" on purpose:
 
 - **~60 MAME romset names** — `galaxian`, `mspacman`, `outrun`, `tmnt2`,
@@ -319,6 +319,13 @@ keys are mapped. The rest raise "needs mapping" on purpose:
   the comma is exactly the prefix rule this table refuses.
 - **`genisis`** — one item, and a misspelling. Mapping a typo teaches the table
   to accept typos.
+- **`sb486`** (30 items) — the one row that was written from reasoning and then
+  deleted after checking. The name reads as a 486 PC with a SoundBlaster, so it
+  was mapped to `dos`. Every item under it is a **Subor famiclone**:
+  `emulator_ext` is `nes`, the subjects say Famiclone and Subor, the titles are
+  Chinese NES multicarts and study cartridges. `nes` is not the answer either —
+  a study cartridge wants the machine's keyboard and its own mapper, so filing
+  it there would produce exactly the ROM that imports and does nothing.
 - **Ambiguous targets** — `ruffle-swf` (Flash), `cloudpilot-*` (PalmOS), `v86`
   (a JavaScript x86 that boots whatever you give it).
 

@@ -717,3 +717,17 @@ def test_the_nes_and_snes_corners_carry_no_control_information_at_all():
     docs = fixture("search_nes_snes_notes.json")["response"]["docs"]
     assert len(docs) == 11
     assert all(controls.extract(doc, doc["identifier"]) is None for doc in docs)
+
+
+def test_sb486_is_not_dos_however_much_the_name_reads_like_it():
+    """The one row written from reasoning rather than measurement.
+
+    "sb486" reads as a 486 PC with a SoundBlaster and was mapped to `dos`.
+    Every item under it is a Subor famiclone: `emulator_ext` is `nes`, the
+    subjects say Famiclone and Subor, the titles are Chinese NES
+    multicarts and study cartridges. `nes` is not the answer either -- a
+    study cartridge wants the machine's keyboard and its own mapper -- so
+    it stays unmapped rather than becoming a ROM that imports and does
+    nothing.
+    """
+    assert platform_for("sb486") is None

@@ -59,6 +59,16 @@ correct answer until someone decides where they should land:
   is a *game* id rather than a *machine* id, so the family cannot be
   closed by inspection and each would have to be verified individually.
   `mame` itself is mapped, and these are not it.
+* **`sb486`** (30 items), which is the one row of this table that was
+  written from reasoning and then deleted after checking. The name reads
+  as a 486 PC with a SoundBlaster, so it was mapped to `dos`. Every item
+  under it is a **Subor famiclone**: `emulator_ext` is `nes`, the
+  subjects say `Famiclone` / `Subor`, and the titles are Chinese NES
+  multicarts and study cartridges. `nes` is not the answer either -- a
+  Subor study cartridge wants the machine's keyboard and its own mapper,
+  so filing it under `nes` would produce exactly the ROM that imports and
+  does nothing. Two plausible slugs and no way to choose between them
+  from the metadata is what "needs mapping" is for.
 * **Composite values.** `gameboy,gb` and
   `dosbox,dosbox_drive_d,emularity_win31/win31.zip` are one item each and
   are an emulator id with a loader configuration appended. Splitting on
@@ -72,10 +82,6 @@ EMULATOR_PLATFORMS: dict[str, str] = {
     # PC
     "dosbox": "dos",
     "dosbox-sync": "dos",
-    # (CLR) `sb486` is Emularity's 486-with-a-SoundBlaster profile. It is
-    # a DOS machine with a sound card, and everything filed under it is
-    # DOS software.
-    "sb486": "dos",
     # Commodore. `vice-resid` is VICE with the reSID chip emulation and is
     # by far the most common emulator id in the corpus; `vice-pet` is the
     # same emulator pointed at a completely different machine.
