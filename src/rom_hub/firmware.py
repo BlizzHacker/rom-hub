@@ -233,9 +233,15 @@ def _extract_members(
     `dmg_boot.bin`, so "the entry whose name ends in the member" already
     picks the wrong file on real archives. And an entry name is never
     joined onto a path -- the destination is the host's own, built from
-    the member name the plugin declared and already `bare_filename`-
-    validated by `FirmwareArtifact`, so a zip whose entries are called
-    `../../etc/passwd` has nowhere to write.
+    the *basename* of the member the plugin declared and already
+    `bare_filename`-validated by `FirmwareArtifact`, so a zip whose entries
+    are called `../../etc/passwd` has nowhere to write.
+
+    A member may therefore name a directory inside the archive without
+    that directory reaching the filesystem: `share/machines/cbios_sub.rom`
+    is looked up under that name and installed as `cbios_sub.rom`. Real
+    archives need it -- openMSX is the only publisher of built C-BIOS
+    ROMs and it keeps them in `share/machines/`.
 
     The archive is removed afterwards. What the operator asked for is the
     BIOS; leaving a 1.6 MB emulator zip in the firmware directory beside
@@ -262,7 +268,12 @@ def _extract_members(
                         f"{MAX_FIRMWARE_BYTES}-byte limit"
                     )
                 try:
-                    dest = dest_in_job_dir(target, member)
+                    # The basename, never the member string. A member may
+                    # name a path *inside the archive* -- openMSX keeps the
+                    # C-BIOS ROMs under `share/machines/` -- and that path
+                    # is a lookup key, not a destination. The install stays
+                    # flat and `dest_in_job_dir` still sees a bare name.
+                    dest = dest_in_job_dir(target, member.rpartition("/")[2])
                 except UnsafeDestination as exc:
                     raise FirmwareError(str(exc)) from exc
                 _write_member(zf, info, dest, member=member, slug=slug)

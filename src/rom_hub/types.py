@@ -697,6 +697,22 @@ class FirmwareArtifact(BaseModel):
     only inside its emulator release. A plugin declares the members it
     wants and the *host* unpacks exactly those, by full-name equality,
     into destinations it chose itself -- see `rom_hub.firmware`.
+
+    **A member may name a path inside the archive**, because real archives
+    put things in directories: openMSX ships the C-BIOS ROMs at
+    `share/machines/cbios_main_msx1.rom`, and a rule that a member must be
+    a bare name would exclude the only published build of a clean-room MSX
+    BIOS for the sake of a zip's internal layout. This is safe for a
+    reason that is a property of `rom_hub.firmware` rather than of this
+    validator: **an archive entry name is never joined onto a path.** It
+    is a lookup key into the zip, and the destination is `basename` --
+    validated by `bare_filename` below, then by `dest_in_job_dir`. So a
+    zip whose entries are called `../../etc/passwd` still has nowhere to
+    write, exactly as before.
+
+    Note that this is a *different* mechanism from `FetchFile.subdir`,
+    which describes where the host writes. Here the path describes where
+    the bytes are *read from*, and the install stays flat.
     """
 
     firmware_id: str = Field(min_length=1, max_length=_MAX_FIRMWARE_ID_CHARS)
@@ -721,18 +737,29 @@ class FirmwareArtifact(BaseModel):
 
     @field_validator("members")
     @classmethod
-    def _bare_names_only(cls, v: list[str]) -> list[str]:
-        # Each of these becomes a file the host opens for writing, so it
-        # gets the validator a FetchPlan filename gets -- the same one, not
-        # a second copy of the rule.
+    def _installable_names_only(cls, v: list[str]) -> list[str]:
+        # The *destination* is the basename, and that becomes a file the
+        # host opens for writing -- so it gets the validator a FetchPlan
+        # filename gets, the same one, not a second copy of the rule. The
+        # directory part is a lookup key into a zip and reaches no
+        # filesystem call, but it is still held to `relative_subdir` so
+        # that a member which cannot traverse also cannot look like it
+        # does in a log or an error message.
         for name in v:
-            bare_filename(name)
-        folded = [name.casefold() for name in v]
+            directory, _, base = name.rpartition("/")
+            bare_filename(base)
+            if directory:
+                relative_subdir(directory)
+        # Compared on the basename, because that is what collides on disk:
+        # `a/boot.bin` and `b/boot.bin` are two entries in the zip and one
+        # file in the firmware directory, and the second would silently
+        # overwrite the first.
+        folded = [name.rpartition("/")[2].casefold() for name in v]
         duplicated = sorted({n for n in folded if folded.count(n) > 1})
         if duplicated:
             raise ValueError(
-                f"every member of a firmware archive needs a distinct name; "
-                f"these are repeated: {duplicated!r}"
+                f"every member of a firmware archive needs a distinct "
+                f"installed name; these are repeated: {duplicated!r}"
             )
         return v
 

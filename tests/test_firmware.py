@@ -98,7 +98,22 @@ def test_a_firmware_id_is_an_identifier(evil):
         )
 
 
-@pytest.mark.parametrize("evil", ["../escape.bin", "a/b.bin", "NUL", "boot.bin "])
+@pytest.mark.parametrize(
+    "evil",
+    [
+        "../escape.bin",
+        "NUL",
+        "boot.bin ",
+        # every component, not just the last one
+        "a/../b.bin",
+        "/abs/boot.bin",
+        "a//b.bin",
+        "C:evil.bin",
+        "share/NUL",
+        "NUL/boot.bin",
+        r"share\machines\boot.bin",
+    ],
+)
 def test_an_archive_member_goes_through_the_filename_validator(evil):
     with pytest.raises(ValidationError):
         FirmwareArtifact(
@@ -108,6 +123,37 @@ def test_an_archive_member_goes_through_the_filename_validator(evil):
             license="MIT",
             archive="zip",
             members=[evil],
+        )
+
+
+def test_a_member_may_name_a_directory_inside_the_archive():
+    """openMSX is the only publisher of built C-BIOS ROMs and it keeps
+    them under `share/machines/`. That path is a lookup key into the zip
+    and never a destination -- the install is flat, and `firmware.py`
+    takes the basename before `dest_in_job_dir` ever sees it."""
+    item = FirmwareArtifact(
+        firmware_id="x",
+        name="x",
+        platform="msx",
+        license="BSD-3-Clause",
+        archive="zip",
+        members=["share/machines/cbios_main_msx1.rom"],
+    )
+    assert item.members == ["share/machines/cbios_main_msx1.rom"]
+
+
+def test_two_members_that_install_to_one_name_are_refused():
+    """`a/boot.bin` and `b/boot.bin` are two entries in the zip and one
+    file in the firmware directory; the second would silently overwrite
+    the first."""
+    with pytest.raises(ValidationError, match="distinct installed name"):
+        FirmwareArtifact(
+            firmware_id="x",
+            name="x",
+            platform="gb",
+            license="MIT",
+            archive="zip",
+            members=["a/boot.bin", "b/boot.bin"],
         )
 
 
