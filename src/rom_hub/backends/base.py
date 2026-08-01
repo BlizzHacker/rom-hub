@@ -244,13 +244,39 @@ UNGATED_CAPABILITIES = frozenset({SCAN})
 #: That test now asserts against this set rather than repeating its
 #: members, so the two cannot drift.
 #:
+#: **`torrent` is the case that had to be argued rather than looked up**,
+#: because it is the first capability here that can put a *ROM* on the
+#: disk -- and a ROM is the one artifact class that does normally end in a
+#: backend upload. It is still backend-independent, for two reasons.
+#:
+#: The first is what the capability actually is. A torrent resolves to a
+#: manifest, and the three things the host does with one are: print it,
+#: hand it to the torrent client the operator already runs, and pull a
+#: named file out of it over https. The middle one is the primary path and
+#: it ends *outside this process entirely* -- there is no moment at which
+#: the Hub holds bytes to upload, because the client that fetches them is
+#: somebody else's program. Asking "what does the backend not support
+#: here?" of a handoff has no answer at all, which is the test this set
+#: exists to record.
+#:
+#: The second is that the classification must hold for every path, not the
+#: convenient one. `torrent fetch` does end with a file on disk, and it
+#: would have been easy to call that half an import and mark the
+#: capability `IMPORT`-essential. That would be wrong in the direction
+#: that costs the operator something real: it would refuse to fetch a
+#: public-domain ROM from a verified manifest because no *library server*
+#: was configured, which is `--collection` refusing every Gaseous import
+#: all over again. So `torrent fetch` lands the file and stops, exactly
+#: like `cores` and `assets`, and putting it in a library is what
+#: `rom-hub import` is for. Two commands, each of which works alone.
+#:
 #: Deliberately NOT unioned into `ALL_CAPABILITIES`: that set is the
 #: vocabulary of things a *backend* declares, and putting a plugin
 #: capability in it would make `rom-hub backend info` print `assets` under
 #: "cannot" for every backend ever written -- true only in the sense that
 #: a hammer cannot tell the time.
 BACKEND_INDEPENDENT_CAPABILITIES = frozenset(
-    {"search", "stream", "cores", "assets"}
+    {"search", "stream", "cores", "assets", "torrent"}
 )
 
 #: One line each, for `rom-hub backend info`. A capability list is only

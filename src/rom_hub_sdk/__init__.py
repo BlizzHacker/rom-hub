@@ -9,6 +9,7 @@ from rom_hub.types import (
     RomRef,
     SearchResult,
     StreamTarget,
+    TorrentSource,
 )
 
 from .capabilities import (
@@ -19,6 +20,7 @@ from .capabilities import (
     MetadataProvider,
     SearchProvider,
     StreamProvider,
+    TorrentProvider,
 )
 from .context import DataAssetUnavailable, HttpResponse, PluginContext
 
@@ -36,11 +38,13 @@ __all__ = [
     "FirmwareProvider",
     "MetadataProvider",
     "StreamProvider",
+    "TorrentProvider",
     "FetchFile",
     "FetchPlan",
     "MetadataPatch",
     "RomRef",
     "StreamTarget",
+    "TorrentSource",
     "CoreArtifact",
     "AssetArtifact",
     "FirmwareArtifact",

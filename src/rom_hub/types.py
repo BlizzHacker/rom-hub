@@ -7,6 +7,7 @@ constraints here are load-bearing rather than cosmetic.
 import base64
 import binascii
 import json
+import re
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Literal
 from urllib.parse import urlsplit
@@ -828,3 +829,171 @@ class AssetArtifact(BaseModel):
         if v.startswith("/") or v.endswith("/"):
             raise ValueError("asset_id must not start or end with '/'")
         return v
+
+
+# -- torrent -------------------------------------------------------------
+#
+# The seventh capability whose return value the host acts on with its own
+# privileges, and the one with the most ways to be a hole -- so the rules
+# it reuses matter more than the ones it adds.
+#
+# A `TorrentSource` is a *description*: where the torrent for an item is,
+# and which files inside it are wanted. The plugin never opens a socket,
+# never speaks BitTorrent, and never names a destination on disk. The host
+# fetches the `.torrent`, reads it, and decides everything else. See
+# `rom_hub.torrents` for what it then does with it, and why that stops
+# well short of being a torrent client.
+
+# A `.torrent` is a manifest, not a payload: the largest this project has
+# measured is Archive.org's 5.7 GB item, whose torrent is a megabyte. Four
+# megabytes is a comfortable ceiling for a file whose whole job is to be
+# small, and it is the host's bound on a document it will parse -- see
+# `rom_hub.bencode` for why parsing it is treated as reading hostile input.
+MAX_TORRENT_BYTES = 4 * 1024 * 1024
+
+# How many entries the host will read out of one torrent. Archive.org's
+# largest software items run to a few thousand files; this is bounded for
+# the reason `MAX_FILES_PER_PLAN` is -- the host walks whatever it is
+# given, and "whatever it is given" arrived over the network.
+MAX_TORRENT_ENTRIES = 4096
+
+# Long enough for a magnet carrying an info-hash, a display name and
+# several trackers; short enough that a plugin cannot make the host's log
+# its dumping ground. Matches `_MAX_STREAM_TARGET_CHARS`, which bounds the
+# same kind of string for the same reason.
+_MAX_TORRENT_SOURCE_CHARS = 4096
+
+# A v1 info-hash is SHA-1: 40 hex characters. BitTorrent v2 hashes are
+# SHA-256 and are deliberately NOT accepted -- this host computes a v1
+# info-hash and nothing else, and a field that accepted a v2 digest would
+# be promising a comparison that never happens.
+_INFO_HASH_RE = re.compile(r"\A[0-9a-fA-F]{40}\Z")
+
+
+class TorrentSource(BaseModel):
+    """Where a `torrent` plugin says an item's torrent is.
+
+    A description the host acts on, shaped like `StreamTarget` rather than
+    like `FetchPlan`, because what comes back is one location rather than a
+    list of downloads. `kind` is the discriminator, and it decides which
+    check the location gets:
+
+      * `torrent_url` -- an https URL to a `.torrent` file. The host
+                         fetches it, re-checking the plugin's `network`
+                         allowlist on every redirect hop, exactly as it
+                         fetches a `FetchPlan` URL.
+      * `magnet`      -- a `magnet:` URI. Not fetchable, so `check_url`
+                         cannot apply to it; it is validated
+                         piece-by-piece instead. See
+                         `rom_hub.torrents.check_magnet`, which is where
+                         that reasoning is written down.
+
+    A `torrent_url` may therefore not be a magnet, and a magnet may not be
+    an http(s) URL. That is `StreamTarget`'s "a handle is not a URL" rule,
+    applied here for the same reason: without it the discriminator is the
+    hole, because picking the kind would pick the check.
+
+    ## `files` names what is wanted, and never where it goes
+
+    A torrent's own file list is the authority on what is inside it. This
+    field is a *selector*: bare filenames the host matches against the
+    entries the torrent declares. Two consequences worth stating.
+
+    **A selector is a bare filename**, validated by `bare_filename` --
+    the same function a `FetchPlan` filename goes through. It never
+    becomes a path itself; it is compared. But it is compared against
+    something that *does* become a path, so holding it to the filename
+    rule keeps a plugin from asking for an entry whose name the host could
+    not safely write anyway.
+
+    **An entry whose path has more than one component cannot be selected.**
+    Archive.org's items are flat and this covers all of them. A nested
+    entry is still listed, so an operator can see it, and refused with a
+    message rather than flattened into its last component -- flattening
+    would make `a/rom.zip` and `b/rom.zip` the same request, and picking
+    one of them is a guess about which ROM somebody wanted.
+
+    An empty `files` means "the whole torrent", which is what a handoff to
+    a torrent client does anyway.
+
+    ## `info_hash` is a claim the host checks, not a value it trusts
+
+    Optional, and when present it is what the *plugin* believes the
+    torrent's v1 info-hash is -- Archive.org publishes one as `btih` in
+    its metadata listing, so a plugin can know it without fetching the
+    torrent at all. The host computes the info-hash from the bytes it
+    actually received and refuses when the two disagree. That turns a
+    plugin's claim into a cross-check on the download rather than a fact
+    the host adopts, which is the only shape in which a value from an
+    untrusted process is worth having.
+    """
+
+    kind: Literal["torrent_url", "magnet"]
+    source: str = Field(min_length=1, max_length=_MAX_TORRENT_SOURCE_CHARS)
+    name: str | None = Field(default=None, max_length=_MAX_ROM_NAME_CHARS)
+    files: list[str] = Field(default_factory=list, max_length=MAX_FILES_PER_PLAN)
+    info_hash: str | None = None
+    extra: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("source")
+    @classmethod
+    def _no_control_characters(cls, v: str) -> str:
+        # Printed, logged, and possibly handed to another program. A CR or
+        # LF is a header-splitting or log-forging primitive depending on
+        # who consumes it, and no legitimate source has one.
+        bad = sorted({c for c in v if ord(c) < 0x20 or ord(c) == 0x7F})
+        if bad:
+            raise ValueError(
+                f"torrent source must not contain control characters: "
+                f"{[hex(ord(c)) for c in bad]}"
+            )
+        return v
+
+    @field_validator("files")
+    @classmethod
+    def _selectors_are_bare_names(cls, v: list[str]) -> list[str]:
+        # The same validator a FetchPlan filename goes through, reused
+        # rather than resembled. See "`files` names what is wanted".
+        for name in v:
+            if not name:
+                raise ValueError("a wanted-file selector must not be empty")
+            bare_filename(name)
+        lowered = [n.casefold() for n in v]
+        repeated = sorted({n for n in lowered if lowered.count(n) > 1})
+        if repeated:
+            raise ValueError(
+                f"every wanted file needs a distinct name; these are "
+                f"repeated: {repeated!r}"
+            )
+        return v
+
+    @field_validator("info_hash")
+    @classmethod
+    def _v1_info_hash_only(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        if not _INFO_HASH_RE.fullmatch(v):
+            raise ValueError(
+                f"info_hash must be a v1 (SHA-1) info-hash of exactly 40 hex "
+                f"characters, got {v!r}"
+            )
+        return v.lower()
+
+    @model_validator(mode="after")
+    def _kind_matches_the_scheme(self) -> "TorrentSource":
+        scheme = urlsplit(self.source).scheme.lower()
+        if self.kind == "magnet":
+            if scheme != "magnet":
+                raise ValueError(
+                    f"a torrent source of kind 'magnet' must be a magnet: URI "
+                    f"(got scheme {scheme!r}) -- declare kind='torrent_url' so "
+                    f"the host checks it against the plugin's network allowlist"
+                )
+            return self
+        if scheme not in {"http", "https"}:
+            raise ValueError(
+                f"a torrent source of kind 'torrent_url' must be an http(s) "
+                f"URL to a .torrent file (got scheme {scheme!r}); the host "
+                f"permits only https, and a magnet must declare kind='magnet'"
+            )
+        return self

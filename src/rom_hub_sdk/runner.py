@@ -178,6 +178,20 @@ def run_plugin(stdin, stdout) -> None:
                 # Re-validated host-side like every other capability's
                 # return value; a `url` target is allowlist-checked there.
                 result = target.model_dump()
+            elif method == "resolve_torrent":
+                if ctx is None:
+                    raise RuntimeError("init must be called before resolve_torrent")
+                if "torrent" not in instances:
+                    instances["torrent"] = _load(entrypoints["torrent"], ctx)
+                source = instances["torrent"].resolve(
+                    SearchResult(**params["result"])
+                )
+                # Re-validated host-side like every other capability's
+                # return value. A `torrent_url` is allowlist-checked there
+                # and re-checked on every redirect hop; a `magnet` is taken
+                # apart parameter by parameter. Nothing decided on this
+                # side of the pipe is load-bearing.
+                result = source.model_dump()
             elif method == "enrich":
                 if ctx is None:
                     raise RuntimeError("init must be called before enrich")
