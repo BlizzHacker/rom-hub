@@ -256,6 +256,125 @@ class Verdict:
         return f"{self.platform!r} has no emulator core -- catalogue only"
 
 
+#: Why each coreless platform the plugins import to stays coreless --
+#: which is to say, why it was *not* quietly refiled under something that
+#: does play.
+#:
+#: **This table exists because the tempting fix is the wrong one.** Every
+#: entry below was checked against the base map for a slug covering the
+#: same hardware, and none of them has one. Several come close enough to
+#: be dangerous: `atari5200`'s core is a fork of an Atari 800 emulator,
+#: `zxs` is a Sinclair machine, `dos` runs a lot of what ScummVM runs, and
+#: `psx` is a PlayStation. Refiling under any of those would turn a shelf
+#: entry that honestly does nothing into one that claims to work and then
+#: fails at the point where the operator has already committed -- and it
+#: would put the game under the wrong machine in the library forever,
+#: which is the exact misfiling every plugin's `platforms.py` refuses to
+#: risk.
+#:
+#: A remap is correct only where RomM has two slugs for *one* machine and
+#: the plugin picked the coreless one. That case is real -- it is why
+#: `famicom`, `fds` and `sfam` are in the base map beside `nes` and
+#: `snes` -- and it is not the case for anything here.
+#:
+#: `tests/test_playability.py::test_every_unplayable_import_target_has_a_
+#: recorded_reason` fails when a plugin adds a coreless platform that is
+#: not in this table, so "we thought about it" cannot degrade into "nobody
+#: looked".
+NO_EQUIVALENT: dict[str, str] = {
+    # -- machines with no EmulatorJS core of any kind ---------------------
+    "android": "a phone application; there is no console here to emulate",
+    "apple-iigs": "no Apple core in the map at all, in any revision",
+    "appleii": "no Apple core in the map at all, in any revision",
+    "appleiii": "no Apple core in the map at all, in any revision",
+    "aquarius": "the Mattel Aquarius, a Z80 home computer with no core",
+    "atari-st": (
+        "a 68000 computer. The playable Atari slugs are the 6502 consoles "
+        "(2600/5200/7800) and the Lynx and Jaguar handheld/console; none of "
+        "them runs ST software"
+    ),
+    "atari8bit": (
+        "the 400/800/XL/XE computers. `atari5200` is the closest thing in "
+        "the map and its `a5200` core really is descended from an Atari 800 "
+        "emulator -- but the 5200 is a cartridge-only console with no "
+        "keyboard and different I/O, so an 800 disk or cassette image is not "
+        "a 5200 cartridge and would not boot"
+    ),
+    "browser": "a web page: nothing to download and nothing to emulate",
+    "dc": (
+        "the Dreamcast. EmulatorJS ships no Dreamcast core -- flycast is not "
+        "in the map -- and no other Sega slug is a Dreamcast"
+    ),
+    "handheld-electronic-lcd": (
+        "Game & Watch-style LCD handhelds, which need libretro's `gw` core "
+        "and a set of artwork assets. Not in the map"
+    ),
+    "linux": "a desktop PC executable, not a console or home-computer ROM",
+    "mac": "a Macintosh, of any era; no Mac core is in the map",
+    "msx": (
+        "the MSX standard. It shares a CPU and a video chip with the "
+        "ColecoVision and is not the same machine: different BIOS, different "
+        "media, different software"
+    ),
+    "ngc": "the GameCube. No core in the map, and no other Nintendo slug is one",
+    "pokemon-mini": (
+        "the Pokemon mini. Its cartridges are not Game Boy cartridges and "
+        "no Game Boy core reads them"
+    ),
+    "ps2": (
+        "the PlayStation 2. `psx` is in the map and is a different machine "
+        "entirely -- a PS2 disc will not boot on a PlayStation core"
+    ),
+    "ps3": (
+        "the PlayStation 3. `psx` is in the map and is a different machine "
+        "entirely"
+    ),
+    "scummvm": (
+        "ScummVM-ready game data rather than an original disk image. `dos` "
+        "does have a core and DOSBox can run some of these titles from their "
+        "*original floppies* -- but not from ScummVM's own resource layout, "
+        "which is what these downloads are"
+    ),
+    "sharp-x68000": "the Sharp X68000, a 68000 Japanese home computer; no core",
+    "tic-80": (
+        "a fantasy console. Its cartridges run on its own runtime and on "
+        "nothing else; there is no hardware to substitute"
+    ),
+    "trs-80-color-computer": "the Tandy Color Computer, a 6809 machine; no core",
+    "trs-80-mc-10": "the Tandy MC-10, a 6803 machine unrelated to the CoCo; no core",
+    "vectrex": (
+        "a vector-display console. Nothing else in the map draws vectors, "
+        "and filing a Vectrex game under a raster machine would be a lie the "
+        "library could never correct"
+    ),
+    "wasm-4": (
+        "a fantasy console built on WebAssembly. Same as TIC-80: its own "
+        "runtime, and no hardware to substitute"
+    ),
+    "wii": "the Wii. No core in the map, and no other Nintendo slug is one",
+    "win": "a Windows executable, not a console or home-computer ROM",
+    "xbox": "the original Xbox. No core in the map",
+    "xbox360": "the Xbox 360. No core in the map",
+    "zx81": (
+        "a 1K monochrome Sinclair machine. `zxs` is in the map, and it is the "
+        "*Spectrum*: a different ROM, different display and different "
+        "software, which `fuse` does not run as ZX81 code"
+    ),
+    # -- interactive-fiction runtimes -------------------------------------
+    # RomM carries four of these as platforms, which is right and finer
+    # grained than the single `interactive-fiction` slug its own issue
+    # #2140 asks for. What none of them has is a libretro core: they want
+    # Parchment or a desktop interpreter, and that is RomM's to build.
+    "glulx": "an interactive-fiction VM; it wants an interpreter, not a core",
+    "hugo": "an interactive-fiction runtime; it wants an interpreter, not a core",
+    "tads": "an interactive-fiction runtime; it wants an interpreter, not a core",
+    "z-machine": (
+        "an interactive-fiction VM. `glulx` is its successor and equally "
+        "coreless, so there is not even a wrong answer available here"
+    ),
+}
+
+
 def _normalise(platform: str) -> str:
     """RomM lowercases the slug before its own lookup; so does this."""
     return platform.strip().lower() if isinstance(platform, str) else ""

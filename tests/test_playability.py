@@ -183,3 +183,58 @@ def test_the_romm_version_is_stated():
     """A vendored copy that does not say what it is a copy of cannot be
     checked for staleness."""
     assert playability.ROMM_VERSION == "4.9.2"
+
+
+# -- the remap decision, kept reviewable ---------------------------------
+
+
+def test_every_unplayable_import_target_has_a_recorded_reason():
+    """A plugin that gains a coreless platform must state why it stays one.
+
+    This is the test that stops "checked, and there is no correct
+    equivalent" from decaying into "nobody looked". It fails on the next
+    coreless target anybody adds, and the fix is one sentence in
+    NO_EQUIVALENT saying which machine it is and what it is not.
+    """
+    from rom_hub.catalog import load_catalog
+    from rom_hub.playability import NO_EQUIVALENT
+
+    catalog = Path(__file__).resolve().parents[1] / "catalog" / "plugins.json"
+    unexplained = set()
+    for entry in load_catalog(catalog):
+        if "importer" not in entry.capabilities:
+            continue
+        for platform in entry.platforms:
+            if verdict_for(platform).verdict == CATALOGUE_ONLY:
+                if platform not in NO_EQUIVALENT:
+                    unexplained.add(f"{entry.slug}: {platform}")
+    assert not unexplained, (
+        "these platforms cannot be played and nothing says whether that is "
+        "correct. Add a line to playability.NO_EQUIVALENT naming the machine "
+        "and why no playable slug is the same hardware -- or fix the plugin's "
+        "mapping if one is: " + ", ".join(sorted(unexplained))
+    )
+
+
+def test_nothing_playable_is_listed_as_having_no_equivalent():
+    """The table must not outlive the problem it describes.
+
+    If RomM ships a core for one of these, the row is now wrong and the
+    honest response is to delete it, not to leave a stale excuse next to a
+    platform that has started working.
+    """
+    from rom_hub.playability import NO_EQUIVALENT
+
+    stale = [p for p in NO_EQUIVALENT if verdict_for(p).verdict != CATALOGUE_ONLY]
+    assert not stale, (
+        "these now have a core and no longer need an excuse; delete their "
+        f"NO_EQUIVALENT rows: {stale}"
+    )
+
+
+def test_the_reasons_are_reasons_rather_than_placeholders():
+    from rom_hub.playability import NO_EQUIVALENT
+
+    for platform, reason in NO_EQUIVALENT.items():
+        assert len(reason) > 20, f"{platform}: {reason!r} explains nothing"
+        reason.encode("ascii")
