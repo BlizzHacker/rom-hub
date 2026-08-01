@@ -79,8 +79,20 @@ class FakeHasheous:
 
 
 def _provider(http=None, **config):
+    """A provider with the raw blob switched **on**.
+
+    `raw_metadata` defaults to false in the plugin since 0.2.0, because
+    `raw_hasheous_metadata` is accepted with a 200 and stored nowhere RomM
+    will return -- measured including with `hasheous_id` written and
+    changed in the same request, which rules out the id gate. The
+    blob-building code still has to be right for a backend that keeps it,
+    so it stays under test here and the default is pinned separately by
+    `test_the_raw_blob_is_off_by_default_because_romm_discards_it`.
+    """
     http = http or FakeHasheous()
-    return Metadata(PluginContext(config=dict(config), http=http)), http
+    merged = {"raw_metadata": True}
+    merged.update(config)
+    return Metadata(PluginContext(config=merged, http=http)), http
 
 
 def _ref(**kwargs):
@@ -231,6 +243,18 @@ def test_a_partial_answer_never_blanks_a_curated_field():
     assert "name" not in fields
     assert "igdb_id" not in fields
     assert patch.artwork_url is None
+
+
+def test_the_raw_blob_is_off_by_default_because_romm_discards_it():
+    """Measured 2026-08-01 on a live 4.9.2: the field answers 200 and the
+    value appears nowhere in the rom afterwards, even paired with a
+    changed `hasheous_id` in the same request. The facts worth having go
+    into `summary`, which RomM does store."""
+    provider = Metadata(PluginContext(config={}, http=FakeHasheous()))
+    patch = provider.enrich(_ref())
+    assert patch.raw_metadata == {}
+    assert patch.summary
+    assert patch.provider_ids["hasheous_id"] == 4321
 
 
 def test_the_whole_answer_is_kept_as_raw_hasheous_metadata():

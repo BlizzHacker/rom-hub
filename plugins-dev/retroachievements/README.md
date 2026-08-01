@@ -92,6 +92,9 @@ up. Moving a credential out of a file does not move it out of the copies.
 | `username` | `str` | `""` | your RA username, sent as `z`. Optional: RA's docs mark only `y` required, but RA's own client sends both |
 | `set_name` | `bool` | `true` | write the matched game's title into RomM's `name` |
 | `only_with_achievements` | `bool` | `true` | ask RA for `f=1`, the smaller list |
+| `summary` | `bool` | `true` | propose the achievement count, points, leaderboards and console as RomM's `summary` |
+| `details` | `bool` | `true` | make a second `API_GetGame.php` call for the publisher, developer, genre, release year and box art |
+| `artwork` | `bool` | `true` | propose RA's box art as the cover. Needs `details`, which is where the URL comes from |
 
 With no `api_key` the plugin refuses **before making any request**, with a
 message naming the config key, where to get a value for it, and the command
@@ -110,6 +113,50 @@ inside it.
 - **`name`** — the matched game's RA title, unless `set_name = false`. Safe to
   write because the match is by hash, which is the strongest identification
   available; turn it off if you curate names yourself.
+- **`summary`** — how much there is to do in this game, and who made it:
+  `44 achievements worth 500 points on RetroAchievements. Developed by David
+  Crane, published by Activision. Released 1980. Genre: Racing. Console: Atari
+  2600.`
+
+  The counts come from the game-list response this plugin has always made and
+  were always discarded. The catalogue facts come from the second call — see
+  below.
+- **`artwork_url`** — RA's `ImageBoxArt`, on `retroachievements.org`. RA's
+  "no image" placeholders are refused by name rather than written over covers
+  you already have.
+
+### The second request this plugin used to refuse to make
+
+`API_GetGame.php` returns a publisher, a developer, a genre, a release year and
+a box art URL, and until `0.3.0` this plugin would not call it. The reasoning
+was sound: RPP v1 has no `raw_ra_metadata`, writing RA's payload into another
+provider's field would be a lie in the database, and RA's own documentation asks
+callers not to hammer the API. A second request that buys five values which get
+*dropped* is a second request for nothing.
+
+`MetadataPatch.summary` is what changed it. RomM stores that field — measured,
+where the eight raw blobs are accepted and discarded — so those facts now reach
+a library, and the box art turns a plugin that proposed no artwork into one that
+proposes real covers.
+
+The big response is still fetched exactly once per enrich, and a test pins that:
+`API_GetGameList.php` is every game on a console with every hash, and it is the
+endpoint RA asks callers to cache. `API_GetGame` is one game. Set `details =
+false` to go back to one request; you lose the four catalogue facts and the
+cover, and keep the counts.
+
+If the second call fails, the enrich does not. The hash already matched and the
+`ra_id` is already known; losing a correct id to a rate limit on an optional
+call would be absurd.
+
+### The box art needs no new allowlist entry
+
+`ImageBoxArt` comes back as a path (`/Images/026365.png`), and both
+`retroachievements.org` and `media.retroachievements.org` serve it — measured
+2026-08-01, each answers 200 with `image/png` and identical 130,898 bytes, with
+no redirect. The cover is named on the host already declared for the API, so an
+operator who approved this plugin before covers existed does not have to approve
+a new host to get them.
 
 ### RomM needs its own RetroAchievements key to accept `ra_id`
 
@@ -145,9 +192,21 @@ and manuals. **None of them is RetroAchievements.** Putting RA's payload into
 the database about where the data came from, so nothing is written. If RPP
 gains a `raw_ra_metadata`, this becomes a two-line change.
 
-**No artwork.** RA serves box art, but so does the `libretro-thumbnails` plugin,
-which is what it is for. Adding RA's media host to this plugin's allowlist for a
-field another plugin covers would widen the allowlist for nothing.
+### What cannot reach RomM
+
+RA's `NumLeaderboards`, `Points` and `NumAchievements` are counts, and RomM has
+no numeric field for any of them — they are prose in `summary` or they are
+nothing. The same is true of the genre and the release year: RomM keeps those in
+a `metadatum` sub-object populated by its own configured providers, with no form
+field on the update endpoint that reaches it.
+
+The **achievement set itself** — every achievement's title, description, points
+and badge — does not come back from this endpoint and would have nowhere to go
+if it did. RomM has a `merged_ra_metadata` field on the ROM record and it is
+populated by RomM's own RetroAchievements handler, from the `ra_id` this plugin
+writes. That is the route: give RomM the id and let RomM fetch the set. It is
+also why `ra_id` is the highest-value thing here and why the section below
+matters.
 
 ## Hashes: the part that surprises people
 

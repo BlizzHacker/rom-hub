@@ -19,7 +19,14 @@ romm_api = []
 verify_platform   = { type = "bool", default = true }
 allow_crc32       = { type = "bool", default = false }
 set_name          = { type = "bool", default = true }
-raw_metadata      = { type = "bool", default = true }
+# The whole lookup answer, in `raw_hasheous_metadata`. **Off by default
+# since 0.2.0**: measured on 2026-08-01 against a live RomM 4.9.2, that
+# field is accepted with a 200 and the value appears nowhere in the rom
+# afterwards -- including when `hasheous_id` is written and *changed* in
+# the same request, which rules out the provider-id gate RomM applies to
+# seven of the eight raw fields. The facts worth having are in `summary`
+# instead, which RomM does store.
+raw_metadata      = { type = "bool", default = false }
 
 # The signature row's own facts -- publisher, year, region, language, and
 # which DAT corpus verified the dump -- composed into RomM's `summary`.

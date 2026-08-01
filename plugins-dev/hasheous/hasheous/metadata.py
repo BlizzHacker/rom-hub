@@ -203,7 +203,21 @@ class Metadata(MetadataProvider):
         return bool(self.ctx.config.get("set_name", True))
 
     def _raw_metadata(self) -> bool:
-        return bool(self.ctx.config.get("raw_metadata", True))
+        """The whole answer as `raw_hasheous_metadata`. Off by default now.
+
+        Measured on 2026-08-01 against a live RomM 4.9.2: a marker written
+        into that field comes back nowhere in the rom record, and the same
+        holds with `hasheous_id` written and *changed* in the same request
+        -- which rules out the provider-id gate RomM applies to seven of
+        its eight raw fields. The id lands; the blob does not.
+
+        Kept switchable rather than deleted. The blob is the complete
+        answer and a different RomM version, or a backend with a home for
+        it, would make it worth sending again. What it must not be is the
+        default, because a plugin whose main output is discarded looks
+        from the outside exactly like a plugin that worked.
+        """
+        return bool(self.ctx.config.get("raw_metadata", False))
 
     def _summary(self) -> bool:
         return bool(self.ctx.config.get("summary", True))

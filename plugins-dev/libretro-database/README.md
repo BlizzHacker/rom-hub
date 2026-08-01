@@ -23,6 +23,13 @@ entry's name.
 | `sets` | `list[str]` | `["no-intro", "redump"]` | which `metadat/` directories to read |
 | `ref` | `str` | `"master"` | git ref to read the DATs at; pin a tag or a commit for a fixed corpus |
 | `set_name` | `bool` | `true` | propose the catalogue name |
+| `summary` | `bool` | `true` | propose the entry's region and serial, plus whatever `details` finds, as RomM's `summary` |
+| `details` | `list[str]` | `["genre", "developer", "publisher", "releaseyear"]` | which `metadat/` annotation directories to read |
+
+`details` accepts `genre`, `developer`, `publisher`, `releaseyear`,
+`releasemonth`, `franchise`, `maxusers`, `esrb` and `serial`. Each is one extra
+request. `details = []` restores the single-request behaviour of `0.1.0`
+exactly.
 
 ## The name it writes is a title, not a filename
 
@@ -85,6 +92,49 @@ are **absent**: MAME's DATs are named per MAME release and keyed by short set
 names, and TOSEC's live under different directories. That is a different
 matching problem, not a missing row. `zxs` maps to `Sinclair - ZX Spectrum +3`,
 the disk library only — a tape dump finds nothing rather than the wrong entry.
+
+## The annotation sets
+
+`metadat/` holds thirty directories and this plugin read two of them. The
+catalogues (`no-intro/`, `redump/`) are the ones with the hashes; the rest are
+the **same dumps annotated one fact at a time**, joined by CRC-32:
+
+    game (
+        comment "Tetris (World) (Rev 1)"
+        genre "Puzzle"
+        rom ( crc 46DF91AD )
+    )
+
+Nine of those directories carry something a library wants, and four are read by
+default. They are also much smaller than the catalogues they annotate — for the
+NES, 81 KB (`franchise`) to 333 KB (`developer`) against a 3.3 MB No-Intro DAT
+— so four of them is roughly a third more traffic, not a doubling.
+
+Three things about the order are deliberate:
+
+- They are fetched **after** a match, never before. A ROM the catalogue does not
+  carry costs exactly what it always did.
+- Any of them failing costs that one fact and never the enrich. The name is the
+  valuable half and it is already resolved by the time these are asked for;
+  losing it because `metadat/franchise/` has no file for this console would be
+  absurd.
+- An annotation row's `comment` **never** becomes the ROM's name. The
+  catalogue's `game (name ...)` is still the only naming authority here, because
+  a fact about a dump is not a title.
+
+The catalogue entry's own `region` and `serial` were already being parsed and
+already being discarded; they cost nothing extra and are in the summary too.
+
+### What cannot reach RomM
+
+All of it lands in `summary`, because that is the only field on `PUT
+/api/roms/{id}` that will take any of it. **A genre written this way is one you
+can read, not one you can filter by.** RomM keeps genres, companies,
+`first_release_date` and `player_count` in a `metadatum` sub-object populated by
+its own configured providers, and the update endpoint has no form field that
+reaches it — a part named `genres` is accepted with a 200 and discarded,
+measured against a live 4.9.2. The eight `raw_*_metadata` fields are no help
+either: they answer 200 and store nothing.
 
 ## What it does not set
 
