@@ -283,6 +283,27 @@ PLUGIN = textwrap.dedent(
                     "platform": "gb",
                 })
 
+            if mode == "nested":
+                return FetchPlan(
+                    files=[
+                        FetchFile(url="https://allowed.example/gb.cfg",
+                                  filename="gb.cfg"),
+                        FetchFile(url="https://allowed.example/img/a.png",
+                                  filename="a.png", subdir="img"),
+                        FetchFile(url="https://allowed.example/deep/img/a.png",
+                                  filename="a.png", subdir="borders/lite/img"),
+                    ],
+                    platform="gb",
+                )
+
+            if mode.startswith("raw_subdir:"):
+                return Raw({
+                    "files": [{"url": "https://allowed.example/x.png",
+                               "filename": "x.png",
+                               "subdir": mode.split(":", 1)[1]}],
+                    "platform": "gb",
+                })
+
             if mode == "mixed":
                 return FetchPlan(
                     files=[
@@ -449,13 +470,14 @@ def test_a_filename_that_escapes_is_refused(plugin_dir, tmp_path):
     assert not (tmp_path.parent / "escape.cfg").exists()
 
 
-def test_a_subdirectory_filename_is_refused(plugin_dir, tmp_path):
-    """Specific to this capability. A RetroArch overlay `.cfg` references
-    its images as `img/button.png`, so a plugin author will reach for a
-    subdirectory sooner here than anywhere else -- and `FetchFile` refuses
-    it, which is exactly the rule that keeps writes inside the directory
-    chosen for them. The `libretro-overlays` plugin works within this by
-    offering only self-contained overlays."""
+def test_a_subdirectory_filename_is_still_refused(plugin_dir, tmp_path):
+    """`filename` was NOT widened when `subdir` arrived.
+
+    A plugin that wants to nest says so in `subdir`, which is validated
+    separately and component by component. `filename` still means one bare
+    name, so a plugin that puts a path in it is refused exactly as it was
+    before nesting was possible at all -- otherwise there would be two
+    ways to express a destination and only one of them checked."""
     downloader = RecordingDownloader()
     with _proc(plugin_dir, {"mode": "raw_subdir_filename"}) as proc:
         asset = proc.assets()[0]
@@ -464,6 +486,84 @@ def test_a_subdirectory_filename_is_refused(plugin_dir, tmp_path):
                 proc, asset, assets_dir=tmp_path, downloader=downloader
             )
     assert downloader.calls == []
+
+
+# --- nesting, and the hostile inputs it must refuse ---------------------
+
+
+def test_an_asset_may_nest_inside_its_own_install_directory(plugin_dir, tmp_path):
+    """The 6x coverage gap this field exists to close.
+
+    A RetroArch overlay is a `.cfg` that names its sprites relative to
+    itself, so 260 of `common-overlays`' 310 overlays cannot be expressed
+    as a flat list of bare names. They can be expressed as bare names plus
+    a validated relative directory, and this is that."""
+    downloader = RecordingDownloader()
+    with _proc(plugin_dir, {"mode": "nested"}) as proc:
+        result = install_asset(
+            proc, proc.assets()[0], assets_dir=tmp_path, downloader=downloader
+        )
+
+    root = tmp_path / "overlays" / "assetplug"
+    assert result.files == [
+        root / "gb.cfg",
+        root / "img" / "a.png",
+        root / "borders" / "lite" / "img" / "a.png",
+    ]
+    for path in result.files:
+        assert path.is_file()
+    # Two files named a.png, in two places, is the ordinary case for an
+    # overlay pack -- so the plan's distinctness rule compares
+    # destinations and the message prints them relatively.
+    assert "img/a.png" in result.message
+    assert "borders/lite/img/a.png" in result.message
+
+
+#: Every one of these is refused, on every platform, by the same
+#: `bare_filename` the `filename` field uses -- applied per component.
+#: The list is deliberately the hostile-input list from
+#: `test_fetchplan_types`, because a rule that is weaker here than there
+#: would be a second, looser way to name a destination.
+@pytest.mark.parametrize(
+    "evil",
+    [
+        "..",
+        "../..",
+        "img/../..",
+        "/etc",
+        "img/",
+        "/img",
+        "img//deep",
+        ".",
+        "img/.",
+        "C:evil.zip",
+        "C:",
+        "C:/evil",
+        "\\\\server\\share",
+        "img\\deep",
+        "NUL",
+        "img/NUL",
+        "img/CON",
+        "COM1",
+        "img\x00",
+        "img/a\x00b",
+        "img/trailing.",
+        "img/trailing ",
+        "...",
+        "a/a/a/a/a/a/a/a/a",
+        "x" * 250,
+    ],
+)
+def test_a_hostile_subdir_is_refused(plugin_dir, tmp_path, evil):
+    downloader = RecordingDownloader()
+    with _proc(plugin_dir, {"mode": f"raw_subdir:{evil}"}) as proc:
+        asset = proc.assets()[0]
+        with pytest.raises((AssetInstallError, PluginCallError)):
+            install_asset(
+                proc, asset, assets_dir=tmp_path, downloader=downloader
+            )
+    assert downloader.calls == []
+    assert not (tmp_path.parent / "x.png").exists()
 
 
 def test_a_plugin_that_raises_while_planning_is_reported_not_propagated(

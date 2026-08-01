@@ -58,3 +58,113 @@ def dest_in_job_dir(job_dir: Path, filename: str) -> Path:
             f"{str(job_dir)!r} -- it would land at {str(resolved)!r}"
         )
     return dest
+
+
+def dest_under_dir(root: Path, relative: str) -> Path:
+    """Join a relative path onto `root`, refusing anything that escapes it.
+
+    `dest_in_job_dir` for a destination that is allowed to be *nested*.
+    Some things a plugin ships are bundles whose internal layout is part
+    of the format -- a RetroArch overlay's `.cfg` names its sprites as
+    `img/dpad-left.png` -- and flattening those produces files nothing
+    loads. So `assets` installs may nest, and this is the check that keeps
+    nesting from becoming escaping.
+
+    The requirement is not "a bare name"; it is **the resolved path is
+    inside the resolved root**, which is what `dest_in_job_dir` asserts
+    too. It just asserts it one level down (`resolved.parent == root`)
+    because a flat destination has only one level. Here the containment is
+    stated directly, and every component is separately required to be a
+    bare name under *both* path flavours first -- so `..`, a drive letter,
+    a UNC prefix and a backslash are all refused before any join happens,
+    on every platform, rather than depending on which OS the Hub runs on.
+
+    `types.relative_subdir` is supposed to make the component checks here
+    unreachable, and this is the layer that has to hold if it ever has a
+    gap. Kept for the reason `dest_in_job_dir` is kept: the previous
+    filename validator looked complete too.
+    """
+    root = Path(root)
+    if not relative:
+        raise UnsafeDestination("refusing to write an empty destination")
+
+    parts = relative.split("/")
+    for part in parts:
+        if not part:
+            raise UnsafeDestination(
+                f"refusing to write {relative!r}: it has an empty path "
+                f"component, so it is not a relative path of bare names"
+            )
+        windows = PureWindowsPath(part)
+        posix = PurePosixPath(part)
+        # `parts` alone is not enough here, and the gap is specific: a
+        # component of exactly `"C:"` has `parts == ("C:",)`, so it passes
+        # a parts-equality test the way `"C:evil.zip"` does not -- and
+        # `Path(root).joinpath("C:", "evil.zip")` then anchors against
+        # drive C:'s current directory instead of `root`. Splitting on
+        # "/" is what makes a bare drive reachable as a component at all,
+        # which `dest_in_job_dir` never had to consider. So the drive and
+        # the anchor are refused by name rather than inferred.
+        if (
+            windows.drive
+            or windows.root
+            or posix.root
+            or windows.parts != (part,)
+            or posix.parts != (part,)
+        ):
+            raise UnsafeDestination(
+                f"refusing to write {relative!r}: the component {part!r} is "
+                f"not a bare name -- no drive, anchor, UNC prefix or path "
+                f"separator, under either Windows or POSIX path rules"
+            )
+        if part in (".", ".."):
+            # Unreachable above (both are bare names to both flavours) and
+            # the whole point of this function, so it is stated rather than
+            # left to resolve() to collapse.
+            raise UnsafeDestination(
+                f"refusing to write {relative!r}: {part!r} is a traversal, "
+                f"not a directory name"
+            )
+
+    dest = root.joinpath(*parts)
+    try:
+        # resolve() collapses what is left and follows any symlink already
+        # standing inside the destination directory -- an `img` that is a
+        # link to /etc resolves out of the root and is refused below.
+        root_resolved = root.resolve()
+        resolved = dest.resolve()
+    except (OSError, ValueError) as exc:
+        # ValueError is what an embedded NUL byte raises here.
+        raise UnsafeDestination(
+            f"refusing to write {relative!r} outside {str(root)!r} -- the "
+            f"path could not be resolved at all ({type(exc).__name__}: {exc})"
+        ) from exc
+
+    if resolved == root_resolved or root_resolved not in resolved.parents:
+        raise UnsafeDestination(
+            f"refusing to write {relative!r} outside {str(root)!r} -- it "
+            f"would land at {str(resolved)!r}"
+        )
+    return dest
+
+
+def flat_destination_only(entry, *, what: str) -> None:
+    """Refuse a plan entry asking to nest where nesting is not offered.
+
+    `FetchFile.subdir` is honoured by exactly one capability. The other
+    three consume single files -- a ROM, a core, a BIOS -- and have no
+    layout to preserve, so a `subdir` reaching them means the plugin
+    believes something about where its bytes go that is not true.
+
+    Refused rather than ignored. A field silently dropped by three of four
+    consumers is a field somebody will eventually make the fourth consumer
+    obey by accident.
+    """
+    subdir = getattr(entry, "subdir", None)
+    if subdir:
+        raise UnsafeDestination(
+            f"refusing to write {getattr(entry, 'filename', '?')!r} into "
+            f"{subdir!r}: {what} installs single files into one directory "
+            f"and does not offer a subdirectory. Only the `assets` "
+            f"capability honours FetchFile.subdir."
+        )

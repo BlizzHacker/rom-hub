@@ -104,11 +104,24 @@ class Firmware(FirmwareProvider):
             # wrong -- the emulator just keeps saying it has no BIOS.
             platform=platform_for(source.system),
             license=source.license,
-            version=release if source.asset else catalogue.CULT_OF_GBA_COMMIT[:12],
+            version=self._version(source, release),
             description=f"{source.description} Source: {source.project}",
             archive=source.archive,
             members=list(source.members),
         )
+
+    @staticmethod
+    def _version(source, release: str) -> str:
+        """What the VERSION column shows, per item.
+
+        A SameBoy item's version is the configured release tag, which the
+        catalogue cannot know; a C-BIOS item's is openMSX's pinned tag;
+        Cult-of-GBA has no release at all, so its version is the pinned
+        commit -- which is the honest answer for a file fetched by sha.
+        """
+        if source.asset:
+            return release
+        return source.version or catalogue.CULT_OF_GBA_COMMIT[:12]
 
     # -- configuration -----------------------------------------------------
 

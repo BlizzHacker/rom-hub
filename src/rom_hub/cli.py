@@ -74,7 +74,24 @@ from .stream import (
     open_library_url,
     plan_handover,
 )
-from .types import KNOWN_ASSET_KINDS, KNOWN_CENSUS_KINDS, SearchResult
+from .torrents import (
+    WATCH_DIR_ENV,
+    TorrentError,
+    TorrentOutcome,
+    check_magnet,
+    check_trackers,
+    check_web_seeds,
+    fetch_entry,
+    magnet_for,
+    parse_torrent,
+    write_handoff,
+)
+from .types import (
+    KNOWN_ASSET_KINDS,
+    KNOWN_CENSUS_KINDS,
+    MAX_TORRENT_BYTES,
+    SearchResult,
+)
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
 
@@ -1467,6 +1484,272 @@ def _backend_base_url(name: str) -> str:
     return settings if isinstance(settings, str) else settings[0]
 
 
+# -- torrents ---------------------------------------------------------------
+
+
+def torrent_watch_dir() -> str:
+    """Where the operator's torrent client watches for new `.torrent` files.
+
+    Configuration only, and empty by default: an operator who has not
+    named one must not have `rom-hub torrent handoff` guess a directory
+    and drop a file into it. The refusal names this variable.
+    """
+    return env.get(WATCH_DIR_ENV).strip()
+
+
+def torrents_dir(root: Path | None = None) -> Path:
+    """Where `rom-hub torrent fetch` puts what it pulled.
+
+    Under the Hub's own root, beside `downloads/`, because a torrent fetch
+    is the same kind of act as an import download and belongs in the same
+    place an operator already looks. Not `downloads/` itself: that
+    directory is the job queue's, keyed by job id, and a command with no
+    job would be leaving files in a namespace it does not own.
+    """
+    return (root or default_root()) / "torrents"
+
+
+def _resolve_torrent(args):
+    """Run the plugin, fetch the torrent it named, and read it.
+
+    Everything privileged happens here rather than in the plugin, and in
+    this order: the plugin's answer is validated and allowlist-gated by
+    `resolve_torrent()`, the bytes are pulled by the same downloader an
+    import uses (so every redirect hop is re-checked), the info-hash is
+    computed from what actually arrived, and only then is the plugin's
+    claimed `info_hash` compared against it.
+    """
+    plugin = Registry(default_root()).get(args.plugin)
+    refusal = _require_capability(plugin, "torrent")
+    if refusal:
+        raise TorrentError(refusal)
+
+    result = SearchResult(
+        source_id=args.source_id,
+        # The identifier is all the CLI knows; the plugin looks the rest up.
+        title=args.source_id,
+        platform=getattr(args, "platform", None),
+        plugin=plugin.slug,
+    )
+
+    data_assets = prepare_assets(plugin)
+    fetcher = HttpxFetcher()
+    try:
+        with PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
+            secrets=prepare_secrets(plugin),
+        ) as proc:
+            source = proc.resolve_torrent(result)
+    finally:
+        fetcher.close()
+
+    allowlist = list(plugin.manifest.network)
+    notes: list[str] = []
+
+    if source.kind == "magnet":
+        # A magnet carries no file list, so there is nothing for the host
+        # to read, verify or fetch from -- it is a handoff and only a
+        # handoff. Validated in full first, then said plainly.
+        link = check_magnet(source.source, allowlist)
+        raise TorrentError(
+            f"plugin {plugin.slug!r} returned a magnet "
+            f"(info-hash {link.info_hash}), which the Hub validates and can "
+            f"hand to a torrent client but cannot read: a magnet has no file "
+            f"list, so there is nothing to show or fetch. Give it to your "
+            f"client:\n  {source.source}"
+        )
+
+    raw = _download_torrent(source.source, allowlist)
+    torrent = parse_torrent(raw)
+
+    if source.info_hash and source.info_hash != torrent.info_hash:
+        raise TorrentError(
+            f"plugin {plugin.slug!r} said this torrent's info-hash would be "
+            f"{source.info_hash}, but the bytes at {source.source!r} hash to "
+            f"{torrent.info_hash}. Refusing to go further: either the plugin "
+            f"is wrong or the file is not the one it described"
+        )
+    if source.info_hash:
+        notes.append(
+            f"info-hash matches the plugin's claim ({torrent.info_hash})"
+        )
+
+    outcome = TorrentOutcome(
+        source=source,
+        torrent=torrent,
+        plugin=plugin.slug,
+        trackers=check_trackers(torrent.trackers, allowlist),
+        seeds=check_web_seeds(torrent.web_seeds, allowlist),
+        notes=notes,
+    )
+    return outcome, allowlist
+
+
+def _download_torrent(url: str, allowlist: list[str]) -> bytes:
+    """Pull a `.torrent` with the same downloader an import uses.
+
+    Written to a temporary file and read back rather than buffered from a
+    response, so there is exactly one HTTP path in this project that a
+    plugin-named URL travels: `HttpDownloader`, which refuses to let httpx
+    follow a redirect and re-runs `check_url` on every hop itself. A
+    second, simpler fetch here would be a second place for that to be
+    forgotten.
+    """
+    import tempfile
+
+    from .importer import HttpDownloader
+
+    with tempfile.TemporaryDirectory(prefix="rom-hub-torrent-") as tmp:
+        dest = Path(tmp) / "resolved.torrent"
+        with HttpDownloader(allowlist=allowlist, max_bytes=MAX_TORRENT_BYTES) as dl:
+            dl.download(url, dest)
+        return dest.read_bytes()
+
+
+def _print_torrent(outcome: TorrentOutcome, as_json: bool) -> None:
+    """One printer for all three torrent subcommands, so `--json` has one schema."""
+    if as_json:
+        print(json.dumps(outcome.as_dict(), indent=2, sort_keys=True))
+        return
+
+    t = outcome.torrent
+    print(f"name\t{t.name}")
+    print(f"info_hash\t{t.info_hash}")
+    print(f"source\t{outcome.source.source}")
+    print(
+        f"size\t{human_bytes(t.total_bytes)} in {len(t.entries)} file(s), "
+        f"{t.piece_count} piece(s) of {human_bytes(t.piece_length)}"
+    )
+    wanted = set(outcome.source.files)
+    for entry in t.entries:
+        mark = "*" if entry.path in wanted else " "
+        digest = entry.verified_by or "no digest"
+        detail = entry.refusal or digest
+        print(f"file\t{mark} {human_bytes(entry.length):>10}  {entry.path}  [{detail}]")
+    for url in outcome.trackers.permitted:
+        print(f"tracker\t{url}")
+    for url, why in outcome.trackers.refused:
+        print(f"tracker\tREFUSED {url} ({why})")
+    for url in outcome.seeds.permitted:
+        print(f"seed\t{url}")
+    for url, why in outcome.seeds.refused:
+        print(f"seed\tREFUSED {url} ({why})")
+    if outcome.magnet:
+        print(f"magnet\t{outcome.magnet}")
+    if outcome.handed_to:
+        print(f"handed\t{outcome.handed_to}")
+    for got in outcome.fetched:
+        state = (
+            f"verified {got.verified_by}={got.digest}"
+            if got.verified
+            else f"UNVERIFIED ({got.note})"
+        )
+        print(f"fetched\t{got.path} ({human_bytes(got.size_bytes)}, {state})")
+    for note in outcome.notes:
+        print(f"note\t{note}")
+
+
+def _cmd_torrent_show(args) -> int:
+    """Resolve one item to a torrent and print what it contains.
+
+    Reads and validates; writes nothing anywhere. This is the command that
+    answers "what is in there, and would the Hub accept it?" before an
+    operator decides between a handoff and a fetch.
+    """
+    outcome, allowlist = _resolve_torrent(args)
+    try:
+        outcome.magnet = magnet_for(outcome.torrent, allowlist)
+    except TorrentError as exc:
+        # A torrent whose trackers are all outside the allowlist still has
+        # a readable manifest, and refusing to print it because no magnet
+        # could be built would be losing the answer over the garnish.
+        outcome.notes.append(f"no magnet could be built: {exc}")
+    _print_torrent(outcome, getattr(args, "json", False))
+    return EXIT_OK
+
+
+def _cmd_torrent_handoff(args) -> int:
+    """Give the torrent to the client the operator already runs.
+
+    The Hub speaks no BitTorrent -- see `rom_hub.torrents` for why that is
+    a decision rather than a gap -- so this is the command that reaches a
+    swarm, and it reaches it through somebody else's program.
+    """
+    outcome, allowlist = _resolve_torrent(args)
+
+    if not outcome.trackers.ok:
+        print(
+            f"error: refusing to hand this torrent over: it announces to "
+            f"host(s) the plugin's network allowlist does not cover -- "
+            f"{outcome.trackers.reasons()}. Handing it to a client would "
+            f"cause traffic to a host nobody declared.",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+
+    outcome.magnet = magnet_for(outcome.torrent, allowlist)
+
+    watch = args.watch_dir or torrent_watch_dir()
+    if watch:
+        outcome.handed_to = write_handoff(outcome.torrent, Path(watch))
+        outcome.notes.append(
+            "written under its info-hash, so the same torrent handed over "
+            "twice replaces itself rather than accumulating copies"
+        )
+    else:
+        outcome.notes.append(
+            f"no watch directory is configured, so nothing was written; the "
+            f"magnet above is the handoff. Set {WATCH_DIR_ENV} (or pass "
+            f"--watch-dir) to have the .torrent dropped where your client "
+            f"picks it up"
+        )
+    _print_torrent(outcome, getattr(args, "json", False))
+    return EXIT_OK
+
+
+def _cmd_torrent_fetch(args) -> int:
+    """Pull named files out of the torrent's own https web seed.
+
+    No peers, no client, no swarm: the torrent's `url-list` points back at
+    the source's own https origin, so this is an ordinary allowlisted
+    download that happens to arrive with a digest to check it against.
+    """
+    outcome, allowlist = _resolve_torrent(args)
+
+    wanted = list(args.file) if args.file else list(outcome.source.files)
+    if not wanted:
+        print(
+            "error: this torrent's plugin named no wanted file and none was "
+            "given, so there is nothing to fetch. Pass --file <name> (see "
+            "'rom-hub torrent show' for what is inside), or hand the whole "
+            "torrent to a client with 'rom-hub torrent handoff'.",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+
+    dest_dir = Path(args.into) if args.into else torrents_dir() / outcome.torrent.name
+    try:
+        dest_dir = dest_dir.resolve()
+    except OSError as exc:
+        print(f"error: cannot use {dest_dir} as a destination: {exc}",
+              file=sys.stderr)
+        return EXIT_ERROR
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    for selector in wanted:
+        entry = outcome.torrent.entry(selector)
+        outcome.fetched.append(
+            fetch_entry(outcome.torrent, entry, dest_dir, allowlist)
+        )
+    _print_torrent(outcome, getattr(args, "json", False))
+    return EXIT_OK
+
+
 def _with_cores_plugin(args, action):
     """Start `args.plugin` for a cores call, or return the refusal.
 
@@ -2373,6 +2656,65 @@ def build_parser() -> argparse.ArgumentParser:
     )
     streamer.set_defaults(func=_cmd_stream)
 
+    torrent = sub.add_parser(
+        "torrent",
+        help=(
+            "read a source's own torrent: show what is in it, hand it to "
+            "your torrent client, or fetch a file from its web seed"
+        ),
+        description=(
+            "The Hub is not a torrent client and does not link one. It "
+            "reads the .torrent as a verified file manifest, hands it to "
+            "the client you already run, or pulls one named file from the "
+            "torrent's own https web seed with the torrent's own digest to "
+            "check it against. See docs/DESIGN.md for why."
+        ),
+    )
+    tsub = torrent.add_subparsers(dest="torrent_command", required=True)
+
+    for name, help_text, handler in (
+        ("show", "resolve an item's torrent and print what is inside it",
+         _cmd_torrent_show),
+        ("handoff", "give the torrent to the client you already run",
+         _cmd_torrent_handoff),
+        ("fetch", "download a file from the torrent's own https web seed",
+         _cmd_torrent_fetch),
+    ):
+        # Deliberately not called `parser`: this function's own top-level
+        # parser is bound to that name and is what it returns, and a loop
+        # variable that shadowed it silently made `build_parser()` return
+        # the last subcommand instead of the CLI.
+        tcmd = tsub.add_parser(name, help=help_text)
+        tcmd.add_argument("plugin", help="slug of an installed torrent plugin")
+        tcmd.add_argument(
+            "source_id", help="the source's own identifier for the item"
+        )
+        tcmd.add_argument(
+            "--platform", help="platform slug, passed to the plugin as a hint"
+        )
+        tcmd.add_argument("--json", action="store_true", help="machine-readable")
+        tcmd.set_defaults(func=handler)
+        if name == "handoff":
+            tcmd.add_argument(
+                "--watch-dir",
+                help=(
+                    "directory your torrent client watches; defaults to "
+                    f"${WATCH_DIR_ENV}. Without one the magnet is the handoff"
+                ),
+            )
+        if name == "fetch":
+            tcmd.add_argument(
+                "--file",
+                action="append",
+                help=(
+                    "a file inside the torrent, by its exact name. Repeatable. "
+                    "Defaults to whatever the plugin named as wanted"
+                ),
+            )
+            tcmd.add_argument(
+                "--into", help="destination directory (default: <root>/torrents/<name>)"
+            )
+
     cores = sub.add_parser("cores", help="list and install emulator cores")
     csub = cores.add_subparsers(dest="cores_command", required=True)
 
@@ -2548,6 +2890,7 @@ def main(argv: list[str] | None = None) -> int:
         CoreError,
         FirmwareError,
         AssetInstallError,
+        TorrentError,
         EnrichError,
         AssetError,
         BackendError,
@@ -2582,6 +2925,12 @@ def main(argv: list[str] | None = None) -> int:
         # out of a catalogue thousands of items long, where the message
         # carries the near-misses and would be useless underneath a
         # traceback. None of these deserve one.
+        #
+        # TorrentError is here for the same reason and covers three refusals
+        # an operator has to be able to read: the item has no torrent, the
+        # bytes did not hash to the info-hash the plugin claimed, and the
+        # torrent names no web seed the allowlist permits. All three are
+        # answers rather than crashes.
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 

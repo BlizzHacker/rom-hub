@@ -11,22 +11,42 @@ allowlist -- the same gate a ROM import goes through.
 
 ## This is the source that makes the size problem real
 
-`libretro-database` is **795 MB**. Its `cht/` tree alone holds tens of
-thousands of files across 44 systems -- 2,265 for the NES, 2,050 for the
-PlayStation. Nothing here downloads any of that: a catalogue is one Trees
-API call per selected system, and an install is one file of a few hundred
-bytes.
+`libretro-database` is **795 MB**. Its `cht/` tree holds **28,298 cheat
+files across 44 systems**, counted directory by directory on 2026-08-01.
+Nothing here downloads any of that: a catalogue is one Trees API call per
+selected system, and an install is one file of a few hundred bytes.
 
 It is also the source that forced this plugin to have a required
-narrowing step, because *every* system at once is far past the 512 assets
-a plugin may return. That is not a limitation being worked around, it is
-the honest shape of the data: nobody wants "all cheats", they want the
-cheats for a game.
+narrowing step, because *every* system at once is fifty-five times the
+512 assets a plugin may return. That is not a limitation being worked
+around, it is the honest shape of the data: nobody wants "all cheats",
+they want the cheats for a game.
+
+**Thirteen individual systems are over the limit on their own**, and they
+are the ones anybody actually asks for:
+
+    Nintendo - Nintendo DS                          4,204
+    Sinclair - ZX Spectrum +3                       3,683
+    Nintendo - Super Nintendo Entertainment System  2,773
+    Sony - PlayStation Portable                     2,654
+    Nintendo - Nintendo Entertainment System        2,262
+    Sega - Mega Drive - Genesis                     2,094
+    Sony - PlayStation                              1,958
+    Nintendo - Game Boy                             1,496
+    Nintendo - Nintendo 64                          1,345
+    Nintendo - Game Boy Color                         960
+    Sega - Game Gear                                  818
+    Microsoft - MSX ... (fMSX core)                   752
+    Sega - Master System - Mark III                   750
+
+So `match` is not an optional refinement for a pathological case, it is
+how this plugin is used. That is why the refusal prints the real number
+per system rather than "more than 512": see `_overflow_message`.
 
 ## The first run tells you what to do next
 
 With no `systems` configured, `list()` does **not** return an empty
-catalogue and it does not dump 100,000 items. It makes the one cheap call
+catalogue and it does not dump 28,298 items. It makes the one cheap call
 that enumerates the 44 system directories and raises a message naming
 them, so the operator's next step is in front of them rather than in the
 README. An empty list would have been technically true and useless.
@@ -82,8 +102,56 @@ class UnknownSystem(CheatListError):
     """The configured system is not a directory this repository has."""
 
 
+class TooManyCheats(CheatListError):
+    """The selection is over the limit, and the message says by how much.
+
+    Its own type for the reason `NeedsNarrowing` has one: this is not a
+    fault, it is the ordinary state of the thirteen biggest systems in
+    this repository, and the message is the instructions.
+    """
+
+
 class UnknownCheat(Exception):
     """No such cheat file in this system's directory."""
+
+
+def _overflow_message(selected, match: str, total: int) -> str:
+    """Name the real numbers, per system, and a next step that will work.
+
+    `selected` is `[(system, total_in_directory, kept_after_match)]`.
+    Both numbers are printed when a `match` is set, because "Nintendo -
+    Nintendo DS: 900 of 4,204" says something quite different from
+    "Nintendo - Nintendo DS: 900" -- the first tells you the filter is
+    doing most of the work already and you need one more letter, the
+    second leaves you guessing.
+    """
+    rows = []
+    for system, in_directory, kept in sorted(
+        selected, key=lambda row: len(row[2]), reverse=True
+    ):
+        if match:
+            rows.append(f"{system}: {len(kept):,} of {in_directory:,}")
+        else:
+            rows.append(f"{system}: {in_directory:,}")
+
+    if match:
+        advice = (
+            f"`match = {match!r}` still leaves {total:,}. Try a longer or "
+            f"more specific string, or select fewer systems."
+        )
+    else:
+        advice = (
+            "Set this plugin's `match` config key, which keeps only files "
+            "whose name contains a given string -- `match = \"zelda\"`, for "
+            "instance -- or select fewer systems."
+        )
+
+    return (
+        f"the systems you selected offer {total:,} cheat files, over the "
+        f"{MAX_ASSETS} a plugin may return in one catalogue. "
+        + " ".join(f"({row})" for row in rows)
+        + f". {advice}"
+    )
 
 
 class Assets(AssetProvider):
@@ -94,11 +162,11 @@ class Assets(AssetProvider):
         if not systems:
             raise NeedsNarrowing(
                 f"libretro-database holds cheat files for "
-                f"{len(available)} systems and tens of thousands of games in "
-                f"total -- far more than the {MAX_ASSETS} a plugin may return "
-                f"in one catalogue, and not something anybody wants listed at "
-                f"once. Choose one or more with this plugin's `systems` "
-                f"config key. It holds: {', '.join(available)}."
+                f"{len(available)} systems and roughly 28,000 games in "
+                f"total -- fifty-five times the {MAX_ASSETS} a plugin may "
+                f"return in one catalogue, and not something anybody wants "
+                f"listed at once. Choose one or more with this plugin's "
+                f"`systems` config key. It holds: {', '.join(available)}."
             )
 
         unknown = [s for s in systems if s not in available]
@@ -110,34 +178,45 @@ class Assets(AssetProvider):
             )
 
         match = self._match()
-        items: list[AssetArtifact] = []
+
+        # Counted before anything is built, which is the whole point of
+        # this shape. The previous version appended artifacts and raised
+        # the moment it passed the limit, so the message could only ever
+        # say "more than 512" -- and 13 of this repository's 44 systems
+        # are over it, by margins from 750 files to 4,204. "More than 512"
+        # does not tell an operator whether they need `match = "zelda"` or
+        # a narrower word still, and it does not say which of their chosen
+        # systems is the big one. The listing already has the numbers; not
+        # printing them was the defect.
+        selected = []
         for system in systems:
-            for entry in self._entries(system):
-                if match and match not in entry["path"].lower():
-                    continue
-                items.append(
-                    AssetArtifact(
-                        asset_id=f"{ROOT}/{system}/{entry['path']}",
-                        # The filename without its extension is the game's
-                        # No-Intro name, which is what an operator scans for.
-                        name=entry["path"].rsplit(".", 1)[0],
-                        kind="cheat",
-                        license=LICENSE,
-                        system=system,
-                        description=f"RetroArch cheat file for {system}",
-                        size_bytes=entry["size"],
-                    )
-                )
-                if len(items) > MAX_ASSETS:
-                    raise CheatListError(
-                        f"the systems you selected offer more than "
-                        f"{MAX_ASSETS} cheat files, over what a plugin may "
-                        f"return. Narrow it with this plugin's `match` config "
-                        f"key, which keeps only files whose name contains a "
-                        f"given string -- `match = \"zelda\"`, for instance -- "
-                        f"or select fewer systems."
-                    )
-        return items
+            entries = self._entries(system)
+            kept = (
+                entries
+                if not match
+                else [e for e in entries if match in e["path"].lower()]
+            )
+            selected.append((system, len(entries), kept))
+
+        total = sum(len(kept) for _, _, kept in selected)
+        if total > MAX_ASSETS:
+            raise TooManyCheats(_overflow_message(selected, match, total))
+
+        return [
+            AssetArtifact(
+                asset_id=f"{ROOT}/{system}/{entry['path']}",
+                # The filename without its extension is the game's
+                # No-Intro name, which is what an operator scans for.
+                name=entry["path"].rsplit(".", 1)[0],
+                kind="cheat",
+                license=LICENSE,
+                system=system,
+                description=f"RetroArch cheat file for {system}",
+                size_bytes=entry["size"],
+            )
+            for system, _, kept in selected
+            for entry in kept
+        ]
 
     def plan(self, asset: AssetArtifact) -> FetchPlan:
         # Never built from `asset.asset_id` directly. The id is split, the

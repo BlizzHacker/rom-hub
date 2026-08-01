@@ -26,6 +26,7 @@ KNOWN_CAPABILITIES = frozenset(
         # Enumerating a whole source rather than answering a query about
         # part of it. See `rom_hub.census` and `rom_hub_sdk.CensusProvider`.
         "census",
+        "torrent",
     }
 )
 RESERVED_CAPABILITIES = frozenset({"peer", "netplay"})

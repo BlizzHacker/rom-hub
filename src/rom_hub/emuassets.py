@@ -88,6 +88,31 @@ disk, in the directory their emulator reads. `kind` selects which:
 Then `<that>/<plugin slug>/`, one directory per plugin, so two plugins
 shipping a `nes.cfg` cannot overwrite each other.
 
+## Why an asset may nest, and why that is still contained
+
+This is the only capability that honours `FetchFile.subdir`, and it needs
+to because some of these files are *bundles* whose internal layout is part
+of the format. A RetroArch overlay is a `.cfg` that names its sprites
+relative to itself -- `overlay0_desc0_overlay = img/dpad-left.png` -- so
+an overlay flattened into one directory is an overlay that does not load.
+That is 260 of `common-overlays`' 310 overlays, which were simply not
+offered while every destination had to be a bare name.
+
+The containment requirement was never "a bare name" though; it is **the
+host must not be steered to write outside the directory it chose**. A
+bare name is one way to guarantee that and not the only one. So `subdir`
+is a separate field with its own validator, `types.relative_subdir`,
+which splits on `/` and hands every component to the same
+`bare_filename` that validates `filename` -- `..`, `C:evil.zip`, a NUL,
+`CON`, a trailing dot and an absolute path are all refused per component,
+by the same code, on every platform. `paths.dest_under_dir` then resolves
+the join and asserts the result is inside the resolved target, which is
+what `dest_in_job_dir` asserts for the flat case. Two layers, both reused
+rather than re-implemented.
+
+`importer`, `cores` and `firmware` refuse a plan carrying a `subdir`
+outright rather than ignoring it. See `paths.flat_destination_only`.
+
 Those leaf names are RetroArch's own, deliberately, so that pointing
 `ROM_HUB_ASSETS_DIR` at an existing RetroArch configuration directory puts
 every file exactly where RetroArch already looks. That is a *default an
@@ -115,7 +140,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.paths import UnsafeDestination, dest_in_job_dir, dest_under_dir
 from rom_hub.types import KNOWN_ASSET_KINDS, AssetArtifact
 
 #: A shader preset is kilobytes, a bezel is a PNG, a cheat file is bytes.
@@ -267,10 +292,14 @@ def install_asset(
             f"{asset.asset_id!r}: {exc}"
         ) from exc
 
+    # The one capability that lets a plan nest. `dest_under_dir` takes the
+    # whole relative path and asserts the resolved result is inside
+    # `target`, which is the same guarantee `dest_in_job_dir` gives one
+    # level down -- see "Why an asset may nest" in the module docstring.
     destinations = []
     for entry in plan.files:
         try:
-            destinations.append((entry, dest_in_job_dir(target, entry.filename)))
+            destinations.append((entry, dest_under_dir(target, entry.relative_path())))
         except UnsafeDestination as exc:
             raise AssetInstallError(str(exc)) from exc
 
@@ -288,6 +317,9 @@ def install_asset(
     written: list[Path] = []
     try:
         for entry, dest in destinations:
+            # After `dest_under_dir`, so the directory being created is one
+            # already proven to be inside `target`.
+            dest.parent.mkdir(parents=True, exist_ok=True)
             try:
                 downloader.download(entry.url, dest, expected_size=entry.size_bytes)
             except Exception as exc:  # noqa: BLE001
@@ -313,10 +345,26 @@ def install_asset(
 
 
 def _describe(result: AssetInstallResult) -> str:
-    names = ", ".join(path.name for path in result.files)
+    # Relative to the install directory rather than just the basename: a
+    # bundle that nests puts two `a.png` in two places, and a listing that
+    # printed both as "a.png" would say nothing about where either went.
+    names = ", ".join(_relative_to(path, result.directory) for path in result.files)
     system = f" for {result.system!r}" if result.system else ""
-    return (
+    return (  # noqa: E501 - one sentence, printed whole
         f"installed {result.kind} {result.asset_id!r}{system} "
         f"({len(result.files)} file(s): {names}; licence: {result.license}) "
         f"into {result.directory}"
     )
+
+
+def _relative_to(path: Path, directory: Path) -> str:
+    """`path` as written under `directory`, in POSIX spelling.
+
+    Falls back to the basename rather than raising: this builds a sentence
+    an operator reads, and a message is not worth failing an install that
+    already succeeded.
+    """
+    try:
+        return Path(path).relative_to(Path(directory)).as_posix()
+    except ValueError:
+        return Path(path).name

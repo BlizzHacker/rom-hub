@@ -1,7 +1,7 @@
 [plugin]
 slug        = "libretro-overlays"
 name        = "libretro overlays (bezels and gamepads)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 

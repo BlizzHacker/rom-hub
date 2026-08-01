@@ -116,6 +116,33 @@
       ]
     },
     {
+      "slug": "archive-org-torrent",
+      "name": "Archive.org (torrents)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-archive-org-torrent",
+      "install": "https://github.com/BlizzHacker/rom-hub-archive-org-torrent",
+      "download": "https://github.com/BlizzHacker/rom-hub-archive-org-torrent/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-08-01",
+      "rpp_version": "1",
+      "capabilities": [
+        "torrent"
+      ],
+      "network": [
+        "archive.org",
+        "*.archive.org"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Reaches the .torrent the Internet Archive publishes and seeds for nearly every item it holds — 231,663 of softwarelibrary's 250,398, and all but 22 of the 17,930 downloadable Console Living Room items.",
+      "terms": "The Internet Archive's, unchanged: this plugin reaches the torrent the Archive publishes and seeds itself, for items it already serves over https, and it works around no restriction. Items the Archive will not distribute simply have no torrent, and both ways of saying so are handled as ordinary outcomes rather than obstacles — an item in `stream_only` or marked `access-restricted-item` publishes no `Archive BitTorrent` file (msdos_Oregon_Trail_The_1990 is a live example), and a darkened item answers its metadata with an `is_dark` stub and its download path with HTTP 403 (nointro.gb). The plugin refuses both by name. The underlying rights are the same mixed picture the `archive-org` entry describes: the Archive hosts public-domain, abandonware and still-copyrighted software under its own library position, not under a licence that passes to you. Access is public and unauthenticated; `/metadata/` and `/download/` are not disallowed by the Archive's robots.txt.",
+      "comments": "Separate from `archive-org` on purpose: this one can produce something you hand to a torrent client, which announces to trackers and connects to peers, and that is a network posture you should be able to decline by not installing it. The Hub itself links no torrent client — see docs/DESIGN.md — because these torrents carry https web seeds pointing back at archive.org, and a per-file sha1, md5 and crc32 inside the `info` dictionary and therefore under the info-hash. That makes a .torrent a verified file manifest: `rom-hub torrent fetch` pulls one named file over https and checks it against the torrent's own digest, with no peer stack involved. Two traps recorded while building it. `ia_make_torrent` FLATTENS subdirectories — an item whose metadata lists `NES/PAC-MAN Championship Edition.nes` carries it in the torrent as a bare name — so selecting files by their metadata path names entries the torrent does not contain. And the trackers are `http://bt1.archive.org:6969`, which `netpolicy.check_url` refuses because it permits https only; they are gated by hostname instead, rather than by weakening the check every other capability leans on.",
+      "platforms": []
+    },
+    {
       "slug": "demozoo",
       "name": "Demozoo (demoscene)",
       "author": "BlizzHacker",
@@ -200,10 +227,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-emulators",
       "install": "https://github.com/BlizzHacker/rom-hub-emulators",
-      "download": "https://github.com/BlizzHacker/rom-hub-emulators/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-emulators/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "cores"
@@ -217,9 +244,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Lists and installs standalone emulator builds — DuckStation, mGBA, PCSX2, melonDS — from each project's own GitHub releases.",
-      "terms": "Four projects, four different answers, and the plugin prints each one in the listing rather than burying it here: mGBA is MPL-2.0, PCSX2 and melonDS are GPL-3.0, and **DuckStation is not open source at all** — it relicensed to CC BY-NC-ND 4.0, which permits non-commercial redistribution of the unmodified build and forbids derivatives. GitHub's API reports DuckStation's SPDX id as `NOASSERTION`, so the value was read from its `LICENSE` file rather than the SPDX field. Nothing here redistributes anything: the plugin names the project's own release URL and the Hub fetches it once, for the operator who asked, which is the same act as clicking the asset on the release page. `api.github.com` serves no robots.txt; `github.com`'s robots.txt disallows `/*/download` to crawlers, and nothing here crawls — one named asset, once, on an explicit `cores install`, following no links and indexing nothing. No emulator here ships or requires firmware from this plugin.",
-      "comments": "The second plugin exercising `cores`, and the argument for using it rather than inventing a capability is in the README: `CoreArtifact` already carries every field a standalone emulator needs, the host already installs into `<cores_dir>/<slug>/`, and a new capability would duplicate all of `cores` to express a `.so`-versus-`.AppImage` distinction nothing downstream acts on. Deliberately **not** the `assets` capability: a shader is data an emulator reads, this is the emulator. Asset selection is an anchored regex per (project, target) that must match **exactly one** file — upstream naming is four conventions, not one (`DuckStation-x64.AppImage`, `mGBA-0.10.5-appimage-x64.appimage`, `pcsx2-v2.6.3-linux-appimage-x64-Qt.AppImage`, `melonDS-1.1-appimage-x86_64.zip`), and any rule loose enough to cover those also covers a `.flatpak`, a `-symbols.7z` and an `-installer.exe`. Zero matches and two matches both refuse. mGBA has **no** macOS target on purpose: 0.10.5 ships both `-macos.dmg` and `-osx.dmg` and says nowhere which macOS or which architecture either is for. **Dolphin is absent and it is not an oversight** — it publishes no GitHub releases (`/releases/latest` answers 404) and its own site sits behind a bunny.net JavaScript challenge that 403s even `/robots.txt`, which a socket-less plugin cannot and should not get past. Release assets 302 to `release-assets.githubusercontent.com` — exactly one hop — which is declared; `objects.githubusercontent.com` is deliberately not, because it is not in today's chain.",
+      "description": "Lists and installs standalone emulator builds — twelve projects, from DuckStation and mGBA to ares, MAME, xemu and Cemu — from each project's own GitHub releases.",
+      "terms": "Twelve projects and several different answers, and the plugin prints each one in the listing rather than burying it here. mGBA and Cemu are MPL-2.0; PCSX2, melonDS and simple64 are GPL-3.0; Flycast, Vita3K, PPSSPP, MAME and xemu are GPL-2.0; ares is ISC; and **DuckStation is not open source at all** — it relicensed to CC BY-NC-ND 4.0, which permits non-commercial redistribution of the unmodified build and forbids derivatives. Five of the twelve report `NOASSERTION` on GitHub and the five answers are all different, which is why every value was read from the project's own licence file rather than off the SPDX field: ares is ISC with third-party notices appended, PPSSPP is GPL-2 with a PSPSDK BSD notice at the top of the same file, MAME's COPYING opens with a trademark notice, xemu carries QEMU's per-component list, and DuckStation is the CC licence above. A sixth NOASSERTION project, BizHawk, was rejected outright on what its own LICENSE says. Nothing here redistributes anything: the plugin names the project's own release URL and the Hub fetches it once, for the operator who asked, which is the same act as clicking the asset on the release page. `api.github.com` serves no robots.txt; `github.com`'s robots.txt disallows `/*/download` to crawlers, and nothing here crawls — one named asset, once, on an explicit `cores install`, following no links and indexing nothing. No emulator here ships or requires firmware from this plugin.",
+      "comments": "The second plugin exercising `cores`, and the argument for using it rather than inventing a capability is in the README: CoreArtifact already carries every field a standalone emulator needs, the host already installs into `<cores_dir>/<slug>/`, and a new capability would duplicate all of `cores` to express a `.so`-versus-`.AppImage` distinction nothing downstream acts on. Deliberately **not** the `assets` capability: a shader is data an emulator reads, this is the emulator. Asset selection is an anchored regex per (project, target) that must match **exactly one** file — upstream naming is not one convention but twelve, and any rule loose enough to cover them also covers a .flatpak, a -symbols.7z, an -installer.exe, a .zsync delta manifest and a -dbg- build. Zero matches and two matches both refuse. All 44 (project, target) cells were verified live against the real releases on 2026-08-01, each matching exactly one asset. xemu forced a hyphen-free version pattern: the general one permits a hyphen, so `xemu-{version}-x86_64.AppImage` also fullmatches `xemu-0.8.136-dbg-x86_64.AppImage` — select would have refused that as ambiguous rather than installing a debug build, but a pattern that describes the asset exactly beats one that relies on being caught. macos/x86_64 and macos/arm64 join macos/universal because Vita3K and Cemu ship a file per architecture where everyone else ships one fat build; they are not synonyms, so nothing is listed twice. **Three projects are absent and none of it is an oversight.** Dolphin publishes no GitHub releases (/releases/latest answers 404 and /releases an empty array) and its own site sits behind a bunny.net JavaScript challenge that 403s even /robots.txt. RetroArch publishes releases that are source only — v1.22.2 attaches exactly one asset, retroarch-sourceonly-1.22.2.tar.xz — and its binaries live on buildbot.libretro.com under a directory that serves no .index-extended and no machine-readable listing, only an h5ai JavaScript file browser. BizHawk was rejected on licensing: its own LICENSE says the repository as-is \"should be considered an illegal combination of several incompatible GPL licenses\" and tells anyone interested to \"assume it is a minefield\", and the release assets are that combination compiled. Release assets 302 to `release-assets.githubusercontent.com` — exactly one hop — which is declared; `objects.githubusercontent.com` is deliberately not, because it is not in today's chain. One API call per project means a full listing costs twelve of the unauthenticated 60-per-hour budget, so `only` narrows the requests and not just the output.",
       "platforms": []
     },
     {
@@ -448,10 +475,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-cheats",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-cheats",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "assets"
@@ -464,9 +491,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "RetroArch cheat files from libretro-database's cht/ tree, for the systems you choose.",
+      "description": "RetroArch cheat files from libretro-database's 28,298-file cht/ tree, for the systems you choose.",
       "terms": "CC-BY-SA-4.0, verified by reading libretro-database's own LICENSE rather than a badge — the full Creative Commons Attribution-ShareAlike 4.0 text sits at the repository root and GitHub's detection agrees. ShareAlike is the live obligation: a redistributed derivative has to carry the same terms, which is the difference from the overlays plugin's plain CC-BY. One caveat is stated in the plugin's README rather than glossed: libretro-database's own README notes that much of the repository is imported from No-Intro, Redump, TOSEC and GameTDB without saying which upstream terms attach to which subtree. That caveat is about the DAT and metadata imports (dat/, metadat/, rdb/); this plugin touches only cht/, which is contributed directly and which the repository-level LICENSE covers with no carve-out naming it. Both hosts are public and unauthenticated and this plugin sends no credential.",
-      "comments": "The source that makes the size problem real: libretro-database is 795 MB and its cht/ tree alone runs to tens of thousands of files across 44 systems. Nothing is cloned — a catalogue is one Git Trees API call per selected system and an install is one file of a few hundred bytes. The trap this plugin was built around is that GitHub's contents API truncates a directory listing at 1,000 entries with no error and no flag, so a contents-API implementation would have offered 1,000 of the NES tree's 2,265 files and looked like it was working; the Trees API returns all of them, sets a `truncated` boolean when it cannot, and is smaller on the wire because it carries no per-entry URL block. A truncated listing is refused outright rather than shown as though it were complete. Because every system at once is far past the 512 assets a plugin may return, the first run makes the one cheap call that enumerates the systems and names them in the refusal — an empty catalogue would have been technically true and useless.",
+      "comments": "The source that makes the size problem real: libretro-database is 795 MB and its cht/ tree holds 28,298 cheat files across 44 systems, counted directory by directory on 2026-08-01. Nothing is cloned — a catalogue is one Git Trees API call per selected system and an install is one file of a few hundred bytes. The trap this plugin was built around is that GitHub's contents API truncates a directory listing at 1,000 entries with no error and no flag, so a contents-API implementation would have offered under half the NES tree's 2,262 files and under a quarter of the Nintendo DS tree's 4,204, and looked like it was working; the Trees API returns all of them, sets a `truncated` boolean when it cannot, and is smaller on the wire because it carries no per-entry URL block. A truncated listing is refused outright rather than shown as though it were complete. Because every system at once is fifty-five times the 512 assets a plugin may return, the first run makes the one cheap call that enumerates the systems and names them in the refusal — an empty catalogue would have been technically true and useless. **What 0.2.0 fixes is the message an operator most often actually sees.** Thirteen of the 44 systems are over the 512 ceiling on their own, by margins from 750 files to 4,204, and they are the systems anybody asks for — so most people meet this plugin through its overflow refusal rather than through a listing. That refusal used to say \"more than 512\", because the old code appended artifacts and raised the moment it passed the limit and so never knew the real total. It now counts first and prints the exact number per system, and when a `match` is already set it shows both numbers (\"900 of 4,204\") so an operator can tell whether the filter is nearly there or barely biting. The 512 is the host's bound, not this plugin's, and is not something a plugin gets to raise; what the plugin owes is an accurate account of what you are up against. The documented counts were also wrong and are now measured: the NES is 2,262 rather than 2,265, the PlayStation 1,958 rather than 2,050, and the NES was never the largest directory.",
       "platforms": []
     },
     {
@@ -532,24 +559,25 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-cores",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-cores",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-cores/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-cores/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "cores"
       ],
       "network": [
-        "buildbot.libretro.com"
+        "buildbot.libretro.com",
+        "raw.githubusercontent.com"
       ],
       "status": "ok",
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Lists and installs emulator cores from libretro's public buildbot, for a build target you choose.",
-      "terms": "A public distribution point used the way it is meant to be used. libretro's buildbot serves the cores libretro itself builds, unauthenticated, and its `.index-extended` catalogue exists so that software can read it — RetroArch's own core updater is the reference consumer. Nothing is circumvented; `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing. The cores themselves are other people's software under their own licences — mostly GPL/LGPL, some more restrictive — and each core's licence travels with the core, not with this plugin.",
-      "comments": "The only plugin here exercising `cores`, which is what shows that capability is a real contract rather than a line in a spec. The build target is config and is never detected from the host OS: the Hub is routinely not running on the machine that will load these cores, and a Linux `.so` handed to a Windows frontend fails silently weeks later. An unknown target is refused by name. `system` is filled from a hand-kept table and is blank when unknown — libretro publishes that mapping only inside a zip, and `ctx.http` returns text, so a blank means \"not known\" rather than a guess. The crc32 the index prints is deliberately not verified: the plugin never sees the bytes, the host fetches them, and claiming a check that does not happen would be worse than silence.",
+      "description": "Lists and installs emulator cores from libretro's public buildbot for a build target you choose, with each core's system, extensions, required BIOS and licence from libretro's own core-info data.",
+      "terms": "A public distribution point used the way it is meant to be used. libretro's buildbot serves the cores libretro itself builds, unauthenticated, and its `.index-extended` catalogue exists so that software can read it — RetroArch's own core updater is the reference consumer. Nothing is circumvented; `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing. The second host serves one `.info` per install from `libretro/libretro-core-info`, which is MIT — verified by reading that repository's own COPYING rather than GitHub's summary of it. The cores themselves are other people's software under their own licences — mostly GPL/LGPL, some more restrictive, and the listing now prints each core's own licence because they differ: Snes9x says \"Non-commercial\". A core's licence travels with the core, not with this plugin.",
+      "comments": "The build target is config and is never detected from the host OS: the Hub is routinely not running on the machine that will load these cores, and a Linux .so handed to a Windows frontend fails silently weeks later. An unknown target is refused by name. The crc32 the index prints is deliberately not verified: the plugin never sees the bytes, the host fetches them, and claiming a check that does not happen would be worse than silence. What changed in 0.2.0 is that the buildbot index is a filename, a date and a crc32 — 218 identifiers, which answers \"what is available\" and not \"which one do I want\". The previous release filled SYSTEM from 106 rows written by hand and said honestly that libretro published the mapping only inside assets/frontend/info.zip and that ctx.http returns text. That stopped being true: the same data is 305 plain-text .info files in libretro/libretro-core-info. scripts/render_core_info.py generates coreinfo.py from them, so 208 of the 218 Linux x86_64 cores now name a system, 40 name their required BIOS where none did, and 302 name the core's own licence. Only files libretro does NOT mark `firmwareN_opt` are reported as required — Snes9x lists BS-X and the Sufami Turbo BIOS as optional and neither is needed for an ordinary cartridge. Generated rather than fetched because 305 files is 305 requests and there is no batch endpoint; the snapshot goes stale in one direction only, as a missing label rather than a wrong one. The .info an operator actually installs is never the snapshot: plan() fetches it live and lands it beside the core, which is what RetroArch reads from libretro_info_dir. Four of the 218 have no .info upstream and install alone rather than with a URL that would 404. A new `system` config key narrows the catalogue by console, matched against the system name, the manufacturer and every libretro database name — so \"Satellaview\" finds Snes9x.",
       "platforms": []
     },
     {
@@ -673,10 +701,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-overlays",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-overlays",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-overlays/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-overlays/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "assets"
@@ -689,9 +717,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "RetroArch bezels and on-screen gamepad overlays from libretro's common-overlays, CC-BY-4.0.",
+      "description": "Every RetroArch bezel and on-screen gamepad overlay in libretro's common-overlays — all 310, installed at its own path in the repository tree — CC-BY-4.0.",
       "terms": "CC-BY-4.0, verified by reading common-overlays' own COPYING — the full Creative Commons Attribution 4.0 text — rather than taking GitHub's badge for it, though GitHub's detection agrees (SPDX CC-BY-4.0). Attribution is the live obligation and it travels with the overlay, not with this plugin: the Hub does not add attribution to files it downloads, so anyone redistributing one carries that themselves. Both hosts are public and unauthenticated and this plugin sends no credential.",
-      "comments": "The plugin that had to say no to most of its own source, and the interesting entry in this set for that reason. A RetroArch overlay is a .cfg plus the images it references, and the .cfg names them relative to itself — overwhelmingly as a subdirectory (`img/dpad-left.png`). A FetchPlan cannot express that: every filename the host writes must be a bare name, which is the rule that keeps a plugin's downloads inside the directory chosen for them, and widening it to suit a file layout would trade a containment guarantee for a convenience. So the catalogue is filtered to the self-contained overlays only — 49 of the repository's 310 .cfg files, including the whole gamepads/lite/ pack — because listing an overlay that would fail to install is worse than not listing it. Making that filter cheap is the other half: reading 310 .cfg bodies would be 310 requests for a catalogue, so the tree itself is the predictor (an overlay is self-contained exactly when its own directory also holds images), and that heuristic was checked against the content of all 310 files with no false positives and no false negatives. plan() still fetches the chosen .cfg and re-reads its references, so the heuristic decides what to offer and the file decides what to install.",
+      "comments": "The plugin that had to say no to most of its own source, and now does not. A RetroArch overlay is a .cfg plus the images it references, and the .cfg names them relative to itself — overwhelmingly as a subdirectory (`img/dpad-left.png`). Every destination a FetchPlan could express used to be a bare name, which is the rule that keeps a plugin's downloads inside the directory chosen for it, so the catalogue was filtered to the 49 self-contained overlays of 310. The guarantee behind that rule is \"a plugin must never steer a host write outside its own install directory\", and a bare name is one way to get it rather than the only one: FetchFile now carries an optional `subdir` whose every component goes through the same validator a filename does, with `paths.dest_under_dir` resolving the join and asserting the result is inside the target. `filename` was not weakened. So the catalogue is the repository: 310 of 310, a 6.3x increase. An overlay installs at its own path in the tree (`borders/gb.cfg` beside `borders/img/gb.png`) for two reasons that come from the format rather than from taste — the .cfg references its images relatively, and preserving the tree stops `borders/snes.cfg` and `gamepads/snes.cfg` colliding. Nothing is renamed: the previous release sanitised upstream filenames, which for a bundle produces a cfg pointing at a sprite that is no longer there, so every path is installed verbatim or the whole overlay is refused with a message naming it. Checked against all 310 on 2026-08-01: every path in this repository is expressible verbatim. plan() also verifies each reference three ways — it must stay inside the repository (none escapes today), it must exist in the tree (six name a sprite the repository does not have), and its path must be writable verbatim.",
       "platforms": []
     },
     {
@@ -927,9 +955,9 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-open-bios",
       "install": "https://github.com/BlizzHacker/rom-hub-open-bios",
-      "download": "https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.1.1.tar.gz",
-      "version": "0.1.1",
-      "ref": "v0.1.1",
+      "download": "https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
       "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
@@ -944,13 +972,16 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Clean-room, openly licensed BIOS replacements — Game Boy, Game Boy Color and Game Boy Advance — with each item's licence printed before you install it.",
-      "terms": "The only plugin here whose whole subject is what you are permitted to have, so nothing in it is a dump of a retail chip. Cult-of-GBA's `bios.bin` is MIT: its LICENSE is the Expat text, \"Copyright 2020 - 2021 DenSinH and fleroviux\", and GitHub reports the repository as MIT. SameBoy's boot ROMs are MIT (Expat) and that needed checking rather than reading off a badge — GitHub reports the repository as NOASSERTION because its LICENSE excepts the iOS and HexFiend directories, and `BootROMs/` is neither, so the boot ROMs are covered and the release archive ships that same LICENSE beside them. Both hosts are public and unauthenticated and this plugin sends no credential; it makes no request of its own at all, and the Hub makes one GET per install. The Hub cannot verify any of this — a dumped BIOS and a reimplemented one look identical on the wire — so it is a rule about what the catalogue may contain, enforced by review of `open_bios/catalogue.py`, where every claim sits beside its evidence.",
-      "comments": "The only plugin exercising `firmware`, and the first to use its archive support: SameBoy publishes no standalone boot-ROM asset, so the plugin declares `archive = \"zip\"` plus the members it wants and the host keeps exactly those, discarding the 1.6 MB emulator build they arrive in. `list()` opens no socket — the catalogue is static and pinned, because firmware is bytes an emulator executes and an operator should get the release the README says was verified rather than whatever was tagged this morning; `sameboy_release` is the escape hatch. Platforms come from an exact-match table with no fallback, which is stricter than the ROM-side equivalent on purpose: a ROM under the wrong system is visibly wrong, while a BIOS under the wrong system is invisible — the emulator just keeps reporting it has none. Four real candidates were left out and `catalogue.py` says why each: PCSX-ReDux OpenBIOS (no releases and no tags at all, so there is no binary to fetch), nds-bootstrap (a homebrew loader, not a BIOS), C-BIOS (source only), and SameBoy's Super Game Boy boot ROMs (no unambiguous platform for a SNES peripheral, and this plugin never guesses one).",
+      "description": "Clean-room, openly licensed BIOS replacements — Game Boy, Game Boy Color, Game Boy Advance and the three MSX generations — with each item's licence printed before you install it.",
+      "terms": "The only plugin here whose whole subject is what you are permitted to have, so nothing in it is a dump of a retail chip. Cult-of-GBA's `bios.bin` is MIT: its LICENSE is the Expat text, \"Copyright 2020 - 2021 DenSinH and fleroviux\", and GitHub reports the repository as MIT. SameBoy's boot ROMs are MIT (Expat) and that needed checking rather than reading off a badge — GitHub reports the repository as NOASSERTION because its LICENSE excepts the iOS and HexFiend directories, and `BootROMs/` is neither, so the boot ROMs are covered and the release archive ships that same LICENSE beside them. C-BIOS is three-clause BSD: `doc/cbios.txt`, shipped in the same archive the ROMs come from and identical to the copy in the cbios repository, carries the notice over nine copyright holders and permits redistribution \"in source and binary forms\" — which is the question that matters, because the built ROMs come from openMSX's release rather than from C-BIOS's own. All hosts are public and unauthenticated and this plugin sends no credential; it makes no request of its own at all, and the Hub makes one GET per install. The Hub cannot verify any of this — a dumped BIOS and a reimplemented one look identical on the wire — so it is a rule about what the catalogue may contain, enforced by review of `open_bios/catalogue.py`, where every claim sits beside its evidence.",
+      "comments": "The only plugin exercising `firmware`, and the first to use its archive support: SameBoy publishes no standalone boot-ROM asset, so the plugin declares `archive = \"zip\"` plus the members it wants and the host keeps exactly those, discarding the emulator build they arrive in. list() opens no socket — the catalogue is static and pinned, because firmware is bytes an emulator executes and an operator should get the release the README says was verified rather than whatever was tagged this morning. Platforms come from an exact-match table with no fallback, which is stricter than the ROM-side equivalent on purpose: a ROM under the wrong system is visibly wrong, while a BIOS under the wrong system is invisible — the emulator just keeps reporting it has none. **C-BIOS is new in 0.2.0 and the route to it is the interesting part.** Its original disqualification still stands for its own distribution: cbios/cbios now has ten releases where it had none (latest v0.29, 2026-08-01) and they are still source only, the release page attaching nothing but GitHub's auto-generated archives and the repository holding a Makefile and src/ with no built .rom anywhere. What changed the answer is that openMSX ships built C-BIOS ROMs inside its own GitHub release under share/machines/ — the same shape as SameBoy, a BIOS that exists only inside an emulator's archive. That needed one host change: a firmware archive member may now name a path inside the zip, which is a lookup key and never a destination, since firmware.py takes the basename before dest_in_job_dir sees it. Three items rather than one because the MSX generations take different BIOS ROMs and are three platforms; msx, msx2 and msx2plus were each checked against the 458-slug platform list captured from a live RomM. Still declined, each with its reason in catalogue.py: PCSX-ReDux OpenBIOS (zero releases AND zero tags, re-checked 2026-08-01), Bootix (a CC0 clean-room Game Boy boot ROM whose repository holds only .asm and a Makefile — source only, the same disqualification C-BIOS had), nds-bootstrap (a homebrew loader, not a BIOS), and SameBoy's Super Game Boy boot ROMs (no super-game-boy slug exists in the captured RomM platform list, and this plugin never guesses a platform).",
       "platforms": [
         "gb",
         "gba",
-        "gbc"
+        "gbc",
+        "msx",
+        "msx2",
+        "msx2plus"
       ]
     },
     {
@@ -1127,10 +1158,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig",
       "install": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig",
-      "download": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "assets"
@@ -1143,9 +1174,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "RetroArch controller autoconfiguration profiles, so a gamepad your emulator does not recognise gets a mapping somebody already wrote.",
+      "description": "RetroArch controller autoconfiguration profiles — all 1,094 of them, across every input driver the repository has — so a gamepad your emulator does not recognise gets a mapping somebody already wrote.",
       "terms": "MIT, and this one needed checking rather than reading off a badge: GitHub reports retroarch-joypad-autoconfig as NOASSERTION, which invites the assumption that its terms are unclear. They are not. Its COPYING contains two licences, which is what defeats GitHub's single-licence detection — the MIT License (copyright 2019 The RetroArch team) covering the .cfg profiles this plugin offers, and the zlib-style SDL licence (copyright 1997-2025 Sam Lantinga) covering the bundled SDL gamecontrollerdb.cfg, which this plugin does not offer. Both halves were read from the repository itself. Both hosts are public and unauthenticated and this plugin sends no credential.",
-      "comments": "The smallest source in this set and the one that solves a whole problem: a pad RetroArch does not recognise is a pad you remap by hand, and the fix is a 1.7 KB text file that already exists — 437 of them for the udev driver alone. The input driver is config and is never detected from the host OS, for the reason libretro-cores does not detect its build target: the Hub is routinely not running on the machine the pad is plugged into, and udev profiles handed to a Windows frontend are silently useless. An unknown driver is refused by name against the list that exists, before any request goes out. This plugin's repository is only 2.6 MB, so the Trees-API listing here is not strictly necessary — it is the same mechanism the overlays and cheats plugins need against 29 MB and 795 MB, kept identical so there is one way this plugin family reads a GitHub tree rather than three.",
+      "comments": "The smallest source in this set and the one that solves a whole problem: a pad RetroArch does not recognise is a pad you remap by hand, and the fix is a 1.7 KB text file that already exists. The input driver is config and is never detected from the host OS, for the reason libretro-cores does not detect its build target: the Hub is routinely not running on the machine the pad is plugged into, and udev profiles handed to a Windows frontend are silently useless. An unknown driver is refused by name against the list that exists, before any request goes out. This plugin's repository is only 2.6 MB, so the Trees-API listing here is not strictly necessary — it is the same mechanism the overlays and cheats plugins need against 29 MB and 795 MB, kept identical so there is one way this plugin family reads a GitHub tree rather than three. **Unlike every other plugin in the emulator-support set, this one had no gap to close, and 0.2.0 is the measurement rather than an addition.** The repository has thirteen input-driver directories and this plugin offers all thirteen: 1,094 profiles in total (udev 437, dinput 232, android 214, sdl2 80, hid 60, xinput 39, linuxraw 13, winraw 11, qnx 3, x 2, and one each for mfi, parport and sdl3), counted against the live tree on 2026-08-01. Nothing else in that repository is a profile — its root holds only COPYING, Makefile, README.md, configure, two CI files, a layout PNG and .github/, and no driver directory contains a subdirectory or a non-.cfg file. Completeness is only worth claiming if something notices when it stops being true, so the test suite pins the plugin's DRIVERS tuple against a captured copy of the repository root: a driver directory added upstream fails the suite rather than being quietly unreachable. One number is worth knowing — udev's 437 is not far under the 512 assets a plugin may return, so that ceiling is a real event here rather than a theoretical one.",
       "platforms": []
     },
     {

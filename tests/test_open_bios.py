@@ -135,6 +135,9 @@ def test_every_item_is_a_valid_artifact_and_has_a_platform():
         "cult-of-gba",
         "sameboy-dmg",
         "sameboy-cgb",
+        "cbios-msx1",
+        "cbios-msx2",
+        "cbios-msx2plus",
     }
     for item in items:
         assert isinstance(item, FirmwareArtifact)
@@ -273,4 +276,4 @@ def test_listing_makes_no_request(monkeypatch):
     AttributeError rather than a silently-passing test.
     """
     items = _plugin().list()
-    assert len(items) == 3
+    assert len(items) == 6

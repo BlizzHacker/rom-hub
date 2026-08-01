@@ -1,20 +1,31 @@
 [plugin]
 slug        = "libretro-cores"
 name        = "libretro cores (buildbot)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 cores = "libretro_cores.cores:Cores"
 
-# One host, and only one. The `.index-extended` catalogue and the core
-# archives it lists are both served from buildbot.libretro.com, and a core
-# download makes no CDN hop -- verified 2026-07-29 with
-# `curl -w %{num_redirects}` against a real core file, which reports 0. So
-# there is no redirect target to declare, and nothing else belongs here.
+# Two hosts, and exactly two.
+#
+#   buildbot.libretro.com      the `.index-extended` catalogue and the
+#                              core archives it lists
+#   raw.githubusercontent.com  one `<core>_libretro.info` per install
+#
+# Neither redirects -- verified 2026-07-29 with `curl -w %{num_redirects}`
+# against a real core file and 2026-08-01 against a real .info, both 0 --
+# so there is no CDN hop to declare and nothing else belongs here.
+#
+# The second host is new in 0.2.0 and it is a second file per install, not
+# a second catalogue. RetroArch reads `<core>_libretro.info` from its
+# libretro_info_dir to learn what a core loads and which BIOS it needs;
+# the buildbot publishes those only inside a zip, and `ctx.http` returns
+# text. libretro/libretro-core-info serves the same files individually.
+# See libretro_cores/info.py.
 [permissions]
-network  = ["buildbot.libretro.com"]
+network  = ["buildbot.libretro.com", "raw.githubusercontent.com"]
 romm_api = []
 
 [config]
@@ -27,3 +38,8 @@ target = { type = "str", default = "linux/x86_64" }
 # is what you want unless the target ever exceeds the 256 cores a plugin
 # may return in one list.
 only   = { type = "list[str]", default = [] }
+# Narrow the catalogue to the cores for one console. Matched against the
+# system name, the manufacturer and every libretro database name in
+# libretro's own core-info data, case-insensitively -- "snes", "Game Boy"
+# and "Nintendo" all work. Empty means every core for the target.
+system = { type = "str", default = "" }

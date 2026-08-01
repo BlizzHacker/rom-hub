@@ -33,6 +33,15 @@ SYSTEM_PLATFORMS: dict[str, str] = {
     "Game Boy": "gb",
     "Game Boy Color": "gbc",
     "Game Boy Advance": "gba",
+    # The MSX generations take different BIOS ROMs and are three different
+    # platforms in RomM, which is why C-BIOS is three items rather than
+    # one. All three slugs were checked against the 458-slug platform list
+    # captured from a live RomM in
+    # `tests/fixtures/libretro/romm_platform_slugs.json` -- the same
+    # standard the Game Boy rows were held to, and a test asserts it.
+    "MSX": "msx",
+    "MSX2": "msx2",
+    "MSX2+": "msx2plus",
 }
 
 

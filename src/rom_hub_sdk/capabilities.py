@@ -24,6 +24,7 @@ from rom_hub.types import (
     RomRef,
     SearchResult,
     StreamTarget,
+    TorrentSource,
 )
 
 from .context import PluginContext
@@ -81,6 +82,58 @@ class StreamProvider(Capability):
         Raise for an item that cannot be streamed. The host does not build
         any streaming transport of its own: it validates this answer and
         hands it on.
+        """
+
+
+class TorrentProvider(Capability):
+    """Where an item's torrent is, and which files inside it are wanted.
+
+    Shaped like `StreamProvider` rather than like `ImportProvider`,
+    because what a plugin knows here is one *location* rather than a list
+    of downloads -- and because, exactly as with `stream`, the host's job
+    is to validate the answer and act on it rather than to become the
+    thing that would consume it.
+
+    **A plugin must never open a socket or run a torrent client.** That is
+    true of every capability and it is worth repeating for this one,
+    because it is the capability where the temptation exists. `ctx.http`
+    is the only network path a plugin has, it is seccomp-confined so there
+    is no second one, and it caps a response at 4 MiB of *text* -- so a
+    plugin could not fetch a `.torrent`'s bytes even if it tried. Return
+    the URL; the host fetches it, reads it, computes its info-hash and
+    checks that against whatever `info_hash` you claimed.
+
+    **Say which files are wanted.** An Archive.org item's torrent holds
+    the payload alongside thumbnails, a screenshot, a metadata XML and a
+    sqlite index -- six files where one is the game. `TorrentSource.files`
+    is how a plugin says which is which, as bare filenames the host
+    matches against the torrent's own entries. Naming none is legal and
+    means "all of it", which is the right answer for a handoff.
+
+    **Refuse loudly for an item with no torrent.** Not every item has one:
+    of Archive.org's `consolelivingroom`, 21,956 of 24,746 publish one and
+    the rest do not, and an item the Archive has darkened refuses its
+    torrent path with a 403. Both are ordinary outcomes rather than
+    failures of this capability -- raise with a message naming which one
+    it was, so an operator can tell "no torrent exists" from "something
+    broke".
+    """
+
+    @abstractmethod
+    def resolve(self, result: SearchResult) -> TorrentSource:
+        """Say where this item's torrent is. The HOST fetches and reads it.
+
+        Return `kind="torrent_url"` for an https URL to a `.torrent` --
+        checked against this plugin's `network` allowlist, and re-checked
+        on every redirect hop -- or `kind="magnet"` for a magnet URI,
+        whose trackers and web seeds are checked against the same
+        allowlist parameter by parameter (see
+        `rom_hub.torrents.check_magnet`).
+
+        Raise for an item that has no torrent. The host builds no
+        BitTorrent transport of its own: it reads the manifest, hands it
+        to the client the operator runs, or pulls a named file from the
+        torrent's own web seed over https.
         """
 
 

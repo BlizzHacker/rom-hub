@@ -1,0 +1,134 @@
+{
+  "dir": "/5/items/msdos_Oregon_Trail_The_1990",
+  "files": [
+    {
+      "crc32": "947b1f22",
+      "format": "JPEG",
+      "md5": "c8cd5db701f0de132620b9b8f656287a",
+      "mtime": "1419686693",
+      "name": "00_coverscreenshot.jpg",
+      "rotation": "0",
+      "sha1": "5915fbff89a57c0c45003d8277649d664ac738e6",
+      "size": "89012",
+      "source": "original"
+    },
+    {
+      "crc32": "1e41d812",
+      "filecount": "18",
+      "format": "ZIP",
+      "md5": "4231286c119499dd5b32889dc0208928",
+      "mtime": "1421223470",
+      "name": "Oregon_Trail_The_1990.zip",
+      "sha1": "4958fb7c3028eaa3e36742afaf35073c0373808e",
+      "size": "359527",
+      "source": "original"
+    },
+    {
+      "crc32": "cab2919c",
+      "format": "Emulator Screenshot",
+      "md5": "787c849bbf70eee3c347135c52fcbeb3",
+      "mtime": "1419686695",
+      "name": "Oregon_Trail_The_1990_screenshot.gif",
+      "sha1": "50ed681b80250cec6f9ec53abcde3b0541533f71",
+      "size": "35116",
+      "source": "original"
+    },
+    {
+      "crc32": "d67717e0",
+      "format": "JPEG Thumb",
+      "md5": "12e026ccf717799b8aa825b61ef1fd35",
+      "mtime": "1612383111",
+      "name": "__ia_thumb.jpg",
+      "rotation": "0",
+      "sha1": "172cc9c9321ae3865040b8d1569c61f07add5520",
+      "size": "9855",
+      "source": "original"
+    },
+    {
+      "crc32": "8854689f",
+      "format": "Animated GIF",
+      "md5": "14d588d1c3fee5d9b32aee7d12d994d0",
+      "mtime": "1419686697",
+      "name": "msdos_Oregon_Trail_The_1990.gif",
+      "sha1": "7b8ac6129712dea0a7d2d39c5e330edc10ac0c1a",
+      "size": "11766",
+      "source": "original"
+    },
+    {
+      "format": "Metadata",
+      "md5": "9d30806aac5b51d84a703951f03ddaf0",
+      "name": "msdos_Oregon_Trail_The_1990_files.xml",
+      "source": "original",
+      "summation": "md5"
+    },
+    {
+      "crc32": "5146cfb7",
+      "format": "Metadata",
+      "md5": "68178b10c9d77db65b56ca77a94d8568",
+      "mtime": "1421223474",
+      "name": "msdos_Oregon_Trail_The_1990_meta.sqlite",
+      "sha1": "9fcda3399e7b132a9c26b74de0a07458784b58d8",
+      "size": "10240",
+      "source": "original"
+    },
+    {
+      "crc32": "67b94d95",
+      "format": "Metadata",
+      "md5": "d0a80e0d3ab635c962b6eccdca5b00bb",
+      "mtime": "1752810639",
+      "name": "msdos_Oregon_Trail_The_1990_meta.xml",
+      "sha1": "70eae02fd5eb683d0b6bf0c91779a9649a8e2e4c",
+      "size": "5835",
+      "source": "original"
+    },
+    {
+      "crc32": "03bf5df1",
+      "format": "Metadata",
+      "md5": "688fada5c61eef3d53675ac1de148a19",
+      "mtime": "1784832782",
+      "name": "msdos_Oregon_Trail_The_1990_reviews.xml",
+      "sha1": "e111b9abec9a6bc5125329ed4153a03b4fffe417",
+      "size": "277627",
+      "source": "original"
+    },
+    {
+      "crc32": "7eb863e0",
+      "format": "JPEG",
+      "md5": "2eec690d9c1e5896112dafef6d52a0f5",
+      "mtime": "1419686699",
+      "name": "screenshot_00.jpg",
+      "rotation": "0",
+      "sha1": "3844b752107041dff15cb6705795f6c9e69645f9",
+      "size": "33943",
+      "source": "original"
+    },
+    {
+      "crc32": "947b1f22",
+      "format": "JPEG",
+      "md5": "c8cd5db701f0de132620b9b8f656287a",
+      "mtime": "1419686701",
+      "name": "screenshot_01.jpg",
+      "rotation": "0",
+      "sha1": "5915fbff89a57c0c45003d8277649d664ac738e6",
+      "size": "89012",
+      "source": "original"
+    }
+  ],
+  "item_size": 937592,
+  "metadata": {
+    "access-restricted-item": "true",
+    "collection": [
+      "softwarelibrary_msdos_games",
+      "stream_only",
+      "softwarelibrary_msdos",
+      "softwarelibrary",
+      "softwarelibrary_kids",
+      "emulation"
+    ],
+    "emulator": "dosbox",
+    "emulator_ext": "zip",
+    "identifier": "msdos_Oregon_Trail_The_1990",
+    "mediatype": "software",
+    "title": "Oregon Trail, The"
+  }
+}
