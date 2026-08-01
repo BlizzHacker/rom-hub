@@ -1,27 +1,55 @@
 # Homebrew plugin for ROM Hub — gbdev's Homebrew Hub
 
-Implements the RPP v1 `search`, `importer` and `metadata` capabilities against
-[Homebrew Hub](https://hh.gbdev.io), the gbdev community's archive of Game Boy,
-Game Boy Color, Game Boy Advance and NES **homebrew**.
+Implements the RPP v1 `search`, `importer`, `metadata` and `stream`
+capabilities against [Homebrew Hub](https://hh.gbdev.io), the gbdev
+community's archive of Game Boy, Game Boy Color, Game Boy Advance and NES
+**homebrew** — 1,571 entries.
 
 | Capability | Endpoint | Does |
 |---|---|---|
 | `search` | `hh3.gbdev.io/api/search` | server-side search across all entries |
 | `importer` | the same endpoint, then `/static/…` | plans the entry's default ROM file |
 | `metadata` | the same endpoint, then `/static/…` | proposes the submitter's title and cover; the **Hub** fetches the image |
+| `stream` | the same endpoint → `hh.gbdev.io/game/<slug>` | resolves an entry to the page that plays it |
+
+## What changed in 0.3.0
+
+| | before | after |
+|---|---:|---|
+| entries one search could reach | **30** of 1,571 | **200** by default, **1,571** by config |
+| server-side filters used | `q`, `platform`, `typetag` | + `tags` |
+| capabilities | search, importer, metadata | + **stream** |
+| `SearchResult.url` | `hh.gbdev.io/g/<slug>` — **wrong** | `hh.gbdev.io/game/<slug>` |
+
+`max_pages` was 3 and a page is ten entries, so the plugin's real ceiling
+was thirty. Anything broader was silently truncated: `--limit 100` got
+thirty rows and no sign that seventy were missing. `page_total` for an
+unfiltered query is 158, which is now the cap, so the whole catalogue is
+one config line away.
+
+The `/g/` in the result URL was simply wrong — every result carried a link
+to a 404. The right path is not a guess either: the site is
+[`gbdev/virens`](https://github.com/gbdev/virens), a Nuxt app whose
+file-based routing puts the page at `pages/game/[slug].vue` and whose
+sitemap module builds `hostname + "/game/" + slug` from
+`hostname: "https://hh.gbdev.io"`. Read from the frontend's published
+source rather than by fetching the site — see **Network** below for why
+that distinction matters here.
 
 ## Install
 
     rom-hub plugin install ./plugins-dev/homebrew
     rom-hub search "snake" --limit 5
     rom-hub enrich homebrew 1
+    rom-hub stream homebrew --source-id johnybot_super-snake-off --open
 
 ## Config
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `typetag` | `str` | `""` | restrict to one kind of entry: `game`, `demo`, `music`, `tool`. Empty means no filter |
-| `max_pages` | `int` | `3` | how many 10-entry result pages one query may walk |
+| `max_pages` | `int` | `20` | how many 10-entry result pages one query may walk (capped at 158, which is the whole catalogue) |
+| `tags` | `list[str]` | `[]` | server-side category filter, exact and AND-ed: `["Puzzle"]`, `["Open Source", "RPG"]` |
 | `collection` | `str` | `Homebrew` | RomM collection imported ROMs are grouped into |
 | `set_name` | `bool` | `true` | `metadata` only: write the Hub's title over the library's |
 
@@ -57,6 +85,48 @@ No description or release date is written. RPP v1 has nowhere to put them: its
 payload in one belonging to IGDB or ScreenScraper would be a lie in the
 database.
 
+## What `stream` does
+
+An entry's page **is** the player. The Hub's backend README describes the
+project as "the largest digital archive of Game Boy, GBC, GBA, and NES
+homebrew software, playable natively in your browser", and the frontend
+ships WebAssembly builds of binjgb, binjnes and mGBA and mounts one on the
+entry page. So `stream` resolves a result to
+`https://hh.gbdev.io/game/<slug>` and the host hands that to whatever opens
+it.
+
+**The gate is `files[].playable`, which is the frontend's own rule** —
+`pages/game/[slug].vue` walks `game.files` and points its emulator at the
+one flagged playable. **1,565 of the 1,571 entries have one**, counted over
+the whole catalogue on 2026-08-01; the other six render a details page with
+no emulator and are refused here by name rather than handed a URL that
+shows nothing. `search` carries the answer as `extra.playable`, so the
+refusal is visible before anybody asks.
+
+Nothing is invented. There is no media endpoint and no embed URL dressed up
+as one: the ROM the player loads is served from `hh3.gbdev.io/static/…`
+and is exactly what `importer` already plans, so a fabricated "stream URL"
+would be a second and worse spelling of a file you can simply have.
+
+## The three server-side filters, and the ones that are not real
+
+`q`, `platform`, `typetag` and `tags` are pushed to the server. That
+matters more than it sounds, because **this API ignores unknown parameters
+silently and completely**: `?bogus=snake` returns all 1,571 entries with
+HTTP 200. A plugin that hopefully sent a made-up filter would look like it
+was filtering and would in fact be returning the whole database in
+alphabetical order.
+
+Two consequences, both checked live rather than read off the
+documentation:
+
+- the Hub's own API.md names the type filter **`type`** — and `type=game`
+  returns all 1,571 entries. The parameter that works is **`typetag`**,
+  which is what this plugin sends;
+- `page_elements` *is* real, but its documented range is 1..10 and 10 is
+  already the default, so there is nothing to win. The only way to see
+  more is to ask again, which is what `max_pages` bounds.
+
 ## Legal position — why this source is legitimate
 
 **Homebrew is new software written by hobbyists for old hardware.** It is not a
@@ -85,7 +155,7 @@ Concretely:
 
 That is the honest boundary: **gbdev vouches for the licensing of what it
 hosts; this plugin does not add a claim on top of it.** Individual entries carry
-their own terms, which is why results link back to `hh.gbdev.io/g/<slug>` —
+their own terms, which is why results link back to `hh.gbdev.io/game/<slug>` —
 that page is where an entry's licence, author and source live. If you need a
 specific licence before importing something, read the entry page.
 
@@ -122,16 +192,24 @@ platform field and real filenames. The legal position is at least as good.
 
 `homebrew/platforms.py` maps the Hub's `platform` field to RomM platform slugs:
 
-| Hub | RomM | Entries |
-|---|---|---|
-| `GB` | `gb` | 913 |
-| `GBC` | `gbc` | 447 |
-| `GBA` | `gba` | 188 |
+| Hub | RomM | Entries (2026-08-01) |
+|---|---|---:|
+| `GB` | `gb` | 656 |
+| `GBC` | `gbc` | 440 |
+| `GBA` | `gba` | 189 |
 | `NES` | `nes` | 23 |
+| *(absent)* | — | **263** |
 
-That is the entire vocabulary — the four counts sum exactly to the 1,571
-entries live at the time of writing. Exact match, no fallback: an unknown
-value raises **"needs mapping"** and names itself.
+That is the entire vocabulary. Exact match, no fallback: an unknown value
+raises **"needs mapping"** and names itself.
+
+**The counts moved and the shape of the claim moved with them.** This table
+used to read 913 / 447 / 188 / 23 and say the four sum to the whole
+catalogue. A census of all 1,571 entries on 2026-08-01 says otherwise: 263
+now carry no `platform` field at all. Nothing was ever misfiled —
+`platform_for` answered `None` for the missing case and the importer
+refused rather than guessing — but the sentence claiming the field is
+always present was wrong, so the counts are dated now.
 
 **`GBC` is not softened into `gb`.** The temptation is real — the Hub keeps
 both in one `database-gb` repository, both run on the same emulators, and
@@ -178,8 +256,23 @@ match, no plan.
 
 ## Network
 
-Declared allowlist: `hh3.gbdev.io`. One host does both jobs — `/api/search`
-answers the queries and `/static/` serves the ROMs, with no redirect off it.
-`hh.gbdev.io`, the human site whose `/g/<slug>` pages results link to, is
-deliberately **not** declared: nothing here ever fetches it. `SearchResult.url`
-is shown to a person, never retrieved by the Hub.
+Declared allowlist: `hh3.gbdev.io`, `hh.gbdev.io`.
+
+`hh3.gbdev.io` does three jobs — `/api/search` answers the queries and
+`/static/` serves both the ROMs and the cover images, with no redirect off
+it.
+
+**`hh.gbdev.io` was deliberately absent until 0.3.0 and is now declared for
+exactly one reason: `stream`.** A `SearchResult.url` is shown to a person
+and never retrieved, so listing its host would have been a claim about
+traffic that never happens. A `StreamTarget(kind="url")` is different — the
+host validates it against this list and hands it to something that will
+open it — so the host has to be there or every stream fails at the gate.
+`test_a_stream_target_on_an_undeclared_host_would_be_refused` pins that the
+gate is doing work rather than decorating the manifest.
+
+**Nothing in this plugin crawls `hh.gbdev.io`.** That host's robots.txt
+carries `User-agent: ClaudeBot` / `Disallow: /`, so the page URL was
+derived from the frontend's published source rather than by fetching the
+site. Which is also how the old `/g/<slug>` spelling was caught: it had
+never been checked against anything.

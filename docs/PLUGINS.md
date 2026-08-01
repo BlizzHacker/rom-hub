@@ -142,7 +142,7 @@ and neither can this directory change it for you.
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.3.0 | 2026-08-01 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | 29 of 53, 1 needs netplay | — | `archive.org`, `*.archive.org` |
 | ❗ [Demozoo (demoscene)](https://github.com/BlizzHacker/rom-hub-demozoo) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-demozoo)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | 27 of 46, 2 need netplay | — | `demozoo.org`, `files.scene.org`, `archive.scene.org`, `fujiology.org` |
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `hasheous.org` |
-| ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.2.0 | 2026-07-29 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | all 4 | — | `hh3.gbdev.io` |
+| ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.3.0 | 2026-08-01 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.3.0.tar.gz) | `importer`, `metadata`, `search`, `stream` | Gaseous! · Retrom* · RomM | all 4 | — | `hh3.gbdev.io`, `hh.gbdev.io` |
 | ✔ [IF Archive (Interactive Fiction)](https://github.com/BlizzHacker/rom-hub-if-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-if-archive)) | 0.1.0 | 2026-07-31 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-if-archive/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | **none** — catalogue only (4) | — | `ifarchive.org`, `ukrestrict.ifarchive.org` |
 | ❗ [itch.io (free games) — NO IMPORT](https://github.com/BlizzHacker/rom-hub-itch-io) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-itch-io)) | 0.3.0 | 2026-07-29 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata` | Gaseous! · Retrom* · RomM | **none** — catalogue only (5) | **cannot import** (every import is refused) | `itch.io`, `*.itch.io`, `img.itch.zone` |
 | ✔ [libretro cheat files](https://github.com/BlizzHacker/rom-hub-libretro-cheats) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-cheats)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.1.0.tar.gz) | `assets` | Gaseous · Retrom · RomM | — | — | `api.github.com`, `raw.githubusercontent.com` |
@@ -227,7 +227,7 @@ Turns a ROM's hash into a game identity, and hands back other providers' ids —
 
 ### ✔ Homebrew Hub (gbdev) — `homebrew`
 
-Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports the ROM directly, and proposes the submitter's own title and cover.
+Searches all 1,571 Homebrew Hub entries, imports the submitter's ROM, writes their title and cover, and resolves an entry to the page that plays it in a browser.
 
 **Source terms.** The cleanest source in this directory. Homebrew Hub indexes games written by their authors for the Game Boy, published by those authors for free distribution — the rights holder is the uploader, so there is no third-party copyright being routed around. Individual entries carry their own licences, which vary; the Hub's own catalogue metadata is community-maintained and openly published. Nothing here is a commercial ROM.
 
@@ -235,9 +235,9 @@ Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports th
 
 **Playability.** Everything this plugin imports can be played: all 4 of its platforms have an EmulatorJS core in RomM 4.9.2.
 
-**Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+**Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
 
-**Network requested.** `hh3.gbdev.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+**Network requested.** `hh3.gbdev.io`, `hh.gbdev.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ IF Archive (Interactive Fiction) — `if-archive`
 

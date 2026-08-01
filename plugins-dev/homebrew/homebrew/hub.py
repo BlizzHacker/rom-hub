@@ -21,9 +21,18 @@ from dataclasses import dataclass, field
 
 API = "https://hh3.gbdev.io/api/search"
 STATIC = "https://hh3.gbdev.io/static/"
-# The human-facing site. Results link to it for display; nothing fetches
-# it, which is why it is not in the manifest allowlist.
-SITE = "https://hh.gbdev.io/g/"
+
+#: The human-facing site, and where an entry plays.
+#:
+#: **It is `/game/<slug>`, not `/g/<slug>`.** The old spelling was wrong and
+#: every search result carried it. The right one is not a guess either: the
+#: site is `gbdev/virens`, a Nuxt app whose file-based routing puts the page
+#: at `pages/game/[slug].vue`, and whose own sitemap module builds
+#: `hostname + "/game/" + slug` with `hostname: "https://hh.gbdev.io"` in
+#: `nuxt.config.ts`. Read from the frontend's published source rather than
+#: by fetching the site, because `hh.gbdev.io/robots.txt` disallows
+#: ClaudeBot outright and working around that was not on the table.
+SITE = "https://hh.gbdev.io/game/"
 
 PAGE_ELEMENTS = 10
 
@@ -52,10 +61,36 @@ class Entry:
     #: own convention puts a `cover.*` first when the submitter provided
     #: one; the rest are in-game shots.
     screenshots: list[str] = field(default_factory=list)
+    #: The submitter's own licence string ("CC-BY-NC-ND-4.0", "Zlib").
+    #: Empty when the record does not state one -- which is a fact about
+    #: the entry, not a licence.
+    license: str = ""
+    #: The Hub's own category tags ("Puzzle", "Open Source", "RPG").
+    tags: tuple[str, ...] = ()
+    #: Release date as the record spells it, or "".
+    date: str = ""
 
     @property
     def site_url(self) -> str:
         return SITE + self.slug
+
+    @property
+    def playable_file(self) -> HubFile | None:
+        """The file the Hub's own player would load, or None.
+
+        The gate for `stream`, and it is the frontend's rule rather than
+        one invented here: `pages/game/[slug].vue` walks `game.files` and
+        points its emulator at the last one flagged `playable`. An entry
+        with no such file renders a details page with no player on it, so
+        offering it as a stream target would be advertising help that
+        never arrives.
+
+        1,565 of the Hub's 1,571 entries have one, counted over the whole
+        catalogue on 2026-08-01. The six that do not are the reason this
+        returns None instead of falling back to `payload()`.
+        """
+        playable = [f for f in self.files if f.playable]
+        return playable[-1] if playable else None
 
     def cover(self) -> str | None:
         """The submitter's cover image, or None when there is not one.
@@ -158,6 +193,13 @@ def parse_entry(raw: dict) -> Entry | None:
         typetag=str(raw.get("typetag") or ""),
         files=files,
         screenshots=screenshots,
+        license=str(raw.get("license") or ""),
+        tags=tuple(
+            t.strip()
+            for t in (raw.get("tags") or [])
+            if isinstance(t, str) and t.strip()
+        ),
+        date=str(raw.get("date") or ""),
     )
 
 

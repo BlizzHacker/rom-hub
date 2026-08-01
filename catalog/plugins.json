@@ -341,24 +341,26 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-homebrew",
       "install": "https://github.com/BlizzHacker/rom-hub-homebrew",
-      "download": "https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.2.0.tar.gz",
-      "version": "0.2.0",
-      "ref": "v0.2.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
         "importer",
-        "metadata"
+        "metadata",
+        "search",
+        "stream"
       ],
       "network": [
-        "hh3.gbdev.io"
+        "hh3.gbdev.io",
+        "hh.gbdev.io"
       ],
       "status": "ok",
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches gbdev's Homebrew Hub for Game Boy / Game Boy Color homebrew, imports the ROM directly, and proposes the submitter's own title and cover.",
+      "description": "Searches all 1,571 Homebrew Hub entries, imports the submitter's ROM, writes their title and cover, and resolves an entry to the page that plays it in a browser.",
       "terms": "The cleanest source in this directory. Homebrew Hub indexes games written by their authors for the Game Boy, published by those authors for free distribution — the rights holder is the uploader, so there is no third-party copyright being routed around. Individual entries carry their own licences, which vary; the Hub's own catalogue metadata is community-maintained and openly published. Nothing here is a commercial ROM.",
       "comments": "The only plugin in this directory built from the start for material that is unambiguously free to redistribute. One host does both jobs — `/api/search` answers queries and `/static/` serves the ROMs with no redirect off it — so the allowlist is a single host. `hh.gbdev.io`, the human-facing site those results link to, is deliberately not declared, because the plugin shows that URL and never fetches it. `metadata` proposes the Hub's title and the entry's `cover.*` image, and nothing else. It may write a title where libretro-thumbnails may not, because for homebrew the submitter *is* the publisher of record — but only a file actually named `cover.*` becomes artwork, since roughly half the entries carry in-game screenshots instead and promoting one would fill a library with gameplay stills. Resolution is exact or it refuses: three live entries are titled exactly \"Snake\", and a query landing on those names all three rather than choosing.",
       "platforms": [
