@@ -1,0 +1,33 @@
+{
+  "catalog_version": "1",
+  "plugins": [
+    {
+      "slug": "neighbourhood-roms",
+      "name": "Neighbourhood ROMs",
+      "author": "Somebody Else",
+      "repository": "https://git.example.test/somebody/neighbourhood-roms",
+      "install": "https://git.example.test/somebody/neighbourhood-roms",
+      "download": "https://git.example.test/somebody/neighbourhood-roms/archive/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-07-30",
+      "rpp_version": "1",
+      "capabilities": [
+        "search"
+      ],
+      "network": [
+        "files.example.test"
+      ],
+      "status": "ok",
+      "description": "A plugin that exists only in a third-party directory.",
+      "terms": "Fixture only. Nothing here is fetched by the test suite.",
+      "search_only": true,
+      "key_required": false,
+      "in_tree": false,
+      "comments": "Present so a merge across two directories has something to merge.",
+      "platforms": [
+        "dos"
+      ]
+    }
+  ]
+}

@@ -323,13 +323,21 @@ def cache_dir(root: Path) -> Path:
     return Path(root) / "var" / CACHE_DIR_NAME
 
 
-def check_location(location: str) -> str:
+def check_location(location: str, *, must_exist: bool = True) -> str:
     """Return `location` unchanged, or refuse it with a reason.
 
     Shaped like `registry._checked_source`, and for the same reason: this
     is the one place a string the operator typed becomes something the Hub
     will connect to or open, so the refusals belong here rather than at
     each use.
+
+    `must_exist` is False when reading the list back. A local catalog that
+    has since been deleted -- an unmounted share, a file somebody tidied
+    away -- must degrade as *one unreachable source*, exactly like a
+    remote host that is down. Refusing it here would instead make the
+    whole source list unreadable, so one missing file would take out the
+    bundled directory too. What is checked either way is the *shape*:
+    scheme, and the host actually being the host.
     """
     if not isinstance(location, str) or not location.strip():
         raise CatalogSourceError("a catalog source location is empty")
@@ -373,7 +381,7 @@ def check_location(location: str) -> str:
             )
         return location
 
-    if Path(location).exists():
+    if not must_exist or Path(location).exists():
         return location
     raise CatalogSourceError(
         f"refusing catalog source {location!r}: it is neither an https URL "
@@ -426,7 +434,9 @@ def _read_file(root: Path) -> list[CatalogSource]:
         out.append(
             CatalogSource(
                 name=check_name(str(item.get("name", ""))),
-                location=check_location(str(item.get("location", ""))),
+                location=check_location(
+                    str(item.get("location", "")), must_exist=False
+                ),
             )
         )
     return out
