@@ -15,6 +15,8 @@ from abc import ABC, abstractmethod
 
 from rom_hub.types import (
     AssetArtifact,
+    CensusPage,
+    CensusUnit,
     CoreArtifact,
     FetchPlan,
     FirmwareArtifact,
@@ -274,4 +276,75 @@ class AssetProvider(Capability):
         `AssetArtifact`'s own `system` is what the operator saw in
         `rom-hub assets list`. Set it to something honest anyway;
         `FetchPlan` requires it.
+        """
+
+
+class CensusProvider(Capability):
+    """Enumerate the *whole* source, so its coverage can be proved.
+
+    Every other capability answers a question about some rows. This one
+    answers a question about the corpus: **what is all of it?** The
+    difference matters because "15,165 archives reachable" and "the
+    catalogue is complete, and here is the denominator" are different
+    claims, and only the second one can be checked.
+
+    Three properties make it checkable, and all three are obligations on
+    the plugin rather than conveniences.
+
+    **State a denominator you did not compute yourself.** `declared_total`
+    on a unit must come from the source -- `files_count` on an
+    Archive.org item, the entry count an index page prints, an API's
+    `total`. A number derived from the walk cannot disagree with the walk,
+    so it proves nothing. `None` is an honest answer when there is no such
+    number; a guess is not.
+
+    **Account for everything you walk past.** A page's `skipped` maps a
+    reason to a count, and the host checks `kept + skipped` against
+    `declared_total` when the unit finishes. This is the whole mechanism:
+    a plugin that silently drops rows produces a visible shortfall rather
+    than a smaller catalogue nobody can tell is smaller.
+
+    **Name what a unit is.** `kind` separates a directory of per-game
+    archives from a 44 GB bundle of archives-of-archives from a 928 GB
+    CDN mirror. They are different things and merging them is how a
+    catalogue ends up claiming a console maker's whole distribution tree
+    as forty thousand games.
+
+    The host, not the plugin, decides which units are actually walked, and
+    it persists everything -- see `rom_hub.census`. A plugin never writes
+    a file, never holds the catalogue, and is called many bounded times
+    rather than once for a long time, because a 30-second call budget is
+    not something a full enumeration can fit inside.
+    """
+
+    @abstractmethod
+    def scope(self) -> list[CensusUnit]:
+        """Every unit this source is made of, walked or not.
+
+        The denominator, and it must be *complete*: a unit left out of
+        this list is invisible to the completeness report, which is
+        exactly the failure mode the capability exists to close. Propose
+        leaving one out with `include=False` and a `reason` -- that is
+        recorded, printed, and overridable by the operator.
+
+        Keep it cheap. This is one call and it runs before any walking, so
+        it should be an index read or a search-endpoint total, never an
+        enumeration in disguise.
+        """
+
+    @abstractmethod
+    def enumerate(self, unit: CensusUnit, cursor: str | None) -> CensusPage:
+        """One bounded page of `unit`, and where to resume.
+
+        Called repeatedly with the cursor from the previous page until a
+        page comes back with `cursor=None`. `cursor` is opaque to the host
+        and handed straight back, so it can be a page number, an offset,
+        a continuation token or a filename -- whatever resumes this
+        source. It must be **stable across processes**: the host stores it
+        and a resumed build starts a fresh subprocess.
+
+        Put digests in `CensusRecord.extra` under `sha256`, `sha1`, `md5`
+        or `crc32` wherever the source publishes them. That is what lets
+        two units mirroring the same ROM under different names collapse on
+        evidence instead of on a hopeful title match.
         """

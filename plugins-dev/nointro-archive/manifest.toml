@@ -1,13 +1,18 @@
 [plugin]
 slug        = "nointro-archive"
 name        = "No-Intro sets on Archive.org"
-version     = "0.3.0"
+version     = "0.4.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 search   = "nointro_archive.search:Search"
 importer = "nointro_archive.importer:Importer"
+# Enumerates all 71 `identifier:nointro*` items rather than the 25
+# directories `collections` lists, and records Archive.org's own
+# `files_count` per item so coverage can be checked against a number the
+# walk did not produce. `rom-hub census build nointro-archive`.
+census   = "nointro_archive.census:Census"
 
 # myrient.erista.me shut down on 2026-03-31 and is deliberately NOT listed:
 # an allowlist is a statement about where this plugin actually goes, and a
@@ -74,3 +79,10 @@ collections = { type = "list[str]", default = [
 # above is out of reach.
 max_directories = { type = "int", default = 10 }
 collection  = { type = "str", default = "No-Intro" }
+# What the `census` capability enumerates. `identifier:nointro*` matches 71
+# items; `collection:nointro` matches **zero**, because No-Intro on
+# Archive.org is seventy-one separate uploads and not a collection anybody
+# curated. Configurable so a mirror or a narrower scope can be censused
+# without editing code -- the host still refuses any host not in the
+# allowlist above, so this cannot widen network reach.
+scope_query = { type = "str", default = "identifier:nointro*" }

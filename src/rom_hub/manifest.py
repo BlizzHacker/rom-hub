@@ -23,6 +23,9 @@ KNOWN_CAPABILITIES = frozenset(
         "cores",
         "firmware",
         "assets",
+        # Enumerating a whole source rather than answering a query about
+        # part of it. See `rom_hub.census` and `rom_hub_sdk.CensusProvider`.
+        "census",
         "torrent",
     }
 )

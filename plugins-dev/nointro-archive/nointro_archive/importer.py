@@ -27,7 +27,7 @@ from rom_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
 
 from .filenames import safe_filename
 from .index import INDEXES
-from .platforms import platform_for
+from .platforms import known_directories, platform_for
 from .search import base_url, index_url
 
 DEFAULT_COLLECTION = "No-Intro"
@@ -93,28 +93,60 @@ class Importer(ImportProvider):
         )
 
     def _split(self, source_id: str | None) -> tuple[str, str]:
-        """Split `<directory>/<file>` using the configured directories.
+        """Split `<directory>/<file>` at a boundary that is never guessed.
 
         A Myrient-layout directory contains slashes of its own
         (`No-Intro/Nintendo - Game Boy`), so the split cannot be "last
         slash wins" and inventing a separator would make source ids that no
-        longer look like the paths they are. Matching against the configured
-        list instead means the boundary is never ambiguous -- and a source
-        id naming a directory this install does not search is refused, which
-        is the correct answer rather than an accident.
+        longer look like the paths they are. The boundary is therefore
+        matched against a list of directories this plugin knows, and the
+        list is consulted in two parts:
+
+        **The configured `collections` first.** That is what a search
+        returned, and it is the common case.
+
+        **Then every directory in the platform table.** This is what the
+        census made necessary. `rom-hub census build` enumerates all 71
+        `identifier:nointro*` items -- roughly twice what `collections`
+        lists -- and refusing to import a row the Hub itself just
+        catalogued, on the grounds that nobody had typed its directory into
+        a *search* config key, would be the Hub arguing with its own
+        catalogue. A directory in the table is one this plugin can name the
+        machine for, which is the only thing the import actually needs.
+
+        Not a loosening of the "no guessing" rule: `platform_for` is an
+        exact match against a written table, so a directory nobody has
+        mapped still fails, and it fails here with its name in the message.
         """
         raw = (source_id or "").strip().strip("/")
         if not raw:
             raise ImportRefused("the search result carries no source id")
-        for directory in self.ctx.config.get("collections") or []:
-            prefix = str(directory).strip().strip("/") + "/"
-            if raw.startswith(prefix):
+
+        configured = [
+            str(d).strip().strip("/") for d in (self.ctx.config.get("collections") or [])
+        ]
+        folded = raw.lower()
+        # Longest first, because `NoIntro-Atari` and
+        # `NoIntro-Atari/Atari - Lynx` are both real directories and the
+        # shorter one is a prefix of the longer. Matching the short one on
+        # a Lynx source id leaves a name with a slash in it, which is
+        # rejected below -- but only after the right answer has been passed
+        # over, so the order is what makes this correct rather than lucky.
+        for directory in sorted(
+            configured + known_directories(), key=len, reverse=True
+        ):
+            prefix = directory.lower() + "/"
+            if folded.startswith(prefix):
                 name = raw[len(prefix) :]
                 if not name or "/" in name:
-                    break
-                return str(directory).strip().strip("/"), name
+                    continue
+                # The caller's own spelling, not the table's. The table is
+                # case-folded for lookup; the URL is built from this, and
+                # Archive.org's paths are case-sensitive.
+                return raw[: len(prefix) - 1], name
         raise ImportRefused(
-            f"{source_id!r} does not name a file in any configured directory. "
-            f"Expected '<directory>/<file>', where <directory> is one of "
-            f"{list(self.ctx.config.get('collections') or [])!r}."
+            f"{source_id!r} does not name a file in any directory this plugin "
+            f"knows. Expected '<directory>/<file>', where <directory> is one "
+            f"of the configured collections ({configured!r}) or a directory in "
+            f"nointro_archive/platforms.py."
         )

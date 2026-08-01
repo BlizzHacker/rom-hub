@@ -19,7 +19,7 @@ run offline.
 | `libretro-database` | <https://github.com/BlizzHacker/rom-hub-libretro-database> | `v0.1.0` |
 | `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.1.0` |
 | `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.1.0` |
-| `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.3.0` |
+| `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.4.0` |
 | `openvgdb` | <https://github.com/BlizzHacker/rom-hub-openvgdb> | `v0.2.0` |
 | `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.2.0` |
 | `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.2.0` |
@@ -72,7 +72,8 @@ Run the last one before publishing anything:
 The "Content plugins that reach their whole source" work bumped `aminet`
 0.1.0→0.2.0, `demozoo` 0.1.0→0.2.0, `homebrew` 0.2.0→0.3.0,
 `if-archive` 0.1.0→0.2.0, `itch-io` 0.3.0→0.4.0, `libretro-content`
-0.1.0→0.2.0, `nointro-archive` 0.2.1→0.3.0, `scummvm-freeware`
+0.1.0→0.2.0, `nointro-archive` 0.2.1→0.3.0 and then 0.3.0→0.4.0
+(the `census` capability), `scummvm-freeware`
 0.1.0→0.2.0 and `universal-db` 0.1.0→0.2.0.
 
 The "Emulator-support plugins that ship their whole source" work bumped

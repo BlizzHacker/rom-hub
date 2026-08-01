@@ -977,6 +977,164 @@ class AssetArtifact(BaseModel):
         return v
 
 
+# -- census: enumerating a source completely -----------------------------
+#
+# The other six capabilities answer "what can you give me for this query?".
+# `census` answers a different question -- "what is *all* of it, and how do
+# you know?" -- and the types below exist to make the second answer
+# checkable rather than merely large.
+#
+# The whole design turns on one identity, enforced by `rom_hub.census`:
+#
+#     declared_total == kept + sum(skipped.values())
+#
+# Every entry the source itself declares is either catalogued or skipped
+# for a *named* reason. A number that does not balance is reported as a
+# shortfall rather than rounded into a coverage percentage, because a
+# coverage percentage with no denominator behind it is exactly the claim
+# this capability exists to stop making.
+
+#: How many units one `scope()` may describe. A unit is an item, a
+#: directory, a shard -- something the source itself treats as a container
+#: -- so this is generous for anything shaped like a real source and still
+#: a bound on work an untrusted process can ask the host to do.
+MAX_CENSUS_UNITS = 4096
+
+#: How many records one `enumerate()` page may carry. A page has to cross
+#: the JSON-RPC channel, which caps at `protocol.MAX_MESSAGE_CHARS` (8 MiB)
+#: -- at a realistic ~250 characters per record that frame holds roughly
+#: 33,000, so this sits comfortably under it. A plugin with more to say
+#: returns a cursor and is called again.
+MAX_CENSUS_RECORDS_PER_PAGE = 10000
+
+#: What a unit *is*, in the host's vocabulary. Closed, because the host
+#: prints these, filters on them, and decides default scope with them --
+#: an invented kind would be an unreviewable exclusion.
+#:
+#: `roms`      one entry per game: the shape a library can actually import.
+#: `pack`      archives-of-archives. `NoIntroROMsCollection` is 67 files
+#:             and 44.8 GB; each file is a whole set. Catalogued as what it
+#:             is rather than pretended to be 67 games.
+#: `cdn-dump`  a console maker's distribution tree, mirrored whole.
+#:             `nointro_wiiu_cdn_nov_2020_2` is 928 GB.
+#: `media`     soundtracks, screenshots, videos, box scans -- real files,
+#:             not ROMs.
+#: `dat`       DAT/XML/checksum files: the No-Intro *catalogue*, not its
+#:             contents.
+#: `other`     enumerated and classified as nothing in particular. Never a
+#:             silent bucket: it is printed with its own count.
+KNOWN_CENSUS_KINDS = ("roms", "pack", "cdn-dump", "media", "dat", "other")
+
+_MAX_UNIT_ID_CHARS = 400
+_MAX_RECORD_ID_CHARS = 600
+_MAX_CURSOR_CHARS = 400
+_MAX_REASON_CHARS = 500
+
+
+class CensusUnit(BaseModel):
+    """One container inside a source, and what the source says is in it.
+
+    `declared_total` is the load-bearing field and it is deliberately the
+    source's own number, not the plugin's estimate. For an Archive.org item
+    it is `files_count` off `advancedsearch.php`; for a directory listing it
+    is however many entries the index itself declares. The point is that it
+    is obtained *independently of the walk*, so "we enumerated 820" can be
+    checked against something the walk did not produce. A plugin that
+    genuinely cannot get one sends `None`, and the host reports that unit's
+    completeness as unknown rather than assuming it.
+
+    `include=False` is how a plugin proposes leaving a unit out, and
+    `reason` is required when it does. Excluding a 928 GB CDN dump is a
+    perfectly good decision; excluding it silently is the thing this field
+    exists to prevent.
+    """
+
+    unit_id: str = Field(min_length=1, max_length=_MAX_UNIT_ID_CHARS)
+    label: str = Field(min_length=1, max_length=500)
+    kind: Literal["roms", "pack", "cdn-dump", "media", "dat", "other"] = "other"
+    declared_total: int | None = Field(default=None, ge=0)
+    platform: str | None = Field(default=None, max_length=100)
+    size_bytes: int | None = Field(default=None, ge=0)
+    include: bool = True
+    reason: str = Field(default="", max_length=_MAX_REASON_CHARS)
+    extra: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _exclusions_must_be_explained(self) -> "CensusUnit":
+        if not self.include and not self.reason.strip():
+            raise ValueError(
+                "a unit with include=False must carry a reason: an "
+                "exclusion nobody can read is indistinguishable from a "
+                "source the plugin failed to find"
+            )
+        return self
+
+
+class CensusRecord(BaseModel):
+    """One catalogued thing: a ROM, a pack file, a DAT.
+
+    `extra` is where digests go, under exactly the keys
+    `rom_hub.grouping` reads -- `sha256`, `sha1`, `md5`, `crc32`. That is
+    not a convention this type invents; it is the reason cross-unit
+    deduplication works at all here. Archive.org publishes md5, sha1 and
+    crc32 for every file it holds, so two items mirroring the same ROM
+    under different names collapse on *evidence* rather than on a title
+    parse that happens to agree.
+    """
+
+    record_id: str = Field(min_length=1, max_length=_MAX_RECORD_ID_CHARS)
+    title: str = Field(min_length=1, max_length=500)
+    platform: str | None = Field(default=None, max_length=100)
+    size_bytes: int | None = Field(default=None, ge=0)
+    url: str | None = None
+    extra: dict[str, str] = Field(default_factory=dict)
+
+
+class CensusPage(BaseModel):
+    """One bounded slice of a unit's enumeration.
+
+    `skipped` is what makes the page auditable: a mapping of *reason* to
+    count, covering every entry this page walked past without cataloguing.
+    Archive.org's six bookkeeping files per item are a skip reason; so is
+    "not a ROM extension". The host adds `len(records) + sum(skipped)` to
+    the unit's walked total and compares that with `declared_total` at the
+    end -- so a plugin that quietly drops rows produces a visible shortfall
+    instead of a smaller, tidier, wrong catalogue.
+
+    `cursor` is opaque to the host and is handed straight back on the next
+    call. `None` means the unit is exhausted.
+    """
+
+    records: list[CensusRecord] = Field(
+        default_factory=list, max_length=MAX_CENSUS_RECORDS_PER_PAGE
+    )
+    cursor: str | None = Field(default=None, max_length=_MAX_CURSOR_CHARS)
+    declared_total: int | None = Field(default=None, ge=0)
+    skipped: dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("skipped")
+    @classmethod
+    def _counts_are_counts(cls, v: dict[str, int]) -> dict[str, int]:
+        for reason, count in v.items():
+            if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+                raise ValueError(
+                    f"skip reason {reason!r} must carry a non-negative "
+                    f"integer count, got {count!r}"
+                )
+            if not reason.strip():
+                raise ValueError("a skip reason must not be blank")
+            if len(reason) > _MAX_REASON_CHARS:
+                raise ValueError(
+                    f"skip reason is {len(reason)} characters, over the "
+                    f"{_MAX_REASON_CHARS} limit"
+                )
+        return v
+
+    @property
+    def walked(self) -> int:
+        """Entries this page accounted for: kept plus skipped."""
+        return len(self.records) + sum(self.skipped.values())
+
 # -- torrent -------------------------------------------------------------
 #
 # The seventh capability whose return value the host acts on with its own

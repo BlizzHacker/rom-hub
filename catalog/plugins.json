@@ -893,12 +893,13 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-nointro-archive",
       "install": "https://github.com/BlizzHacker/rom-hub-nointro-archive",
-      "download": "https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.3.0.tar.gz",
-      "version": "0.3.0",
-      "ref": "v0.3.0",
+      "download": "https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.4.0.tar.gz",
+      "version": "0.4.0",
+      "ref": "v0.4.0",
       "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
+        "census",
         "importer",
         "search"
       ],
@@ -910,7 +911,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches 25 No-Intro directories on Archive.org -- 15,165 archives across 25 platforms, Game Boy and Super Nintendo included -- and imports from the index it already read.",
+      "description": "Censuses all 71 `identifier:nointro*` items on Archive.org -- 31,366 declared files, every one accounted for -- and serves search and import from the catalogue it built. `rom-hub census build nointro-archive`.",
       "terms": "Plainly: these are copyrighted commercial console ROMs, and this plugin does not launder that. No-Intro sets are checksum-verified dumps of retail cartridges; the copyright belongs to the publishers, most of whom have never licensed redistribution. Whether you may download one depends on where you live and on whether you own the original media — in the United States the archival exemption courts have recognised does not extend to downloading a copy of something you do not own. The plugin circumvents no access control, paywall, login or robots directive, and `https://archive.org/download/` is a public unauthenticated listing the Archive's robots.txt does not disallow. If you want only material that is unambiguously free to redistribute, use `homebrew` instead.",
       "comments": "Formerly `myrient`. Myrient (myrient.erista.me) shut down on 31 March 2026 and now answers HTTP 200 with the same 2,334-byte notice for every path — including paths it never served — so status codes cannot detect it. The plugin therefore checks that a page actually parsed as an index, which is the only thing standing between a dead source and an HTML page filed as a ROM. Its Myrient index parser and Wayback-captured fixture are retained in case a mirror reproduces that layout. MiNERVA, the successor, `Disallow`s `/browse/` and `/rom/` and is deliberately not used.",
       "platforms": [

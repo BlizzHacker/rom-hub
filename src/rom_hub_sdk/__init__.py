@@ -1,6 +1,9 @@
 from rom_hub.types import (
     MAX_SUMMARY_CHARS,
     AssetArtifact,
+    CensusPage,
+    CensusRecord,
+    CensusUnit,
     CoreArtifact,
     FetchFile,
     FetchPlan,
@@ -14,6 +17,7 @@ from rom_hub.types import (
 
 from .capabilities import (
     AssetProvider,
+    CensusProvider,
     CoreProvider,
     FirmwareProvider,
     ImportProvider,
@@ -33,6 +37,10 @@ __all__ = [
     "SearchResult",
     "SearchProvider",
     "ImportProvider",
+    "CensusProvider",
+    "CensusUnit",
+    "CensusRecord",
+    "CensusPage",
     "CoreProvider",
     "AssetProvider",
     "FirmwareProvider",

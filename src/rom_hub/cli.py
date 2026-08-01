@@ -20,6 +20,7 @@ import getpass
 import importlib
 import json
 import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -52,6 +53,13 @@ from .catalog_sources import (
     read_sources,
     remove_source,
     ttl_seconds,
+)
+from .census import (
+    Catalogue,
+    CensusError,
+    build,
+    catalogue_path,
+    catalogue_root,
 )
 from .cores import CoreError, find_core, install_core
 from .dispatcher import fanout_limit, search_all
@@ -88,7 +96,12 @@ from .torrents import (
     parse_torrent,
     write_handoff,
 )
-from .types import KNOWN_ASSET_KINDS, MAX_TORRENT_BYTES, SearchResult
+from .types import (
+    KNOWN_ASSET_KINDS,
+    KNOWN_CENSUS_KINDS,
+    MAX_TORRENT_BYTES,
+    SearchResult,
+)
 
 #: The directory this repository ships. Kept as a module attribute because
 #: it was one before there were several, and because "the bundled one" is
@@ -1093,6 +1106,41 @@ def _print_groups(page, expand: set[int]) -> None:
             )
 
 
+def _catalogue_rows(plugin, query, platform, limit):
+    """This plugin's catalogue answering a search, or None for "no catalogue".
+
+    None is the signal to go to the network, and it is returned for every
+    ordinary reason: the plugin has no `census` capability, nobody has
+    built one yet, or the file is unreadable. A catalogue is an
+    *improvement* on a live search, never a prerequisite for one -- so a
+    failure to open it must degrade to the behaviour that existed before
+    it, silently and in the direction of still working.
+
+    A catalogue that exists but holds nothing is treated as absent too. An
+    empty catalogue means the build has not run or found nothing, and
+    answering "no results" out of it would suppress the live search that
+    would have found some.
+    """
+    if "census" not in plugin.manifest.capabilities:
+        return None
+    try:
+        path = catalogue_path(default_root(), plugin.slug)
+        if not path.exists():
+            return None
+        with Catalogue(path) as catalogue:
+            rows = catalogue.results(query, platform, limit)
+    except (CensusError, sqlite3.Error, OSError):
+        return None
+    if not rows:
+        return None
+    for row in rows:
+        # The host stamps this on a live result after the plugin returns;
+        # a catalogued row has to carry the same thing or `import` cannot
+        # tell which plugin to ask for a plan.
+        row.plugin = plugin.slug
+    return rows
+
+
 def _cmd_search(args) -> int:
     plugins = Registry(default_root()).installed()
     searchable = [p for p in plugins if p.enabled and "search" in p.manifest.capabilities]
@@ -1117,6 +1165,7 @@ def _cmd_search(args) -> int:
             allow_unsandboxed=allow_unsandboxed(),
             assets_for=prepare_assets,
             secrets_for=prepare_secrets,
+            catalogue_for=None if args.live else _catalogue_rows,
         )
     finally:
         fetcher.close()
@@ -1149,6 +1198,14 @@ def _cmd_search(args) -> int:
 
     # Partial answers stay partial: grouping reorganises what came back, it
     # cannot know what a source that failed would have said.
+    if outcome.from_catalogue:
+        print(
+            f"  {', '.join(outcome.from_catalogue)} answered from a built "
+            f"catalogue rather than the network -- 'rom-hub census report "
+            f"<plugin>' says how complete it is and when it was built; "
+            f"--live asks the source instead",
+            file=sys.stderr,
+        )
     if outcome.capped:
         print(
             f"  note: {', '.join(outcome.capped)} returned the full "
@@ -2184,6 +2241,209 @@ def _cmd_backend_info(args) -> int:
     return EXIT_OK
 
 
+def _cmd_catalogue_build(args) -> int:
+    """Enumerate a whole source into a catalogue that can prove its coverage.
+
+    Long-running by nature -- seventy-one Archive.org items is minutes, not
+    seconds -- and interruptible by design: every page is committed as it
+    arrives, so re-running this resumes rather than restarting.
+    """
+    root = default_root()
+    plugin = Registry(root).get(args.plugin)
+    refusal = _require_capability(plugin, "census")
+    if refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return EXIT_ERROR
+
+    kinds = _requested_kinds(args.kinds)
+    data_assets = prepare_assets(plugin, root)
+    secrets = prepare_secrets(plugin, root)
+    fetcher = HttpxFetcher()
+
+    def open_process():
+        """A freshly started subprocess, on demand.
+
+        A factory rather than one process, because the host enforces its
+        call budget by killing the plugin -- so one slow unit leaves the
+        process dead and `rom_hub.census` has to be able to start another.
+        The assets and secrets are resolved once, above, and reused: they
+        are the same for every restart and re-reading a secret per unit
+        would keep it in memory far longer than necessary.
+        """
+        proc = PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
+            secrets=secrets,
+        )
+        proc.start()
+        return proc
+
+    try:
+        with Catalogue(catalogue_path(root, plugin.slug)) as catalogue:
+            report = build(
+                open_process,
+                catalogue,
+                slug=plugin.slug,
+                kinds=kinds,
+                progress=(lambda line: print(line)) if args.verbose else None,
+            )
+    finally:
+        fetcher.close()
+
+    _print_report(report, units=args.units)
+    # A build that could not account for everything it walked is not a
+    # success, and a script that branches on the exit code should be able
+    # to tell. The catalogue is still written and still usable.
+    return EXIT_OK if report.complete else EXIT_ERROR
+
+
+def _cmd_catalogue_report(args) -> int:
+    root = default_root()
+    plugin = Registry(root).get(args.plugin)
+    path = catalogue_path(root, plugin.slug)
+    if not path.exists():
+        print(
+            f"no catalogue for {plugin.slug!r} yet -- build one with "
+            f"'rom-hub census build {plugin.slug}'",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+    with Catalogue(path) as catalogue:
+        report = catalogue.report(distinct=True)
+    _print_report(report, units=args.units)
+    return EXIT_OK
+
+
+def _cmd_catalogue_list(args) -> int:
+    root = default_root()
+    directory = catalogue_root(root)
+    paths = sorted(directory.glob("*.sqlite3")) if directory.exists() else []
+    if not paths:
+        print("no catalogues have been built yet")
+        return EXIT_OK
+    for path in paths:
+        with Catalogue(path) as catalogue:
+            report = catalogue.report()
+        print(report.headline())
+        print(f"    {catalogue_freshness(report)}")
+    return EXIT_OK
+
+
+def _requested_kinds(raw: str | None) -> tuple[str, ...] | None:
+    """`--kinds` as a tuple, refusing a word the host has no meaning for.
+
+    A typo here would silently narrow the scope -- `--kinds rom` would walk
+    nothing and report "0 units", which reads like an empty source rather
+    than like a mistake. So an unknown kind is named alongside the ones
+    that exist.
+    """
+    if not raw:
+        return None
+    wanted = tuple(k.strip() for k in raw.split(",") if k.strip())
+    unknown = [k for k in wanted if k not in KNOWN_CENSUS_KINDS]
+    if unknown:
+        raise CensusError(
+            f"unknown census kind(s) {unknown!r}; the host knows "
+            f"{', '.join(KNOWN_CENSUS_KINDS)}"
+        )
+    return wanted or None
+
+
+def catalogue_freshness(report) -> str:
+    """How old the catalogue is, in words. Staleness is a fact about it.
+
+    A catalogue is a snapshot, and a snapshot that does not say when it was
+    taken invites being read as current. Sources gain and lose items.
+    """
+    age = report.age_seconds
+    if age is None:
+        return "never built"
+    hours = age / 3600
+    if hours < 1:
+        return f"built {int(age / 60)} minutes ago"
+    if hours < 48:
+        return f"built {int(hours)} hours ago"
+    return f"built {int(hours / 24)} days ago -- re-run the build to refresh it"
+
+
+def _print_report(report, *, units: bool = False) -> None:
+    """The completeness report: the claim, then the working behind it."""
+    print(report.headline())
+    print(f"  {catalogue_freshness(report)}")
+
+    if report.games is not None:
+        print(
+            f"  {report.kept:,} catalogued rows -> {report.variants:,} distinct "
+            f"dumps in {report.games:,} games (merged by rom_hub.grouping)"
+        )
+
+    skipped = report.skipped
+    if skipped:
+        print("  skipped, by reason:")
+        for reason, count in skipped.items():
+            print(f"    {count:>8,}  {reason}")
+
+    unmapped = sum(
+        1 for u in report.walked_units if u.platform is None
+    )
+    if unmapped:
+        print(
+            f"  note: {unmapped} of {len(report.walked_units)} walked units "
+            f"state no platform of their own; records carry their own"
+        )
+
+    if report.excluded_units:
+        print(f"  excluded ({len(report.excluded_units)} units):")
+        for unit in sorted(
+            report.excluded_units, key=lambda u: -(u.declared_total or 0)
+        ):
+            print(
+                f"    {(unit.declared_total or 0):>8,}  {unit.unit_id}  "
+                f"[{unit.kind}]  {unit.reason}"
+            )
+
+    # Each unit is reported once, under the verdict that actually applies.
+    # A failed unit has a shortfall too, and printing it under both
+    # headings made one problem look like two.
+    if report.failed_units:
+        print(
+            f"  could not be read ({len(report.failed_units)} units, "
+            f"{report.unreachable:,} declared entries):",
+            file=sys.stderr,
+        )
+        for unit in sorted(
+            report.failed_units, key=lambda u: -(u.declared_total or 0)
+        ):
+            print(
+                f"    {(unit.declared_total or 0):>8,}  {unit.unit_id}: "
+                f"{unit.error}",
+                file=sys.stderr,
+            )
+
+    for unit in report.walked_units:
+        if unit.state != "failed" and unit.shortfall:
+            print(
+                f"  ! {unit.unit_id}: declared {unit.declared_total:,} but "
+                f"accounted for {unit.walked:,} -- {unit.shortfall:,} "
+                f"neither catalogued nor explained",
+                file=sys.stderr,
+            )
+
+    if units:
+        print()
+        print(f"{'UNIT':<52} {'KIND':<9} {'DECL':>7} {'KEPT':>7} {'STATE':<9}")
+        for unit in report.units:
+            declared = f"{unit.declared_total:,}" if unit.declared_total else "?"
+            print(
+                f"{unit.unit_id[:52]:<52} {unit.kind:<9} {declared:>7} "
+                f"{unit.kept:>7,} {unit.state:<9}"
+            )
+
+
 def _cmd_catalog_list(args) -> int:
     """The configured directories, in precedence order, with their health.
 
@@ -2515,6 +2775,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="expand every row on the page",
     )
     search.add_argument(
+        "--live",
+        action="store_true",
+        help=(
+            "ignore any built catalogue and ask every source over the "
+            "network, as searches did before 'rom-hub census build'"
+        ),
+    )
+    search.add_argument(
         "--no-group",
         action="store_true",
         help="do not merge anything: one line per raw result, as before",
@@ -2769,6 +3037,60 @@ def build_parser() -> argparse.ArgumentParser:
     )
     firmware_install.set_defaults(func=_cmd_firmware_install)
 
+    census = sub.add_parser(
+        "census",
+        help=(
+            "build and inspect a full enumeration of a source, with a "
+            "coverage figure that has a denominator behind it"
+        ),
+    )
+    censussub = census.add_subparsers(dest="census_command", required=True)
+
+    cat_build = censussub.add_parser(
+        "build",
+        help=(
+            "enumerate every unit of a source into a local catalogue "
+            "(resumable: re-run to continue an interrupted walk)"
+        ),
+    )
+    cat_build.add_argument("plugin", help="slug of an installed census plugin")
+    cat_build.add_argument(
+        "--kinds",
+        default=None,
+        help=(
+            "comma-separated unit kinds to walk (default: roms). Widening "
+            "this is how a bulk pack or a CDN dump gets catalogued; every "
+            "kind left out is listed in the report with its reason. Known: "
+            + ", ".join(KNOWN_CENSUS_KINDS)
+        ),
+    )
+    cat_build.add_argument(
+        "--units",
+        action="store_true",
+        help="print a row per unit: declared, kept and state",
+    )
+    cat_build.add_argument(
+        "--verbose",
+        action="store_true",
+        help="print each unit as it is walked",
+    )
+    cat_build.set_defaults(func=_cmd_catalogue_build)
+
+    cat_report = censussub.add_parser(
+        "report",
+        help="what the catalogue holds, against what the source says exists",
+    )
+    cat_report.add_argument("plugin", help="slug of a plugin with a catalogue")
+    cat_report.add_argument(
+        "--units",
+        action="store_true",
+        help="print a row per unit: declared, kept and state",
+    )
+    cat_report.set_defaults(func=_cmd_catalogue_report)
+
+    cat_list = censussub.add_parser("list", help="every catalogue that has been built")
+    cat_list.set_defaults(func=_cmd_catalogue_list)
+
     catalog = sub.add_parser(
         "catalog",
         help="manage the plugin directories the Hub reads",
@@ -2857,6 +3179,7 @@ def main(argv: list[str] | None = None) -> int:
         RegistryError,
         ManifestError,
         CatalogError,
+        CensusError,
         PluginCallError,
         CoreError,
         FirmwareError,

@@ -461,9 +461,10 @@ api_key     = { type = "secret" }           # never in state.json; no default al
 | `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` | downloads into the configured cores directory |
 | `firmware` | `list()` / `plan(firmware)` | `FirmwareArtifact[]` / `FetchPlan` | downloads into the configured firmware directory, unpacks the declared archive members, and stores the files in the library where the backend can hold firmware |
 | `assets` | `list()` / `plan(asset)` | `AssetArtifact[]` / `FetchPlan` | downloads into the directory configured for the item's `kind` — shaders, overlays, cheats, controller profiles. Touches no library at all |
+| `census` | `scope()` / `enumerate(unit, cursor)` | `CensusUnit[]` / `CensusPage` | walks every unit into a local catalogue, checks `kept + skipped` against the source's own declared total per unit, and serves search from it. See [Completeness](#completeness-catalogues-that-can-prove-it) |
 | `torrent` | `resolve(result)` | `TorrentSource` — a `.torrent` URL or a magnet, plus which files inside are wanted | fetches and **reads** the torrent as a verified file manifest, then: prints it, hands it to the torrent client the operator already runs, or pulls one named file from the torrent's own https web seed and checks it against the torrent's own digest. Links no BitTorrent client and speaks no peer protocol |
 
-**RPP v1 is fully implemented.** All eight capabilities have a host
+**RPP v1 is fully implemented.** All nine capabilities have a host
 implementation, a CLI command and tests that exercise them through a real
 plugin subprocess.
 
@@ -1639,6 +1640,188 @@ $ rom-hub search sonic                 →  47 results in 11 games
 `Sonic The Hedgehog 2` (3) and `Sonic The Hedgehog - Triple Trouble` (2) stay
 **three** rows, which is the case this design is most concerned with getting
 wrong. `--expand 5` lists all 21 Spinball betas, each with its own date.
+
+---
+
+## Completeness: catalogues that can prove it
+
+Everything above makes a *search* better. This section is about a different
+claim, and the difference is the whole point.
+
+`nointro-archive` used to report **15,165 archives across 25 directories**.
+That number is true and it answers the wrong question: 25 is the length of a
+list in `manifest.toml`, so the figure describes the plugin's configuration
+rather than the source. The right question — *what is all of it?* — had no
+answer, and "15,165 reachable" reads as if it did.
+
+**A completeness claim needs a denominator you can defend.** That is what
+the `census` capability and `rom_hub.census` exist to produce.
+
+### The identity
+
+Per unit, and checkable by anyone who can read the source:
+
+```
+declared_total  ==  kept  +  sum(skipped.values())
+```
+
+* **`declared_total` comes from the source, by a different request than the
+  walk.** For an Archive.org item it is `files_count` from
+  `advancedsearch.php`, while the enumeration reads the *metadata* endpoint.
+  Two services, two requests — so "we enumerated 820 files in `nointro.gg`"
+  is checked against a number the enumeration had no hand in producing.
+  Verified across all 71 items: the two agree every time. A denominator
+  derived from the walk could not disagree with the walk, so it would prove
+  nothing.
+* **`skipped` is a mapping of reason to count**, covering every entry walked
+  past. Archive.org's six bookkeeping files per item are a skip reason. This
+  is the mechanism: a plugin that silently drops rows produces a visible
+  shortfall instead of a smaller, tidier catalogue nobody can tell is
+  smaller.
+* **Anything left over is printed as a shortfall**, never folded into a
+  percentage.
+
+A plugin that cannot obtain a real total sends `None`, and the unit is
+reported as *unmeasured* — which is deliberately not the same as complete.
+
+### Unreachable is not the same as missing
+
+Two failures look alike in a total and are entirely different findings:
+
+* **Unreachable** — the unit could not be read. The source says it holds 825
+  files; the Hub timed out or got a 503. Trying again may fix it.
+* **Shortfall** — the unit *was* read and still does not balance. That is a
+  bug in the plugin, and no amount of retrying helps.
+
+`CompletenessReport` keeps them in separate fields and the CLI prints them
+under separate headings. Both block a completeness claim; neither is ever
+dropped from the denominator, and a source that cannot be reached is never
+presented as complete.
+
+This distinction was not theoretical. The first live build reported
+**15,477 of 29,955** — honest arithmetic about entirely the wrong thing.
+`PluginProcess` enforces its 30-second budget by *killing* the subprocess,
+so one rate-limited item left the process dead and the seventeen units
+behind it all failed with "plugin process is not running". Those seventeen
+were perfectly reachable. The driver now replaces a dead process
+(`census._Worker`), the plugin bounds its own retry loop below the host's
+budget, and the same build reports **29,955 of 29,955**.
+
+### Classified, not merged blindly
+
+The 71 items matching `identifier:nointro*` — *items*, not a collection;
+`collection:nointro` returns zero — are not the same kind of thing. A unit
+carries a `kind`, the operator chooses which kinds to walk with `--kinds`,
+and **every unit not walked is named in the report with its reason**:
+
+| kind | units | declared | what it is |
+|---|---:|---:|---|
+| `roms` | 43 | 29,955 | one entry per game — walked by default |
+| `pack` | 11 | 215 | archives-of-archives; each file is a whole machine's set |
+| `cdn-dump` | 4 | 1,105 | a console maker's distribution tree, up to 928 GB |
+| `media` | 3 | 37 | soundtracks, screenshots, video |
+| `other` | 10 | 54 | too few files to be a set |
+
+Excluding a 928 GB Wii U CDN mirror is a good decision. Excluding it
+*silently* is the thing being complained about, so `CensusUnit` refuses an
+exclusion that carries no reason.
+
+The classifier reads only what one search response already returns
+(`mediatype`, `files_count`, `item_size`), so the whole scope is decided
+before any item is opened. It is not a curated per-item list — a hand list
+would be right about these 71 items and silent about the 72nd.
+
+### Deduplication is not reimplemented
+
+`rom_hub.grouping` already answers "same game?" and "same dump?" with an
+evidence ladder — a matching strong hash is proof, a conflicting hash is
+disproof and outranks the name, otherwise the parsed name decides. The
+census stores Archive.org's published `md5`, `sha1` and `crc32` under the
+keys grouping reads and **calls it**, rather than counting distinct keys
+itself. One deduplicator, one documented failure direction.
+
+That is load-bearing here. `NoIntro_VirtualBoy` and `NoIntroVirtualBoy` are
+separate uploads with 31 byte-identical archives, and they collapse on
+proof. `NoIntroNintendo`, titled "No Intro - Nintendo", shares 31 hashes
+with `NoIntroVirtualBoy` — it is a mislabelled Virtual Boy set, and the
+hashes say so where the title does not. Where two items package the same
+ROM as `.7z` and `.zip` the container hashes genuinely differ and the name
+parse decides instead; where neither agrees, the result is *more rows*,
+never a wrong merge.
+
+### Storage: why not `[[data_assets]]`
+
+A data asset **exists upstream** with a **sha256 known before install**. A
+catalogue has neither property: it does not exist until the Hub builds it,
+its digest changes on every rebuild, and it must be appended to across
+processes as a long walk resumes. A manifest digest for a file that changes
+every time it is built would be a lie in a reviewable place.
+
+So it is SQLite at `<ROM_HUB_HOME>/var/catalogues/<slug>.sqlite3` — beside
+`var/plugin-data`, for the same reason: runtime state that grows, kept out
+of the repo. Every page is committed as it arrives, so a build killed
+anywhere resumes at the unit and cursor it reached. One writer at a time;
+there is no WAL here, exactly as with `jobs.db`.
+
+### What it buys
+
+A catalogue answers `rom-hub search` before a subprocess is started, and it
+reaches rows a live search cannot. Measured:
+
+```
+$ rom-hub search "impossible mission" --platform c64 --live
+1 of 1 sources responded, 0 results in 0 games
+
+$ rom-hub search "impossible mission" --platform c64
+1  nointro-archive  c64  Impossible Mission     [2 variants]
+2  nointro-archive  c64  Impossible Mission II  [4 variants]
+1 of 1 sources responded, 6 results in 2 games
+```
+
+Those rows live in `NoIntro-commodore-64_202302`, an item nobody had put in
+`collections`. `PluginStatus.served_from` records which path answered, and
+the CLI says so — a catalogue covers the whole source and may be stale, a
+live search covers whatever the plugin reached and is current. `--live`
+forces the old path, and a missing or unreadable catalogue degrades to it
+silently.
+
+### `softwarelibrary` (250,398): measured, deliberately not built
+
+The next largest source. Everything below was measured live on 2026-08-01,
+and it is written down because the next person should start from data.
+
+**Enumeration is affordable.** A lean two-field read costs **155 bytes per
+document**, so the host's 4 MiB cap holds ~17,800 — and `item_size` is
+present on **all 250,398** items (`NOT item_size:[* TO *]` matches zero),
+so `archive_org.index._collect`'s existing window partitioning covers the
+collection with roughly 26 windows and ~52 requests. `numFound` was stable
+across repeated calls. Two to four minutes of polite requests, not hours.
+
+**The unit decomposition is the unsolved part, and it is not a detail.**
+`census` needs units whose declared totals *sum* to the collection's, or
+the headline number is a lie in the direction that flatters. Sub-collections
+look like the obvious answer and are not a partition — they **overlap**. In
+one 500-item sample, 440 items were in `softwarelibrary_apple` *and* 433 in
+`softwarelibrary_apple_contribs` *and* all 500 in `softwarelibrary` itself.
+Summing `softwarelibrary_c64` (98,843), `_apple` (42,273), `_msdos`
+(23,200), `_atari` (15,570), `_amiga` (13,206) and `_zx_spectrum` (12,305)
+double-counts, and a catalogue built on them would report more entries than
+the collection has while claiming to be complete.
+
+`item_size` windows *are* disjoint by construction and each one's
+`declared_total` can be had from its own `rows=0` request — a genuine
+independent denominator, and the sum is checkable against 250,398. That is
+the design worth building. It was not built here because it is a different
+shape from the No-Intro census (where the source's own items were already
+disjoint), it needs its own verification, and shipping a 250k catalogue
+whose arithmetic had not been proved is precisely the failure this whole
+section exists to prevent.
+
+So `softwarelibrary` remains served by `archive-org`'s live search, which
+is honest about being a search. Note also that 220,228 of the items carry
+an `emulator` field and 244,457 are downloadable, so the useful scope is
+most but not all of it — another reason the unit design has to be settled
+before a number is published.
 
 ---
 

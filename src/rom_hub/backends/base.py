@@ -275,8 +275,15 @@ UNGATED_CAPABILITIES = frozenset({SCAN})
 #: capability in it would make `rom-hub backend info` print `assets` under
 #: "cannot" for every backend ever written -- true only in the sense that
 #: a hammer cannot tell the time.
+#:
+#: `census` joins them for the strongest version of the same reason: it
+#: enumerates a *source* and writes its answer to a catalogue of the Hub's
+#: own (`rom_hub.census`). Nothing about a library server is consulted,
+#: which is the point -- knowing that a source holds 30,772 files and that
+#: 15,165 of them are catalogued is a fact about the source, and it must be
+#: obtainable before an operator has decided what to import it into.
 BACKEND_INDEPENDENT_CAPABILITIES = frozenset(
-    {"search", "stream", "cores", "assets", "torrent"}
+    {"search", "stream", "cores", "assets", "census", "torrent"}
 )
 
 #: One line each, for `rom-hub backend info`. A capability list is only
