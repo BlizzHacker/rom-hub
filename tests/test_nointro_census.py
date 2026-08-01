@@ -336,7 +336,7 @@ def test_a_build_over_the_captured_items_is_complete_and_says_so(tmp_path):
             return [u for u in self._census.scope() if u.unit_id in only]
 
     with Catalogue(tmp_path / "c.sqlite3") as catalogue:
-        report = build(Scoped(census), catalogue, slug="nointro-archive")
+        report = build(lambda: Scoped(census), catalogue, slug="nointro-archive")
 
     assert report.complete, report.headline()
     assert report.shortfall == 0
@@ -362,7 +362,7 @@ def test_two_uploads_of_one_set_collapse_on_hash_evidence(tmp_path):
             return [u for u in self._census.scope() if u.unit_id in both]
 
     with Catalogue(tmp_path / "c.sqlite3") as catalogue:
-        report = build(Scoped(census), catalogue, slug="nointro-archive")
+        report = build(lambda: Scoped(census), catalogue, slug="nointro-archive")
         rows = catalogue.results()
 
     assert report.complete
@@ -383,7 +383,7 @@ def test_the_catalogue_serves_a_search_for_a_platform_it_maps(tmp_path):
             return [u for u in self._census.scope() if u.unit_id in META]
 
     with Catalogue(tmp_path / "c.sqlite3") as catalogue:
-        build(Scoped(census), catalogue, slug="nointro-archive")
+        build(lambda: Scoped(census), catalogue, slug="nointro-archive")
         # `NoIntroVirtualBoy` maps to `virtualboy`; the Casio item does not
         # map at all, and its rows are catalogued with no platform.
         vb = catalogue.results(platform="virtualboy")

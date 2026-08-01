@@ -280,11 +280,37 @@ class CompletenessReport:
         return sum(u.walked for u in self.walked_units)
 
     @property
-    def shortfall(self) -> int:
-        """In-scope entries neither catalogued nor explained. Zero is the
-        only value that supports a completeness claim."""
+    def unreachable(self) -> int:
+        """Declared entries in units the Hub could not read at all.
+
+        Kept apart from `shortfall`, because the two are different findings
+        and conflating them was the first thing this report got wrong. A
+        unit that 404s or times out is *unreachable*: the source says it
+        holds 825 files and the Hub could not see them. A unit that was
+        read successfully and still does not balance is a *shortfall*: the
+        Hub walked it and lost rows, which is a bug in the plugin.
+
+        Both keep the catalogue from being complete. Only one of them is
+        fixable by trying again.
+        """
         return sum(
-            u.shortfall for u in self.walked_units if u.shortfall is not None
+            u.shortfall
+            for u in self.walked_units
+            if u.state == FAILED and u.shortfall is not None
+        )
+
+    @property
+    def shortfall(self) -> int:
+        """Entries a *successful* walk neither catalogued nor explained.
+
+        Zero is the only value that supports a completeness claim, and on a
+        healthy build it is the number that should never move: a unit that
+        was read at all should account for every entry the source declared.
+        """
+        return sum(
+            u.shortfall
+            for u in self.walked_units
+            if u.state != FAILED and u.shortfall is not None
         )
 
     @property
@@ -324,12 +350,20 @@ class CompletenessReport:
             head = f"{self.slug}: complete -- {scope}"
         else:
             head = f"{self.slug}: {scope}"
+            if self.failed_units:
+                # Named first and named as unreachable, because that is the
+                # honest word for it: the source says those entries exist
+                # and the Hub could not read them. Presenting them as
+                # "missing" would suggest they are gone, and folding them
+                # into a coverage percentage would hide them entirely.
+                head += (
+                    f", {self.unreachable:,} unreachable in "
+                    f"{len(self.failed_units)} units that could not be read"
+                )
             if self.shortfall:
                 head += f", {self.shortfall:,} unaccounted for"
             if self.unmeasured:
                 head += f", {len(self.unmeasured)} units with no declared total"
-            if self.failed_units:
-                head += f", {len(self.failed_units)} failed"
         if self.excluded_units:
             head += (
                 f"; {len(self.excluded_units)} units excluded "
@@ -617,69 +651,152 @@ class Catalogue:
 # -- the driver ----------------------------------------------------------
 
 
+#: How many times the subprocess may be replaced during one build. A unit
+#: that kills the plugin costs one restart, and a source of seventy-one
+#: units cannot need more restarts than it has units -- so this is a stop
+#: on a plugin that dies every single time, not a working budget.
+MAX_RESTARTS = 100
+
+
+class _Worker:
+    """The plugin subprocess, replaced when a unit kills it.
+
+    This class exists because of a failure observed on the first real
+    build, and it is worth writing down because the naive driver looks
+    correct until it happens.
+
+    `PluginProcess` enforces its 30-second call budget by **killing the
+    subprocess** -- that is the only portable way to interrupt a blocking
+    read on a pipe. So a single slow unit does not merely fail: it leaves
+    the process dead, and every following unit fails with "plugin process
+    is not running". Measured, one rate-limited 28-file item took out
+    seventeen units behind it, including every one of the big sets. The
+    catalogue then reported 15,477 of 29,955 -- an honest number, and
+    honest about entirely the wrong thing, because those seventeen units
+    were perfectly reachable.
+
+    The fix is not a longer timeout. It is to treat a dead process as an
+    ordinary consequence of a failed unit and start another one. The
+    catalogue is already resumable per unit, so the restart costs one
+    subprocess launch and nothing else.
+    """
+
+    def __init__(self, open_process, max_restarts: int = MAX_RESTARTS):
+        self._open = open_process
+        self._proc = None
+        self.max_restarts = max_restarts
+        self.restarts = 0
+        self.exhausted = False
+
+    def get(self):
+        """A live process, starting one if the last was killed."""
+        if self._proc is None:
+            if self.exhausted:
+                raise CensusError(
+                    f"the plugin subprocess has been replaced "
+                    f"{self.restarts} times, the ceiling; it is dying on "
+                    f"every unit rather than on an unlucky one"
+                )
+            self._proc = self._open()
+        return self._proc
+
+    def recycle(self) -> None:
+        """Discard the current process; the next unit gets a fresh one.
+
+        Called after *any* unit failure rather than only after a detected
+        death. Distinguishing "the plugin raised" from "the process was
+        killed" would mean parsing an error message, and the cost of being
+        wrong is the cascade above. A subprocess launch is milliseconds and
+        a unit failure is rare, so recycling unconditionally is the cheap
+        side of that trade.
+        """
+        self.close()
+        self.restarts += 1
+        if self.restarts >= self.max_restarts:
+            self.exhausted = True
+
+    def close(self) -> None:
+        proc, self._proc = self._proc, None
+        closer = getattr(proc, "close", None)
+        if closer is not None:
+            try:
+                closer()
+            except Exception:  # noqa: BLE001 - teardown must not mask a result
+                pass
+
+
 def build(
-    proc,
+    open_process,
     catalogue: Catalogue,
     *,
     slug: str,
     kinds=None,
     progress=None,
     max_pages_per_unit: int = MAX_PAGES_PER_UNIT,
+    max_restarts: int = MAX_RESTARTS,
 ) -> CompletenessReport:
     """Walk every in-scope unit of one source into `catalogue`.
 
-    `proc` is a started `PluginProcess`. The whole walk runs against one
-    subprocess -- a scope call and then many page calls -- because each
-    call has its own 30-second budget and a full enumeration has no chance
-    of fitting inside one. That is why `CensusProvider` is shaped as
-    "cursor in, page out" rather than "return everything": the budget is
-    per call, so the way to spend an unbounded amount of time is to make a
-    bounded number of calls many times.
+    `open_process` is a zero-argument callable returning a **started**
+    plugin process -- not a process, because one build may need several.
+    See `_Worker` for what went wrong when this took a single process.
 
-    Every page is committed before the next is asked for. A build killed
-    at any point leaves a catalogue that resumes; nothing is held in memory
+    A full enumeration cannot fit in one call: each has a 30-second budget.
+    That is why `CensusProvider` is shaped as "cursor in, page out" -- the
+    way to spend an unbounded amount of time is to make a bounded number of
+    calls many times.
+
+    Every page is committed before the next is asked for. A build killed at
+    any point leaves a catalogue that resumes; nothing is held in memory
     waiting for a final flush.
     """
-    units = proc.census_scope()
-    catalogue.begin(slug, units, kinds=kinds)
-    _say(progress, f"{slug}: scope is {len(units)} units")
+    worker = _Worker(open_process, max_restarts=max_restarts)
+    try:
+        units = worker.get().census_scope()
+        catalogue.begin(slug, units, kinds=kinds)
+        _say(progress, f"{slug}: scope is {len(units)} units")
 
-    for unit, cursor in catalogue.pending():
-        pages = 0
-        try:
-            while True:
-                page = proc.census_page(unit, cursor)
-                stored = catalogue.add_page(unit.unit_id, page)
-                pages += 1
-                _say(
-                    progress,
-                    f"{slug}: {unit.unit_id} +{stored} "
-                    f"({'more' if page.cursor else 'done'})",
-                )
-                if page.cursor is None:
-                    break
-                if page.cursor == cursor:
-                    # A cursor that does not move is a plugin bug, and the
-                    # honest response is to stop this unit and say so
-                    # rather than to loop until the operator notices.
-                    raise CensusError(
-                        f"cursor {page.cursor!r} did not advance; the unit "
-                        f"cannot be finished without re-reading the same page"
+        for unit, cursor in catalogue.pending():
+            pages = 0
+            try:
+                while True:
+                    page = worker.get().census_page(unit, cursor)
+                    stored = catalogue.add_page(unit.unit_id, page)
+                    pages += 1
+                    _say(
+                        progress,
+                        f"{slug}: {unit.unit_id} +{stored} "
+                        f"({'more' if page.cursor else 'done'})",
                     )
-                cursor = page.cursor
-                if pages >= max_pages_per_unit:
-                    raise CensusError(
-                        f"stopped after {pages} pages, the per-unit ceiling; "
-                        f"the unit is recorded as partial rather than complete"
-                    )
-        except Exception as exc:  # noqa: BLE001 - one unit's failure, isolated
-            # Isolated exactly like a search fan-out: one item that 404s or
-            # times out costs its own rows and nothing else, and the report
-            # names it. A build that abandoned seventy units because the
-            # seventy-first was unavailable would be useless on a service
-            # that rate-limits.
-            catalogue.fail_unit(unit.unit_id, f"{type(exc).__name__}: {exc}")
-            _say(progress, f"{slug}: {unit.unit_id} FAILED: {exc}")
+                    if page.cursor is None:
+                        break
+                    if page.cursor == cursor:
+                        # A cursor that does not move is a plugin bug, and
+                        # the honest response is to stop this unit and say
+                        # so rather than loop until somebody notices.
+                        raise CensusError(
+                            f"cursor {page.cursor!r} did not advance; the "
+                            f"unit cannot be finished without re-reading "
+                            f"the same page"
+                        )
+                    cursor = page.cursor
+                    if pages >= max_pages_per_unit:
+                        raise CensusError(
+                            f"stopped after {pages} pages, the per-unit "
+                            f"ceiling; the unit is recorded as partial "
+                            f"rather than complete"
+                        )
+            except Exception as exc:  # noqa: BLE001 - one unit, isolated
+                # Isolated like a search fan-out: one item that 404s, times
+                # out or kills the plugin costs its own rows and nothing
+                # else, and the report names it. A build that abandoned
+                # seventy units because the seventy-first was unavailable
+                # would be useless against a service that rate-limits.
+                catalogue.fail_unit(unit.unit_id, f"{type(exc).__name__}: {exc}")
+                _say(progress, f"{slug}: {unit.unit_id} FAILED: {exc}")
+                worker.recycle()
+    finally:
+        worker.close()
 
     return catalogue.report(distinct=True)
 

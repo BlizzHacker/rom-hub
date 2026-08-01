@@ -120,7 +120,27 @@ SKIP_DIRECTORY = "a directory entry, not a file"
 #: Backoff between retries of one request, in seconds. Additive rather than
 #: exponential: this is a free public service being asked seventy-one
 #: polite questions, not a hot loop worth an aggressive curve.
-RETRY_WAITS = (1.0, 3.0)
+RETRY_WAITS = (1.0, 2.0)
+
+#: How long one capability call may spend before this plugin gives up on
+#: its own terms.
+#:
+#: **This exists because exceeding the host's budget is far worse than
+#: failing inside it.** The host enforces its 30-second ceiling by killing
+#: the subprocess -- the only portable way to interrupt a blocking pipe
+#: read -- so a plugin that overruns does not fail one unit, it dies. On
+#: the first real build a single rate-limited request did exactly that,
+#: and the seventeen units queued behind it all failed with "plugin
+#: process is not running". The host now restarts the subprocess (see
+#: `rom_hub.census._Worker`), but a plugin that provokes a kill on every
+#: slow request is still a plugin that turns a retry into a restart.
+#:
+#: So the retry loop is bounded by wall clock as well as by attempt count,
+#: and the budget is set below the host's ceiling with room for the
+#: in-flight request to return. Overrunning this raises `CensusUnavailable`
+#: -- a legible failure for one unit, which is what a rate-limited request
+#: should cost.
+CALL_BUDGET_SECONDS = 20.0
 
 
 class CensusUnavailable(Exception):
@@ -330,9 +350,22 @@ class Census(CensusProvider):
         status code is only the first one.
         """
         last = "no attempt was made"
+        deadline = time.monotonic() + CALL_BUDGET_SECONDS
         for index in range(len(RETRY_WAITS) + 1):
             if index:
-                time.sleep(RETRY_WAITS[index - 1])
+                wait = RETRY_WAITS[index - 1]
+                if time.monotonic() + wait >= deadline:
+                    # Sleeping then asking again would overrun the host's
+                    # call budget, and overrunning it kills this process
+                    # rather than failing this call. Give up on our own
+                    # terms while there is still time to say so.
+                    last = (
+                        f"{last}; gave up after "
+                        f"{CALL_BUDGET_SECONDS:.0f}s rather than overrun "
+                        f"the host's call budget"
+                    )
+                    break
+                time.sleep(wait)
             try:
                 response = self.ctx.http.get(url, params or {})
             except RuntimeError as exc:

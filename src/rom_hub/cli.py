@@ -1835,22 +1835,35 @@ def _cmd_catalogue_build(args) -> int:
 
     kinds = _requested_kinds(args.kinds)
     data_assets = prepare_assets(plugin, root)
+    secrets = prepare_secrets(plugin, root)
     fetcher = HttpxFetcher()
+
+    def open_process():
+        """A freshly started subprocess, on demand.
+
+        A factory rather than one process, because the host enforces its
+        call budget by killing the plugin -- so one slow unit leaves the
+        process dead and `rom_hub.census` has to be able to start another.
+        The assets and secrets are resolved once, above, and reused: they
+        are the same for every restart and re-reading a secret per unit
+        would keep it in memory far longer than necessary.
+        """
+        proc = PluginProcess(
+            plugin_dir=plugin.path,
+            manifest=plugin.manifest,
+            config=plugin.config,
+            fetcher=fetcher,
+            allow_unsandboxed=allow_unsandboxed(),
+            data_assets=data_assets,
+            secrets=secrets,
+        )
+        proc.start()
+        return proc
+
     try:
-        with (
-            Catalogue(catalogue_path(root, plugin.slug)) as catalogue,
-            PluginProcess(
-                plugin_dir=plugin.path,
-                manifest=plugin.manifest,
-                config=plugin.config,
-                fetcher=fetcher,
-                allow_unsandboxed=allow_unsandboxed(),
-                data_assets=data_assets,
-                secrets=prepare_secrets(plugin, root),
-            ) as proc,
-        ):
+        with Catalogue(catalogue_path(root, plugin.slug)) as catalogue:
             report = build(
-                proc,
+                open_process,
                 catalogue,
                 slug=plugin.slug,
                 kinds=kinds,
@@ -1971,14 +1984,30 @@ def _print_report(report, *, units: bool = False) -> None:
                 f"[{unit.kind}]  {unit.reason}"
             )
 
-    for unit in report.failed_units:
-        print(f"  ! {unit.unit_id}: {unit.error}", file=sys.stderr)
+    # Each unit is reported once, under the verdict that actually applies.
+    # A failed unit has a shortfall too, and printing it under both
+    # headings made one problem look like two.
+    if report.failed_units:
+        print(
+            f"  could not be read ({len(report.failed_units)} units, "
+            f"{report.unreachable:,} declared entries):",
+            file=sys.stderr,
+        )
+        for unit in sorted(
+            report.failed_units, key=lambda u: -(u.declared_total or 0)
+        ):
+            print(
+                f"    {(unit.declared_total or 0):>8,}  {unit.unit_id}: "
+                f"{unit.error}",
+                file=sys.stderr,
+            )
 
     for unit in report.walked_units:
-        if unit.shortfall:
+        if unit.state != "failed" and unit.shortfall:
             print(
                 f"  ! {unit.unit_id}: declared {unit.declared_total:,} but "
-                f"accounted for {unit.walked:,} -- {unit.shortfall:,} missing",
+                f"accounted for {unit.walked:,} -- {unit.shortfall:,} "
+                f"neither catalogued nor explained",
                 file=sys.stderr,
             )
 

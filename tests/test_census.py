@@ -238,13 +238,105 @@ def test_one_unit_failing_does_not_stop_the_others(tmp_path):
             return page("A.zip", unit_id="good")
 
     with Catalogue(tmp_path / "c.sqlite3") as cat:
-        report = build(Proc(), cat, slug="s")
+        report = build(Proc, cat, slug="s")
 
     states = {u.unit_id: u.state for u in report.units}
     assert states == {"good": DONE, "bad": FAILED}
     assert "503" in {u.unit_id: u.error for u in report.units}["bad"]
     assert not report.complete
-    assert "1 failed" in report.headline()
+    assert "1 units that could not be read" in report.headline()
+
+
+def test_a_unit_that_kills_the_subprocess_does_not_take_the_rest_with_it(tmp_path):
+    """The regression from the first real build against Archive.org.
+
+    `PluginProcess` enforces its 30-second budget by killing the plugin --
+    the only portable way to interrupt a blocking pipe read. So one slow
+    unit leaves the process dead and every unit behind it fails with
+    "plugin process is not running". Measured on the live source: one
+    rate-limited 28-file item took out seventeen units, including every
+    large set, and the catalogue reported 15,477 of 29,955 -- honest about
+    entirely the wrong thing, because those seventeen were reachable.
+    """
+    started = []
+
+    class Dies:
+        """Serves units happily until one kills it, then stays dead.
+
+        Modelled on the real thing: a `PluginProcess` handles many units on
+        one subprocess, and only a killed one answers "not running" from
+        then on.
+        """
+
+        def __init__(self):
+            self.dead = False
+            started.append(self)
+
+        def census_scope(self):
+            return [unit(f"u{i}", total=1) for i in range(5)]
+
+        def census_page(self, u, cursor):
+            if self.dead:
+                raise RuntimeError("plugin process is not running")
+            if u.unit_id == "u1":
+                self.dead = True
+                raise RuntimeError("timed out after 30.0s and was killed")
+            return page("A.zip", unit_id=u.unit_id)
+
+    with Catalogue(tmp_path / "c.sqlite3") as cat:
+        report = build(Dies, cat, slug="s")
+
+    states = {u.unit_id: u.state for u in report.units}
+    # Only the unit that actually killed the process is failed. Before the
+    # fix, u2, u3 and u4 all failed with "plugin process is not running".
+    assert states == {
+        "u0": DONE, "u1": FAILED, "u2": DONE, "u3": DONE, "u4": DONE,
+    }
+    # Exactly one replacement: the dead process is swapped, and the
+    # replacement then serves the remaining three units itself.
+    assert len(started) == 2
+    assert report.unreachable == 1
+
+
+def test_the_subprocess_is_not_restarted_without_end(tmp_path):
+    class AlwaysDies:
+        def census_scope(self):
+            return [unit(f"u{i}", total=1) for i in range(10)]
+
+        def census_page(self, u, cursor):
+            raise RuntimeError("dead again")
+
+    with Catalogue(tmp_path / "c.sqlite3") as cat:
+        report = build(AlwaysDies, cat, slug="s", max_restarts=3)
+
+    assert all(u.state == FAILED for u in report.units)
+    assert any("ceiling" in (u.error or "") for u in report.units)
+
+
+def test_a_unit_that_could_not_be_read_is_unreachable_not_a_shortfall(tmp_path):
+    """Two different findings, and conflating them was the first thing this
+    report got wrong. A unit that times out is unreachable -- the source
+    says it holds those entries and the Hub could not see them. A unit that
+    was read and still does not balance is a plugin bug."""
+    class Proc:
+        def census_scope(self):
+            return [unit("reachable", total=2), unit("gone", total=825)]
+
+        def census_page(self, u, cursor):
+            if u.unit_id == "gone":
+                raise RuntimeError("HTTP 503")
+            return page("A.zip", "B.zip", unit_id="reachable")
+
+    with Catalogue(tmp_path / "c.sqlite3") as cat:
+        report = build(Proc, cat, slug="s")
+
+    assert report.unreachable == 825
+    assert report.shortfall == 0, "the unit that was read balanced perfectly"
+    assert not report.complete
+    head = report.headline()
+    assert "825 unreachable in 1 units that could not be read" in head
+    # And it is never quietly dropped from the denominator.
+    assert report.declared_in_scope == 827
 
 
 def test_a_cursor_that_never_advances_fails_the_unit_rather_than_looping(tmp_path):
@@ -256,7 +348,7 @@ def test_a_cursor_that_never_advances_fails_the_unit_rather_than_looping(tmp_pat
             return page("A.zip", cursor="stuck", unit_id="u")
 
     with Catalogue(tmp_path / "c.sqlite3") as cat:
-        report = build(Proc(), cat, slug="s")
+        report = build(Proc, cat, slug="s")
 
     assert report.units[0].state == FAILED
     assert "did not advance" in report.units[0].error
@@ -274,7 +366,7 @@ def test_a_unit_that_pages_forever_stops_at_the_ceiling(tmp_path):
             return page(f"{len(seen)}.zip", cursor=str(len(seen)), unit_id="u")
 
     with Catalogue(tmp_path / "c.sqlite3") as cat:
-        report = build(Proc(), cat, slug="s", max_pages_per_unit=3)
+        report = build(Proc, cat, slug="s", max_pages_per_unit=3)
 
     assert len(seen) == 3
     assert report.units[0].state == FAILED
