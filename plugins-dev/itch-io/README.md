@@ -174,6 +174,21 @@ Two related choices:
 - **The importer refuses a multi-platform upload** rather than picking. Pass
   `--platform` to settle it; that override reaches the plugin and wins.
 
+**Every one of those five slugs is catalogue-only**, and it is worth saying out
+loud beside the table. `win`, `mac`, `linux`, `android` and `browser` all
+describe desktop, phone or web software, and RomM's web player is EmulatorJS —
+which runs console and home-computer cores and has no entry for any of the
+five in its `_EJS_CORES_MAP`. So even in the world where itch.io offered a
+download route this plugin could use, **nothing it fetched would be playable in
+the library**; it would be a catalogue of PC games with an inert play button.
+
+That is not an argument against the plugin. Its `search` and `metadata`
+capabilities are the whole of what it usefully does, and neither is affected —
+metadata proposes a title and a cover for a game you already have, and a cover
+does not need a core. It *is* the reason nobody should read the import refusal
+as the only thing standing between this and a working itch.io shelf. `rom-hub
+platforms` puts all five in the catalogue-only group.
+
 ## Legal position
 
 This plugin is scoped to itch.io's own **free** browse listing, and reads only

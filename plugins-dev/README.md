@@ -64,6 +64,23 @@ Run the last one before publishing anything:
 
     ROM_HUB_ALLOW_UNSANDBOXED=1 python -m pytest -m live -q
 
+### Known drift, waiting to be published
+
+**`if-archive`, `itch-io` and `scummvm-freeware` have README-only edits here
+that are not in their published tags.** Each gained a section saying plainly
+that nothing it imports can be played in the library's web player — interactive
+fiction, ScummVM game data and PC downloads have no EmulatorJS core, and a
+reader deciding whether to install one is entitled to know that before rather
+than after. See `src/rom_hub/playability.py`.
+
+No code changed, so `version` was deliberately **not** bumped: `itch-io`
+`v0.3.0` is published and installable, and moving the catalog to a `v0.3.1`
+that does not exist would break a working install to ship a paragraph.
+`test_the_published_tag_still_matches_the_development_copy` will report this
+until the three repositories are updated; that is the test doing its job, and
+this note is what stops the next person treating it as a mystery. Fold these
+sections in with the next real change to each plugin.
+
 ## Changing a plugin
 
 The copy is not the place to finish work. The order that keeps them in step:

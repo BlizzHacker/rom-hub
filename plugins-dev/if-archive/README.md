@@ -41,10 +41,38 @@ A result carries the archive's own description, its date, the runtime in
 plain words (`Z-machine`, `Glulx`, `TADS 2`, `Hugo`), and whether the query
 matched the filename or fell back to the description.
 
+## This plugin is catalogue-only
+
+**Nothing it imports can be played in the library's web player, and that is
+permanent as things stand.** RomM's player is EmulatorJS, EmulatorJS runs
+libretro cores, and there is no libretro core for a Z-machine, Glulx, TADS or
+Hugo interpreter — those want Parchment or a `.z5` interpreter, which is the
+other half of #2140 and RomM's to build. All four platforms this plugin files
+under are absent from RomM 4.9.2's `_EJS_CORES_MAP`.
+
+So a story file imported here lands in the library, gets a shelf and a title,
+and does **nothing at all** when clicked. `rom-hub import` says so before it
+starts:
+
+    warning: platform 'z-machine' cannot be played in the library's web
+    player: RomM 4.9.2 has no EmulatorJS core for it ...
+
+That is not a reason to avoid this plugin — a catalogue of interactive fiction
+is a real thing to keep, the archive has been curated since 1992, and every
+file it lists is playable in any of a dozen interpreters you already have. It
+*is* a reason to know what you are getting before you import 400 of them. Pass
+`--allow-unplayable` to stop being told; run `rom-hub platforms` to see the
+whole picture.
+
+Filing these under something playable would be worse than leaving them:
+`dos` has a core, and a Z-code file handed to DOSBox is still not a game
+anybody can start.
+
 ## What this does not do
 
 - **It does not play anything.** Getting a `.z5` into RomM is not the same
-  as RomM having a Parchment tab. That half of #2140 is RomM's to build.
+  as RomM having a Parchment tab. That half of #2140 is RomM's to build, and
+  until it exists every import here is catalogue-only — see above.
 - **It does not fetch metadata.** No `metadata` capability, no covers, no
   IFDB. A story file and a platform, nothing more.
 - **It does not unpack archives.** Roughly a fifth of the files in these

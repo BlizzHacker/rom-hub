@@ -100,7 +100,7 @@ implementation and a CLI command:
 | Capability | Command | What it does |
 |---|---|---|
 | `search` | `rom-hub search <query>` | fans out across every enabled plugin |
-| `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection |
+| `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection, warning first if the platform has no emulator core |
 | `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to the library |
 | `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
@@ -323,6 +323,47 @@ filename where it does not (Gaseous and Retrom).
 Job state lives in `$ROM_HUB_HOME/var/jobs.db` and downloads land in
 `$ROM_HUB_HOME/var/downloads/`, so an interrupted multi-GB import is resumed
 rather than restarted.
+
+### Importing something that cannot be played
+
+**A library platform is not the same as a playable one.** RomM knows 458
+platforms and its web player, EmulatorJS, has a core for 78 of them — so a ROM
+filed under one of the other 380 imports perfectly, appears in the library with
+its cover and its metadata, and does **nothing at all** when clicked. Nothing
+about the library afterwards explains why. The Xbox client ships the same
+player, so the same list governs there.
+
+Across the plugins in this directory that is 33 platforms — Dreamcast,
+Vectrex, Apple II, ScummVM, every interactive-fiction runtime, every PC target
+— reachable from ten importer plugins.
+
+    rom-hub platforms              # what plays, what does not, and who imports to each
+    rom-hub platforms --installed  # narrowed to the plugins on this host
+
+An import to one of those warns first, before a byte is fetched:
+
+    $ rom-hub import libretro-content "Sega - Dreamcast/Wince Test"
+    warning: platform 'dc' cannot be played in the library's web player: RomM
+    4.9.2 has no EmulatorJS core for it, and the Xbox client ships the same
+    player. This ROM will import, appear in the library and do nothing when
+    played. That is a fine thing to want -- a catalogue is not only a player --
+    so the import is going ahead; pass --allow-unplayable to stop saying so.
+
+**It warns; it does not refuse.** Cataloguing an Apple II disk, a Z-machine
+story file or a ScummVM release is a legitimate thing to want, and four plugins
+here exist to do only that. Refusing would put the Hub's judgement in place of
+yours on a question the Hub cannot answer. `--allow-unplayable` silences the
+notice for a catalogue you are building deliberately; it has never gated the
+import. The warning is also written to the job row, so `rom-hub jobs` still
+explains it weeks later.
+
+Where a dead platform is simply the *wrong slug* for hardware RomM can play,
+the fix is the plugin's mapping table, not this warning — but that is rarer
+than it sounds. All 33 were checked against RomM's core map and none has a
+correct playable equivalent: filing a Dreamcast game under something else to
+make it "playable" would be worse than leaving it honest. The set is derived,
+not asserted — see `src/rom_hub/playability.py` and
+`scripts/audit_platforms.py`.
 
 ## Enriching metadata
 
