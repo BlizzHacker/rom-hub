@@ -1,0 +1,50 @@
+{
+  "catalog_version": "1",
+  "updated": "2026-08-01",
+  "plugins": [
+    {
+      "slug": "torrents",
+      "name": "Torrents",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-torrents",
+      "install": "https://github.com/BlizzHacker/rom-hub-torrents",
+      "download": "https://github.com/BlizzHacker/rom-hub-torrents/archive/61abfce20987b76688daa46ae659a5006436292a.tar.gz",
+      "version": "0.2.0",
+      "ref": "61abfce20987b76688daa46ae659a5006436292a",
+      "updated": "2026-08-01",
+      "rpp_version": "1",
+      "capabilities": ["torrent"],
+      "network": [
+        "archive.org",
+        "*.archive.org",
+        "tracker.opentrackr.org",
+        "tracker.opentrackr.com",
+        "open.demonii.com",
+        "open.tracker.cl",
+        "tracker.publictracker.xyz",
+        "tracker.wildkat.net",
+        "tracker.qu.ax",
+        "tracker.peerfect.org",
+        "tracker.ilibr.org",
+        "tracker.filemail.com",
+        "tracker.ducks.party",
+        "tracker.dler.org",
+        "tracker.corpscorp.online",
+        "tracker.bittor.pw",
+        "tracker.auctor.tv",
+        "tracker.0x7c0.com",
+        "tracker-udp.gbitt.info",
+        "torrentclub.online",
+        "t.overflow.biz"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Resolves a search result to a torrent whatever produced it: an Internet Archive identifier, a magnet, a bare info-hash, or a .torrent URL. Archive.org items come back with the torrent the Archive publishes and seeds, its btih as a cross-check, and the item's own files named as wanted; everything else comes back as a magnet carrying nineteen declared public trackers.",
+      "terms": "Two different things, and the distinction matters. For an Archive.org item the terms are the Internet Archive's, unchanged: this reaches the torrent the Archive publishes and seeds itself, for items it already serves over https, and works around no restriction -- an item the Archive will not distribute simply has no torrent, and a darkened item is refused by name. The Archive hosts public-domain, abandonware and still-copyrighted software under its own library and DMCA position, not under a licence that passes to you. For a magnet or a bare info-hash the plugin makes no claim at all about what the torrent contains or who may lawfully have it: it reformats an identifier the operator supplied. The trackers it adds are open public ones that index nothing themselves.",
+      "comments": "The interesting property is that the manifest declares archive.org and nineteen trackers, and nothing else, yet the plugin resolves torrents from indexers it has never heard of. That is not a gap -- an info-hash is a digest of the torrent's `info` dictionary, so it names content rather than a location, there is no host in it for an allowlist to have an opinion about, and `check_magnet` says so explicitly. Only the Archive.org path needs the network, and only to look the torrent up. Three traps recorded while building it. `ia_make_torrent` FLATTENS subdirectories, so a selector taken from an item's metadata path names an entry the torrent does not contain -- basenames are used, and one that flattens onto another is dropped rather than sent twice. Torrent presence is TESTED against the file list rather than inferred from an item's collections: `arcadia_Soccer_1982_UA_EU-US_aka_Football` is in `stream_only` and publishes a torrent anyway, which is the opposite of what the collection implies. And the CLI passes a source id through as the result's title, so an unguarded `dn=` came back holding the entire magnet URI. Proven live against myrient_nointro_SNES: 3.6 GiB in 18 files, info-hash matched the plugin's claim, and a single named file pulled over the https web seed in 4 seconds, sha1-verified, with no peer stack involved.",
+      "platforms": []
+    }
+  ]
+}
