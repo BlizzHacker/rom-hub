@@ -1,0 +1,139 @@
+{
+  "alternate_locations": {
+    "servers": [
+      {
+        "dir": "/0/items/rubik_202308",
+        "server": "dn721909.ca.archive.org"
+      }
+    ],
+    "workable": [
+      {
+        "dir": "/0/items/rubik_202308",
+        "server": "dn721909.ca.archive.org"
+      }
+    ]
+  },
+  "created": 1785604387,
+  "d1": "ia600606.us.archive.org",
+  "d2": "ia800606.us.archive.org",
+  "dir": "/17/items/rubik_202308",
+  "files": [
+    {
+      "crc32": "5dba0522",
+      "format": "Item Tile",
+      "md5": "c464dd05e0cc3c8213d37b1540b5499f",
+      "mtime": "1691923935",
+      "name": "__ia_thumb.jpg",
+      "rotation": "0",
+      "sha1": "80f17ab20b36a2efc2a95e1a03eb286c6310ffbf",
+      "size": "9759",
+      "source": "original"
+    },
+    {
+      "crc32": "641cc44f",
+      "filecount": "3",
+      "format": "ZIP",
+      "md5": "065e1fbe7899ffa2df962a6f9a7aba06",
+      "mtime": "1691923172",
+      "name": "rubik.zip",
+      "sha1": "4f7396a71145a83f477e2dae84cf0235b7fee444",
+      "size": "15420",
+      "source": "original",
+      "viruscheck": "1691923520"
+    },
+    {
+      "crc32": "4eeb0abe",
+      "format": "Emulator Screenshot",
+      "md5": "fc434cce81043ed46a143c3f1bf4e9c6",
+      "mtime": "1691923927",
+      "name": "rubik_002.png",
+      "sha1": "22e16afd540751ebec51be6ebb4b3814d24f3a77",
+      "size": "3511",
+      "source": "original"
+    },
+    {
+      "crc32": "40c32cf9",
+      "format": "JPEG Thumb",
+      "md5": "dbb9b5a59015022e9024d23ed89c8463",
+      "mtime": "1691924123",
+      "name": "rubik_002_thumb.jpg",
+      "original": "rubik_002.png",
+      "sha1": "b521ccb9b07147cd52506730ae289d1245313a81",
+      "size": "8223",
+      "source": "derivative"
+    },
+    {
+      "btih": "6e56c747303e7bf35bf86b1956fb7ea06c99b805",
+      "crc32": "83899fa2",
+      "format": "Archive BitTorrent",
+      "md5": "127706a8cb1d8b22d8d25799eb9db8f2",
+      "mtime": "1695053114",
+      "name": "rubik_202308_archive.torrent",
+      "sha1": "56cb6c7d456bdd8a77d9691e11fc3c137f0df352",
+      "size": "2147",
+      "source": "metadata"
+    },
+    {
+      "format": "Metadata",
+      "md5": "011967e413c0212412b1089f7cb2c1f9",
+      "name": "rubik_202308_files.xml",
+      "source": "original",
+      "summation": "md5"
+    },
+    {
+      "crc32": "7990cf27",
+      "format": "Metadata",
+      "md5": "f40e094a596f9b7b8ce0b2912875040c",
+      "mtime": "1691923932",
+      "name": "rubik_202308_meta.sqlite",
+      "sha1": "b3c272167ecacc0d2a97a530158fba7a711507f4",
+      "size": "20480",
+      "source": "original"
+    },
+    {
+      "crc32": "316cb5cb",
+      "format": "Metadata",
+      "md5": "a8d0c38b6b38beb5be4b76852b1d2a5d",
+      "mtime": "1695053113",
+      "name": "rubik_202308_meta.xml",
+      "sha1": "26fa9323271283e4e94f041074049df5f826d252",
+      "size": "1065",
+      "source": "original"
+    }
+  ],
+  "files_count": 8,
+  "item_last_updated": 1695053114,
+  "item_size": 60605,
+  "metadata": {
+    "addeddate": "2023-08-13 10:39:52",
+    "collection": [
+      "softwarelibrary_msdos_games",
+      "softwarelibrary_msdos",
+      "softwarelibrary",
+      "emulation"
+    ],
+    "creator": "Tomasz Zielinski",
+    "curation": "[curator]validator@archive.org[/curator][date]20230813104520[/date][comment]checked for malware[/comment]",
+    "date": "1998-03-16",
+    "description": "Simple logic game for MS-DOS",
+    "emulator": "dosbox",
+    "emulator_ext": "zip",
+    "emulator_start": "RUBIK.EXE",
+    "identifier": "rubik_202308",
+    "language": "pol",
+    "licenseurl": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "mediatype": "software",
+    "publicdate": "2023-08-13 10:39:52",
+    "scanner": "Internet Archive HTML5 Uploader 1.7.0",
+    "subject": "game",
+    "title": "Rubik DOS game",
+    "uploader": "tomasz.zielinski@gmail.com",
+    "year": "1998"
+  },
+  "server": "ia600606.us.archive.org",
+  "uniq": 1184101452,
+  "workable_servers": [
+    "ia600606.us.archive.org",
+    "ia800606.us.archive.org"
+  ]
+}
