@@ -51,7 +51,6 @@ what is *not* confined.
 MIT licensed; see [LICENSE](LICENSE). Each plugin is a separate work under its
 own licence, carried in its own repository.
 
-
 ## It works — here is what that looks like
 
 ![RomM populated entirely by ROM Hub plugins](docs/screenshots/romm.png)
@@ -64,6 +63,40 @@ Retrom](docs/SHOWCASE.md) in the same session.
 See **[docs/SHOWCASE.md](docs/SHOWCASE.md)** for all three backends, the command
 transcripts, and an honest account of what is *not* in the picture — partial
 cover art, Gaseous landing ROMs on platform 0, and the two imports that failed.
+
+## Quick start
+
+    git clone https://github.com/BlizzHacker/rom-hub
+    cd rom-hub
+    python -m pip install -e ".[dev]"
+
+    rom-hub plugin browse                  # the seven published plugins
+    rom-hub plugin install archive-org     # clones the repo, pinned to its tag
+    rom-hub search "oregon trail" --limit 5
+
+`plugin install` takes a catalog slug, a git URL, or a local path. A slug is
+resolved through [`catalog/plugins.json`](catalog/plugins.json), which supplies
+the repository **and** the tag, so these two are the same install:
+
+    rom-hub plugin install archive-org
+    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
+
+Every install is pinned to a tag and the resolved commit SHA is recorded, so a
+tag moved after the fact does not change what you have. Updating is an explicit
+re-run with a new ref; nothing updates itself.
+
+**Searching needs no library server at all** — it fans out across installed
+plugins and prints results. `import` and `enrich` are the commands that need
+one configured.
+
+On Linux the install also pulls `pyseccomp`, which is what lets the plugin
+subprocess confine itself. If it is missing, `rom-hub` refuses to run plugins
+rather than running them unconfined. On **Windows and macOS there is no
+confinement available at all**, and plugins refuse to run without
+
+    ROM_HUB_ALLOW_UNSANDBOXED=1
+
+which means exactly what it says. See [Security model](#security-model).
 
 ## Renamed from `romm-hub`
 
@@ -259,40 +292,6 @@ Two RomM quirks the Hub works around, recorded because they cost time to find:
   database row; RomM's own UI emits a socket.io `scan` after every upload, and
   so does the Hub. The rom is identified afterwards by finding its digest in the
   library, which doubles as proof it actually landed.
-
-## Quick start
-
-    git clone https://github.com/BlizzHacker/rom-hub
-    cd rom-hub
-    python -m pip install -e ".[dev]"
-
-    rom-hub plugin browse                  # the seven published plugins
-    rom-hub plugin install archive-org     # clones the repo, pinned to its tag
-    rom-hub search "oregon trail" --limit 5
-
-`plugin install` takes a catalog slug, a git URL, or a local path. A slug is
-resolved through [`catalog/plugins.json`](catalog/plugins.json), which supplies
-the repository **and** the tag, so these two are the same install:
-
-    rom-hub plugin install archive-org
-    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
-
-Every install is pinned to a tag and the resolved commit SHA is recorded, so a
-tag moved after the fact does not change what you have. Updating is an explicit
-re-run with a new ref; nothing updates itself.
-
-**Searching needs no library server at all** — it fans out across installed
-plugins and prints results. `import` and `enrich` are the commands that need
-one configured.
-
-On Linux the install also pulls `pyseccomp`, which is what lets the plugin
-subprocess confine itself. If it is missing, `rom-hub` refuses to run plugins
-rather than running them unconfined. On **Windows and macOS there is no
-confinement available at all**, and plugins refuse to run without
-
-    ROM_HUB_ALLOW_UNSANDBOXED=1
-
-which means exactly what it says. See [Security model](#security-model).
 
 ## Importing
 
