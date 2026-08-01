@@ -1,7 +1,7 @@
 [plugin]
 slug        = "nointro-archive"
 name        = "No-Intro sets on Archive.org"
-version     = "0.2.1"
+version     = "0.3.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -29,18 +29,48 @@ romm_api = []
 base_url    = { type = "str", default = "https://archive.org/download/" }
 # Index directories to search, in order. Each must appear in
 # nointro_archive/platforms.py or it is refused as "needs mapping".
+#
+# Twenty-three directories, twenty-three RomM platforms, 14,611 archives
+# -- counted from each item's own `archive.org/metadata/<id>` file list on
+# 2026-08-01, not estimated. The order is the order a search with no
+# `--platform` opens them in, so the sets people ask for most are first.
+#
+# The five with a `/` in them are a *subdirectory* of a multi-system item.
+# The item root holds no ROMs; the uploader put each machine in a folder
+# named after it, and `archive.org/download/<id>/<folder>/` is a perfectly
+# ordinary index page.
 collections = { type = "list[str]", default = [
-    "nointro.gg",
-    "nointro.ms-mkiii",
-    "nointro.md",
-    "nointro.32x",
-    "nointro.tg-16",
-    "nointro.sg",
-    "nointro.atari-2600",
-    "nointro.atari-5200",
-    "nointro.atari-7800",
-    "nointro.ws",
-    "nointro.wsc",
-    "nointro.gbamultiboot",
+    "nointro-nintendo-gameboy",                         # gb        1,958
+    "nointro-snes",                                     # snes      1,746
+    "nointro.md",                                       # genesis   2,774
+    "nointro.gg",                                       # gamegear    820
+    "nointro.ms-mkiii",                                 # sms         696
+    "nointro.ca",                                       # amiga     3,169
+    "nointro.atari-2600",                               # atari2600   842
+    "nointro.tg-16",                                    # tg16        462
+    "nointro.c64",                                      # c64         327
+    "nointro-commodore-plus4-vic20/Commodore - VIC-20", # vic-20      292
+    "nointro.ws",                                       # wonderswan  256
+    "nointro.wsc",                                      # wsc         241
+    "nointro.32x",                                      # sega32      213
+    "NoIntro-Coleco/Coleco - ColecoVision",             # coleco      194
+    "nointro.atari-5200",                               # atari5200   182
+    "nointro.atari-7800",                               # atari7800   126
+    "NoIntro-Atari/Atari - Jaguar (J64)",               # jaguar      109
+    "NoIntro-Atari/Atari - Lynx",                       # lynx         95
+    "NoIntroArduboy",                                   # arduboy     532
+    "NoIntro_PokemonMini",                              # pokemon-mini 44
+    "NoIntroVirtualBoy",                                # virtualboy   31
+    "NoIntroVMLabs",                                    # nuon         22
+    "nointro-commodore-plus4-vic20/Commodore - Plus-4", # c-plus-4     18
+    "nointro.sg",                                       # supergrafx    5
+    "nointro.gbamultiboot",                             # gba          11
 ] }
+# How many indexes a search with NO `--platform` may open. Reading all
+# twenty-five takes 34.8 seconds and 8.75 MB -- timed against Archive.org
+# on 2026-08-01, index by index -- and the host kills a plugin at 30, so
+# this is a measured ceiling rather than a cautious one. `--platform`
+# ignores it entirely: one platform is one index, so nothing in the list
+# above is out of reach.
+max_directories = { type = "int", default = 10 }
 collection  = { type = "str", default = "No-Intro" }

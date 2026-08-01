@@ -10,22 +10,38 @@ for every keystroke would be rude to a mirror that is giving bandwidth away
 and slow for the operator. `index.INDEXES` is process-wide and shared with
 the importer, so an import that follows a search costs no extra request.
 
-**One request at a time, and as few as possible.** The plugin adds no
-concurrency -- it has no sockets, and `ctx.http` is an RPC the host serves
-serially anyway -- and the walk stops the moment `limit` results exist, so
-a query answered by the first directory never touches the second.
-
 **`--platform` narrows before any request.** The platform of a file *is*
 its directory here, so filtering by platform is filtering the list of
-directories to open, which is the difference between one fetch and twelve.
+directories to open, which is the difference between one fetch and
+twenty-five. It is also what makes the whole shipped set reachable: one
+platform is one index, about a second, whatever else is configured.
 
 **Every configured directory must be mappable, and that is checked first.**
 An unmapped directory is a misconfiguration, not a per-result oddity: it
 means every ROM found in it would be filed under a platform nobody chose.
 Raising before the first request makes it cost nothing and impossible to
 miss.
+
+**A platform-less search is budgeted, and the budget is measured.**
+Reading all twenty-five shipped indexes takes **34.8 seconds and 8.75 MB**
+-- timed against Archive.org on 2026-08-01, index by index -- and the host
+kills a plugin at 30. So `max_directories` bounds how many a search with no
+`--platform` will open. That is a real limit and it is stated rather than
+hidden: without a platform this plugin samples the first N directories in
+configured order; with one, nothing is out of reach.
+
+**Results are ranked, not taken in directory order.** The previous version
+stopped at the first `limit` matches it happened to find, which meant a
+`--limit 10` search returned ten Game Gear rows and never looked at the
+other directories -- so an exact title match further down the list was
+invisible behind ten near-misses at the top. Matches are now scored
+(exact title, then prefix, then substring, shortest name first) across
+every directory the walk opened, and the best ones are returned. Grouping
+in the host then collapses regional variants of one game into one row, so
+a wider net costs the operator nothing.
 """
 
+import re
 from urllib.parse import quote
 
 from pydantic import ValidationError
@@ -36,6 +52,25 @@ from .index import INDEXES, IndexError_
 from .platforms import platform_for
 
 DEFAULT_BASE_URL = "https://archive.org/download/"
+
+#: How many indexes a search with no `--platform` may open. Ten is about
+#: fourteen seconds against the host's thirty-second ceiling, measured.
+DEFAULT_MAX_DIRECTORIES = 10
+#: More than the shipped set, so an operator who configures their own
+#: mirror layout is not capped by a number chosen for this one.
+MAX_DIRECTORIES_CAP = 32
+
+#: Directories a platform-less walk opens before it is allowed to stop on
+#: "enough results". One is not enough: the first directory would answer
+#: every small-limit query on its own, which is the bias this ranking
+#: exists to remove.
+MIN_DIRECTORIES = 3
+
+#: Punctuation, region tags and the extension are noise when comparing a
+#: query to a No-Intro filename. `Sonic The Hedgehog (USA, Europe).zip`
+#: and `sonic the hedgehog` should score as an exact match.
+_NON_WORD = re.compile(r"[^0-9a-z]+")
+_BRACKETED = re.compile(r"[\(\[][^\)\]]*[\)\]]")
 
 
 class ConfigError(Exception):
@@ -58,11 +93,49 @@ def base_url(configured) -> str:
 def index_url(root: str, directory: str) -> str:
     """The URL of one directory's index.
 
-    `safe="/"` because a Myrient-layout directory *is* a path
-    (`No-Intro/Nintendo - Game Boy`), while spaces and parentheses in it
-    still have to be encoded.
+    `safe="/"` because a directory *is* a path -- a Myrient-layout
+    `No-Intro/Nintendo - Game Boy`, or an Archive.org item with a
+    per-system subdirectory inside it, `NoIntro-Atari/Atari - Lynx` --
+    while spaces and parentheses in it still have to be encoded.
     """
     return root + quote(directory.strip().strip("/"), safe="/") + "/"
+
+
+def title_key(name: str) -> str:
+    """A filename reduced to the words a person would have typed.
+
+    Extension gone, bracketed region and revision tags gone, punctuation
+    gone. `Sonic The Hedgehog (USA, Europe) (Rev A).zip` becomes
+    `sonic the hedgehog`, which is what makes an exact-match score
+    possible at all on a set whose every filename carries a region.
+    """
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+    stem = _BRACKETED.sub(" ", stem)
+    return " ".join(_NON_WORD.sub(" ", stem.lower()).split())
+
+
+def score(name: str, query: str, terms: list[str]) -> int:
+    """How well one filename answers one query. Higher is better.
+
+    Three tiers rather than a similarity metric, because the useful
+    distinction here is coarse and a metric would invent precision:
+
+      3  the title *is* the query, once regions and punctuation are gone
+      2  the title starts with the query
+      1  every term appears somewhere in the filename
+
+    A browse (no query) scores everything 1, so the ordering falls
+    through to the tie-breaks: shorter name first, then listing order.
+    """
+    if not terms:
+        return 1
+    key = title_key(name)
+    wanted = " ".join(_NON_WORD.sub(" ", query.lower()).split())
+    if wanted and key == wanted:
+        return 3
+    if wanted and key.startswith(wanted):
+        return 2
+    return 1
 
 
 class Search(SearchProvider):
@@ -74,36 +147,57 @@ class Search(SearchProvider):
         wanted = (platform or "").strip().lower() or None
         terms = [t for t in (query or "").lower().split() if t]
 
-        results: list[SearchResult] = []
-        for directory, slug in directories:
-            if len(results) >= limit:
+        if wanted:
+            # One platform is one directory, so the budget does not apply:
+            # asking for `--platform gb` must reach every Game Boy ROM
+            # whatever `max_directories` says.
+            selected = [(d, s) for d, s in directories if s == wanted]
+        else:
+            selected = directories[: self._max_directories()]
+
+        # A browse has no query to rank against, so the first directory
+        # answers it as well as any three would and the extra reads would
+        # buy nothing. A *query* is the case where stopping early hides a
+        # better match one directory further down.
+        min_open = min(MIN_DIRECTORIES, len(selected)) if terms else 1
+
+        candidates: list[tuple[int, int, int, SearchResult]] = []
+        opened = 0
+        for order, (directory, slug) in enumerate(selected):
+            if len(candidates) >= limit and opened >= min_open:
                 break
-            if wanted and slug != wanted:
-                continue
-            for entry in INDEXES.get(self.ctx.http, index_url(root, directory)):
-                if len(results) >= limit:
-                    break
+            url = index_url(root, directory)
+            opened += 1
+            for entry in INDEXES.get(self.ctx.http, url):
                 if not entry.is_payload:
                     continue
                 if terms and not all(t in entry.name.lower() for t in terms):
                     continue
                 try:
-                    results.append(
-                        SearchResult(
-                            source_id=f"{directory}/{entry.name}",
-                            title=entry.name,
-                            platform=slug,
-                            size_bytes=entry.size_bytes,
-                            url=index_url(root, directory) + entry.href,
-                            extra={"directory": directory},
-                        )
+                    result = SearchResult(
+                        source_id=f"{directory}/{entry.name}",
+                        title=entry.name,
+                        platform=slug,
+                        size_bytes=entry.size_bytes,
+                        url=url + entry.href,
+                        extra={"directory": directory},
                     )
                 except (ValidationError, TypeError, ValueError):
                     # Names and sizes come from upstream markup and land in
                     # constrained fields. One bad row must not cost the
                     # rest of the directory.
                     continue
-        return results
+                # Negated score so a plain ascending sort puts the best
+                # first; then shortest name, which prefers the base game
+                # over its `(Rev 1) (Beta)` siblings; then the order the
+                # operator configured, which is the only stable tie-break
+                # left.
+                candidates.append(
+                    (-score(entry.name, query or "", terms), len(entry.name), order, result)
+                )
+
+        candidates.sort(key=lambda c: (c[0], c[1], c[2]))
+        return [c[3] for c in candidates[:limit]]
 
     def _directories(self) -> list[tuple[str, str]]:
         """Configured directories with their platforms, or "needs mapping".
@@ -130,7 +224,23 @@ class Search(SearchProvider):
             pairs.append((str(directory), slug))
         return pairs
 
+    def _max_directories(self) -> int:
+        raw = self.ctx.config.get("max_directories", DEFAULT_MAX_DIRECTORIES)
+        try:
+            count = int(raw)
+        except (TypeError, ValueError):
+            return DEFAULT_MAX_DIRECTORIES
+        return max(1, min(count, MAX_DIRECTORIES_CAP))
+
 
 # Re-exported so a caller catching plugin failures has one name to catch for
 # "the index could not be read" alongside ConfigError.
-__all__ = ["ConfigError", "IndexError_", "Search", "base_url", "index_url"]
+__all__ = [
+    "ConfigError",
+    "IndexError_",
+    "Search",
+    "base_url",
+    "index_url",
+    "score",
+    "title_key",
+]
