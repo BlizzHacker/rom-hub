@@ -407,19 +407,20 @@
     },
     {
       "slug": "itch-io",
-      "name": "itch.io (free games) — NO IMPORT",
+      "name": "itch.io (free games) — play in browser, NO IMPORT",
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-itch-io",
       "install": "https://github.com/BlizzHacker/rom-hub-itch-io",
-      "download": "https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.3.0.tar.gz",
-      "version": "0.3.0",
-      "ref": "v0.3.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-itch-io/archive/refs/tags/v0.4.0.tar.gz",
+      "version": "0.4.0",
+      "ref": "v0.4.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
         "importer",
-        "metadata"
+        "metadata",
+        "search",
+        "stream"
       ],
       "network": [
         "itch.io",
@@ -430,7 +431,7 @@
       "search_only": true,
       "key_required": false,
       "in_tree": false,
-      "description": "Finds free games on itch.io and proposes the developer's own title and cover art. It cannot import them, and never will as built — every import is refused by design.",
+      "description": "Browses itch.io's free games with server-side platform scoping, writes the developer's title and cover, and resolves a browser game to the page that runs it. Never imports.",
       "terms": "Consent by construction, within a boundary this plugin does not cross. itch.io is a storefront where the uploader is the rights holder, so anything listed free is offered free by the person entitled to offer it. But itch.io's robots.txt `Disallow`s `/search` and `/game/download/`, and its download URLs are issued only for a POST carrying the game page's csrf_token. This plugin reads only `/games/...` browse listings, which the same robots.txt permits, and it authenticates as nobody. Note that itch.io's \"free\" filter includes name-your-own-price titles; those are refused. The `metadata` capability reads only the public game page, which the same robots.txt permits, and the cover it names is the one itch.io itself serves as that page's og:image.",
       "comments": "The declared `importer` capability always refuses. That is the accurate answer for this source, not an unfinished feature: the alternative was planning a URL that answers 302 with an HTML page, which the host would then hash, upload and file in RomM as a ROM. The refusal names the reason — csrf_token, GET-only broker, robots.txt — so it does not read as a defect. If the broker ever grows a POST verb, exactly one branch changes. `metadata` is what makes it worth installing: it cannot fetch the game, but it reads the developer's own title and cover off the game page, which is what a library is missing for a title it already has. `img.itch.zone` joins the allowlist for that alone — the host fetches the cover this plugin names, so an undeclared image host would fail every enrich as a policy violation. There is no lookup by name, deliberately: robots.txt disallows /search and the browse listings are a small popularity-ordered slice, so hunting one title through them would attach the wrong developer's cover more often than the right one. Pass --source-id.",
       "platforms": [

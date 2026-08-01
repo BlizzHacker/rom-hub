@@ -4,6 +4,18 @@ Nothing here opens a socket. `tests/fixtures/itch_io/` holds verbatim
 slices of real responses: one browse listing (`?format=json`), four game
 pages trimmed to what the importer routes on, and three trimmed to
 `<head>` plus the title heading for what `metadata` reads.
+
+Two more were captured for `stream` on 2026-08-01, each trimmed to its
+`<head>`, its `game_title` heading and the block around the embed:
+
+* `page_web_playable.html` -- `13-23.itch.io/petal`, which renders a
+  browser build. `html_embed_widget` present once, wrapping a
+  `game_frame` with `data-width`/`data-height`;
+* `page_download_only.html` -- `redspringstudio.itch.io/touchstarved`,
+  which does not. Same page shape, no widget anywhere in it.
+
+That pair is the whole gate: the marker is itch.io's own, and it is
+present on exactly the pages with something to play.
 """
 
 import json
@@ -20,7 +32,7 @@ sys.path.insert(0, str(PLUGIN_ROOT))
 from itch_io.browse import BrowseError, browse_url, parse_cells  # noqa: E402
 from itch_io.filenames import safe_filename  # noqa: E402
 from itch_io.importer import ImportRefused, Importer, parse_size  # noqa: E402
-from itch_io.platforms import platform_for  # noqa: E402
+from itch_io.platforms import BROWSE_FACETS, facet_for, platform_for  # noqa: E402
 from itch_io.metadata import (  # noqa: E402
     Metadata,
     NotIdentified,
@@ -30,7 +42,13 @@ from itch_io.metadata import (  # noqa: E402
     heading_title,
     product_name,
 )
-from itch_io.search import Search  # noqa: E402
+from itch_io.search import DEFAULT_MAX_PAGES, PAGE_CAP, Search  # noqa: E402
+from itch_io.stream import (  # noqa: E402
+    Stream,
+    StreamRefused,
+    has_web_build,
+)
+from itch_io.stream import NotIdentified as StreamNotIdentified  # noqa: E402
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
 from rom_hub.types import (  # noqa: E402
@@ -79,6 +97,15 @@ def make_search(body=None, config=None):
 def make_importer(page: str, status: int = 200):
     http = FakeHttp(page, status)
     return Importer(PluginContext(config={}, http=http)), http
+
+
+def make_stream(page: str, status: int = 200):
+    http = FakeHttp(page, status, paginate=False)
+    return Stream(PluginContext(config={}, http=http)), http
+
+
+WEB_PLAYABLE = fixture("page_web_playable.html")
+DOWNLOAD_ONLY = fixture("page_download_only.html")
 
 
 # --------------------------------------------------------------- browse URLs
@@ -554,3 +581,127 @@ def test_the_patch_only_carries_what_resolved():
     assert patch.provider_ids == {}
     assert patch.raw_metadata == {}
     assert set(patch.form_fields()) == {"name"}
+
+
+# ------------------------------------------------- platform, server-side
+
+
+def test_a_platform_becomes_a_browse_facet_rather_than_a_client_filter():
+    """The change that makes `--platform` help instead of hurt.
+
+    It used to be applied to cells already fetched, so a page of 36 games
+    mostly without a Linux build yielded two or three and the budget was
+    spent the same. itch.io scopes the listing itself.
+    """
+    search, http = make_search()
+    search.search("", "linux", 5)
+    url, _ = http.calls[0]
+    assert url == "https://itch.io/games/free/platform-linux"
+
+
+def test_the_facet_is_appended_after_any_configured_filter():
+    search, http = make_search(config={"filters": ["tag-gameboy"]})
+    search.search("", "browser", 5)
+    assert http.calls[0][0] == (
+        "https://itch.io/games/free/tag-gameboy/platform-web"
+    )
+
+
+def test_macos_is_platform_osx_because_platform_mac_redirects():
+    """`platform-mac` answers 301; `platform-osx` answers 200. Checked live."""
+    assert facet_for("mac") == "platform-osx"
+    assert BROWSE_FACETS["browser"] == "platform-web"
+
+
+def test_a_platform_itch_has_no_facet_for_costs_no_request():
+    search, http = make_search()
+    assert search.search("", "snes", 25) == []
+    assert http.calls == []
+
+
+def test_the_facet_goes_through_the_same_validation_as_a_configured_filter():
+    """A facet is a path segment. It is built from a closed table, so this
+    cannot fire today -- and the day somebody adds a row with a slash in
+    it, it fires here rather than at a different endpoint."""
+    for bad in ["../search", "platform web", "PLATFORM-WEB"]:
+        with pytest.raises(BrowseError):
+            browse_url([], bad)
+
+
+def test_the_page_ceiling_matches_how_deep_the_listing_goes():
+    assert DEFAULT_MAX_PAGES == 12
+    assert PAGE_CAP == 200
+
+
+# ------------------------------------------------------------------ stream
+
+
+def test_stream_resolves_a_web_game_to_its_page():
+    stream, http = make_stream(WEB_PLAYABLE)
+    target = stream.resolve(SearchResult(source_id="13-23/petal", title="Petal"))
+    assert target.kind == "url"
+    assert target.target == "https://13-23.itch.io/petal"
+    assert target.mime_type == "text/html"
+    assert target.title == "Petal"
+    assert target.extra["web_build"] == "true"
+    assert target.extra["frame_height"] == "480"
+    assert len(http.calls) == 1
+
+
+def test_stream_refuses_a_download_only_game_and_says_why_it_cannot_fetch():
+    stream, _ = make_stream(DOWNLOAD_ONLY)
+    with pytest.raises(StreamRefused) as exc:
+        stream.resolve(
+            SearchResult(source_id="redspringstudio/touchstarved", title="x")
+        )
+    message = str(exc.value)
+    assert "no browser build" in message
+    assert "csrf_token" in message, "the refusal should say why import cannot help"
+
+
+def test_the_web_build_marker_is_itch_ios_own():
+    assert has_web_build(WEB_PLAYABLE)
+    assert not has_web_build(DOWNLOAD_ONLY)
+    assert not has_web_build("")
+
+
+def test_stream_never_returns_the_embed_url():
+    """itch.io's robots.txt Disallows /embed/ and /embed-upload/, and the
+    page hands its iframe an html-classic.itch.zone URL. Neither is a
+    target this plugin will produce, and neither host is declared."""
+    stream, _ = make_stream(WEB_PLAYABLE)
+    target = stream.resolve(SearchResult(source_id="13-23/petal", title="Petal"))
+    assert "html-classic.itch.zone" in WEB_PLAYABLE, "the fixture has one to leak"
+    assert "itch.zone" not in target.target
+    assert "/embed" not in target.target
+
+
+def test_the_stream_target_is_inside_the_declared_allowlist():
+    from rom_hub.manifest import parse_manifest
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = parse_manifest(
+        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    ).network
+    stream, _ = make_stream(WEB_PLAYABLE)
+    target = stream.resolve(SearchResult(source_id="13-23/petal", title="Petal"))
+    assert url_allowed(target.target, allowlist)
+    # And the host the page would have leaked is not declared, so a
+    # future version that returned it would fail the gate rather than
+    # quietly work.
+    assert not url_allowed(
+        "https://html-classic.itch.zone/html/18461285/index.html", allowlist
+    )
+
+
+def test_stream_refuses_a_source_id_that_is_not_a_game_id():
+    stream, http = make_stream(WEB_PLAYABLE)
+    with pytest.raises(StreamNotIdentified):
+        stream.resolve(SearchResult(source_id="not a game id", title="x"))
+    assert http.calls == []
+
+
+def test_stream_reports_a_non_200_rather_than_guessing():
+    stream, _ = make_stream(WEB_PLAYABLE, status=404)
+    with pytest.raises(StreamRefused, match="404"):
+        stream.resolve(SearchResult(source_id="13-23/petal", title="x"))

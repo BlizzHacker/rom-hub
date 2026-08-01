@@ -13,10 +13,22 @@ cell's title, blurb, author, genre or slug. AND rather than OR, because a
 listing page holds 36 games and OR would return most of them for any
 two-word query.
 
+**`--platform` is scoped by the server now, and it was not before.** It
+used to be applied here, to cells that had already been fetched, so a
+page of 36 games mostly without a Linux build yielded two or three and
+the walk moved on -- `--platform` made the search *worse*, because the
+budget was spent the same and most of it was thrown away. itch.io scopes
+a browse itself: `/games/free/platform-linux` is 36 Linux games, every
+one of them. All five facets verified live 2026-08-01, including that
+`platform-mac` 301s and the real spelling is `platform-osx`. A RomM
+platform itch.io has no facet for returns an empty list **without a
+request**.
+
 Pages are fetched one at a time and the walk stops the moment `limit`
 results exist, so the common case costs one request. The upper bound is
-`max_pages`; there is no parallelism, because the plugin has no sockets --
-every request is an RPC the host serves serially anyway.
+`max_pages`, which was 4 -- 144 cells -- against a listing that pages at
+least 200 deep (page 200 answers 36 cells, page 500 is a 404; checked
+live). It is 12 by default and 200 by config now.
 """
 
 import json
@@ -26,21 +38,35 @@ from pydantic import ValidationError
 from rom_hub_sdk import SearchProvider, SearchResult
 
 from .browse import BrowseError, browse_url, parse_cells
-from .platforms import platform_for
+from .platforms import facet_for, platform_for
 
-DEFAULT_MAX_PAGES = 4
-# itch.io serves 36 cells per browse page; asking beyond the end returns an
-# empty fragment, which ends the walk on its own.
-PAGE_CAP = 50
+#: 36 cells a page, so 12 is 432 games -- enough that a `--limit 100`
+#: search is answered rather than truncated at 144.
+DEFAULT_MAX_PAGES = 12
+#: itch.io serves 36 cells per browse page and pages at least 200 deep
+#: (page 200 answers a full fragment, page 500 answers HTTP 404 -- both
+#: checked live 2026-08-01). Asking beyond the end returns an empty
+#: fragment, which ends the walk on its own.
+PAGE_CAP = 200
 
 
 class Search(SearchProvider):
     def search(
         self, query: str, platform: str | None, limit: int
     ) -> list[SearchResult]:
-        url = browse_url(self.ctx.config.get("filters") or [])
-        terms = [t for t in (query or "").lower().split() if t]
         wanted = (platform or "").strip().lower() or None
+        facet = None
+        if wanted:
+            facet = facet_for(wanted)
+            if facet is None:
+                # itch.io publishes Windows, macOS, Linux, Android and
+                # browser builds and nothing else. Asking it for `snes` is
+                # a reasonable question with a boring answer, and
+                # answering it for free is better than answering it
+                # slowly.
+                return []
+        url = browse_url(self.ctx.config.get("filters") or [], facet)
+        terms = [t for t in (query or "").lower().split() if t]
 
         results: list[SearchResult] = []
         for page in range(1, self._max_pages() + 1):
