@@ -27,10 +27,19 @@ from universal_db.db import (  # noqa: E402
     FULL_JSON,
     UNSTATED,
     DatabaseError,
+    clear_cache,
     parse_entry,
     parse_full,
 )
 from universal_db.filenames import MAX_CHARS, safe_filename  # noqa: E402
+from universal_db.metadata import (  # noqa: E402
+    ARTWORK_HOSTS,
+    Ambiguous,
+    Metadata,
+    NoMatch,
+    declared_host,
+    match_key,
+)
 from universal_db.importer import ImportRefused, Importer  # noqa: E402
 from universal_db.payload import (  # noqa: E402
     DECLARED_HOSTS,
@@ -47,8 +56,9 @@ from universal_db.platforms import (  # noqa: E402
 from universal_db.search import Search  # noqa: E402
 
 from rom_hub_sdk.context import HttpResponse, PluginContext  # noqa: E402
+from rom_hub.manifest import parse_manifest  # noqa: E402
 from rom_hub.netpolicy import url_allowed  # noqa: E402
-from rom_hub.types import SearchResult, bare_filename  # noqa: E402
+from rom_hub.types import RomRef, SearchResult, bare_filename  # noqa: E402
 
 SUBSET = json.loads((FIXTURES / "full_subset.json").read_text(encoding="utf-8"))
 MANIFEST = PLUGIN_ROOT / "manifest.toml"
@@ -77,6 +87,20 @@ class FakeHttp:
         return HttpResponse(status_code=self.status, text=body)
 
 
+@pytest.fixture(autouse=True)
+def _no_cached_database():
+    """`fetch_entries` keeps the parsed database for the life of the process.
+
+    That is the point of it -- three capabilities read one 1.66 MB
+    document -- and it is also process-global state, so a test that
+    stocked a different payload would otherwise be answered by whatever
+    the previous test read.
+    """
+    clear_cache()
+    yield
+    clear_cache()
+
+
 def make_search(config=None, payload=None, status=200):
     http = FakeHttp(payload, status)
     return Search(PluginContext(config=config or {}, http=http)), http
@@ -85,6 +109,11 @@ def make_search(config=None, payload=None, status=200):
 def make_importer(config=None, payload=None, status=200):
     http = FakeHttp(payload, status)
     return Importer(PluginContext(config=config or {}, http=http)), http
+
+
+def make_metadata(config=None, payload=None, status=200):
+    http = FakeHttp(payload, status)
+    return Metadata(PluginContext(config=config or {}, http=http)), http
 
 
 def entry(slug):
@@ -655,3 +684,154 @@ def test_every_planned_filename_passes_the_hosts_own_validator():
             except (NoPayload, AmbiguousPayload):
                 continue
             assert bare_filename(safe_filename(choice.download.name))
+
+
+# ----------------------------------------------------------------- metadata
+
+
+def rom(**kwargs):
+    base = {"rom_id": 1, "name": "", "filename": "", "platform": None, "extra": {}}
+    base.update(kwargs)
+    return RomRef(**base)
+
+
+def test_enrich_proposes_the_databases_title_and_the_authors_icon():
+    meta, http = make_metadata()
+    patch = meta.enrich(rom(extra={"source_id": "universal-updater"}))
+    assert patch.name == "Universal-Updater"
+    assert patch.artwork_url == (
+        "https://raw.githubusercontent.com/Universal-Team/Universal-Updater"
+        "/master/app/icon.png"
+    )
+    assert patch.artwork_filename == "icon.png"
+    # One document, and the cache means resolving costs nothing extra.
+    assert len(http.calls) == 1
+
+
+def test_the_icon_wins_over_the_banner():
+    """364 entries have an icon and 399 a banner, and 26 of the banners are
+    the author's GitHub avatar -- a picture of an organisation, not a game."""
+    e = entry("universal-updater")
+    assert e.icon and e.image and e.icon != e.image
+    meta, _ = make_metadata()
+    patch = meta.enrich(rom(extra={"source_id": "universal-updater"}))
+    assert patch.artwork_url == e.icon
+
+
+def test_set_name_off_leaves_the_librarys_title_alone():
+    meta, _ = make_metadata(config={"set_name": False})
+    patch = meta.enrich(rom(extra={"source_id": "universal-updater"}))
+    assert patch.name is None
+    assert patch.artwork_url is not None
+
+
+def test_an_absent_field_is_absent_from_the_form_rather_than_empty():
+    """`MetadataPatch` is absent-means-leave-alone and this relies on it."""
+    meta, _ = make_metadata(config={"set_name": False})
+    patch = meta.enrich(rom(extra={"source_id": "universal-updater"}))
+    assert "name" not in patch.form_fields()
+
+
+def test_artwork_on_a_host_the_manifest_does_not_declare_is_skipped():
+    """Two of 400 entries publish their art off-allowlist.
+
+    Naming a URL the broker will refuse turns a shrug into an error, and
+    declaring two more hosts permanently to reach two covers is the wrong
+    trade. So the candidate falls through.
+    """
+    assert declared_host(
+        "https://raw.githubusercontent.com/x/y/icon.png"
+    )
+    assert not declared_host("https://i.imgur.com/abc.png")
+    assert not declared_host("https://nawiasdev.eu/icon.png")
+    # Not https at all.
+    assert not declared_host("http://raw.githubusercontent.com/x/y.png")
+
+
+def test_the_artwork_hosts_match_the_manifest():
+    """The one duplicated list in this plugin, held to the manifest.
+
+    A plugin cannot read its own manifest, so `ARTWORK_HOSTS` is a copy.
+    `*.githubusercontent.com` is spelled out as the names it resolves to
+    rather than expanded as a suffix rule, because an unbounded suffix
+    test is a larger claim than the manifest makes.
+    """
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = parse_manifest(
+        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    ).network
+    for host in ARTWORK_HOSTS:
+        assert url_allowed(f"https://{host}/icon.png", allowlist), host
+
+
+def test_every_artwork_url_the_plugin_would_propose_passes_the_allowlist():
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = parse_manifest(
+        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    ).network
+    meta, _ = make_metadata()
+    proposed = 0
+    for e in parse_full(SUBSET):
+        try:
+            patch = meta.enrich(rom(extra={"source_id": e.slug}))
+        except (NoMatch, Ambiguous):
+            continue
+        if patch.artwork_url:
+            proposed += 1
+            assert url_allowed(patch.artwork_url, allowlist), e.slug
+    assert proposed, "the fixture should carry at least one usable icon"
+
+
+def test_a_title_that_matches_nothing_refuses_rather_than_guessing():
+    meta, _ = make_metadata()
+    with pytest.raises(NoMatch, match="no entry titled"):
+        meta.enrich(rom(name="A Game Nobody Wrote"))
+
+
+def test_a_slug_that_is_not_in_the_database_refuses_by_name():
+    meta, _ = make_metadata()
+    with pytest.raises(NoMatch, match="not in it"):
+        meta.enrich(rom(extra={"source_id": "no-such-entry"}))
+
+
+def test_a_rom_with_no_name_and_no_filename_says_so():
+    meta, _ = make_metadata()
+    with pytest.raises(NoMatch, match="--source-id"):
+        meta.enrich(rom())
+
+
+def test_the_title_is_matched_exactly_once_case_and_punctuation_are_gone():
+    assert match_key("Universal-Updater") == match_key("universal updater")
+    assert match_key("Snake") != match_key("SnakeDS")
+
+
+def test_a_filename_is_only_ever_used_to_look_up():
+    """A guess from a filename still has to match the database exactly."""
+    meta, _ = make_metadata()
+    patch = meta.enrich(rom(filename="Universal-Updater.3dsx"))
+    assert patch.name == "Universal-Updater"
+
+
+def test_a_rom_named_after_its_file_still_resolves():
+    """The miss that made the first version of `enrich` useless.
+
+    RomM derives a rom's name from the file it was uploaded as, so a
+    Universal-DB import comes back named `WordleDS.nds` while the
+    database calls it `Wordle DS`. Enriching a rom this plugin had
+    imported minutes earlier failed. Three spellings are tried, each
+    matched exactly, so a wrong guess still costs a miss rather than
+    another author's cover.
+    """
+    meta, _ = make_metadata()
+    patch = meta.enrich(rom(name="Universal-Updater.3dsx"))
+    assert patch.name == "Universal-Updater"
+
+
+def test_a_dot_in_a_real_title_is_not_mistaken_for_an_extension():
+    assert Metadata._strip_extension("WordleDS.nds") == "WordleDS"
+    assert Metadata._strip_extension("Mr. Driller") == "Mr. Driller"
+    assert Metadata._strip_extension("Wolfenstein 3.D") == "Wolfenstein 3.D"
+    assert Metadata._strip_extension("no-dot-here") == "no-dot-here"
+    assert Metadata._strip_extension(".hidden") == ".hidden"

@@ -1179,14 +1179,15 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-universal-db",
       "install": "https://github.com/BlizzHacker/rom-hub-universal-db",
-      "download": "https://github.com/BlizzHacker/rom-hub-universal-db/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-universal-db/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "metadata",
+        "search"
       ],
       "network": [
         "db.universal-team.net",
@@ -1202,7 +1203,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches Universal-Team's database of Nintendo 3DS and Nintendo DS homebrew and imports the release file its author published.",
+      "description": "Filters the whole 400-entry Universal-DB catalogue in one request, imports the author's own release, and writes their title and the icon they shipped.",
       "terms": "Homebrew distributed by its own authors, which is the same basis as the homebrew (gbdev) and demozoo plugins. Universal-DB hosts nothing: every entry points at wherever the author already publishes, so an import fetches the author's file from the author's host and nothing is mirrored or re-hosted. The database itself is an open, reviewable repository (Universal-Team/db, GPL-3.0) whose entries arrive as pull requests. 270 of the 400 live entries record a licence -- GPL-3.0 (117), MIT (78), GPL-2.0 (23), Apache-2.0, MPL-2.0, BSD, Unlicense, CC0, zlib and \"other\" -- and every search row carries it. The other 130 state none; those read \"unstated\", which is a fact about the database and not a synonym for public domain, and `require_license` restricts the plugin to the ones that state terms. Nothing here is sourced from hShop or Myrient: neither appears anywhere in the data, and the manifest allowlist is the eight hosts the data actually resolves to. db.universal-team.net serves no robots.txt (404), so there is no crawl directive to observe, and the plugin makes one request per command because the database is one document.",
       "comments": "DS and 3DS are two consoles and never collapse into one another. The eight entries published for both ship a different file per console, so search returns one row per console and importing one without --platform is refused rather than guessed. Payload choice runs on the database's own evidence and nothing else: a bare .cia or .nds is a title by definition (.cia over .3dsx, .nds over .dsi, larger build wins within a format), and an archive is taken only when the entry's own `archive` manifest -- whose keys are regexes, not literals -- says a title for that console is inside it. Where the evidence runs out the import refuses and names the files it saw: 61 of 394 entry-platform pairs, including SuDokuL (whose five bare zips include a GameCube and an x64 Windows build) and TheXTech (whose one pattern matches its program and both 48 MB asset packs). Those entries still appear in search. Three of the nine categories never appear at all -- `plugin` (Luma .3gx, injected into a commercial game), `firm` (boot-chain firmware) and `exploit` -- because none of them boots as a title. Two entries publish over plain http and are refused by name, because netpolicy permits https only and this does not work around it. `*.githubusercontent.com` is declared because a GitHub release URL is a 302 to release-assets.githubusercontent.com and the broker re-checks every hop.",
       "platforms": [
