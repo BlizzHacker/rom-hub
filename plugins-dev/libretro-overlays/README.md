@@ -6,19 +6,80 @@ screen.
 
 | Capability | Source | Does |
 |---|---|---|
-| `assets` (`overlay`) | `github.com/libretro/common-overlays` | lists self-contained overlays; the **Hub** downloads the one you pick, with its images |
+| `assets` (`overlay`) | `github.com/libretro/common-overlays` | lists every overlay in the repository; the **Hub** downloads the one you pick, with the images its `.cfg` references |
 
 ## Install
 
     rom-hub plugin install ./plugins-dev/libretro-overlays
     rom-hub assets list libretro-overlays --kind overlay
-    rom-hub assets install libretro-overlays gamepads/lite/SNES.cfg
+    rom-hub assets install libretro-overlays borders/gb.cfg
 
 Files land in the directory configured for the `overlay` kind — by default
 `$ROM_HUB_HOME/var/assets/overlays/libretro-overlays/`. Point
 `ROM_HUB_ASSETS_DIR` at your RetroArch configuration directory and they land
 in `overlays/` where RetroArch already looks; `ROM_HUB_OVERLAYS_DIR` overrides
 that one kind outright.
+
+## All 310 overlays, up from 49
+
+The first release of this plugin offered **49 of the repository's 310**
+overlays, and the README said so plainly. This one offers all 310.
+
+The reason for the gap was real and the reason it closed is not a relaxation.
+A RetroArch overlay is a `.cfg` plus the images it references, and the `.cfg`
+names them relative to itself. The dominant form is a subdirectory:
+
+    overlay0_desc0_overlay = img/dpad-left.png
+
+Every destination a `FetchPlan` could express used to be a bare name — the
+rule that stops a plugin writing outside the directory chosen for it. So the
+plugin offered only the overlays whose references happened to be bare names,
+because listing an overlay that would fail to install is worse than not
+listing it.
+
+But the guarantee behind that rule is *"a plugin must never steer a host write
+outside its own install directory"*, and a bare name is one way to get it
+rather than the only one. `FetchFile` now carries an optional `subdir`: a
+relative path whose every component goes through the same validator a filename
+does, with `rom_hub.paths.dest_under_dir` resolving the join and asserting the
+result is inside the target. `filename` was not weakened — it still means one
+bare name, and a plugin that puts a path in it is refused exactly as before.
+
+| | before | now |
+|---|---|---|
+| `.cfg` files in the repository | 310 | 310 |
+| offered | **49** | **310** |
+| references a subdirectory | 260, not offered | offered |
+| references no image at all | 1, not offered | offered (it is a real config file) |
+
+Measured against the live repository on 2026-08-01.
+
+## Where the files go, and why they are not renamed
+
+An overlay installs at its **own path in the repository tree**:
+
+    borders/gb.cfg      -> <overlays>/libretro-overlays/borders/gb.cfg
+    borders/img/gb.png  -> <overlays>/libretro-overlays/borders/img/gb.png
+
+Two things follow from the format, not from taste.
+
+**The layout is preserved** because the `.cfg` names its images relatively, so
+an image has to sit where the `.cfg` says it does. Preserving the tree also
+means two overlays cannot collide: `borders/` and `gamepads/` both hold a
+`snes.cfg`, and both hold an `img/`.
+
+**Nothing is renamed.** The previous release sanitised upstream filenames into
+something the host would accept. That is exactly wrong for a bundle: a renamed
+`dpad-left.png` is a sprite the `.cfg` no longer finds, and the failure looks
+like a broken download rather than a rename. So this plugin installs every
+path verbatim **or refuses the overlay**, with a message naming the offending
+path. Checked against all 310 on 2026-08-01: every path in this repository is
+expressible verbatim, so that refusal is a guard against a future contribution
+rather than a filter on today's.
+
+The deepest install this repository produces is four directories:
+`effects/scanlines/nesguy_scanlines/img/3x-scanlines1-1280x720.png`. The
+largest bundle is 180 files; the median is 16.
 
 ## Licensing, in plain language
 
@@ -32,55 +93,22 @@ these overlays, including commercially, provided you give attribution to the
 creators and indicate any changes. The Hub does not add attribution to the
 files for you — if you redistribute an overlay, that obligation is yours.
 
-## The catch: only 49 of the 310 overlays can be installed
-
-This is the honest part, and it is a limitation of the *format* against ROM
-Hub's containment rules, not of the licence.
-
-A RetroArch overlay is a `.cfg` plus the images it references, and the `.cfg`
-names them relative to itself. The dominant form in this repository is a
-subdirectory:
-
-    overlay0_desc0_overlay = img/dpad-left.png
-
-A `FetchPlan` cannot express that. Every filename the Hub writes must be a
-bare name — that is the rule that stops a plugin writing outside the directory
-chosen for it, and it is not worth trading a containment guarantee for a file
-layout.
-
-So this plugin offers only the **self-contained** overlays: those whose `.cfg`
-references its images as bare names in the same directory. Measured against
-the live repository on 2026-07-29:
-
-| | count |
-|---|---|
-| `.cfg` files in the repository | 310 |
-| self-contained — **offered** | **49** |
-| reference a subdirectory — not offered | 260 |
-| reference no image at all | 1 |
-
-The 49 include the entire `gamepads/lite/` set, which is the flat overlay pack
-most people are actually looking for.
-
-Listing an overlay that would fail to install is worse than not listing it, so
-the catalogue is filtered rather than leaving the install to discover the
-problem.
-
 ## How it lists 310 overlays without downloading 29 MB
 
-**Listing** is one call to GitHub's Git Trees API with `?recursive=1` — 732 KB
-of JSON for 2,359 entries, against a 29 MB clone.
+**Listing** is one call to GitHub's Git Trees API with `?recursive=1` — 583 KB
+of JSON for 2,359 entries, against a 29 MB clone. No `.cfg` body is read to
+build the catalogue.
 
-That single call also does the filtering. Reading 310 `.cfg` bodies to find
-out which are self-contained would be 310 requests for a catalogue; instead
-the tree itself is the predictor — an overlay is self-contained exactly when
-its own directory also holds images. That heuristic was checked against the
-content of all 310 files and agrees on **every one**, with no false positives
-and no false negatives.
+**Installing** fetches the chosen `.cfg`, resolves each reference against the
+`.cfg`'s own directory, and then the Hub downloads the `.cfg` and its images.
+Each reference is checked three ways before it becomes a download:
 
-**Installing** fetches the chosen `.cfg`, re-reads its references to confirm
-they really are bare names, and then the Hub downloads the `.cfg` and its
-images — typically 2 to 30 small files.
+* it must stay inside the repository — a `../../..` in somebody's `.cfg` is
+  not something this plugin will follow, and none of the 310 does today;
+* it must actually exist in the tree — six of the 310 name at least one image
+  the repository does not have, and a plan containing one would 404 halfway
+  through an install, so the missing sprite is skipped rather than planned;
+* its path must be expressible verbatim, or the overlay is refused.
 
 The contents API would have been the obvious choice for listing and is the
 wrong one: it truncates at 1,000 entries with no error and no flag. See

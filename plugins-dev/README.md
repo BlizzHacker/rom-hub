@@ -67,18 +67,31 @@ Run the last one before publishing anything:
 
 ### Known drift, waiting to be published
 
-**Nine plugins have real, unpublished changes here.** The
-"Content plugins that reach their whole source" work bumped `aminet`
+**Fifteen plugins have real, unpublished changes here.**
+
+The "Content plugins that reach their whole source" work bumped `aminet`
 0.1.0→0.2.0, `demozoo` 0.1.0→0.2.0, `homebrew` 0.2.0→0.3.0,
 `if-archive` 0.1.0→0.2.0, `itch-io` 0.3.0→0.4.0, `libretro-content`
 0.1.0→0.2.0, `nointro-archive` 0.2.1→0.3.0, `scummvm-freeware`
-0.1.0→0.2.0 and `universal-db` 0.1.0→0.2.0. Each plugin's own README
-says what changed and why.
+0.1.0→0.2.0 and `universal-db` 0.1.0→0.2.0.
 
-Unlike the previous entry under this heading, these are code changes and
+The "Emulator-support plugins that ship their whole source" work bumped
+`libretro-overlays` 0.1.0→0.2.0, `libretro-cores` 0.1.0→0.2.0,
+`emulators` 0.1.0→0.2.0, `open-bios` 0.1.1→0.2.0, `libretro-cheats`
+0.1.0→0.2.0 and `retroarch-autoconfig` 0.1.0→0.2.0. Each plugin's own
+README says what changed and why.
+
+`retroarch-autoconfig` is the one release in that second group with no
+code change: its plugin was already complete — thirteen of the
+repository's thirteen input-driver directories, 1,094 profiles — and
+the release records the measurement rather than adding anything. The
+guard that keeps that claim honest lives in this repository's tests, not
+in the plugin.
+
+Unlike the earlier entry under this heading, these are code changes and
 the versions **were** bumped, so `catalog/plugins.json` now points at tags
 that do not exist yet. `test_the_published_tag_still_matches_the_
-development_copy` will report every one of them until the nine
+development_copy` will report every one of them until the fifteen
 repositories are updated and tagged — that is step 3 of "Changing a
 plugin" below, and it is the one step that cannot be done from this
 repository.

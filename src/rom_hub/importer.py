@@ -71,7 +71,11 @@ from rom_hub.backends.base import (
 from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from rom_hub.jobs import Job, JobQueue, JobState
 from rom_hub.netpolicy import PolicyViolation, check_url
-from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.paths import (
+    UnsafeDestination,
+    dest_in_job_dir,
+    flat_destination_only,
+)
 from rom_hub.playability import import_warning
 from rom_hub.types import FetchPlan, SearchResult
 
@@ -601,6 +605,7 @@ def _import(
     paths: list[Path] = []
     for entry in wanted:
         try:
+            flat_destination_only(entry, what="a ROM import")
             dest = dest_in_job_dir(job_dir, entry.filename)
         except UnsafeDestination as exc:
             # Same job outcome as before this check moved: FAILED, with the

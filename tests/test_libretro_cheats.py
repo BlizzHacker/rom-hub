@@ -283,3 +283,99 @@ def test_every_cheat_in_a_large_slice_plans_a_valid_bare_filename():
             continue
         name = safe_filename(entry["path"])
         assert bare_filename(name) == name
+
+
+# --- the refusal says how many, not "more than 512" ---------------------
+#
+# 13 of this repository's 44 systems are over the limit on their own, by
+# margins from 750 files to 4,204, and they are the systems anybody
+# actually asks for. So the overflow message is not an edge case anyone
+# sees once -- it is how most operators meet this plugin, and "more than
+# 512" told them nothing they could act on.
+
+
+def test_the_overflow_message_states_the_real_number():
+    from libretro_cheats.assets import TooManyCheats
+
+    assets, _ = _assets({"systems": [GB]})
+    with pytest.raises(TooManyCheats) as exc:
+        assets.list()
+    message = str(exc.value)
+    # The true size of the selection, thousands separator and all -- not
+    # "more than 512", which is the same sentence for 513 and for 4,204.
+    assert "1,496" in message
+    assert str(MAX_ASSETS) in message
+    assert GB in message
+
+
+def test_the_overflow_message_names_a_next_step():
+    from libretro_cheats.assets import TooManyCheats
+
+    assets, _ = _assets({"systems": [GB]})
+    with pytest.raises(TooManyCheats, match="`match` config key"):
+        assets.list()
+
+
+def test_a_match_that_still_overflows_says_so_and_shows_both_numbers():
+    """"900 of 4,204" and "900" mean different things: the first says the
+    filter is already doing most of the work and one more letter will do
+    it, the second leaves an operator guessing."""
+    from libretro_cheats.assets import TooManyCheats
+
+    # "a" appears in almost every Game Boy title, so it filters nothing.
+    assets, _ = _assets({"systems": [GB], "match": "a"})
+    with pytest.raises(TooManyCheats) as exc:
+        assets.list()
+    message = str(exc.value)
+    assert "of 1,496" in message
+    assert "'a'" in message
+    assert "Try a longer or more specific string" in message
+
+
+def test_the_overflow_is_a_kind_of_list_error_not_a_new_contract():
+    """Callers that already handle CheatListError keep working; the
+    dedicated type is for a caller that wants to tell this apart from a
+    503."""
+    from libretro_cheats.assets import CheatListError, TooManyCheats
+
+    assert issubclass(TooManyCheats, CheatListError)
+
+
+def test_a_selection_exactly_at_the_limit_is_allowed():
+    """The bound is the host's `MAX_ASSETS_PER_PLUGIN`, and the plugin
+    must not refuse one item early -- an off-by-one here is a catalogue
+    an operator cannot reach with any `match` at all."""
+    entries = [
+        {"path": f"Game {i:04d}.cht", "type": "blob", "size": 100}
+        for i in range(MAX_ASSETS)
+    ]
+    http = FakeHttp(
+        {
+            "master:cht": CHT,
+            "master:cht/Nintendo%20-%20Game%20Boy": json.dumps(
+                {"tree": entries, "truncated": False}
+            ),
+        }
+    )
+    assets, _ = _assets({"systems": [GB]}, http=http)
+    assert len(assets.list()) == MAX_ASSETS
+
+
+def test_one_over_the_limit_is_refused():
+    entries = [
+        {"path": f"Game {i:04d}.cht", "type": "blob", "size": 100}
+        for i in range(MAX_ASSETS + 1)
+    ]
+    http = FakeHttp(
+        {
+            "master:cht": CHT,
+            "master:cht/Nintendo%20-%20Game%20Boy": json.dumps(
+                {"tree": entries, "truncated": False}
+            ),
+        }
+    )
+    from libretro_cheats.assets import TooManyCheats
+
+    assets, _ = _assets({"systems": [GB]}, http=http)
+    with pytest.raises(TooManyCheats, match="513"):
+        assets.list()

@@ -32,6 +32,8 @@ from libretro_cores.cores import (  # noqa: E402
 )
 from libretro_cores.filenames import safe_filename  # noqa: E402
 from libretro_cores.index import IndexError_, core_id_for, parse_index  # noqa: E402
+from libretro_cores.coreinfo import info_for, matches_system  # noqa: E402
+from libretro_cores.info import INFO_HOST, info_filename, info_url  # noqa: E402
 from libretro_cores.systems import CORE_SYSTEMS, system_for  # noqa: E402
 from libretro_cores.targets import TARGETS, NeedsMapping, target_for  # noqa: E402
 
@@ -227,17 +229,76 @@ def test_every_target_builds_urls_on_the_declared_host():
 # ----------------------------------------------------------------- systems
 
 
-def test_a_core_the_table_does_not_know_has_no_system():
-    assert system_for("2048") is None
-    assert system_for("mame2003_plus") == "Arcade"
+def test_a_core_libretro_says_nothing_about_has_no_system():
+    """Absence is still the answer, not a gap filled by guessing. Four of
+    the 218 cores in this index have no `.info` file upstream at all."""
+    assert system_for("bbkemu") is None
+    assert info_for("bbkemu") == {}
+    assert system_for("mame2003_plus") == "Arcade (various)"
 
 
-def test_every_mapped_core_id_is_in_the_real_index():
-    """A table row for a core the buildbot does not ship is a row nobody
-    will ever see fire, and quietly rots."""
+def test_the_system_names_are_libretros_own_words():
+    """Not a transcription of them. `systemname` is what these are, so
+    Gambatte reads "Game Boy/Game Boy Color" rather than a tidier phrase
+    somebody preferred -- an operator comparing this against libretro's
+    own material sees the same spellings."""
+    assert system_for("gambatte") == "Game Boy/Game Boy Color"
+    assert system_for("snes9x") == "Super Nintendo Entertainment System"
+    assert system_for("2048") == "2048 Game Clone"
+
+
+def test_the_generated_table_covers_the_index_it_is_for():
+    """The headline of this release. The hand-kept table it replaced had
+    106 rows for the whole of libretro; this one index has 218 cores and
+    208 of them now name a system."""
     available = {e.core_id for e in parse_index(LINUX, ".so.zip")}
-    unknown = sorted(set(CORE_SYSTEMS) - available)
-    assert unknown == [], f"systems.py names cores the buildbot does not ship: {unknown}"
+    known = {c for c in available if c in CORE_SYSTEMS}
+    assert len(available) == LINUX_CORES
+    assert len(known) == 208
+    # And the ten that do not are ten libretro genuinely says nothing
+    # about, not ten this plugin failed to look up.
+    for core_id in available - known:
+        assert not info_for(core_id).get("system"), core_id
+
+
+def test_the_table_may_name_cores_this_target_does_not_ship():
+    """The old table was asserted to name only cores the Linux buildbot
+    ships, because a row for anything else was a hand-written row that
+    would rot. That is the wrong test for generated data: this is
+    libretro's whole catalogue, and a core built for Windows but not Linux
+    is a fact about the buildbot rather than a stale row."""
+    available = {e.core_id for e in parse_index(LINUX, ".so.zip")}
+    assert set(CORE_SYSTEMS) - available
+
+
+def test_a_required_bios_is_reported_and_an_optional_one_is_not():
+    """Snes9x lists BS-X and the Sufami Turbo BIOS as `firmware*_opt`, and
+    neither is needed to play an ordinary SNES cartridge. Telling an
+    operator to go and find them would be exactly the wrong answer;
+    Beetle PSX genuinely will not boot without its three."""
+    assert info_for("snes9x").get("firmware") is None
+    assert info_for("mednafen_psx_hw")["firmware"] == [
+        "scph5500.bin",
+        "scph5501.bin",
+        "scph5502.bin",
+    ]
+
+
+def test_the_core_licence_is_the_cores_own():
+    """Not this plugin's and not libretro's: Snes9x says "Non-commercial",
+    which an operator installing it is entitled to read."""
+    assert info_for("snes9x")["license"] == "Non-commercial"
+    assert info_for("mednafen_psx_hw")["license"] == "GPLv2"
+
+
+def test_matching_a_system_looks_at_more_than_the_system_name():
+    assert matches_system("snes9x", "snes")
+    assert matches_system("snes9x", "Nintendo")
+    # via a database name rather than the system name
+    assert matches_system("snes9x", "Satellaview")
+    assert not matches_system("snes9x", "dreamcast")
+    # an empty needle is not a filter
+    assert matches_system("snes9x", "")
 
 
 def test_every_system_name_fits_the_wire_type():
@@ -261,15 +322,46 @@ def test_list_returns_the_whole_catalogue_as_core_artifacts():
 def test_a_listed_core_carries_the_build_date_as_its_version():
     cores, _ = make_cores()
     gambatte = next(c for c in cores.list() if c.core_id == "gambatte")
-    assert gambatte.system == "Nintendo - GameBoy"
+    assert gambatte.system == "Game Boy/Game Boy Color"
     assert gambatte.version.startswith("20")
     assert "linux" in gambatte.description.lower()
 
 
-def test_a_core_outside_the_systems_table_lists_with_no_system():
+def test_a_core_libretro_has_no_info_for_lists_with_no_system():
     cores, _ = make_cores()
-    game = next(c for c in cores.list() if c.core_id == "2048")
-    assert game.system is None
+    core = next(c for c in cores.list() if c.core_id == "bbkemu")
+    assert core.system is None
+    # And its description is a build stamp rather than a row of empty
+    # labels: nothing is invented to fill the columns.
+    assert core.description == "Linux x86_64 build, " + core.version
+
+
+def test_the_description_carries_what_a_core_needs_before_it_will_run():
+    """The single most useful thing this plugin can say. A core whose
+    BIOS is missing does not fail at install; it fails much later with a
+    black screen, and libretro already knows which files it wants."""
+    cores, _ = make_cores()
+    psx = next(c for c in cores.list() if c.core_id == "mednafen_psx_hw")
+    assert "needs BIOS: scph5500.bin, scph5501.bin, scph5502.bin" in psx.description
+    assert "core licence: GPLv2" in psx.description
+    assert "loads cue|toc|m3u" in psx.description
+
+
+def test_the_system_config_key_narrows_the_catalogue():
+    cores, _ = make_cores(config={"system": "Game Boy"})
+    listed = cores.list()
+    assert 0 < len(listed) < LINUX_CORES
+    for core in listed:
+        assert matches_system(core.core_id, "Game Boy")
+    assert "gambatte" in {c.core_id for c in listed}
+
+
+def test_a_system_nothing_matches_is_a_refusal_not_an_empty_list():
+    """An empty catalogue would be technically true and useless; the
+    message names the key that produced it."""
+    cores, _ = make_cores(config={"system": "Sinclair QL Mk II"})
+    with pytest.raises(CoreListError, match="`system` config key"):
+        cores.list()
 
 
 def test_the_target_config_chooses_the_url_and_the_suffix():
@@ -314,13 +406,48 @@ def test_a_non_200_names_the_status_and_the_url():
 def test_plan_builds_the_download_url_from_the_index():
     cores, _ = make_cores()
     plan = cores.plan(CoreArtifact(core_id="gambatte", name="gambatte"))
-    assert len(plan.files) == 1
     assert plan.files[0].url == (
         "https://buildbot.libretro.com/nightly/linux/x86_64/latest/"
         "gambatte_libretro.so.zip"
     )
     assert plan.files[0].filename == "gambatte_libretro.so.zip"
     assert plan.files[0].size_bytes is None
+
+
+def test_plan_installs_the_info_file_beside_the_core():
+    """RetroArch reads `<core>_libretro.info` from its libretro_info_dir
+    to learn what a core loads and which BIOS it wants. A core installed
+    without one appears in the frontend as a filename that loads nothing
+    in particular."""
+    cores, _ = make_cores()
+    plan = cores.plan(CoreArtifact(core_id="gambatte", name="gambatte"))
+    assert [f.filename for f in plan.files] == [
+        "gambatte_libretro.so.zip",
+        "gambatte_libretro.info",
+    ]
+    assert plan.files[1].url == (
+        "https://raw.githubusercontent.com/libretro/libretro-core-info/"
+        "master/gambatte_libretro.info"
+    )
+
+
+def test_a_core_with_no_upstream_info_plans_only_the_core():
+    """Planning an info URL for a core libretro has none for would 404 the
+    install of a core that was otherwise fine."""
+    cores, _ = make_cores()
+    plan = cores.plan(CoreArtifact(core_id="bbkemu", name="bbkemu"))
+    assert [f.filename for f in plan.files] == ["bbkemu_libretro.so.zip"]
+
+
+def test_the_info_filename_round_trips_with_the_index_convention():
+    """`index.core_id_for` strips `_libretro`; `info_filename` puts it
+    back. One convention, asserted rather than assumed to resemble."""
+    for core_id in ("gambatte", "snes9x", "mame2003_plus"):
+        assert core_id_for(info_filename(core_id), ".info") == core_id
+
+
+def test_every_info_url_is_on_the_declared_host():
+    assert info_url("snes9x").startswith("https://" + INFO_HOST + "/")
 
 
 def test_plan_re_reads_the_index_rather_than_trusting_the_artifact():
@@ -355,12 +482,12 @@ def test_plan_labels_the_platform_with_the_system_when_it_knows_one():
     cores, _ = make_cores()
     assert cores.plan(
         CoreArtifact(core_id="gambatte", name="g")
-    ).platform == "Nintendo - GameBoy"
+    ).platform == "Game Boy/Game Boy Color"
 
 
 def test_plan_falls_back_to_the_build_target_never_to_a_guess():
     cores, _ = make_cores()
-    plan = cores.plan(CoreArtifact(core_id="2048", name="2048"))
+    plan = cores.plan(CoreArtifact(core_id="bbkemu", name="bbkemu"))
     assert plan.platform == "Linux x86_64"
 
 
@@ -372,3 +499,76 @@ def test_every_core_in_the_catalogue_can_be_planned():
         plan = cores.plan(core)
         assert plan.files[0].url.endswith(".so.zip")
         assert bare_filename(plan.files[0].filename) == plan.files[0].filename
+
+
+# --- the second host, and the gate it goes through ----------------------
+#
+# 0.2.0 adds a channel: one `.info` per install, from
+# raw.githubusercontent.com. That is a new host in the manifest, so these
+# assert the two properties that make a new host safe -- every URL the
+# plugin produces is on a declared host, and a URL that is not would be
+# refused by the host rather than merely absent from this plugin.
+
+
+def test_the_manifest_declares_exactly_the_hosts_this_plugin_uses():
+    from rom_hub.manifest import parse_manifest
+
+    manifest = parse_manifest(
+        (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+    )
+    assert set(manifest.network) == {
+        "buildbot.libretro.com",
+        "raw.githubusercontent.com",
+    }
+
+
+def test_every_url_this_plugin_can_produce_passes_its_own_allowlist():
+    from rom_hub.manifest import parse_manifest
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = list(
+        parse_manifest(
+            (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+        ).network
+    )
+    cores, _ = make_cores()
+    for core in cores.list()[:40]:
+        for entry in cores.plan(core).files:
+            assert url_allowed(entry.url, allowlist), entry.url
+    for target in TARGETS.values():
+        assert url_allowed(target.index_url, allowlist)
+
+
+@pytest.mark.parametrize(
+    "undeclared",
+    [
+        "https://evil.example/snes9x_libretro.info",
+        # The near-misses, which are the ones a typo produces
+        "https://raw.githubusercontent.com.evil.example/x.info",
+        "https://githubusercontent.com/libretro/x.info",
+        "https://buildbot.libretro.com.evil.example/x.so.zip",
+    ],
+)
+def test_an_undeclared_host_on_the_info_channel_is_refused(undeclared):
+    """The gate is the host's, not this plugin's. Asserted here because
+    the info channel is new: a second host in a manifest is a second
+    permission, and a permission is only worth granting if the thing
+    granting it still says no to everything else."""
+    from rom_hub.manifest import parse_manifest
+    from rom_hub.netpolicy import url_allowed
+
+    allowlist = list(
+        parse_manifest(
+            (PLUGIN_ROOT / "manifest.toml").read_text(encoding="utf-8")
+        ).network
+    )
+    assert not url_allowed(undeclared, allowlist)
+
+
+def test_plain_http_is_refused_on_the_info_channel_too():
+    from rom_hub.netpolicy import url_allowed
+
+    assert not url_allowed(
+        "http://raw.githubusercontent.com/libretro/libretro-core-info/master/x.info",
+        ["raw.githubusercontent.com"],
+    )

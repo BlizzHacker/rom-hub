@@ -22,10 +22,14 @@ So the target is config, and a target that is not in this table is refused
 The names are spelled `os/arch` and are deliberately the same vocabulary
 `libretro-cores` uses, so that an operator who has already configured one
 of them does not have to learn a second spelling for the same machine.
-`macos/universal` is the one addition: every macOS build in `projects.py`
-is a single fat artifact rather than a per-architecture one, and inventing
-`macos/x86_64` and `macos/arm64` that both resolve to the same file would
-be two names for one thing.
+`macos/universal` is the one addition, and it is not a synonym for the
+other two macOS names: DuckStation, PCSX2, melonDS, ares and xemu each
+publish one fat artifact for both Mac architectures, while Vita3K and Cemu
+publish a separate file per architecture. So all three names exist and
+each means a different artifact. A project that ships a universal build
+has a `macos/universal` cell and no other; a project that ships two has
+`macos/x86_64` and `macos/arm64` and no `macos/universal`. Nothing is
+listed twice under two names.
 """
 
 from dataclasses import dataclass
@@ -52,6 +56,8 @@ TARGETS: dict[str, Target] = {
     "windows/x86": Target("windows/x86", "Windows x86"),
     "windows/arm64": Target("windows/arm64", "Windows arm64"),
     "macos/universal": Target("macos/universal", "macOS (universal)"),
+    "macos/x86_64": Target("macos/x86_64", "macOS x86_64"),
+    "macos/arm64": Target("macos/arm64", "macOS arm64"),
 }
 
 DEFAULT_TARGET = "linux/x86_64"

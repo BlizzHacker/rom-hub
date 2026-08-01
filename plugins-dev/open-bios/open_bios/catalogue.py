@@ -60,6 +60,27 @@ SAMEBOY_ASSET = "sameboy_winsdl_{release}.zip"
 #: anyone to remember.
 DEFAULT_SAMEBOY_RELEASE = "v1.0.3"
 
+#: openMSX's release that carries the built C-BIOS ROMs. Pinned, for the
+#: reason every other URL here is pinned: firmware is bytes an emulator
+#: executes.
+OPENMSX_RELEASE = "RELEASE_21_0"
+
+#: The smallest openMSX asset carrying all 19 C-BIOS ROMs. Measured
+#: 2026-08-01: the Linux zip is 9.6 MB against the Windows zip's 12.8 MB,
+#: and both carry the identical `share/machines/cbios_*.rom` set. The host
+#: keeps only the declared members and deletes the archive.
+OPENMSX_ASSET = "openmsx-21.0-linux-x86_64-bin.zip"
+
+OPENMSX_RELEASE_URL = (
+    "https://github.com/openMSX/openMSX/releases/download/"
+    f"{OPENMSX_RELEASE}/{OPENMSX_ASSET}"
+)
+
+#: Where openMSX keeps them inside that zip. A *lookup key*, never a
+#: destination: `rom_hub.firmware` installs the basename. See
+#: `FirmwareArtifact.members`.
+CBIOS_DIR = "share/machines/"
+
 
 @dataclass(frozen=True)
 class Source:
@@ -85,6 +106,10 @@ class Source:
     members: tuple[str, ...] = ()
     #: Set for an item whose URL depends on the `sameboy_release` config.
     asset: str = ""
+    #: What `firmware list` shows in the VERSION column. Left empty for a
+    #: SameBoy item, whose version is the configured release tag and is
+    #: therefore not knowable here.
+    version: str = ""
 
 
 SOURCES: tuple[Source, ...] = (
@@ -149,6 +174,102 @@ SOURCES: tuple[Source, ...] = (
         archive="zip",
         members=("cgb_boot.bin", "cgb0_boot.bin", "agb_boot.bin"),
         asset=SAMEBOY_ASSET,
+    ),
+    # -- C-BIOS, added in 0.2.0 -------------------------------------------
+    #
+    # Previously declined as "source only", and that was correct: `cbios/
+    # cbios` had no releases at all. It now has ten (latest v0.29,
+    # 2026-08-01) and they are still source only -- the release page
+    # attaches nothing but GitHub's auto-generated `.tar.gz` and `.zip`,
+    # and the repository holds a Makefile and `src/` with no built `.rom`
+    # anywhere. So the original disqualification stands for C-BIOS's own
+    # distribution.
+    #
+    # What changed the answer is that **openMSX publishes built C-BIOS
+    # ROMs** inside its own GitHub release, under `share/machines/`. That
+    # is the same shape as SameBoy -- a BIOS that exists only inside an
+    # emulator's archive -- so it is installed the same way: the host
+    # fetches the zip, keeps exactly the declared members, and deletes the
+    # rest.
+    #
+    # The licence is C-BIOS's own and is not openMSX's. `doc/cbios.txt`,
+    # shipped in that same archive and identical to the copy in the
+    # cbios repository, carries a three-clause BSD notice -- "Redistribution
+    # and use in source and binary forms, with or without modification,
+    # are permitted provided that the following conditions are met" --
+    # over copyrights held by BouKiCHi, Reikan, Maarten ter Huurne, Albert
+    # Beevendorp and five others. Binary redistribution is explicit, which
+    # is the question that matters here.
+    #
+    # Three items rather than one because the MSX generations take
+    # different BIOS ROMs and are three different library platforms. The
+    # regional variants (`_br`, `_eu`, `_jp`) are deliberately not offered:
+    # openMSX selects them per machine configuration, and offering ten
+    # near-identical files under one id would be a choice with no
+    # information attached to it.
+    Source(
+        firmware_id="cbios-msx1",
+        name="C-BIOS (MSX1)",
+        system="MSX",
+        license="BSD-3-Clause",
+        project="https://github.com/cbios/cbios",
+        description=(
+            "A clean-room MSX BIOS written from scratch by the C-BIOS team, "
+            "so that MSX emulation needs no dumped machine ROM. This is the "
+            "MSX1 main BIOS plus its boot logo, taken from openMSX's own "
+            "release because C-BIOS publishes no built ROMs of its own. It "
+            "runs cartridge images; it is not a complete MSX-BASIC "
+            "environment."
+        ),
+        archive="zip",
+        members=(
+            f"{CBIOS_DIR}cbios_main_msx1.rom",
+            f"{CBIOS_DIR}cbios_logo_msx1.rom",
+        ),
+        url=OPENMSX_RELEASE_URL,
+        filename=OPENMSX_ASSET,
+        version=OPENMSX_RELEASE,
+    ),
+    Source(
+        firmware_id="cbios-msx2",
+        name="C-BIOS (MSX2)",
+        system="MSX2",
+        license="BSD-3-Clause",
+        project="https://github.com/cbios/cbios",
+        description=(
+            "The same project's MSX2 set: the main BIOS, the sub-ROM an "
+            "MSX2 needs alongside it, and the boot logo. From openMSX's "
+            "release, under C-BIOS's own BSD licence."
+        ),
+        archive="zip",
+        members=(
+            f"{CBIOS_DIR}cbios_main_msx2.rom",
+            f"{CBIOS_DIR}cbios_sub.rom",
+            f"{CBIOS_DIR}cbios_logo_msx2.rom",
+        ),
+        url=OPENMSX_RELEASE_URL,
+        filename=OPENMSX_ASSET,
+        version=OPENMSX_RELEASE,
+    ),
+    Source(
+        firmware_id="cbios-msx2plus",
+        name="C-BIOS (MSX2+)",
+        system="MSX2+",
+        license="BSD-3-Clause",
+        project="https://github.com/cbios/cbios",
+        description=(
+            "The MSX2+ set: main BIOS, sub-ROM and boot logo. From "
+            "openMSX's release, under C-BIOS's own BSD licence."
+        ),
+        archive="zip",
+        members=(
+            f"{CBIOS_DIR}cbios_main_msx2+.rom",
+            f"{CBIOS_DIR}cbios_sub.rom",
+            f"{CBIOS_DIR}cbios_logo_msx2+.rom",
+        ),
+        url=OPENMSX_RELEASE_URL,
+        filename=OPENMSX_ASSET,
+        version=OPENMSX_RELEASE,
     ),
 )
 

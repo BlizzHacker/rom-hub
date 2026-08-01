@@ -21,7 +21,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.paths import (
+    UnsafeDestination,
+    dest_in_job_dir,
+    flat_destination_only,
+)
 from rom_hub.types import CoreArtifact
 
 
@@ -93,6 +97,7 @@ def install_core(
     destinations = []
     for entry in plan.files:
         try:
+            flat_destination_only(entry, what="a core install")
             destinations.append((entry, dest_in_job_dir(target, entry.filename)))
         except UnsafeDestination as exc:
             raise CoreError(str(exc)) from exc

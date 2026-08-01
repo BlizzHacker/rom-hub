@@ -7,6 +7,7 @@ public buildbot, downloaded into the Hub's configured cores directory.
 |---|---|---|
 | `cores` | `buildbot.libretro.com/nightly/<target>/latest/.index-extended` | lists the cores that target ships |
 | `cores` | `buildbot.libretro.com/nightly/<target>/latest/<core>_libretro.<ext>.zip` | names a URL; the **Hub** fetches it |
+| `cores` | `raw.githubusercontent.com/libretro/libretro-core-info/master/<core>_libretro.info` | names the core's `.info`; the **Hub** fetches that too |
 
 ## Install
 
@@ -24,6 +25,7 @@ a plugin returns a filename and never a path.
 |---|---|---|---|
 | `target` | `str` | `"linux/x86_64"` | which build target's cores to offer |
 | `only` | `list[str]` | `[]` | narrow the catalogue to these core ids; empty means all |
+| `system` | `str` | `""` | narrow to the cores for one console — `"snes"`, `"Game Boy"`, `"Nintendo"` |
 
 No credentials. The buildbot is public and unauthenticated, and this plugin
 sends nothing but a GET.
@@ -92,29 +94,66 @@ download.
   anyway.
 - **It does not name a system it is not sure of.** See below.
 
-## `system` is partial, and blank means blank
+## What a core *is*, not only what it is called
 
-`CoreArtifact.system` is filled in from a hand-kept table in
-`libretro_cores/systems.py`. A core that is not in it gets no system at all,
-and prints as an empty column.
+The buildbot's index is a filename, a date and a crc32. On its own that
+makes `cores list` a list of 218 identifiers, which answers *what is
+available* and not *which one do I want*. libretro publishes the missing
+half separately, as one `.info` file per core, and this plugin uses it in
+two different ways for two different reasons.
 
-That is not laziness, it is the only honest option available. The buildbot
-ships 218 cores for Linux x86_64 and its index says nothing about what any of
-them run — it is filenames, a date and a crc32. The only machine-readable
-mapping libretro publishes lives inside `assets/frontend/info.zip`, and a
-plugin cannot open it: `ctx.http` returns text, deliberately, because a
-plugin has no sockets and the broker is not a file transfer service.
+**In the catalogue, from a generated snapshot.** `libretro_cores/coreinfo.py`
+is 305 rows produced by `scripts/render_core_info.py` from
+`libretro/libretro-core-info` (MIT, verified from its own `COPYING`). Each
+row carries libretro's own words for the system, the manufacturer, the
+**core's own licence**, the extensions it loads and the BIOS it requires —
+so a listing row now reads:
 
-So a blank means "this plugin does not know", which is true, where a name
-derived from the core id would be false — `2048` is not a console and
-`mame2003_plus` is not a system. An operator reading a system name while
-choosing a core has to be able to trust it.
+    mednafen_psx_hw   Sony - PlayStation (Beetle PSX HW) -- loads cue|toc|m3u|ccd|exe|pbp|chd|bin
+                      -- needs BIOS: scph5500.bin, scph5501.bin, scph5502.bin
+                      -- core licence: GPLv2 -- Linux x86_64 build, 2026-07-29
 
-Nothing about `system` is load-bearing: it is never a RomM platform slug,
-never a path component, and never consulted when deciding what to fetch.
-Adding a row is a one-line change and cannot break an install. The spellings
-are libretro's own, taken from the directory names under
-`https://buildbot.libretro.com/assets/cores/`.
+The BIOS line is the most useful thing here: a core whose firmware is
+missing does not fail at install, it fails much later with a black screen.
+Only the files libretro does **not** mark `firmwareN_opt` are listed —
+Snes9x names BS-X and the Sufami Turbo BIOS as optional, and neither is
+needed to play an ordinary SNES cartridge.
+
+**At install, live.** `plan()` adds `<core>_libretro.info` to the download,
+from `raw.githubusercontent.com`, so the file RetroArch actually reads is
+the current one rather than the snapshot. RetroArch reads `.info` from its
+`libretro_info_dir` to learn a core's display name, its extension filter and
+its firmware requirements; a core installed without one shows up as a
+filename that loads nothing in particular. A core libretro has no `.info`
+for — four of the 218 — installs alone rather than with a URL that would
+404.
+
+### This replaced a hand-kept table
+
+The previous release filled `system` from 106 rows written by hand and left
+it blank for everything else, explaining honestly that libretro published
+the mapping only inside a zip and `ctx.http` returns text. That explanation
+stopped being true: the same data is 305 plain-text files in a public
+repository.
+
+| | before | now |
+|---|---|---|
+| cores in the Linux x86_64 index | 218 | 218 |
+| of those, naming a system | 106 hand-written rows, most of them for cores in other targets | **208** |
+| naming their required BIOS | 0 | 40 across libretro's whole catalogue |
+| naming the core's own licence | 0 | 302 |
+| naming their file extensions | 0 | 279 |
+
+**Blank still means blank.** Ten of the 218 get no system, because
+libretro says nothing about them — four have no `.info` at all. A name
+derived from the core id would be false: `2048` is not a console. Nothing
+about `system` is load-bearing; it is never a RomM platform slug, never a
+path component, and never consulted when deciding what to fetch.
+
+**The snapshot goes stale in one direction only.** A core libretro adds
+appears here as unknown until `scripts/render_core_info.py` is run again,
+which is a missing label rather than a wrong one — and the `.info` an
+operator actually installs is never the snapshot.
 
 ## Terms
 

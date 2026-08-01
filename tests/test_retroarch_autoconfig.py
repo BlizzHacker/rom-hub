@@ -310,3 +310,68 @@ def test_the_sanitiser_is_deterministic_under_truncation():
     assert safe_filename(long) == safe_filename(long)
     assert len(safe_filename(long)) <= 200
     assert safe_filename(long).endswith(".cfg")
+
+
+# --- completeness, and the guard that keeps it honest -------------------
+#
+# This plugin offers every input-driver directory the repository has:
+# thirteen of thirteen, 1,094 profiles, counted against the live tree on
+# 2026-08-01. That is worth stating, and it is only worth stating if
+# something notices when it stops being true -- so `DRIVERS` is pinned
+# against a captured copy of the repository root rather than against a
+# memory of it.
+
+ROOT_TREE = (FIXTURES / "tree_root.json").read_text(encoding="utf-8")
+
+#: What the repository root holds that is NOT an input driver. Named, so a
+#: new non-driver entry upstream is a one-line change here rather than a
+#: mysterious failure below.
+NOT_DRIVERS = {
+    ".github",
+    ".gitlab-ci.yml",
+    ".verify_duplicate_profiles.rb",
+    "COPYING",
+    "Makefile",
+    "README.md",
+    "configure",
+    "retropad_layout.png",
+}
+
+
+def _root_entries():
+    return json.loads(ROOT_TREE)["tree"]
+
+
+def test_the_captured_root_is_whole():
+    payload = json.loads(ROOT_TREE)
+    assert payload.get("truncated") is False
+
+
+def test_the_driver_list_is_every_directory_the_repository_has():
+    """The completeness claim, asserted rather than believed.
+
+    If libretro adds a driver directory, this fails -- which is the
+    correct direction for that failure, because the alternative is a
+    plugin that silently cannot reach a whole input driver."""
+    directories = {e["path"] for e in _root_entries() if e["type"] == "tree"}
+    directories -= NOT_DRIVERS
+    assert directories == set(DRIVERS)
+
+
+def test_nothing_in_the_driver_list_is_absent_from_the_repository():
+    """The other direction: a driver in the tuple that upstream removed
+    would be an option an operator can select and then get a 404 for."""
+    present = {e["path"] for e in _root_entries()}
+    assert set(DRIVERS) <= present
+
+
+def test_every_non_driver_root_entry_is_accounted_for():
+    """So `NOT_DRIVERS` cannot silently absorb a real driver directory."""
+    paths = {e["path"] for e in _root_entries()}
+    assert paths == set(DRIVERS) | NOT_DRIVERS
+
+
+def test_the_default_driver_is_one_of_them():
+    from retroarch_autoconfig.assets import DEFAULT_DRIVER
+
+    assert DEFAULT_DRIVER in DRIVERS

@@ -101,6 +101,81 @@ def bare_filename(v: str) -> str:
     return v
 
 
+# How deep a `FetchFile.subdir` may go, and how long it may be in total.
+# A RetroArch overlay is `<pack>/<style>/img/<sprite>.png` at its deepest,
+# so eight components is generous for the format and still a bound. The
+# character ceiling exists because every component is separately allowed
+# 200 characters, and eight of those plus the filename would be past
+# Windows' 260-character full-path limit before the install directory has
+# even been prepended.
+MAX_SUBDIR_COMPONENTS = 8
+MAX_SUBDIR_CHARS = 240
+
+
+def relative_subdir(v: str) -> str:
+    """Validate a plugin-supplied *directory*, relative to its install dir.
+
+    The second half of the answer to "this asset lives at
+    `gamepads/flat/img/snes-a.png` within my install directory". The first
+    half is `bare_filename`, which is not weakened to make room for it:
+    `filename` still means one bare name and nothing else, and a plugin
+    that wants a subdirectory has to say so in a separate field that is
+    validated separately.
+
+    **A relative path is not a lesser filename, it is a sequence of
+    them.** So this validator does not invent a second, looser rule about
+    what a path component may look like -- it splits on `/` and hands
+    every component to `bare_filename`. Everything that validator refuses
+    is refused here per component and for the same reasons: `..`,
+    `C:evil.zip`, a NUL byte, `CON`, a trailing dot, a name of only dots.
+    An absolute path fails because its leading `/` produces an empty first
+    component, and a backslash fails because `bare_filename`'s character
+    allowlist has never contained one.
+
+    Reused rather than resembled, exactly as `FirmwareArtifact.members`
+    reuses it: a second copy of a containment rule is a second place for
+    it to be subtly different, and this one is reached by a plugin
+    choosing where the host writes.
+
+    `paths.dest_under_dir` is still the layer behind this, in the same way
+    `dest_in_job_dir` sits behind `FetchFile.filename`. A validator bug
+    must not be able to become a filesystem write.
+    """
+    if not v:
+        raise ValueError("subdir must not be empty; omit it instead")
+    if len(v) > MAX_SUBDIR_CHARS:
+        raise ValueError(f"subdir must be at most {MAX_SUBDIR_CHARS} characters")
+
+    # Refused before the split so the message names the real problem. The
+    # character allowlist below would catch it anyway -- a backslash is
+    # neither alphanumeric nor in `_ALLOWED_PUNCTUATION` -- but "subdir
+    # component contains characters that are not permitted" is a worse
+    # sentence to debug than this one, and a backslash *is* a separator on
+    # the platform the Hub most often is not running on.
+    if "\\" in v:
+        raise ValueError(
+            "subdir must use '/' as its only separator; a backslash is a "
+            "separator under Windows path rules and would mean two "
+            "different things on two different machines"
+        )
+
+    parts = v.split("/")
+    if len(parts) > MAX_SUBDIR_COMPONENTS:
+        raise ValueError(
+            f"subdir has {len(parts)} components, over the "
+            f"{MAX_SUBDIR_COMPONENTS} a plugin may nest"
+        )
+    for part in parts:
+        if not part:
+            raise ValueError(
+                f"subdir {v!r} has an empty component: it must be a relative "
+                f"path, so no leading '/', no trailing '/' and no '//'"
+            )
+        # The whole rule, not a paraphrase of it.
+        bare_filename(part)
+    return v
+
+
 class SearchResult(BaseModel):
     source_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
@@ -113,8 +188,28 @@ class SearchResult(BaseModel):
 
 
 class FetchFile(BaseModel):
+    """One file the host will fetch and write on a plugin's behalf.
+
+    `subdir` is optional and defaults to absent, which is the flat case
+    every capability but `assets` requires. It exists because some things
+    a plugin ships are a *bundle* whose internal layout is part of the
+    format: a RetroArch overlay `.cfg` names its sprites relative to
+    itself (`overlay0_desc0_overlay = img/dpad-left.png`), so an overlay
+    flattened into one directory is an overlay that does not load.
+
+    It is not a widening of `filename`. `filename` still means one bare
+    name, validated exactly as before; a plugin that needs a
+    subdirectory declares it separately and it is validated separately,
+    component by component, by the same `bare_filename` rule. Only
+    `rom_hub.emuassets` honours it -- `importer`, `cores` and `firmware`
+    each refuse a plan that carries one, because a ROM, a core and a BIOS
+    are single files with nowhere to nest and a field silently ignored is
+    a field that will eventually be silently obeyed.
+    """
+
     url: str = Field(min_length=1)
     filename: str = Field(min_length=1)
+    subdir: str | None = None
     size_bytes: int | None = Field(default=None, ge=0)
 
     @field_validator("filename")
@@ -124,6 +219,23 @@ class FetchFile(BaseModel):
         # that write anywhere but the job's own download directory.
         return bare_filename(v)
 
+    @field_validator("subdir")
+    @classmethod
+    def _relative_path_only(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return relative_subdir(v)
+
+    def relative_path(self) -> str:
+        """Where this file goes *within* the directory chosen for it.
+
+        Always a relative POSIX path, always built from two separately
+        validated pieces. The one thing a caller should join onto a
+        destination directory, and `paths.dest_under_dir` re-checks it
+        before anything is opened.
+        """
+        return f"{self.subdir}/{self.filename}" if self.subdir else self.filename
+
 
 class FetchPlan(BaseModel):
     files: list[FetchFile] = Field(min_length=1, max_length=MAX_FILES_PER_PLAN)
@@ -132,7 +244,7 @@ class FetchPlan(BaseModel):
 
     @field_validator("files")
     @classmethod
-    def _filenames_must_be_distinct(cls, v: list[FetchFile]) -> list[FetchFile]:
+    def _destinations_must_be_distinct(cls, v: list[FetchFile]) -> list[FetchFile]:
         # Two entries writing to one path do not merely overwrite. The
         # second download finds the first file already on disk, takes its
         # size as a resume offset, sends `Range: bytes=<n>-`, and a server
@@ -145,11 +257,18 @@ class FetchPlan(BaseModel):
         # hides the bug while still importing something nobody asked for.
         # Compared case-insensitively because Windows opens "g.zip" and
         # "G.zip" as the same file, and this must not depend on the OS.
-        names = [f.filename.casefold() for f in v]
+        #
+        # Compared on the *destination*, not on the filename, since
+        # `subdir` exists: `img/a.png` and `overlay/a.png` are two files
+        # and always were, while two entries that both resolve to
+        # `img/a.png` are the collision described above. Before `subdir`
+        # these were the same comparison, because every destination was a
+        # bare name.
+        names = [f.relative_path().casefold() for f in v]
         duplicated = sorted({n for n in names if names.count(n) > 1})
         if duplicated:
             raise ValueError(
-                f"every file in a FetchPlan needs a distinct filename; "
+                f"every file in a FetchPlan needs a distinct destination; "
                 f"these are repeated: {duplicated!r}"
             )
         return v
@@ -652,6 +771,22 @@ class FirmwareArtifact(BaseModel):
     only inside its emulator release. A plugin declares the members it
     wants and the *host* unpacks exactly those, by full-name equality,
     into destinations it chose itself -- see `rom_hub.firmware`.
+
+    **A member may name a path inside the archive**, because real archives
+    put things in directories: openMSX ships the C-BIOS ROMs at
+    `share/machines/cbios_main_msx1.rom`, and a rule that a member must be
+    a bare name would exclude the only published build of a clean-room MSX
+    BIOS for the sake of a zip's internal layout. This is safe for a
+    reason that is a property of `rom_hub.firmware` rather than of this
+    validator: **an archive entry name is never joined onto a path.** It
+    is a lookup key into the zip, and the destination is `basename` --
+    validated by `bare_filename` below, then by `dest_in_job_dir`. So a
+    zip whose entries are called `../../etc/passwd` still has nowhere to
+    write, exactly as before.
+
+    Note that this is a *different* mechanism from `FetchFile.subdir`,
+    which describes where the host writes. Here the path describes where
+    the bytes are *read from*, and the install stays flat.
     """
 
     firmware_id: str = Field(min_length=1, max_length=_MAX_FIRMWARE_ID_CHARS)
@@ -676,18 +811,29 @@ class FirmwareArtifact(BaseModel):
 
     @field_validator("members")
     @classmethod
-    def _bare_names_only(cls, v: list[str]) -> list[str]:
-        # Each of these becomes a file the host opens for writing, so it
-        # gets the validator a FetchPlan filename gets -- the same one, not
-        # a second copy of the rule.
+    def _installable_names_only(cls, v: list[str]) -> list[str]:
+        # The *destination* is the basename, and that becomes a file the
+        # host opens for writing -- so it gets the validator a FetchPlan
+        # filename gets, the same one, not a second copy of the rule. The
+        # directory part is a lookup key into a zip and reaches no
+        # filesystem call, but it is still held to `relative_subdir` so
+        # that a member which cannot traverse also cannot look like it
+        # does in a log or an error message.
         for name in v:
-            bare_filename(name)
-        folded = [name.casefold() for name in v]
+            directory, _, base = name.rpartition("/")
+            bare_filename(base)
+            if directory:
+                relative_subdir(directory)
+        # Compared on the basename, because that is what collides on disk:
+        # `a/boot.bin` and `b/boot.bin` are two entries in the zip and one
+        # file in the firmware directory, and the second would silently
+        # overwrite the first.
+        folded = [name.rpartition("/")[2].casefold() for name in v]
         duplicated = sorted({n for n in folded if folded.count(n) > 1})
         if duplicated:
             raise ValueError(
-                f"every member of a firmware archive needs a distinct name; "
-                f"these are repeated: {duplicated!r}"
+                f"every member of a firmware archive needs a distinct "
+                f"installed name; these are repeated: {duplicated!r}"
             )
         return v
 
