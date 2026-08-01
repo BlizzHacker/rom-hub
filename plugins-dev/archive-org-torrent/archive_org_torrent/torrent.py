@@ -244,35 +244,53 @@ class Torrent(TorrentProvider):
         if isinstance(extension, str) and extension.strip():
             suffix = "." + extension.strip().lstrip(".").lower()
             named = [
-                entry["name"]
-                for entry in originals
+                name
+                for name in originals
                 # A bare ".zip" has no basename to write to disk.
-                if entry["name"].lower().endswith(suffix)
-                and entry["name"].lower() != suffix
+                if name.lower().endswith(suffix) and name.lower() != suffix
             ]
             if named:
                 return named
+        return originals
 
-        return [
-            entry["name"]
-            for entry in originals
-            if entry.get("format") not in BOOKKEEPING_FORMATS
-        ]
+    def _originals(self, files: list) -> list[str]:
+        """The item's own files, named the way the *torrent* names them.
 
-    def _originals(self, files: list) -> list[dict]:
-        """The item's own files: not derivatives, not the Archive's index.
+        Three things happen here and the second is the one that was found
+        the hard way.
 
-        `source == "original"` alone is not enough -- `_meta.xml`,
-        `_files.xml` and `_meta.sqlite` are all marked `original` and are
-        all bookkeeping -- which is why the format check above exists too.
+        **Derivatives and bookkeeping are dropped.** `source ==
+        "original"` alone is not enough: `_meta.xml`, `_files.xml` and
+        `_meta.sqlite` are all marked `original` and are all the Archive's
+        own index, which is why `BOOKKEEPING_FORMATS` exists as well.
+
+        **The name is the basename, because the torrent flattens.**
+        `/metadata/` reports `pac-man-championship-edition-1`'s ROM at
+        `NES/PAC-MAN Championship Edition.nes`, and `ia_make_torrent`
+        writes it into the torrent as a single-component
+        `PAC-MAN Championship Edition.nes`. Selecting by the metadata path
+        would name entries that are not in the torrent, so the basename is
+        what is returned -- and it is the *torrent* that this is matched
+        against, by the host, which refuses a selector it cannot find.
+
+        **An ambiguous basename is dropped rather than guessed at.** Two
+        subdirectories can hold the same filename, and after flattening
+        there is no way to say which one was meant. Naming neither costs
+        the operator a `--file` argument; naming one at random costs them
+        the wrong ROM.
         """
-        return [
-            entry
+        named = [
+            posixpath.basename(entry["name"])
             for entry in files
             if isinstance(entry, dict)
             and isinstance(entry.get("name"), str)
             and entry.get("source") == "original"
-            and self._is_bare(entry["name"])
+            and entry.get("format") not in BOOKKEEPING_FORMATS
+        ]
+        return [
+            name
+            for name in named
+            if self._is_bare(name) and named.count(name) == 1
         ]
 
     @staticmethod
