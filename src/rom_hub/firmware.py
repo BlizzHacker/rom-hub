@@ -70,7 +70,11 @@ from rom_hub.backends.base import (
     SkippedStep,
     degrade,
 )
-from rom_hub.paths import UnsafeDestination, dest_in_job_dir
+from rom_hub.paths import (
+    UnsafeDestination,
+    dest_in_job_dir,
+    flat_destination_only,
+)
 from rom_hub.types import FirmwareArtifact
 
 #: A BIOS is kilobytes; the archive one arrives in is megabytes. This
@@ -173,6 +177,7 @@ def install_firmware(
     destinations = []
     for entry in plan.files:
         try:
+            flat_destination_only(entry, what="a firmware install")
             destinations.append((entry, dest_in_job_dir(target, entry.filename)))
         except UnsafeDestination as exc:
             raise FirmwareError(str(exc)) from exc

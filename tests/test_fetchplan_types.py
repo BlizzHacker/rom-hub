@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from rom_hub.types import MAX_FILES_PER_PLAN, FetchFile, FetchPlan
+from rom_hub.types import (
+    MAX_FILES_PER_PLAN,
+    MAX_SUBDIR_CHARS,
+    FetchFile,
+    FetchPlan,
+)
 
 
 def test_minimal_plan():
@@ -158,3 +163,103 @@ def test_a_plan_may_not_carry_an_unbounded_number_of_files():
 def test_a_plan_at_the_limit_is_still_accepted():
     files = [_file(f"g{i}.zip") for i in range(MAX_FILES_PER_PLAN)]
     assert len(FetchPlan(files=files, platform="dos").files) == MAX_FILES_PER_PLAN
+
+
+# --- subdir: a second, separately validated way to name a destination ---
+#
+# `subdir` exists because a RetroArch overlay is a bundle whose internal
+# layout is part of the format. It is not a widening of `filename`: the
+# tests above still hold verbatim, and the ones below hold the new field
+# to the same list of hostile inputs, because a rule that is looser on
+# one of two fields is the looser rule.
+
+
+def test_subdir_defaults_to_absent():
+    """Flat is the default and every other capability requires it."""
+    f = _file("g.zip")
+    assert f.subdir is None
+    assert f.relative_path() == "g.zip"
+
+
+def test_a_valid_subdir_becomes_the_destination():
+    f = FetchFile(
+        url="https://archive.org/x", filename="dpad-left.png", subdir="gamepads/flat/img"
+    )
+    assert f.relative_path() == "gamepads/flat/img/dpad-left.png"
+
+
+@pytest.mark.parametrize(
+    "evil",
+    [
+        # traversal, in every position
+        "..",
+        "../..",
+        "img/../..",
+        "img/..",
+        # absolute, empty and trailing components
+        "/etc",
+        "img/",
+        "/img",
+        "img//deep",
+        "",
+        # "." is a directory that is not a directory name
+        ".",
+        "img/.",
+        "...",
+        # drive-relative and UNC, which carry no separator at all and are
+        # the breach `bare_filename` was rewritten for
+        "C:evil.zip",
+        "C:",
+        "C:/evil",
+        r"\\server\share",
+        # a backslash is a separator under Windows path rules
+        r"img\deep",
+        # Windows device names, in any component
+        "NUL",
+        "img/NUL",
+        "img/CON",
+        "COM1",
+        "LPT9",
+        # NUL byte
+        "img\x00",
+        "img/a\x00b",
+        # Windows silently strips these, so two names collide on disk
+        "img/trailing.",
+        "img/trailing ",
+        # bounds
+        "a/a/a/a/a/a/a/a/a",
+        "x" * (MAX_SUBDIR_CHARS + 1),
+    ],
+)
+def test_a_hostile_subdir_is_refused(evil):
+    with pytest.raises(ValidationError):
+        FetchFile(url="https://archive.org/x", filename="g.png", subdir=evil)
+
+
+def test_two_files_may_share_a_name_in_different_subdirectories():
+    """An overlay pack really does this: `img/a.png` beside `alt/a.png`.
+    The collision the distinctness rule exists to stop is two entries
+    landing on one *path*, which these do not."""
+    plan = FetchPlan(
+        files=[
+            FetchFile(url="https://x.example/1", filename="a.png", subdir="img"),
+            FetchFile(url="https://x.example/2", filename="a.png", subdir="alt"),
+        ],
+        platform="dos",
+    )
+    assert [f.relative_path() for f in plan.files] == ["img/a.png", "alt/a.png"]
+
+
+@pytest.mark.parametrize("second", ["img", "IMG"])
+def test_two_files_may_not_share_a_destination(second):
+    """Same rule as two bare filenames, applied to the whole path -- and
+    case-insensitively, because Windows opens `img/a.png` and `IMG/a.png`
+    as one file."""
+    with pytest.raises(ValidationError):
+        FetchPlan(
+            files=[
+                FetchFile(url="https://x.example/1", filename="a.png", subdir="img"),
+                FetchFile(url="https://x.example/2", filename="a.png", subdir=second),
+            ],
+            platform="dos",
+        )
