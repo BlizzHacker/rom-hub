@@ -20,6 +20,7 @@ import getpass
 import importlib
 import json
 import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -949,6 +950,41 @@ def _print_groups(page, expand: set[int]) -> None:
             )
 
 
+def _catalogue_rows(plugin, query, platform, limit):
+    """This plugin's catalogue answering a search, or None for "no catalogue".
+
+    None is the signal to go to the network, and it is returned for every
+    ordinary reason: the plugin has no `census` capability, nobody has
+    built one yet, or the file is unreadable. A catalogue is an
+    *improvement* on a live search, never a prerequisite for one -- so a
+    failure to open it must degrade to the behaviour that existed before
+    it, silently and in the direction of still working.
+
+    A catalogue that exists but holds nothing is treated as absent too. An
+    empty catalogue means the build has not run or found nothing, and
+    answering "no results" out of it would suppress the live search that
+    would have found some.
+    """
+    if "census" not in plugin.manifest.capabilities:
+        return None
+    try:
+        path = catalogue_path(default_root(), plugin.slug)
+        if not path.exists():
+            return None
+        with Catalogue(path) as catalogue:
+            rows = catalogue.results(query, platform, limit)
+    except (CensusError, sqlite3.Error, OSError):
+        return None
+    if not rows:
+        return None
+    for row in rows:
+        # The host stamps this on a live result after the plugin returns;
+        # a catalogued row has to carry the same thing or `import` cannot
+        # tell which plugin to ask for a plan.
+        row.plugin = plugin.slug
+    return rows
+
+
 def _cmd_search(args) -> int:
     plugins = Registry(default_root()).installed()
     searchable = [p for p in plugins if p.enabled and "search" in p.manifest.capabilities]
@@ -973,6 +1009,7 @@ def _cmd_search(args) -> int:
             allow_unsandboxed=allow_unsandboxed(),
             assets_for=prepare_assets,
             secrets_for=prepare_secrets,
+            catalogue_for=None if args.live else _catalogue_rows,
         )
     finally:
         fetcher.close()
@@ -1005,6 +1042,14 @@ def _cmd_search(args) -> int:
 
     # Partial answers stay partial: grouping reorganises what came back, it
     # cannot know what a source that failed would have said.
+    if outcome.from_catalogue:
+        print(
+            f"  {', '.join(outcome.from_catalogue)} answered from a built "
+            f"catalogue rather than the network -- 'rom-hub catalogue report "
+            f"<plugin>' says how complete it is and when it was built; "
+            f"--live asks the source instead",
+            file=sys.stderr,
+        )
     if outcome.capped:
         print(
             f"  note: {', '.join(outcome.capped)} returned the full "
@@ -2173,6 +2218,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--all-variants",
         action="store_true",
         help="expand every row on the page",
+    )
+    search.add_argument(
+        "--live",
+        action="store_true",
+        help=(
+            "ignore any built catalogue and ask every source over the "
+            "network, as searches did before 'rom-hub catalogue build'"
+        ),
     )
     search.add_argument(
         "--no-group",

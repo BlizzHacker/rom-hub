@@ -59,6 +59,14 @@ class PluginStatus:
     ok: bool
     count: int = 0
     error: str | None = None
+    #: Where this source's rows came from: `"live"` for a subprocess that
+    #: went to the network, `"catalogue"` for a full enumeration read off
+    #: disk (see `rom_hub.census`). Reported rather than hidden, because
+    #: the two answer differently -- a catalogue covers the whole source
+    #: and may be stale, a live search covers whatever the plugin could
+    #: reach in thirty seconds and is current. An operator comparing two
+    #: results is entitled to know which they got.
+    served_from: str = "live"
     capped: bool = False
     """Whether this source returned exactly as many results as it was
     allowed, which means there were probably more it did not send.
@@ -91,6 +99,11 @@ class SearchOutcome:
         """Sources that filled their quota, and so probably had more."""
         return [s.slug for s in self.statuses if s.capped]
 
+    @property
+    def from_catalogue(self) -> list[str]:
+        """Sources answered from a built catalogue rather than the network."""
+        return [s.slug for s in self.statuses if s.served_from == "catalogue"]
+
 
 def _default_factory(
     plugin, fetcher, timeout, allow_unsandboxed=False, data_assets=None, secrets=None
@@ -118,6 +131,7 @@ def search_all(
     allow_unsandboxed: bool = False,
     assets_for=None,
     secrets_for=None,
+    catalogue_for=None,
 ) -> SearchOutcome:
     # The sandbox policy is bound to the default factory here rather than
     # added to the factory signature: an injected factory stays a plain
@@ -136,6 +150,26 @@ def search_all(
 
     def run(plugin) -> tuple[PluginStatus, list[SearchResult]]:
         try:
+            # A built catalogue answers before a subprocess is started.
+            # This is not an optimisation: the plugin's own search reads a
+            # handful of directory indexes inside a 30-second budget, while
+            # the catalogue is the *whole* source enumerated once and
+            # proved complete. Rows that a live search cannot reach at all
+            # -- an Archive.org item nobody put in the config -- are
+            # reachable here, which is the entire point of building one.
+            if catalogue_for is not None:
+                rows = catalogue_for(plugin, query, platform, limit)
+                if rows is not None:
+                    return (
+                        PluginStatus(
+                            plugin.slug,
+                            True,
+                            len(rows),
+                            served_from="catalogue",
+                            capped=limit > 0 and len(rows) >= limit,
+                        ),
+                        rows,
+                    )
             # Inside `run`, so a plugin whose data asset cannot be fetched
             # or verified costs its own results and nothing else -- the
             # same isolation every other failure in this fan-out gets.
