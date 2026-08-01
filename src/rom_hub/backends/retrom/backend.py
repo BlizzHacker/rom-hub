@@ -62,9 +62,11 @@ from rom_hub.backends.base import (
     SCAN,
     BackendNotConfigured,
     CapabilityUnsupported,
+    ProviderIdVerdict,
 )
+from rom_hub.types import PROVIDER_ID_FIELDS
 
-from .client import RetromClient, RetromError
+from .client import WRITABLE_FIELDS, RetromClient, RetromError
 from .upload import WebDavClient, upload_file
 
 BACKEND_NAME = "retrom"
@@ -259,6 +261,40 @@ class RetromBackend:
         return self._client.update_game_metadata(
             rom_id, fields, cover_url=cover_url
         )
+
+    def provider_id_policy(self) -> dict[str, ProviderIdVerdict]:
+        """One id, and it is `igdb_id`. The other ten have no column.
+
+        This is the difference between a plugin's patch being *refused*
+        and being *trimmed*, and the second is what an operator wants.
+        `update_game_metadata` still raises on an unwritable field -- that
+        guard has to stay, because a report of what was written must be
+        true -- but the hasheous plugin proposing a `hasheous_id` alongside
+        a name used to fail the whole enrich against Retrom, losing the
+        name over an id Retrom was never going to store. Declared here,
+        the id is dropped before the write, the name lands, and
+        `EnrichResult.withheld_ids` carries the reason out to the operator.
+
+        `enriches` is false throughout: Retrom stores `igdb_id` and does
+        not go and fetch anything when it changes. That is the honest
+        answer, and it is why the same id is worth much more against RomM.
+        """
+        return {
+            field: ProviderIdVerdict(
+                field=field,
+                allowed=field in WRITABLE_FIELDS,
+                enriches=False,
+                reason=(
+                    "Retrom stores this id and does not fetch further "
+                    "metadata when it changes"
+                    if field in WRITABLE_FIELDS
+                    else "Retrom's GameMetadata has no column for this id -- "
+                    "models/metadata.proto carries exactly one, igdb_id -- so "
+                    "it was dropped rather than failing the whole patch"
+                ),
+            )
+            for field in sorted(PROVIDER_ID_FIELDS)
+        }
 
     # -- firmware ----------------------------------------------------------
     #

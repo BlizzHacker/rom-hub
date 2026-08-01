@@ -80,6 +80,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from rom_hub.types import PROVIDER_ID_FIELDS
+
 
 class BackendError(Exception):
     """Any library-backend failure: transport, auth, refusal, misconfiguration."""
@@ -263,6 +265,106 @@ CAPABILITY_HELP = {
 }
 
 
+# -- provider ids ----------------------------------------------------------
+#
+# A provider id is the highest-leverage thing a metadata plugin can write
+# and the only field on the whole endpoint that makes the *library* go and
+# do work. It is also the only one that can answer 500.
+#
+# Both halves were measured against a live RomM 4.9.2 on 2026-08-01, one
+# id at a time, on a server with every metadata source disabled:
+#
+#   igdb_id sgdb_id moby_id ss_id launchbox_id hasheous_id
+#   tgdb_id flashpoint_id hltb_id libretro_id   -> 200, stored, read back
+#   ra_id                                       -> 500, nothing stored
+#
+# So "writing another provider's id is dangerous" was too coarse a rule.
+# Ten of the eleven are simply stored when the provider is not configured.
+# One is not: RomM re-fetches from RetroAchievements whenever `ra_id`
+# changes, and with no key the auth middleware appends a `None` to the
+# query and `yarl` raises out of the request handler.
+#
+# What a backend therefore has to answer is not "may a plugin write ids?"
+# but, per field: may this one be written *here, right now*, and if not,
+# why not in words an operator can act on. That is `ProviderIdVerdict`.
+
+
+@dataclass(frozen=True)
+class ProviderIdVerdict:
+    """Whether one provider-id field may be written, and what it will do.
+
+    `allowed` is the gate. `enriches` is the part worth knowing even when
+    the answer is yes: RomM re-fetches from a provider when that
+    provider's id changes, so an `igdb_id` written to a RomM that *has*
+    IGDB credentials pulls in genre, summary, screenshots, release date
+    and companies -- and the same id written to a RomM without them is a
+    number in a column and nothing else. A plugin cannot tell those two
+    apart; the backend can.
+
+    `reason` is a sentence, not a code. When `allowed` is false it says
+    why the id was withheld and what would make it writable; when true it
+    describes what writing it is expected to do. Either way it is meant to
+    be shown to the operator verbatim -- "an id was silently not written"
+    is the outcome this whole type exists to prevent.
+    """
+
+    field: str
+    allowed: bool
+    enriches: bool
+    reason: str
+
+
+def provider_id_policy(backend: LibraryBackend) -> dict[str, ProviderIdVerdict]:
+    """`backend.provider_id_policy()`, defensively, for every known field.
+
+    Read the same way `capabilities_of` reads `capabilities()`: a backend
+    that has no opinion, or that raises while forming one, gets the
+    permissive answer. That direction is deliberate and it is the opposite
+    of `capabilities_of`'s. A backend that cannot say what it supports
+    must be assumed to support nothing, because the failure there is
+    uploading four gigabytes into a void. A backend that cannot say which
+    provider ids are safe has told us nothing about them, and withholding
+    every id on a transport blip would silently make every enrich poorer
+    -- the failure this returns to is a 500 on one field, which is loud.
+
+    The permissive default is also what keeps this from being a new thing
+    every backend author must implement: `provider_id_policy` is optional
+    on the Protocol, and a backend that never grows one behaves exactly as
+    it did before this existed.
+    """
+    fields = sorted(PROVIDER_ID_FIELDS)
+    try:
+        raw = backend.provider_id_policy()
+    except Exception:  # noqa: BLE001 - a backend that cannot answer is not fatal
+        raw = None
+    if not isinstance(raw, dict):
+        return {
+            field: ProviderIdVerdict(
+                field=field,
+                allowed=True,
+                enriches=False,
+                reason=(
+                    f"the {getattr(backend, 'name', 'active')!r} backend "
+                    f"states no policy for provider ids, so {field} is "
+                    f"written as given"
+                ),
+            )
+            for field in fields
+        }
+    out: dict[str, ProviderIdVerdict] = {}
+    for field in fields:
+        verdict = raw.get(field)
+        if not isinstance(verdict, ProviderIdVerdict):
+            verdict = ProviderIdVerdict(
+                field=field,
+                allowed=True,
+                enriches=False,
+                reason=f"{field} is written as given",
+            )
+        out[field] = verdict
+    return out
+
+
 @runtime_checkable
 class Scanner(Protocol):
     """The post-upload registration step, on its own.
@@ -341,6 +443,20 @@ class LibraryBackend(Protocol):
         express a partial update must refuse rather than approximate one.
 
         `artwork` is `(filename, bytes, content_type)`.
+        """
+        ...
+
+    def provider_id_policy(self) -> dict[str, ProviderIdVerdict]:
+        """Which provider ids may be written here, and what each will do.
+
+        **Optional.** A backend that does not implement it is read as
+        having no opinion and every id is written as given; see
+        `provider_id_policy()`, the module-level reader, for why the
+        default here is permissive when `capabilities_of`'s is not.
+
+        Implement it when writing an id can fail, or when writing one
+        makes the library go and do something -- both are true of RomM and
+        neither is visible to the plugin that supplied the id.
         """
         ...
 
