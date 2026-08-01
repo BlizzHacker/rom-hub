@@ -52,7 +52,53 @@ conditions, unfiltered. `save_paths` is the one derived convenience — the
 `files` entries ludusavi itself tags `save` — and it is derived in the open
 rather than by dropping the rest.
 
-## Where it writes, and why that is a compromise
+## Where it writes: the summary, because the blob does not arrive
+
+**This is a correction to what this plugin did before `0.2.0`, and to what the
+section below argued.** The blob written to `raw_manual_metadata` does not land
+anywhere RomM will show or return.
+
+Measured against a live RomM 4.9.2 on 2026-08-01: a marker written into
+`raw_manual_metadata` answers HTTP 200, and appears nowhere in the ROM record
+afterwards — not under `manual_metadata`, not anywhere in the response.
+Repeated for `raw_hasheous_metadata` and `raw_igdb_metadata` paired with a
+*changed* provider id in the same request, to rule out the id gate described
+below: **the id lands and the blob does not.**
+
+So `raw_metadata` is now off by default, and the default write is
+`summary` — which RomM does store, by the same measurement in reverse. It looks
+like this on a ROM page:
+
+    Saves: <winAppData>/Fallout/SAVE. Cloud saves: gog, steam. Paths are
+    ludusavi's placeholders and globs; see
+    https://github.com/mtkennerly/ludusavi-manifest for what each expands to.
+
+The save paths first; the config paths only when there are no save paths; a
+count when there are more than three; registry keys reported separately, because
+a registry key is not a path and a reader must not be told it is; and the
+cloud-sync line, because "Steam Cloud syncs this" is often the entire answer
+somebody wanted.
+
+**Placeholders are left exactly as the manifest writes them.** `<winAppData>`
+expanded to a path on *this* machine would be a claim about your filesystem that
+the manifest does not make.
+
+`raw_metadata = true` still produces the full structured blob, which is richer
+than any paragraph and is worth having for a backend that grows a home for it.
+The reasoning that chose `raw_manual_metadata` for it is below and still
+correct as far as it goes.
+
+### What cannot reach RomM
+
+Everything except that paragraph. `MetadataPatch` has no save-location field
+because RomM has no save-location field, the eight `raw_*_metadata` fields are a
+void, and the `metadatum` sub-object where structured facts live is populated by
+RomM's own providers with no form field that reaches it. The conditions
+(`when.os`, `when.store`), the per-path tags, the Steam id and the full location
+list exist only in the blob — so on RomM 4.9.2 they do not reach your library at
+all, and this plugin says so rather than sending them and reporting success.
+
+## Where the blob would go, and why that is a compromise
 
 **It writes `raw_manual_metadata`.** RPP's `MetadataPatch` has no
 save-location field and neither does RomM, so there is no right answer
@@ -141,7 +187,12 @@ verbatim — and it can also resolve an ambiguity that normalising created
 
 | key | type | default | what it does |
 |---|---|---|---|
+| `summary` | `bool` | `true` | write the save locations as RomM's `summary` |
+| `raw_metadata` | `bool` | `false` | also send the full structured blob as `raw_manual_metadata` (RomM 4.9.2 discards it) |
 | `platforms` | `list[str]` | `["dos", "win", "win3x", "linux", "mac"]` | which library platforms this dataset is treated as true about. |
+
+Turning both `summary` and `raw_metadata` off is a refusal, not a silent
+no-op: an enrich that writes nothing is not a degraded enrich.
 
 Widening `platforms` is possible and is a deliberate decision with a known
 cost: the table above explains what the default is protecting you from.

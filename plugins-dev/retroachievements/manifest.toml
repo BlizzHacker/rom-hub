@@ -1,16 +1,21 @@
 [plugin]
 slug        = "retroachievements"
 name        = "RetroAchievements"
-version     = "0.2.0"
+version     = "0.3.0"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 metadata = "retroachievements.metadata:Metadata"
 
-# One host. The plugin calls retroachievements.org/API/ and proposes no
-# artwork, so RA's media host is deliberately not declared -- an allowlist
-# entry for a host nothing fetches is an allowlist entry for nothing.
+# Still one host, and that is the notable part now that this plugin does
+# propose artwork. `API_GetGame.php` returns box art as a *path*
+# (`/Images/026365.png`), and both `retroachievements.org` and
+# `media.retroachievements.org` serve it -- measured 2026-08-01, each
+# answers 200 with `image/png` and identical 130,898 bytes, with no
+# redirect. So the cover is named on the host already declared here for
+# the API, and an operator who approved this plugin before covers existed
+# does not have to approve a new host to get them.
 [permissions]
 network  = ["retroachievements.org"]
 romm_api = []
@@ -31,3 +36,18 @@ api_key                = { type = "secret" }
 username               = { type = "str", default = "" }
 set_name               = { type = "bool", default = true }
 only_with_achievements = { type = "bool", default = true }
+
+# The achievement count, points, leaderboards and console, composed into
+# RomM's `summary`. Free -- every one of these was already in the
+# game-list response this plugin has always made.
+summary                = { type = "bool", default = true }
+
+# One extra `API_GetGame.php` call per enrich, for the publisher,
+# developer, genre and release year -- and the box art URL. Turn it off to
+# halve the request count over a large library; the summary then carries
+# the game-list facts alone and no cover is proposed.
+details                = { type = "bool", default = true }
+
+# Propose RA's box art as the rom's cover. Needs `details`, which is where
+# the URL comes from.
+artwork                = { type = "bool", default = true }

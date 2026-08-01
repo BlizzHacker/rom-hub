@@ -1,4 +1,5 @@
 from rom_hub.types import (
+    MAX_SUMMARY_CHARS,
     AssetArtifact,
     CoreArtifact,
     FetchFile,
@@ -22,6 +23,10 @@ from .capabilities import (
 from .context import DataAssetUnavailable, HttpResponse, PluginContext
 
 __all__ = [
+    # The ceiling on `MetadataPatch.summary`, exported because a plugin
+    # that composes one needs to know where to trim rather than finding
+    # out from a validation error after the work is done.
+    "MAX_SUMMARY_CHARS",
     "DataAssetUnavailable",
     "SearchResult",
     "SearchProvider",

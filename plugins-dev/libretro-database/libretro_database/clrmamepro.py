@@ -29,6 +29,23 @@ can wrap, a value can contain parentheses (`Tetris (World) (Rev 1)`), and
 a game can carry several roms. A regex per line gets the easy 95% and
 silently drops the rest; the tokeniser handles all of it and is about
 thirty lines.
+
+**There is a second shape, and it is the same dialect.** `metadat/`
+carries far more than `no-intro/` and `redump/`: `genre/`, `developer/`,
+`publisher/`, `releaseyear/`, `franchise/` and `maxusers/` are the same
+files annotated one fact at a time, and their entries look like
+
+    game (
+        comment "10-Pin Bowling (USA)"
+        genre "Sports"
+        rom ( crc 9A024415 )
+    )
+
+-- a title under `comment` rather than `name`, one fact, and a CRC-32 to
+join on. `Game.attributes` keeps whatever scalar keys a block had, so
+this parser reads all of those directories without a field per
+possibility, and the title falls back to `comment` because requiring
+`name` dropped every entry in every one of them.
 """
 
 from dataclasses import dataclass, field
@@ -50,12 +67,21 @@ class Game:
     `title` is the catalogue name. `roms` are the files it is made of,
     each a plain dict of the keys the DAT gave. Nothing here promotes a
     rom's `name` to the game's.
+
+    `attributes` is every other scalar key the block carried, verbatim.
+    The two named fields above are promoted because matching depends on
+    them; the rest are kept as data because which keys exist depends
+    entirely on which directory under `metadat/` the file came from --
+    `genre/` files carry `genre`, `maxusers/` files carry `users`, and a
+    parser with a field per possibility would need editing every time
+    libretro adds a directory.
     """
 
     title: str
     region: str = ""
     serial: str = ""
     roms: list[dict] = field(default_factory=list)
+    attributes: dict[str, str] = field(default_factory=dict)
 
 
 def _tokens(text: str):
@@ -151,7 +177,18 @@ def parse(text: str) -> tuple[dict, list[Game]]:
         if token == "clrmamepro":
             header = body
         elif token == "game":
-            title = body.get("name")
+            # `name` in the catalogue sets; `comment` in the annotation
+            # sets under `metadat/genre/`, `metadat/developer/` and the
+            # rest, whose entries look like
+            #
+            #     game ( comment "10-Pin Bowling (USA)"
+            #            genre "Sports"
+            #            rom ( crc 9A024415 ) )
+            #
+            # -- a title, one fact, and a CRC-32 to join on, with no
+            # `name` anywhere. Requiring `name` silently dropped every
+            # entry in every one of those files.
+            title = body.get("name") or body.get("comment")
             if isinstance(title, str) and title:
                 games.append(
                     Game(
@@ -159,6 +196,11 @@ def parse(text: str) -> tuple[dict, list[Game]]:
                         region=body.get("region") or "",
                         serial=body.get("serial") or "",
                         roms=[r for r in body.get("roms", []) if isinstance(r, dict)],
+                        attributes={
+                            key: value
+                            for key, value in body.items()
+                            if isinstance(value, str) and value
+                        },
                     )
                 )
 

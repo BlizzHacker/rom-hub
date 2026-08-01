@@ -139,7 +139,7 @@ implementation and a CLI command:
 |---|---|---|
 | `search` | `rom-hub search <query>` | fans out across every enabled plugin, then merges the results into one row per game per platform -- variants and cross-source duplicates collapse behind a count, `--expand <#>` opens one, `--no-group` turns it off. `--limit`/`--offset` page the merged set |
 | `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection, warning first if the platform has no emulator core |
-| `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to the library |
+| `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes a name, a summary, provider ids and artwork; the Hub fetches the cover, asks the backend which ids it will accept, and writes what survives |
 | `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated target and hands it over — prints what to do with it, `--open`s it, or emits it as JSON |
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 | `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
@@ -390,6 +390,46 @@ game's title and cover into your library with nothing to notice it by.
 Artwork can come from a URL (the Hub fetches it, and only from a host the
 plugin's manifest declares) or from bytes the plugin already has. It lands in
 `$ROM_HUB_HOME/var/artwork/<rom_id>/` on its way to RomM.
+
+### What a patch can carry, and what a library will keep
+
+A patch carries a **name**, a **summary**, **provider ids**, **artwork** and
+the `raw_*_metadata` blobs. Two of those are worth knowing about before
+reading a plugin's README:
+
+**`summary` is the only prose field RomM stores**, and it is where a source's
+release date, developer, publisher, genre and player count end up — because
+there is nowhere else. RomM keeps that sort of thing in a `metadatum`
+sub-object populated by *its own* configured metadata providers, and
+`PUT /api/roms/{id}` has no form field that reaches it. Measured against a
+live 4.9.2: a `summary` round-trips verbatim; a part named `genres` is
+accepted with a 200 and discarded; and **all eight `raw_*_metadata` fields
+answer 200 and store nothing**, including when the matching provider id is
+written and changed in the same request. Each metadata plugin's README has a
+"What cannot reach RomM" section saying where its own data stops.
+
+**A provider id is the one field the library acts on rather than storing**, so
+the library gets a say in it. Writing `igdb_id` to a RomM that holds IGDB
+credentials makes RomM go and fetch that game's genre, summary, screenshots,
+release date and companies by itself — which is worth more than anything a
+plugin could compose. Writing `ra_id` to a RomM with *no* RetroAchievements
+key answers HTTP 500 rather than degrading. Ten of the eleven ids are simply
+stored when the provider is not configured; `ra_id` is the exception.
+
+So the Hub asks the backend before it writes. `GET /api/heartbeat` reports one
+flag per provider RomM holds credentials for, an id the server will not take is
+dropped and the rest of the patch is written anyway, and both halves are in the
+command's output:
+
+    rom 449: updated hasheous_id, igdb_id, name, summary, tgdb_id. Withheld
+    ra_id (RomM has no credentials for this provider (RA_API_ENABLED is false
+    in GET /api/heartbeat) and re-fetches from it whenever ra_id changes,
+    which answers HTTP 500 rather than degrading. The id was withheld so the
+    rest of the patch could be written; configure that provider in RomM and
+    enrich again to keep it)
+
+Backends declare this with `provider_id_policy()`, which is optional: one that
+never grows a policy has every id written as given, exactly as before.
 
 ## Streaming
 

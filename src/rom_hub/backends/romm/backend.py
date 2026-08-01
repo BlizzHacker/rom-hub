@@ -44,9 +44,15 @@ from rom_hub import env
 from rom_hub.backends.base import (
     ALL_CAPABILITIES,
     BackendNotConfigured,
+    ProviderIdVerdict,
 )
+from rom_hub.types import PROVIDER_ID_FIELDS
 
-from .client import RommClient
+from .client import (
+    HEARTBEAT_FLAGS,
+    UNSAFE_WITHOUT_CREDENTIALS,
+    RommClient,
+)
 from .scan import Scanner, SocketIOScanner
 from .upload import upload_file
 
@@ -183,6 +189,108 @@ class RommBackend:
         artwork: tuple[str, bytes, str] | None = None,
     ) -> dict:
         return self._client.update_rom(rom_id, fields, artwork=artwork)
+
+    def provider_id_policy(self) -> dict[str, ProviderIdVerdict]:
+        """Which provider ids this RomM will take, and what each will do.
+
+        The answer is a property of the *server*, not of the Hub: it comes
+        from `GET /api/heartbeat`'s `METADATA_SOURCES`, which reports one
+        flag per provider RomM holds credentials for. Two different things
+        are read out of it, and conflating them is what made the old rule
+        wrong.
+
+        **Will it fail?** Only for `ra_id`, and only when RA is not
+        configured. RomM re-fetches from a provider whenever that
+        provider's id changes; every other such field degrades to "stored,
+        not fetched" when there is no key, and `ra_id` raises out of the
+        request handler instead. That is measured, one id at a time --
+        see `client.UNSAFE_WITHOUT_CREDENTIALS`.
+
+        **Will it do anything?** That is `enriches`, and it is why a
+        withheld id is not the only thing worth telling an operator. An
+        `igdb_id` written to a RomM with IGDB credentials is the single
+        highest-value field a metadata plugin can produce: RomM goes and
+        fetches the genre, the summary, the screenshots, the release date
+        and the companies by itself. Written to a RomM without them it is
+        a number in a column. Same request, same 200, and the difference
+        is invisible to the plugin that supplied the id.
+        """
+        sources = self._client.metadata_sources()
+        policy: dict[str, ProviderIdVerdict] = {}
+        for field in sorted(PROVIDER_ID_FIELDS):
+            flag = HEARTBEAT_FLAGS.get(field)
+            if flag is None:
+                policy[field] = ProviderIdVerdict(
+                    field=field,
+                    allowed=True,
+                    enriches=False,
+                    reason=(
+                        f"RomM stores {field} and does not fetch from that "
+                        f"provider when it changes, so writing it is always "
+                        f"safe and never pulls in further metadata"
+                    ),
+                )
+                continue
+
+            # Absent from the heartbeat is not the same as false. An older
+            # or newer RomM that does not report this flag has told us
+            # nothing, and withholding on silence would make every enrich
+            # against it poorer for no measured reason.
+            configured = sources.get(flag)
+            if configured is None:
+                policy[field] = ProviderIdVerdict(
+                    field=field,
+                    allowed=True,
+                    enriches=False,
+                    reason=(
+                        f"this RomM's heartbeat does not report {flag}, so "
+                        f"whether it holds credentials for {field}'s provider "
+                        f"is unknown; the id is written as given"
+                    ),
+                )
+                continue
+
+            if configured:
+                policy[field] = ProviderIdVerdict(
+                    field=field,
+                    allowed=True,
+                    enriches=True,
+                    reason=(
+                        f"RomM has credentials for this provider ({flag} is "
+                        f"true), so writing {field} makes RomM fetch that "
+                        f"game's own metadata -- genre, summary, screenshots, "
+                        f"release date and companies"
+                    ),
+                )
+                continue
+
+            if field in UNSAFE_WITHOUT_CREDENTIALS:
+                policy[field] = ProviderIdVerdict(
+                    field=field,
+                    allowed=False,
+                    enriches=False,
+                    reason=(
+                        f"RomM has no credentials for this provider ({flag} "
+                        f"is false in GET /api/heartbeat) and re-fetches from "
+                        f"it whenever {field} changes, which answers HTTP 500 "
+                        f"rather than degrading. The id was withheld so the "
+                        f"rest of the patch could be written; configure that "
+                        f"provider in RomM and enrich again to keep it"
+                    ),
+                )
+                continue
+
+            policy[field] = ProviderIdVerdict(
+                field=field,
+                allowed=True,
+                enriches=False,
+                reason=(
+                    f"RomM has no credentials for this provider ({flag} is "
+                    f"false), so {field} is stored as a plain reference and no "
+                    f"further metadata is fetched for it"
+                ),
+            )
+        return policy
 
     # -- firmware ----------------------------------------------------------
 

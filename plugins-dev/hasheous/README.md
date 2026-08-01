@@ -7,7 +7,7 @@ WHDLoad, FBNeo, RetroAchievements) to metadata providers.
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `metadata` | `hasheous.org/api/v1/Lookup/ByHash/{md5,sha1,sha256,crc}/<hex>` | proposes a name, `hasheous_id`, and any provider ids hasheous has already mapped |
+| `metadata` | `hasheous.org/api/v1/Lookup/ByHash/{md5,sha1,sha256,crc}/<hex>` | proposes a name, a summary from the signature row, `hasheous_id`, and every provider id hasheous has mapped |
 
 ## Install
 
@@ -24,8 +24,13 @@ nothing but a GET.
 | `verify_platform` | `bool` | `true` | refuse an answer about a console other than the one RomM has this ROM filed under |
 | `allow_crc32` | `bool` | `false` | permit a CRC-32 lookup (see below — 32 bits collide) |
 | `set_name` | `bool` | `true` | propose hasheous's game name |
-| `raw_metadata` | `bool` | `true` | keep the whole answer in `raw_hasheous_metadata` |
-| `cross_provider_ids` | `bool` | `false` | also write `igdb_id` and `ra_id` (see below — these make RomM call a keyed service) |
+| `summary` | `bool` | `true` | propose the signature row's publisher, year, region, language and corpus as RomM's `summary` |
+| `raw_metadata` | `bool` | `false` | also send the whole answer as `raw_hasheous_metadata` (see below — RomM 4.9.2 discards it) |
+| `provider_ids` | `list[str]` | `["igdb", "tgdb", "ra"]` | which sources' ids to offer (see below) |
+
+`cross_provider_ids` is gone as of `0.2.0`. It was one boolean over two ids and
+it defaulted to off; `provider_ids` replaces it with a per-source list that
+defaults to all of them. Why that flipped is below.
 
 ## Where the hash comes from
 
@@ -101,15 +106,28 @@ decision rather than this plugin's guess.
   filename: the No-Intro parser splits the DAT entry at the first `(` and
   keeps what is in front, so `Altered Beast (USA, Europe)` is stored as
   `Altered Beast`. Set `set_name = false` to keep your own naming.
-- **`hasheous_id`** — the identity object's id.
-- **`tgdb_id`** — when hasheous has mapped one.
-- **`igdb_id` and `ra_id`** — only with `cross_provider_ids = true`, and only
-  for entries hasheous itself marks `Mapped`. A `NotMapped` row is a search
-  hasheous has *scheduled*, not an answer it has, and its empty id would look
-  identical to a resolved one once written.
-- **`raw_hasheous_metadata`** — the whole answer, dropped rather than
-  truncated when it exceeds RPP v1's 256 KiB per-field ceiling (`signatures`
-  is shed first; it is the bulky part and not where the identity lives).
+- **`summary`** — the signature row's own facts, which every answer carried and
+  this plugin used to read past on its way to `id` and `name`. For the Altered
+  Beast fixture: `Published by Sega. Released 1988. Region: USA, Europe.
+  Language: English. Matched against the No-Intro signature (verified dump).`
+
+  That last sentence is the one no other plugin here can write — the difference
+  between "a file called Altered Beast" and "the No-Intro verified dump of
+  Altered Beast". `NoIntros` is spelled `No-Intro`, because hasheous's internal
+  spelling reads as a typo; the languages are hasheous's own expansion of the
+  DAT's `En` tags rather than a table this plugin would have to maintain.
+- **`hasheous_id`** — the identity object's id. Always, and deliberately not in
+  `provider_ids`: it is not another provider's reference, it is the identity of
+  the thing that answered, and a patch that cannot be traced back to its lookup
+  is worse than one that can.
+- **`igdb_id`, `tgdb_id`, `ra_id`** — for the sources named in `provider_ids`,
+  and only for entries hasheous itself marks `Mapped`. A `NotMapped` row is a
+  search hasheous has *scheduled*, not an answer it has, and its empty id would
+  look identical to a resolved one once written.
+- **`raw_hasheous_metadata`** — only with `raw_metadata = true`. The whole
+  answer, dropped rather than truncated when it exceeds RPP v1's 256 KiB
+  per-field ceiling (`signatures` is shed first; it is the bulky part and not
+  where the identity lives).
 
 Everything else is left **absent**, which `MetadataPatch` defines as "leave
 RomM alone". A lookup that maps to IGDB but not to TheGamesDB writes `igdb_id`
@@ -119,9 +137,9 @@ Hasheous also proxies GiantBomb, Steam, GOG, the Epic Game Store, Wikipedia and
 SteamGridDB. RomM's update endpoint has no field for any of those, so those
 mappings ride along in the raw blob and nowhere else.
 
-### Why `igdb_id` and `ra_id` are off by default
+### Why every id is offered now, and who decides whether it lands
 
-Because RomM does not *store* those — it **acts** on them. RomM 4.9.2's
+RomM does not *store* some of those ids — it **acts** on them. RomM 4.9.2's
 `update_rom` re-fetches from the provider whenever a provider id changes
 (`backend/endpoints/roms/__init__.py`, the "Fetch metadata from external
 sources" block covers flashpoint, launchbox, ra, moby, ss and igdb), and that
@@ -130,14 +148,63 @@ fetch needs that provider's key.
 Writing `ra_id` to a RomM with no RetroAchievements key does not degrade. It
 raises `TypeError: Invalid variable type: value should be str, int or float,
 got None` out of `yarl`, when RomM's auth middleware appends a `None` API key
-to the query string, and the whole `PUT /api/roms/{id}` answers **500** —
-verified against RomM 4.9.2 on 2026-07-29, which is how this default was
-chosen rather than guessed.
+to the query string, and the whole `PUT /api/roms/{id}` answers **500**.
 
-`hasheous_id` and `tgdb_id` appear in neither the fetch block nor any handler:
-RomM stores them and stops. So those two are always written, and the two that
-reach out are opt-in. The point of this plugin is that it needs no key; a
-default that only works if you hold somebody else's would undo that.
+That measurement is why `cross_provider_ids` existed and defaulted to off. It
+was also, on its own, not enough to justify the default — because measuring the
+other ten one at a time against the same keyless RomM gives a different answer:
+
+| id | RomM with no credentials for it |
+|---|---|
+| `igdb_id`, `sgdb_id`, `moby_id`, `ss_id`, `launchbox_id`, `hasheous_id`, `tgdb_id`, `flashpoint_id`, `hltb_id`, `libretro_id` | **200**, stored, read back |
+| `ra_id` | **500**, nothing stored |
+
+Measured 2026-08-01. So the danger was one field, and the old default withheld
+two thirds of what this plugin exists to produce.
+
+**The Hub asks your server now.** `GET /api/heartbeat` reports one
+`METADATA_SOURCES` flag per provider RomM holds credentials for — it is public,
+so it works before authentication — and the host reads it before every write.
+An id the server will not take is dropped, the rest of the patch is written
+anyway, and the reason comes back in the command's output:
+
+    ra_id (RomM has no credentials for this provider (RA_API_ENABLED is false
+    in GET /api/heartbeat) and re-fetches from it whenever ra_id changes,
+    which answers HTTP 500 rather than degrading. The id was withheld so the
+    rest of the patch could be written; configure that provider in RomM and
+    enrich again to keep it)
+
+The same mechanism reports the good news. When your RomM *does* hold IGDB
+credentials, writing `igdb_id` makes RomM go and fetch that game's genre,
+summary, screenshots, release date and companies by itself — which is the
+single most valuable thing this plugin can produce, and far more than any
+`summary` it could compose. The output says so.
+
+`provider_ids` remains, per source rather than one switch, because the reasons
+differ per source: `ra_id` is what an achievements client will act on later, and
+the other two are cross-references nothing acts on. An operator may reasonably
+want one and not the other.
+
+### What cannot reach RomM
+
+**The raw blob does not arrive**, and that is why `raw_metadata` defaults to
+false since `0.2.0`. Measured against a live RomM 4.9.2 on 2026-08-01: a marker
+written into `raw_hasheous_metadata` answers 200 and appears nowhere in the rom
+record afterwards. Repeated with `hasheous_id` written *and changed* in the same
+request — which rules out the provider-id gate RomM applies to seven of its
+eight raw fields — the id lands and the blob does not. The same is true of
+`raw_manual_metadata`, which has no gate at all.
+
+So the config key stays (a different RomM version, or a backend with a home for
+it, would make the blob worth sending again) and the default does not, because a
+plugin whose main output is discarded looks from the outside exactly like a
+plugin that worked.
+
+Hasheous also proxies GiantBomb, Steam, GOG, the Epic Game Store, Wikipedia and
+SteamGridDB. RomM's update endpoint has no field for any of those and the raw
+blob is a void, so **those mappings do not reach your library at all.** They are
+one `GET https://hasheous.org/api/v1/Lookup/ByHash/md5/<hex>` away if you want
+them; this plugin will not pretend to have delivered them.
 
 **No artwork.** Hasheous carries logos and screenshots as attributes and
 proxies IGDB and TheGamesDB images, but proxied cover art is those providers'

@@ -87,7 +87,9 @@ from rom_hub.backends.base import (
     SCAN,
     BackendNotConfigured,
     CapabilityUnsupported,
+    ProviderIdVerdict,
 )
+from rom_hub.types import PROVIDER_ID_FIELDS
 
 from .client import UNKNOWN_PLATFORM_ID, GaseousClient, GaseousError
 from .imports import ImportWaiter
@@ -328,6 +330,29 @@ class GaseousBackend:
             f"rom's fields as derived from its signature match rather than "
             f"as editable. Requested fields: {sorted(fields)}."
         )
+
+    def provider_id_policy(self) -> dict[str, ProviderIdVerdict]:
+        """None of them, and not because of credentials.
+
+        Gaseous does not declare `METADATA` at all, so `run_enrich`
+        refuses before it ever consults this. It is implemented anyway so
+        the answer is a sentence rather than an `AttributeError` for any
+        caller that asks the question directly -- the same reason
+        `list_firmware` above raises instead of not existing.
+        """
+        return {
+            field: ProviderIdVerdict(
+                field=field,
+                allowed=False,
+                enriches=False,
+                reason=(
+                    "Gaseous exposes only GET and DELETE on a rom and models "
+                    "a rom's fields as derived from its signature match, so "
+                    "no provider id can be written to it at all"
+                ),
+            )
+            for field in sorted(PROVIDER_ID_FIELDS)
+        }
 
     # -- firmware ----------------------------------------------------------
 
