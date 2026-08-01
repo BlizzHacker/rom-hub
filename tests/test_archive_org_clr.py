@@ -661,3 +661,43 @@ def test_an_ask_bigger_than_one_reply_frame_is_refused_not_truncated():
     with pytest.raises(SearchRefused, match="downloadable_only"):
         search.search("", None, MAX_RESULTS + 1)
     assert http.calls == []
+
+
+class TiedSizeHttp(CorpusHttp):
+    """Every document the same `item_size`.
+
+    The one shape the partition cannot split, because its boundary is a
+    size and there is only one. It must terminate and it must not spin.
+    """
+
+    def __init__(self, n):
+        super().__init__(n)
+        for doc in self.docs:
+            doc["item_size"] = 4242
+
+
+def test_documents_of_identical_size_do_not_make_the_partition_spin():
+    http = TiedSizeHttp(20000)
+    docs = Index(http).fetch("collection:(consolelivingroom)", 20000)
+    # It cannot return them all -- one byte count holds more than fits in
+    # one response -- but it must return a windowful and stop.
+    assert 0 < len(docs) <= 20000
+    assert len(http.calls) < 500
+
+
+def test_a_shared_boundary_size_is_read_whole_rather_than_half_dropped():
+    """`item_size` is a byte count and nothing makes it unique. A window
+    that ended *on* a shared size would have to either exceed the response
+    budget or silently drop the rest of the tie."""
+    http = CorpusHttp(20000)
+    Index(http).fetch("collection:(consolelivingroom)", 20000)
+    spans = []
+    for _, params in http.calls:
+        if int(params.get("rows") or 0) <= 1 or params.get("sort[]"):
+            continue
+        match = CorpusHttp.RANGE.search(params["q"])
+        if match:
+            spans.append((int(match.group(1)), int(match.group(2))))
+    assert len(spans) > 1
+    for (_, first_high), (second_low, _) in zip(spans, spans[1:]):
+        assert first_high < second_low

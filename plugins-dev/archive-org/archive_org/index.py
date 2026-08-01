@@ -408,22 +408,37 @@ class Index:
 
             if boundary is None:
                 # Fewer than `ceiling` documents left: the tail is one read.
-                part = self._read(window, wanted, None, with_notes=with_notes)
-                self._absorb(part, out, seen, limit)
+                self._absorb(
+                    self._read(window, wanted, None, with_notes=with_notes),
+                    out, seen, limit,
+                )
                 break
 
-            bounded = f"{q} AND item_size:[{low} TO {boundary}]"
-            part = self._read(bounded, wanted, None, with_notes=with_notes)
+            if boundary > low:
+                # **Below** the boundary, not up to it. The boundary size
+                # may be shared by several documents -- Archive.org's
+                # `item_size` is a byte count and nothing makes it unique
+                # -- and a window that included some of them would have to
+                # either exceed `ceiling` or drop the rest. Excluding the
+                # size entirely puts every document that has it in the
+                # next window, where they are read together.
+                bounded = f"{q} AND item_size:[{low} TO {boundary - 1}]"
+                next_low = boundary
+            else:
+                # The boundary is the window's own first size, so one byte
+                # count holds `ceiling` documents or more. Take that size
+                # alone and step past it. This is the only case that can
+                # lose a document, and only above `ceiling` items of
+                # exactly equal size -- which no observed collection has.
+                bounded = f"{q} AND item_size:[{low} TO {low}]"
+                next_low = low + 1
+
+            self._absorb(
+                self._read(bounded, wanted, None, with_notes=with_notes),
+                out, seen, limit,
+            )
             requests += 1
-            before = len(out)
-            self._absorb(part, out, seen, limit)
-            if len(out) == before:
-                # No progress -- an empty window, or every document in it
-                # already seen. Advancing anyway is what keeps this from
-                # spinning; the alternative is a loop that cannot end.
-                if boundary <= low:
-                    break
-            low = boundary + 1
+            low = next_low
 
         return out
 
