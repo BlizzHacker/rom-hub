@@ -283,7 +283,24 @@ class Verdict:
 #: looked".
 NO_EQUIVALENT: dict[str, str] = {
     # -- machines with no EmulatorJS core of any kind ---------------------
+    "adventure-vision": (
+        "the Entex Adventure Vision, a 1982 handheld with a spinning-mirror "
+        "LED display. Nothing in the map is that machine and nothing else "
+        "draws that display"
+    ),
+    "amstrad-gx4000": (
+        "Amstrad's cartridge console. `acpc` is in the map and is the CPC "
+        "*computer*: the GX4000 shares its silicon but has no disk drive and "
+        "no keyboard, so a CPC disk image is not a GX4000 cartridge and the "
+        "cartridge is not a CPC disk. RomM keeps them as two slugs and so "
+        "does this"
+    ),
     "android": "a phone application; there is no console here to emulate",
+    "arcadia-2001": (
+        "the Emerson Arcadia 2001 and the several dozen consoles rebadged "
+        "from it. No core in the map, and its 2650 CPU is shared with "
+        "nothing else there"
+    ),
     "apple-iigs": "no Apple core in the map at all, in any revision",
     "appleii": "no Apple core in the map at all, in any revision",
     "appleiii": "no Apple core in the map at all, in any revision",
@@ -301,9 +318,26 @@ NO_EQUIVALENT: dict[str, str] = {
         "a 5200 cartridge and would not boot"
     ),
     "browser": "a web page: nothing to download and nothing to emulate",
+    "creativision": (
+        "the VTech CreatiVision, a 6502 console with a membrane keyboard. "
+        "No core in the map"
+    ),
     "dc": (
         "the Dreamcast. EmulatorJS ships no Dreamcast core -- flycast is not "
         "in the map -- and no other Sega slug is a Dreamcast"
+    ),
+    "epoch-super-cassette-vision": (
+        "the Epoch Super Cassette Vision, a 6502 console sold in Japan and "
+        "France. No core in the map"
+    ),
+    "fairchild-channel-f": (
+        "the Fairchild Channel F, the first cartridge console. Its F8 CPU is "
+        "in nothing else in the map, and `atari2600` -- the console it "
+        "predates and provoked -- is a different machine entirely"
+    ),
+    "game-dot-com": (
+        "the Tiger game.com, a handheld that is also a PDA. No core in the "
+        "map, and no Game Boy core reads its cartridges"
     ),
     "handheld-electronic-lcd": (
         "Game & Watch-style LCD handhelds, which need libretro's `gw` core "
@@ -311,12 +345,22 @@ NO_EQUIVALENT: dict[str, str] = {
     ),
     "linux": "a desktop PC executable, not a console or home-computer ROM",
     "mac": "a Macintosh, of any era; no Mac core is in the map",
+    "mega-duck-slash-cougar-boy": (
+        "the Mega Duck, a Game Boy-alike with a rearranged memory map. The "
+        "resemblance is the trap: `gb` is in the map and its cores reject "
+        "these cartridges"
+    ),
     "msx": (
         "the MSX standard. It shares a CPU and a video chip with the "
         "ColecoVision and is not the same machine: different BIOS, different "
         "media, different software"
     ),
     "ngc": "the GameCube. No core in the map, and no other Nintendo slug is one",
+    "odyssey-2": (
+        "the Magnavox Odyssey 2 / Philips Videopac. RomM also carries "
+        "`videopac-g7400`, which is the *later* machine and equally "
+        "coreless, so there is not even a wrong answer available here"
+    ),
     "pokemon-mini": (
         "the Pokemon mini. Its cartridges are not Game Boy cartridges and "
         "no Game Boy core reads them"
@@ -335,7 +379,21 @@ NO_EQUIVALENT: dict[str, str] = {
         "*original floppies* -- but not from ScummVM's own resource layout, "
         "which is what these downloads are"
     ),
+    "sg1000": (
+        "Sega's first console. Every playable Sega slug in the map runs on "
+        "`genesis_plus_gx`, and that core's Master System mode is not an "
+        "SG-1000: the SG-1000 has different video hardware and its "
+        "cartridges are not Master System cartridges"
+    ),
     "sharp-x68000": "the Sharp X68000, a 68000 Japanese home computer; no core",
+    "super-acan": (
+        "the Funtech Super A'Can, a 1995 Taiwanese 68000 console. No core in "
+        "the map; `snes` is the machine it imitates and not the machine it is"
+    ),
+    "supervision": (
+        "the Watara Supervision. Another Game Boy-alike with its own "
+        "hardware, and `gb`'s cores do not read its cartridges"
+    ),
     "tic-80": (
         "a fantasy console. Its cartridges run on its own runtime and on "
         "nothing else; there is no hardware to substitute"
