@@ -230,6 +230,12 @@ def _fold_accents(text: str) -> str:
     Japanese kana -- turning `ガ` into `カ`, which is a different syllable
     and a genuinely wrong merge. So a mark is dropped only when the
     character it decorates is ASCII, which is precisely the Latin case.
+
+    The survivors are recomposed with NFC before returning. Without that
+    they would still be *separate* combining characters, and the
+    punctuation pass downstream -- which sees a combining mark as
+    punctuation, because it is not alphanumeric -- would delete the ones
+    this function just went to the trouble of keeping.
     """
     decomposed = unicodedata.normalize("NFKD", text)
     out: list[str] = []
@@ -240,7 +246,7 @@ def _fold_accents(text: str) -> str:
             out.append(ch)  # someone else's script: leave it alone
             continue
         out.append(ch)
-    return "".join(out)
+    return unicodedata.normalize("NFC", "".join(out))
 
 
 def normalise_title(text: str) -> str:
@@ -502,15 +508,16 @@ def variant_rank(name: RomName) -> tuple:
             region_rank = index
             break
     revisions = [t for t in name.tokens if t.startswith("rev:")]
-    # Newest revision first: a Rev 2 supersedes a Rev 1 for someone who has
-    # not said otherwise.
-    revision = "" if not revisions else max(revisions)
+    # A revised release leads, newest first: Rev 2 supersedes Rev 1
+    # supersedes the original press, for an operator who has not said
+    # otherwise. Ordering only -- the original is still listed.
+    revision = (0, _invert(max(revisions))) if revisions else (1, ())
     return (
         status,
         bool(not name.regions),
         region_rank,
         tuple(sorted(name.regions)),
-        _invert(revision),
+        revision,
         name.raw,
     )
 
