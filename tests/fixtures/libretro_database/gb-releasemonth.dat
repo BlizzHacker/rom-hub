@@ -1,0 +1,10 @@
+clrmamepro (
+	name "Nintendo - Game Boy"
+	description "Nintendo - Game Boy"
+)
+
+game (
+	comment "Tetris 2 (USA)"
+	releasemonth "12"
+	rom ( crc AA4A1EDB )
+)

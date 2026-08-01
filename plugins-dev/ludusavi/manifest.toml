@@ -1,7 +1,7 @@
 [plugin]
 slug        = "ludusavi"
 name        = "Ludusavi (save locations)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -44,6 +44,19 @@ size_bytes  = 17460574
 description = "ludusavi-manifest @ 39c7638 (2026-07-31): save-file and registry locations for 52,886 PC games, compiled from PCGamingWiki. MIT."
 
 [config]
+# Where this game keeps its saves, as a paragraph RomM will actually
+# show. On by default because it is the only form of this answer that
+# reaches a library at all -- see `raw_metadata`.
+summary   = { type = "bool", default = true }
+
+# The full structured blob, in `raw_manual_metadata`. **Off by default**:
+# measured on 2026-08-01 against a live RomM 4.9.2, that field is accepted
+# with a 200 and the value appears nowhere in the rom afterwards -- and
+# the same holds for the id-gated raw fields even when the id is written
+# and changed in the same request. Switchable rather than deleted, for a
+# RomM version or a backend that keeps it.
+raw_metadata = { type = "bool", default = false }
+
 # The library platforms this dataset is true about. Ludusavi's own `when.os`
 # vocabulary is windows/linux/mac/dos, and these are the RomM slugs those
 # four correspond to. Widening this is an operator's deliberate decision --

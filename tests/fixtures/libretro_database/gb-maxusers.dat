@@ -1,0 +1,22 @@
+clrmamepro (
+	name "Nintendo - Game Boy"
+	description "Nintendo - Game Boy"
+)
+
+game (
+	comment "Kirby's Dream Land (USA, Europe)"
+	users 1
+	rom ( crc 40F25740 )
+)
+
+game (
+	comment "Tetris (World) (Rev 1)"
+	users 2
+	rom ( crc 46DF91AD )
+)
+
+game (
+	comment "Tetris 2 (USA)"
+	users 2
+	rom ( crc AA4A1EDB )
+)

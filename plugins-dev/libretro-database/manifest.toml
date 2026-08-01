@@ -1,7 +1,7 @@
 [plugin]
 slug        = "libretro-database"
 name        = "libretro Database (DAT)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -22,3 +22,13 @@ romm_api = []
 sets     = { type = "list[str]", default = ["no-intro", "redump"] }
 ref      = { type = "str", default = "master" }
 set_name = { type = "bool", default = true }
+
+# The region, serial, and whatever `details` finds, composed into RomM's
+# `summary`.
+summary  = { type = "bool", default = true }
+
+# Which of `metadat/`'s annotation directories to read. Each is one extra
+# fetch and each is small -- 81 KB to 333 KB for the NES, against the
+# 3.3 MB catalogue this plugin already fetches -- so four by default.
+# Also available: franchise, releasemonth, maxusers, esrb, serial.
+details  = { type = "list[str]", default = ["genre", "developer", "publisher", "releaseyear"] }

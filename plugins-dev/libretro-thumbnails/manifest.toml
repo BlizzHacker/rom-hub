@@ -1,7 +1,7 @@
 [plugin]
 slug        = "libretro-thumbnails"
 name        = "libretro Thumbnails"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -17,5 +17,13 @@ network  = ["thumbnails.libretro.com"]
 romm_api = []
 
 [config]
-art_kind       = { type = "str", default = "boxart" }
+# The image sets to try, best first. Box art is what RomM shows as a
+# cover; the two after it are what exists for the games that never had a
+# box -- arcade boards, and a great deal of every computer platform.
+art_kinds      = { type = "list[str]", default = ["boxart", "title", "snap"] }
+
+# Still honoured, and still means "only this one". Set it when you want a
+# specific set and no fallback at all.
+art_kind       = { type = "str", default = "" }
+
 index_fallback = { type = "bool", default = true }

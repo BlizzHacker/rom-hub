@@ -16,8 +16,18 @@ in your RomM library, from libretro's public thumbnail repositories.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `art_kind` | `str` | `"boxart"` | which libretro set to use: `boxart`, `title`, `snap` or `logo` |
+| `art_kinds` | `list[str]` | `["boxart", "title", "snap"]` | the sets to try, best first |
+| `art_kind` | `str` | `""` | one set and no fallback. Still honoured; overrides `art_kinds` |
 | `index_fallback` | `bool` | `true` | when no spelling matches, read the system's directory listing and match on the title alone |
+
+`art_kinds` is a **chain**, tried in the order given. Every spelling of the
+first set is probed before any spelling of the second — not the other way
+round, which would hand back a title screen for a game whose box art happens to
+be filed under a name this ROM also has.
+
+`logo` is available and deliberately not in the default: it is a wordmark on
+transparency, and a library falling back to it would look like it had covers
+when it had lettering.
 
 No credentials. The service is unauthenticated and this plugin sends nothing
 but a GET.
@@ -25,6 +35,15 @@ but a GET.
 ## What it sets, and what it deliberately does not
 
 It sets **`artwork_url`** and nothing else.
+
+Since `0.2.0` that URL may come from any of three libretro sets rather than
+only `Named_Boxarts`. Every system directory carries `Named_Boxarts`,
+`Named_Titles`, `Named_Snaps` and `Named_Logos` side by side for the same
+games, and asking for one of them meant a ROM with a title screen and no box
+got no artwork at all — plus a refusal that carefully listed seven spellings it
+had tried in a directory that was never going to have any of them. That is not
+a rare case: an arcade board never had a box, and a great deal of every
+computer platform shipped as a cassette in a bag.
 
 - **Not `name`.** libretro's filenames are No-Intro DAT strings, not curated
   titles. `MetadataPatch` treats an absent field as "leave RomM alone" exactly
@@ -35,6 +54,26 @@ It sets **`artwork_url`** and nothing else.
   only value on offer is the thumbnail's filename, which RomM's provider-id
   validator rejects anyway (a provider id may not contain spaces or
   parentheses). An invented id is worse than an absent one.
+
+### What cannot reach RomM
+
+**One image per ROM.** `PUT /api/roms/{id}` takes a single `artwork` part, so
+this is a fallback chain and not a gallery: the first set that answers 200 wins
+and the others are never fetched.
+
+**Screenshots cannot be attached as game metadata.** RomM's rom record has a
+`merged_screenshots` list and it is derived from its *own* configured metadata
+providers — there is no form field on the update endpoint that reaches it, and
+nothing in `MetadataPatch` could carry one if there were. RomM does expose
+`POST /api/screenshots?rom_id=`, but that is a different thing wearing a similar
+name: it stores a **user's** screenshot as a personal asset, behind the
+`assets.write` scope, which the Hub's token deliberately does not request.
+Calling it would file libretro's `Named_Snaps` image as though you had taken it
+yourself.
+
+So a snap reaching your library arrives as the ROM's *cover*, or not at all.
+That is the honest shape of it and the reason `art_kinds` is an ordered
+fallback rather than a list of things to upload.
 
 ## The hard part: the filename
 

@@ -79,8 +79,20 @@ class FakeHasheous:
 
 
 def _provider(http=None, **config):
+    """A provider with the raw blob switched **on**.
+
+    `raw_metadata` defaults to false in the plugin since 0.2.0, because
+    `raw_hasheous_metadata` is accepted with a 200 and stored nowhere RomM
+    will return -- measured including with `hasheous_id` written and
+    changed in the same request, which rules out the id gate. The
+    blob-building code still has to be right for a backend that keeps it,
+    so it stays under test here and the default is pinned separately by
+    `test_the_raw_blob_is_off_by_default_because_romm_discards_it`.
+    """
     http = http or FakeHasheous()
-    return Metadata(PluginContext(config=dict(config), http=http)), http
+    merged = {"raw_metadata": True}
+    merged.update(config)
+    return Metadata(PluginContext(config=merged, http=http)), http
 
 
 def _ref(**kwargs):
@@ -162,21 +174,44 @@ def test_the_patch_carries_the_name_and_the_id_romm_merely_stores():
     assert patch.provider_ids["hasheous_id"] == 4321
 
 
-def test_ids_that_make_romm_call_a_keyed_service_are_off_by_default():
-    """RomM 4.9.2 re-fetches from IGDB / RA when their id *changes*, and a
-    RomM with no RetroAchievements key answers 500 rather than degrading.
-    Verified live on 2026-07-29 -- see ALWAYS_SAFE_IDS."""
+def test_every_mapped_id_is_offered_by_default():
+    """Mapping a dump to other providers' ids is what hasheous is *for*.
+
+    This used to withhold `igdb_id` and `ra_id` unless an operator set
+    `cross_provider_ids`, because writing `ra_id` to a RomM with no
+    RetroAchievements key answers 500 rather than degrading. That is still
+    true and it is no longer decided here: the host asks the backend which
+    ids it will take, withholds what it refuses, and says why. A plugin
+    guessing about a library it cannot see was the wrong place for it.
+    """
     provider, _ = _provider()
-    patch = provider.enrich(_ref())
-    assert "igdb_id" not in patch.provider_ids
-    assert "ra_id" not in patch.provider_ids
-
-
-def test_cross_provider_ids_turns_them_on_for_an_operator_who_has_the_keys():
-    provider, _ = _provider(cross_provider_ids=True)
     patch = provider.enrich(_ref())
     assert patch.provider_ids["igdb_id"] == "1234"
     assert patch.provider_ids["ra_id"] == "7195"
+    assert patch.provider_ids["hasheous_id"] == 4321
+
+
+def test_provider_ids_opts_in_per_source_not_all_or_nothing():
+    """An operator may want an IGDB reference and not an RA one: `ra_id`
+    is what an achievements client acts on later, the others are not."""
+    provider, _ = _provider(provider_ids=["igdb"])
+    patch = provider.enrich(_ref())
+    assert set(patch.provider_ids) == {"hasheous_id", "igdb_id"}
+
+
+def test_an_empty_provider_ids_still_records_where_the_answer_came_from():
+    """`hasheous_id` is not another provider's reference -- it is the
+    identity of the thing that answered."""
+    provider, _ = _provider(provider_ids=[])
+    assert set(provider.enrich(_ref()).provider_ids) == {"hasheous_id"}
+
+
+def test_an_unknown_source_name_is_a_refusal_not_a_shrug():
+    from hasheous.metadata import LookupFailed
+
+    provider, _ = _provider(provider_ids=["igbd"])
+    with pytest.raises(LookupFailed, match="provider_ids names"):
+        provider.enrich(_ref())
 
 
 def test_a_notmapped_entry_is_never_written_as_a_provider_id():
@@ -185,14 +220,14 @@ def test_a_notmapped_entry_is_never_written_as_a_provider_id():
     Its `id` is null, and an id written from it would afterwards be
     indistinguishable from one that was actually resolved.
     """
-    provider, _ = _provider(cross_provider_ids=True)
+    provider, _ = _provider()
     patch = provider.enrich(_ref())
     assert "tgdb_id" not in patch.provider_ids
 
 
 def test_a_source_romm_has_no_field_for_is_left_out_of_provider_ids():
     """GiantBomb is mapped in the fixture. RomM's endpoint has no field."""
-    provider, _ = _provider(cross_provider_ids=True)
+    provider, _ = _provider()
     patch = provider.enrich(_ref())
     assert set(patch.provider_ids) == {"hasheous_id", "igdb_id", "ra_id"}
 
@@ -203,10 +238,23 @@ def test_a_partial_answer_never_blanks_a_curated_field():
     provider, _ = _provider(FakeHasheous(payload))
     patch = provider.enrich(_ref())
     fields = patch.form_fields()
-    assert fields == {"hasheous_id": "4321", "raw_hasheous_metadata": json.dumps(payload)}
+    assert fields["hasheous_id"] == "4321"
+    assert fields["raw_hasheous_metadata"] == json.dumps(payload)
     assert "name" not in fields
     assert "igdb_id" not in fields
     assert patch.artwork_url is None
+
+
+def test_the_raw_blob_is_off_by_default_because_romm_discards_it():
+    """Measured 2026-08-01 on a live 4.9.2: the field answers 200 and the
+    value appears nowhere in the rom afterwards, even paired with a
+    changed `hasheous_id` in the same request. The facts worth having go
+    into `summary`, which RomM does store."""
+    provider = Metadata(PluginContext(config={}, http=FakeHasheous()))
+    patch = provider.enrich(_ref())
+    assert patch.raw_metadata == {}
+    assert patch.summary
+    assert patch.provider_ids["hasheous_id"] == 4321
 
 
 def test_the_whole_answer_is_kept_as_raw_hasheous_metadata():
@@ -370,3 +418,86 @@ def test_the_table_is_keyed_by_real_romm_slugs():
 
     known = set(SYSTEMS) | {"atari-jaguar-cd"}
     assert set(PLATFORMS) <= known, sorted(set(PLATFORMS) - known)
+
+
+# -- the signature's own facts -------------------------------------------
+
+
+def test_the_summary_carries_what_the_signature_row_says():
+    """`signature.game` had a year, a publisher, countries and languages in
+    every answer, and this plugin read past all of it."""
+    provider, _ = _provider()
+    assert provider.enrich(_ref()).summary == (
+        "Published by Sega. Released 1988. Region: USA, Europe. "
+        "Language: English. Matched against the No-Intro signature "
+        "(verified dump)."
+    )
+
+
+def test_the_corpus_is_named_the_way_a_person_spells_it():
+    """Hasheous stores `NoIntros`, which in a summary reads as a typo."""
+    provider, _ = _provider()
+    summary = provider.enrich(_ref()).summary
+    assert "No-Intro" in summary and "NoIntros" not in summary
+
+
+def test_the_language_map_is_expanded_by_hasheous_not_by_us():
+    """`{"En": "English"}` -- the values are hasheous's own spelling, so
+    quoting them keeps a language table out of this plugin."""
+    provider, _ = _provider()
+    assert "Language: English." in provider.enrich(_ref()).summary
+
+
+def test_an_answer_with_no_signature_proposes_no_summary():
+    """Absent, not blank: a blank erases whatever RomM already had."""
+    provider, _ = _provider(
+        FakeHasheous({"id": 4321, "name": "Altered Beast"}), verify_platform=False
+    )
+    patch = provider.enrich(_ref())
+    assert patch.summary is None
+    assert "summary" not in patch.form_fields()
+
+
+def test_summary_false_leaves_romms_description_alone():
+    provider, _ = _provider(summary=False)
+    assert provider.enrich(_ref()).summary is None
+
+
+# -- what the live service actually calls each machine -------------------
+
+
+@pytest.mark.parametrize(
+    "slug,system",
+    [
+        # Measured against the live service on 2026-08-01, one real md5 per
+        # platform out of a 636-rom library. `nes` and `sms` matched on
+        # neither the signature name nor the platform name before this, so
+        # `verify_platform` was refusing every correct answer on two
+        # consoles -- a guard against CRC-32 collisions, blocking SHA-1
+        # matches.
+        ("nes", "Nintendo Famicom & Entertainment System"),
+        ("nes", "Nintendo Entertainment System"),
+        ("sms", "Sega Mark III & Master System"),
+        ("sms", "Sega Master System"),
+        ("snes", "Nintendo Super Famicom & Super Entertainment System"),
+        ("atari2600", "Atari 2600 & VCS"),
+        ("atari7800", "Atari - Atari 7800 (BIN)"),
+        ("c64", "Commodore C64"),
+        ("tg16", "TurboGrafx-16/PC Engine"),
+        ("genesis", "Sega - Mega Drive - Genesis (Parent-Clone)"),
+    ],
+)
+def test_the_names_the_live_service_returns_are_accepted(slug, system):
+    from hasheous.platforms import expected_keys, key
+
+    assert key(system) in expected_keys(slug)
+
+
+def test_a_different_console_is_still_refused():
+    """The point of the guard survives the widening: extra spellings for
+    one machine must not become spellings for another."""
+    from hasheous.platforms import expected_keys, key
+
+    assert key("Nintendo Famicom & Entertainment System") not in expected_keys("snes")
+    assert key("Sega Master System") not in expected_keys("genesis")
+    assert key("Atari 2600 & VCS") not in expected_keys("atari7800")

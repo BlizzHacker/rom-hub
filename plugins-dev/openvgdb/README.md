@@ -44,6 +44,7 @@ If you would rather it did not happen on its own:
 | `db_path` | `str` | `""` | a copy of `openvgdb.sqlite` to use **instead** of the fetched one. Optional |
 | `artwork` | `bool` | `true` | propose a cover as well as a title |
 | `set_name` | `bool` | `true` | propose OpenVGDB's title |
+| `summary` | `bool` | `true` | propose the release's description, developer, publisher, genre, date and region as RomM's `summary` |
 | `region` | `str` | `""` | prefer this region's release (`USA`, `Europe`, `Japan`, `World`, …) |
 
 `db_path` is an **override, not a fallback**: when it is set it wins outright.
@@ -154,9 +155,39 @@ release id, so the choice is stable across runs.
   `libretro-thumbnails` refused to blur when it declined to write a No-Intro
   filename into a library as a game name, and it is why this plugin may write
   one where that plugin may not.
+- **`summary`** — `RELEASES.releaseDescription`, followed by a sentence built
+  from `releaseDeveloper`, `releasePublisher`, `releaseGenre`, `releaseDate`
+  and the region. For the Game Boy Tetris row that is 380 characters of real
+  copy ("The Soviet game sensation is now on your Game Boy! …") and then
+  `Developed by Bullet Proof Software. Released June 1989. Genre:
+  Miscellaneous, Puzzle, Stacking. Region: USA.`
+
+  All six columns were being selected, read, and dropped before `0.3.0`. A
+  NULL publisher is left out rather than printed as unknown — OpenVGDB has
+  none for any Tetris release, so a fixed template would be wrong on most
+  roms.
 - **`artwork_url`** — `releaseCoverFront`, or `releaseCoverBack` if the front
   is unusable. The **host** fetches it, after checking it against this
   plugin's allowlist.
+
+### What cannot reach RomM
+
+`summary` is prose, and it is the only field on `PUT /api/roms/{id}` that
+will take any of the five facts above. That has a consequence worth being
+plain about:
+
+**A genre written by this plugin is one you can read, not one you can filter
+by.** RomM keeps genres, companies, `first_release_date`, `player_count` and
+`average_rating` in a `metadatum` sub-object populated by its *own* configured
+metadata providers. The update endpoint has no form field that reaches any of
+it — a part named `genres` is accepted with a 200 and discarded (measured
+against a live 4.9.2 on 2026-08-01). The same measurement is why nothing here
+is routed through `raw_*_metadata`: those eight fields answer 200 and store
+nothing at all.
+
+The way to get *structured* metadata into RomM is a provider id RomM itself
+can act on, which OpenVGDB does not carry — see below, and see the `hasheous`
+plugin, whose entire purpose is producing one.
 
 **No provider ids.** OpenVGDB carries no IGDB, MobyGames or ScreenScraper
 identifier. Its own `romID` and `releaseID` are row numbers in a file you
