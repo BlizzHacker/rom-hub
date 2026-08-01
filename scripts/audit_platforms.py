@@ -82,6 +82,11 @@ TABLES: dict[str, tuple[str, str, object]] = {
 #: Plugins with no platform mapping, and what they map instead. Named so
 #: that a plugin which *loses* its table is a failure rather than a shrug.
 NO_PLATFORM_TABLE: dict[str, str] = {
+    "archive-org-torrent": (
+        "torrents, keyed by Archive.org identifier -- it resolves an item's "
+        "own .torrent and never files anything in a library, so there is no "
+        "platform for it to map to"
+    ),
     "emulators": "GitHub release assets, keyed by emulator project and build target",
     "libretro-cheats": "cheat files, keyed by libretro's own system directory names",
     "libretro-cores": "libretro cores, keyed by core name -- never a platform slug",
