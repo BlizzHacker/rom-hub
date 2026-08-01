@@ -14,6 +14,37 @@ Intellivision, Neo Geo Pocket, Pokémon Mini, TIC-80 and WASM-4. That breadth is
 the reason this plugin exists: the other free-content source in this directory,
 `homebrew`, is Game Boy and NES only.
 
+## How much of it this reaches
+
+**This is a small source and it is worth saying so plainly: 274 files
+across 29 directories is the whole of libretro's free content shelf.**
+Counted directory by directory on 2026-08-01. There is no long tail to
+find, no paginated API hiding more, and no `.index-extended` (checked:
+404) — the listings *are* the catalogue.
+
+| | before (0.1.0) | after (0.2.0) |
+|---|---:|---:|
+| directories walked with no `--platform` | 8 | **29** |
+| files reachable | 104 | **274** |
+
+The old bound was defended on time: walking 29 directories "does not
+reliably finish" inside the host's 30-second ceiling. It does. Two
+measurements, because they disagree and the difference is the point:
+**131 KB and 12.8 seconds** fetched one connection at a time, and
+**2.1 seconds** for the same 29 listings through the Hub's broker, which
+keeps the connection alive. The pessimistic number already fits inside
+the ceiling with room; the real one is not close to it. The walk also
+stops the moment `limit` is reached, so the common case is one or two
+requests and the full cost is only ever paid by a query that matches
+nothing.
+
+**There is no `metadata` and no `stream` here, and neither is an
+oversight.** The buildbot is an h5ai directory index over a file tree. It
+publishes a filename, a rounded size and a date, and nothing else — no
+title distinct from the filename, no artwork, no description, nothing to
+play in a browser. An `enrich` would have to invent what it wrote, and an
+empty capability is worse than an absent one.
+
 ## Why this material is legitimate
 
 **libretro ships it in RetroArch.** These directories are not a scrape target
@@ -56,12 +87,16 @@ listings.
 is a **single** round trip. A platform this source has nothing for — Jaguar,
 3DO, Amiga — returns an empty list **without a request**. That is not an error.
 
-Without `--platform` the plugin walks `systems` (RomM slugs; defaults to
-`nes snes genesis gb gba sms atari2600 vectrex`) and stops at `max_systems`.
-The bound is not politeness: the host kills a plugin at 30 seconds, each
-listing is its own round trip, and walking all 29 mapped directories does not
-reliably finish inside that. An unbounded default would make "no results" and
-"timed out" look identical from the outside.
+Without `--platform` the plugin walks `systems` (RomM slugs; **defaults to
+all 29 mapped directories**, ordered largest shelf first so a small
+`--limit` is answered from where the content actually is) and stops at
+`max_systems`, which is also 29 because there is no thirtieth directory to
+reach.
+
+The walk stops the moment `limit` results exist, so a query answered out
+of the first directory never opens the second. Listings are also **cached
+for the life of the plugin process** and shared with the importer, so an
+import that follows a search costs no request at all.
 
 Matching is case-insensitive, every whitespace-separated term must appear in
 the filename, and order does not matter. An empty query browses.
@@ -113,8 +148,8 @@ core each rather than systems, and the fantasy consoles RomM does not carry
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `systems` | `list[str]` | `[]` | RomM slugs to walk when no `--platform` is given; empty means the built-in eight |
-| `max_systems` | `int` | `8` | Hard bound on listings per search (capped at 24) |
+| `systems` | `list[str]` | `[]` | RomM slugs to walk when no `--platform` is given; empty means **all 29 mapped directories** |
+| `max_systems` | `int` | `29` | Hard bound on listings per search. 29 is every directory and also the cap: 131 KB and 12.8 seconds, measured against a 30-second ceiling |
 | `collection` | `str` | `libretro content` | RomM collection imports are filed under |
 
 ## Notes for the next person

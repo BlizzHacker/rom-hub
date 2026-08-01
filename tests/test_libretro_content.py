@@ -20,6 +20,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "libretro_content"
 sys.path.insert(0, str(PLUGIN_ROOT))
 
 from libretro_content.buildbot import (  # noqa: E402
+    LISTINGS,
     BuildbotError,
     directory_url,
     file_url,
@@ -77,6 +78,20 @@ DEFAULT_PAGES = {
     GENESIS_DIR: GENESIS,
     "Utilities": UTILITIES,
 }
+
+
+@pytest.fixture(autouse=True)
+def _no_cached_listings():
+    """Listings are cached for the life of the plugin process.
+
+    That is the point of it -- `search` then `importer` should not read
+    one directory twice -- and it is also process-global state, so a test
+    that stocked a different body would otherwise be answered by whatever
+    the previous test read.
+    """
+    LISTINGS.clear()
+    yield
+    LISTINGS.clear()
 
 
 def make_search(pages=None, config=None, status=200):
@@ -315,3 +330,52 @@ def test_urls_are_quoted_once_and_never_carry_a_raw_space():
     assert url.startswith("https://buildbot.libretro.com/assets/cores/")
     assert " " not in url
     assert "%2520" not in url
+
+
+# ------------------------------------------------ the widened default walk
+
+
+def test_the_default_walk_is_every_directory_this_plugin_can_map():
+    """It was eight of 29, which reached 104 of the source's 274 files.
+
+    The old reason for the bound was that 29 listings "does not reliably
+    finish" inside the host's 30-second ceiling. Timed directory by
+    directory on 2026-08-01 it is 131 KB and 12.8 seconds, so the bound
+    was costing two-thirds of a small source for nothing.
+    """
+    from libretro_content.search import DEFAULT_MAX_SYSTEMS, DEFAULT_SYSTEMS
+
+    # `systems` and `DEFAULT_SYSTEMS` carry RomM slugs, not directory
+    # names: a slug is what an operator already types at --platform.
+    assert set(DEFAULT_SYSTEMS) == set(SYSTEMS.values())
+    assert DEFAULT_MAX_SYSTEMS == len(SYSTEMS) == 29
+
+
+def test_the_biggest_shelves_are_walked_first():
+    """A small `--limit` should be answered from where the content is."""
+    from libretro_content.search import DEFAULT_SYSTEMS
+
+    assert DEFAULT_SYSTEMS[:3] == (
+        "wasm-4",
+        "handheld-electronic-lcd",
+        "vectrex",
+    )
+
+
+def test_a_directory_is_read_once_across_search_and_import():
+    """The runner loads both capabilities into one interpreter, so an
+    import that follows a search should cost no request."""
+    http = FakeHttp({NES_DIR: NES}, 200)
+    ctx = PluginContext(config={"systems": ["nes"]}, http=http)
+    Search(ctx).search("alter", None, 5)
+    plan = Importer(ctx).plan(
+        SearchResult(source_id=f"{NES_DIR}/Alter Ego.nes", title="x")
+    )
+    assert plan.files[0].filename == "Alter Ego.nes"
+    assert len(http.calls) == 1
+
+
+def test_the_cap_is_the_table_because_there_is_no_thirtieth_directory():
+    from libretro_content.search import MAX_SYSTEMS_CAP
+
+    assert MAX_SYSTEMS_CAP == len(SYSTEMS)

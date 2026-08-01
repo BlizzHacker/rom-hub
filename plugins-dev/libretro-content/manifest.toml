@@ -1,7 +1,7 @@
 [plugin]
 slug        = "libretro-content"
 name        = "libretro content (buildbot)"
-version     = "0.1.0"
+version     = "0.2.0"
 rpp_version = "1"
 license     = "MIT"
 
@@ -19,9 +19,15 @@ romm_api = []
 
 [config]
 # RomM platform slugs to walk when the operator names no --platform. Empty
-# means the plugin's own default set. A slug this source has nothing for is
-# dropped rather than refused.
+# means every directory this plugin can map -- all 29 of them, ordered
+# largest shelf first. A slug this source has nothing for is dropped
+# rather than refused.
 systems     = { type = "list[str]", default = [] }
 # Each system is its own round trip and the host kills a plugin at 30s.
-max_systems = { type = "int", default = 8 }
+# All 29 is 131 KB: 12.8 seconds fetched one connection at a time, and
+# 2.1 seconds through the Hub's broker, which keeps the connection alive
+# (both measured 2026-08-01). The walk also stops the moment `limit` is
+# reached, so the full cost is only paid by a query that matches nothing.
+# There is no thirtieth directory, so this is also the cap.
+max_systems = { type = "int", default = 29 }
 collection  = { type = "str", default = "libretro content" }

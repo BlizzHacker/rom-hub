@@ -475,14 +475,14 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-content",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-content",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-content/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "search"
       ],
       "network": [
         "buildbot.libretro.com"
@@ -491,7 +491,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches and imports the free game content libretro distributes for RetroArch — homebrew, demos and openly licensed ROMs across 29 RomM platforms.",
+      "description": "Walks all 29 of libretro's free-content directories -- 274 files across 29 RomM platforms -- and imports the exact file from the listing it already read.",
       "terms": "Content libretro publishes for RetroArch to download, used the way it is meant to be used. These directories are the back end of RetroArch's own *Load Content → Download Content* menu, served unauthenticated so that software reads them. What is in them is homebrew and demos their authors gave libretro for distribution (`Alter Ego`, `Chrono Knight`, `Sheep It Up`), openly licensed technical software (`240p Test Suite`, MIT), and free game data for engine cores (Cave Story's freeware release, the Quake shareware episode). One directory needs its own sentence: the GCE Vectrex library is **not** public domain — Smith Engineering, which designed the Vectrex, granted permission in 1992 for its ROMs, manuals and overlays to be copied and distributed **as long as it is not for profit**. That is a real grant from the actual rights holder and also a condition: free to acquire and keep, not free to sell. `buildbot.libretro.com/robots.txt` carries only content-signal declarations about AI training and search indexing and `Disallow`s nothing.",
       "comments": "The broadest free-content source in this directory: 29 RomM platforms against `homebrew`'s four. There is no `.index-extended` here — the sibling `libretro-cores` plugin reads one for cores and the content tree has none (checked live: HTTP 404) — so the h5ai listing *is* the catalogue, and this plugin reads the plain `<table>` fallback h5ai ships for clients that run no JavaScript. The platform table is keyed on the directory names **this** server serves, not copied from the libretro thumbnail server, which spells two of the same machines differently (`Coleco - Colecovision` here against `Coleco - ColecoVision` there; `Nintendo - GameBoy` against `Nintendo - Game Boy`) — copying would have produced two silent 404s. An unmapped directory refuses with one of three different sentences, because “add a row” is right for only one of them: **needs mapping** for a real RomM platform, **not a platform** for `Images`/`Video`/`Utilities`, and **ambiguous** for `Nintendo - GameCube - Wii`, which is one directory holding two consoles RomM keeps separate. Search is one request when `--platform` is given and bounded by `max_systems` when it is not, because each listing is its own round trip against a 30-second host timeout. h5ai's size column is rounded (`40 KB`) and there is no byte count in the document, so it is carried as display text and never as `size_bytes`.",
       "platforms": [
