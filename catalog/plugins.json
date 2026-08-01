@@ -8,14 +8,14 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-aminet",
       "install": "https://github.com/BlizzHacker/rom-hub-aminet",
-      "download": "https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
-        "search",
-        "importer"
+        "importer",
+        "search"
       ],
       "network": [
         "aminet.net"
@@ -24,7 +24,7 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches Aminet's 6,700-package game tree for Amiga games and imports the archive directly.",
+      "description": "Searches all 85,453 Aminet packages and browses the 5,737 on its fourteen game shelves, then imports the archive directly.",
       "terms": "Freely distributable by admission rule, which is about as good as an archive's terms get. Aminet's uploading instructions open with “This site is intended for the distribution of any type of freely distributable software” and then refuse, first on the list, “Unlicensed copies of commercial software” and “Software with a license in conflict with Aminet's nature”. Freely distributable is not a description of the archive, it is the condition of being in it, moderated since 1992. What you reach is public-domain, freeware, shareware and open-source Amiga software its authors uploaded themselves; each package's own terms are in its `.readme`, which this plugin fetches on every import anyway. `game/demo` is “Demos of commercial games” and belongs here for the same reason the rest does — a publisher's playable demo was published *for* free distribution. `aminet.net` serves no robots.txt (its /robots.txt is the site's themed 404 page), so there is no crawl directive to observe.",
       "comments": "The caveat is the architecture, and it is the whole plugin. Aminet is not an Amiga archive — it is the archive for every system that grew out of the Amiga, and one `game/think` directory holds `abrick.lha` (AmigaOS 4 on PowerPC), `abandoned_bricks-mos.lha` (MorphOS) and `alleytris_68k.lha` (AmigaOS on 68k) under near-identical names. RomM has `amiga` and `amiga` means the Commodore machine, so exactly three architectures map — `m68k-amigaos`, plus `ppc-warpup` and `ppc-powerup`, which are accelerator cards *inside* an Amiga — and MorphOS, AmigaOS 4, AROS and Amithlon each refuse **by name**, saying which computer they actually are. Measured over a live `dir=game` search: 98 of 172 rows were `m68k-amigaos`. The rest still appear in search with no platform set, because hiding a game somebody can see on Aminet's own site would be worse than showing why it will not import. Four of the eighteen `game/` shelves — `data`, `edit`, `hint`, `patch` — hold data files, level editors, walkthroughs and patches; they are hidden by default and never import. Two traps for the next person: light and dark result rows are **different markup**, so a regex anchored on the opening tag finds exactly half the results; and this host answers a missing path with HTTP **200** and an error body, so both parsers refuse a document that is not the shape they expect rather than reading zero rows out of it.",
       "platforms": [

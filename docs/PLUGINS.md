@@ -138,7 +138,7 @@ and neither can this directory change it for you.
 
 | Source | Author (Repository) | Version | Last update | Install | Capabilities | Backends | Playable | Flags | Network |
 |---|---|---|---|---|---|---|---|---|---|
-| ❗ [Aminet (Amiga)](https://github.com/BlizzHacker/rom-hub-aminet) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-aminet)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | all 1 | — | `aminet.net` |
+| ❗ [Aminet (Amiga)](https://github.com/BlizzHacker/rom-hub-aminet) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-aminet)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `search` | Gaseous* · Retrom* · RomM | all 1 | — | `aminet.net` |
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.3.0 | 2026-08-01 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.3.0.tar.gz) | `search`, `importer`, `metadata`, `stream` | Gaseous! · Retrom* · RomM | 29 of 53, 1 needs netplay | — | `archive.org`, `*.archive.org` |
 | ❗ [Demozoo (demoscene)](https://github.com/BlizzHacker/rom-hub-demozoo) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-demozoo)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | 27 of 46, 2 need netplay | — | `demozoo.org`, `files.scene.org`, `archive.scene.org`, `fujiology.org` |
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.1.0 | 2026-07-29 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `hasheous.org` |
@@ -171,7 +171,7 @@ The column is **derived** from what the plugin declares and what each backend de
 
 ### ❗ Aminet (Amiga) — `aminet`
 
-Searches Aminet's 6,700-package game tree for Amiga games and imports the archive directly.
+Searches all 85,453 Aminet packages and browses the 5,737 on its fourteen game shelves, then imports the archive directly.
 
 **Source terms.** Freely distributable by admission rule, which is about as good as an archive's terms get. Aminet's uploading instructions open with “This site is intended for the distribution of any type of freely distributable software” and then refuse, first on the list, “Unlicensed copies of commercial software” and “Software with a license in conflict with Aminet's nature”. Freely distributable is not a description of the archive, it is the condition of being in it, moderated since 1992. What you reach is public-domain, freeware, shareware and open-source Amiga software its authors uploaded themselves; each package's own terms are in its `.readme`, which this plugin fetches on every import anyway. `game/demo` is “Demos of commercial games” and belongs here for the same reason the rest does — a publisher's playable demo was published *for* free distribution. `aminet.net` serves no robots.txt (its /robots.txt is the site's themed 404 page), so there is no crawl directive to observe.
 
