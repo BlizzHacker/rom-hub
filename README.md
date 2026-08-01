@@ -90,6 +90,22 @@ Every install is pinned to a tag and the resolved commit SHA is recorded, so a
 tag moved after the fact does not change what you have. Updating is an explicit
 re-run with a new ref; nothing updates itself.
 
+**That directory is not the only one.** The Hub reads an ordered list of them,
+so anybody can publish plugins without going through this repository:
+
+    rom-hub catalog add mine https://git.moveweight.com/wade/rom-hub-catalog/raw/branch/main/plugins.json
+    rom-hub catalog list                   # what is configured, and its health
+
+https URLs and local paths only. The bundled directory is always first and
+**first source wins**, so a third-party directory can add plugins but never
+replace one this project ships — and the collision is printed rather than
+silently resolved. `plugin browse` marks each entry with the directory it came
+from and reports `N of M catalog(s) reachable` when one cannot be read, so a
+source that is down looks like a source that is down rather than like plugins
+that do not exist. A directory still **grants nothing**: what an installed
+plugin may reach comes from its own `manifest.toml`. See *Publishing your own
+catalog* in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 **Searching needs no library server at all** — it fans out across installed
 plugins and prints results. `import` and `enrich` are the commands that need
 one configured.
@@ -144,7 +160,7 @@ implementation and a CLI command:
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 | `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
 | `assets` | `rom-hub assets list\|install <plugin> [<asset>]` | lists a plugin's shaders, overlays, cheats and controller profiles **with each one's licence**, installs one to disk. No library involved |
-| `census` | `rom-hub catalogue build\|report\|list <plugin>` | enumerates a whole source into a local catalogue and states its coverage against the source's **own** declared total, per unit -- `29,955 of 29,955 declared entries across 43 units; 28 units excluded`, each exclusion named. Resumable; search is then served from it |
+| `census` | `rom-hub census build\|report\|list <plugin>` | enumerates a whole source into a local catalogue and states its coverage against the source's **own** declared total, per unit -- `29,955 of 29,955 declared entries across 43 units; 28 units excluded`, each exclusion named. Resumable; search is then served from it |
 | `torrent` | `rom-hub torrent <plugin> <source_id>` | resolves one item to a `.torrent` URL or magnet, reads the torrent as a verified file manifest, and prints it, hands it to the client you already run, or pulls one named file from the torrent's own https web seed and checks it against the torrent's own digest. Links no BitTorrent client |
 
 Plus the broker, a seccomp-confined plugin subprocess, and a job queue that

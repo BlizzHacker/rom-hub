@@ -106,7 +106,7 @@ class Importer(ImportProvider):
         returned, and it is the common case.
 
         **Then every directory in the platform table.** This is what the
-        census made necessary. `rom-hub catalogue build` enumerates all 71
+        census made necessary. `rom-hub census build` enumerates all 71
         `identifier:nointro*` items -- roughly twice what `collections`
         lists -- and refusing to import a row the Hub itself just
         catalogued, on the grounds that nobody had typed its directory into

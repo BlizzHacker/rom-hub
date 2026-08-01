@@ -590,7 +590,7 @@ def test_a_source_id_in_no_directory_this_plugin_knows_is_refused():
 def test_a_mapped_directory_imports_even_when_it_is_not_in_collections():
     """The Hub must not refuse to import a row it just catalogued.
 
-    `rom-hub catalogue build` enumerates all 71 `identifier:nointro*` items;
+    `rom-hub census build` enumerates all 71 `identifier:nointro*` items;
     `collections` lists 25 directories. The split therefore falls back to
     the platform table, so a census row from an item nobody typed into a
     *search* config key is still importable. Still exact-match: an unmapped

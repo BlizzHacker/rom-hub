@@ -73,7 +73,7 @@ MIN_SET_FILES = 8
 MEDIA_MEDIATYPES = frozenset({"audio", "movies"})
 
 #: Why each kind is not walked by default, in words an operator reads in
-#: `rom-hub catalogue report`. A kind with no entry here is walked.
+#: `rom-hub census report`. A kind with no entry here is walked.
 EXCLUSION_REASONS = {
     "cdn-dump": (
         "a console maker's distribution tree mirrored whole, not a ROM set "

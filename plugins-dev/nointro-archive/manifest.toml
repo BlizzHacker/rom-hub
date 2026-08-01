@@ -11,7 +11,7 @@ importer = "nointro_archive.importer:Importer"
 # Enumerates all 71 `identifier:nointro*` items rather than the 25
 # directories `collections` lists, and records Archive.org's own
 # `files_count` per item so coverage can be checked against a number the
-# walk did not produce. `rom-hub catalogue build nointro-archive`.
+# walk did not produce. `rom-hub census build nointro-archive`.
 census   = "nointro_archive.census:Census"
 
 # myrient.erista.me shut down on 2026-03-31 and is deliberately NOT listed:

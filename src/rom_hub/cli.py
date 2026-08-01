@@ -43,7 +43,17 @@ from .backends import (
 )
 from .broker.fetcher import HttpxFetcher
 from .broker.host import PluginCallError, PluginProcess
-from .catalog import CatalogError, load_catalog, symbol_for
+from .catalog import CatalogError, symbol_for
+from .catalog_sources import (
+    BUNDLED_CATALOG,
+    MergedCatalog,
+    add_source,
+    human_age,
+    load_all,
+    read_sources,
+    remove_source,
+    ttl_seconds,
+)
 from .census import (
     Catalogue,
     CensusError,
@@ -93,7 +103,11 @@ from .types import (
     SearchResult,
 )
 
-CATALOG_PATH = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
+#: The directory this repository ships. Kept as a module attribute because
+#: it was one before there were several, and because "the bundled one" is
+#: still a thing several commands want to name. The *list* of directories
+#: lives in `rom_hub.catalog_sources`.
+CATALOG_PATH = BUNDLED_CATALOG
 
 # Exit codes an operator (or a cron job) can branch on.
 EXIT_OK = 0
@@ -379,38 +393,114 @@ def allow_unsandboxed() -> bool:
     return env.get("ROM_HUB_ALLOW_UNSANDBOXED") == "1"
 
 
+def merged_catalog(root: Path | None = None) -> MergedCatalog:
+    """Every configured directory, merged. The one entry point for all of them.
+
+    Built at call time, like every other setting, so `rom-hub catalog add`
+    takes effect on the next command rather than the next process.
+    """
+    return load_all(Path(root or default_root()))
+
+
+def _report_catalog_health(merged: MergedCatalog, stream=None) -> None:
+    """Say what the merged directory is missing, or say nothing.
+
+    The rule `search` already follows: a partial answer must say it is
+    partial. It is worse here than there -- a plugin missing from `browse`
+    does not look like a source that failed, it looks like a plugin that
+    does not exist -- so an unreachable source is reported even though the
+    command "succeeded".
+    """
+    stream = stream or sys.stderr
+    if merged.stale and merged.complete:
+        # Reachable but not current. `coverage()` says so on one line
+        # rather than letting "N of N reachable" read as "up to date".
+        print(f"  ~ {merged.coverage()}", file=stream)
+    if not merged.complete:
+        print(f"  ! {merged.coverage()}", file=stream)
+        for status in merged.failures:
+            print(f"  ! {status.source.name}: {status.error}", file=stream)
+        print(
+            "  ! this listing is incomplete: plugins published only by the "
+            "sources above are not shown",
+            file=stream,
+        )
+    for status in merged.stale:
+        print(
+            f"  ~ {status.source.name}: serving a cached copy "
+            f"{human_age(status.stale_seconds)} old -- could not refresh "
+            f"({status.error})",
+            file=stream,
+        )
+    for collision in merged.collisions:
+        print(f"  ~ slug collision -- {collision.summary()}", file=stream)
+
+
 def _catalog_entry(slug: str):
-    """Resolve a bare slug through the directory, or return None.
+    """Resolve a bare slug through the directories.
+
+    Returns `(sourced entry or None, merged catalog or None)`. The merged
+    catalog comes back too because the *answer* is not the whole story once
+    there are several directories: whether another source also claimed this
+    slug, and whether some source could not be read at all, are both things
+    the operator has to be told before a clone happens.
 
     A source that looks like a URL or an existing path is used as given --
     the catalog is a convenience, never a required intermediary.
     """
     if "/" in slug or "\\" in slug or Path(slug).exists():
-        return None
+        return None, None
     try:
-        entries = load_catalog(CATALOG_PATH)
+        merged = merged_catalog()
     except CatalogError:
-        return None
-    return next((e for e in entries if e.slug == slug), None)
+        return None, None
+    return merged.find(slug), merged
 
 
 def _cmd_plugin_browse(args) -> int:
     try:
-        entries = load_catalog(CATALOG_PATH)
+        merged = merged_catalog()
     except CatalogError as exc:
         print(f"catalog unreadable: {exc}", file=sys.stderr)
         return 1
-    print(f"{'':<3}{'SLUG':<16} {'VERSION':<9} {'CAPABILITIES':<22} AUTHOR")
-    for e in sorted(entries, key=lambda x: x.slug):
+
+    # SOURCE is a column rather than a footnote. With third-party
+    # directories in play, "who is telling me this plugin exists" is part
+    # of what a reader is deciding on, and a listing that merges several
+    # directories into one undifferentiated table is a listing that quietly
+    # lends the project's credibility to a stranger.
+    print(
+        f"{'':<3}{'SLUG':<16} {'VERSION':<9} {'CAPABILITIES':<22} "
+        f"{'SOURCE':<12} AUTHOR"
+    )
+    for item in sorted(merged.entries, key=lambda x: x.slug):
+        e = item.entry
         caps = ",".join(e.capabilities)
         mark = symbol_for(e.status, getattr(sys.stdout, "encoding", None))
-        print(f"{mark:<3}{e.slug:<16} {e.version:<9} {caps:<22} {e.author}")
+        print(
+            f"{mark:<3}{e.slug:<16} {e.version:<9} {caps:<22} "
+            f"{item.source.name:<12} {e.author}"
+        )
         print(f"   {e.repository}")
         # Shown before install so the permission ask is a decision, not a
         # surprise discovered afterwards.
         print(f"   requests network: {', '.join(e.network) or '(none)'}")
+        if not item.source.bundled:
+            print(
+                f"   from the third-party catalog {item.source.name!r} "
+                f"({item.source.location}) -- not vouched for by this project"
+            )
     print()
-    print(f"{len(entries)} plugin(s). Install with: rom-hub plugin install <slug>")
+    third_party = sum(1 for i in merged.entries if not i.source.bundled)
+    scope = (
+        f"{len(merged.entries)} plugin(s) from {merged.total} catalog(s)"
+        if merged.total > 1
+        else f"{len(merged.entries)} plugin(s)"
+    )
+    if third_party:
+        scope += f", {third_party} from a third-party catalog"
+    print(f"{scope}. Install with: rom-hub plugin install <slug>")
+    _report_catalog_health(merged)
     return 0
 
 
@@ -430,10 +520,11 @@ def _cmd_platforms(args) -> int:
     )
 
     try:
-        entries = load_catalog(CATALOG_PATH)
+        merged = merged_catalog()
     except CatalogError as exc:
         print(f"catalog unreadable: {exc}", file=sys.stderr)
         return EXIT_ERROR
+    entries = merged.plain()
 
     if args.installed:
         have = {p.slug for p in Registry(default_root()).installed() if p.enabled}
@@ -489,16 +580,64 @@ def _cmd_platforms(args) -> int:
         "An import to a catalogue-only platform warns and proceeds; pass "
         "--allow-unplayable to silence it."
     )
+    _report_catalog_health(merged)
     return EXIT_OK
+
+
+def _print_third_party_notice(item) -> None:
+    """Say, before anything is cloned, that this came from a stranger.
+
+    The point of multiple sources is that anybody can publish a directory.
+    The cost is that `rom-hub plugin install <slug>` no longer necessarily
+    means "install the thing this project listed" -- so the moment it does
+    not, it says so, loudly, above the install rather than below it.
+
+    It is a notice and not a prompt on purpose: the operator added that
+    source deliberately, in a separate command, and re-asking for consent
+    they already gave trains people to skip the text. What they cannot be
+    expected to remember is *which* of a dozen slugs came from where.
+    """
+    source = item.source
+    print()
+    print(f"!! {item.slug!r} comes from the third-party catalog {source.name!r}")
+    print(f"!! {source.location}")
+    print("!! The ROM Hub project does not vouch for this plugin or that")
+    print("!! directory. What the directory says about permissions is a")
+    print("!! copy for reading -- the allowlist that is enforced comes from")
+    print("!! the plugin's own manifest.toml and is printed below.")
+    print()
 
 
 def _cmd_plugin_install(args) -> int:
     reg = Registry(default_root())
     source, ref = args.source, args.ref
-    entry = _catalog_entry(source)
-    if entry is not None:
+    item, merged = _catalog_entry(source)
+    if item is not None:
+        entry = item.entry
+        if not item.source.bundled:
+            _print_third_party_notice(item)
+        # A slug that two directories claim resolves silently otherwise,
+        # and "silently" is the whole objection: the operator asked for a
+        # name, and more than one person answered to it.
+        collision = next(
+            (c for c in (merged.collisions if merged else []) if c.slug == entry.slug),
+            None,
+        )
+        if collision is not None:
+            print(f"note: {collision.summary()}", file=sys.stderr)
         source, ref = entry.install, ref or entry.ref
-        print(f"resolved {entry.slug!r} from the catalog: {source} @ {ref}")
+        print(
+            f"resolved {entry.slug!r} from the {item.source.name} catalog: "
+            f"{source} @ {ref}"
+        )
+    elif merged is not None and not merged.complete:
+        # The slug was not found, and some directory could not be read.
+        # "Unknown plugin" would be a guess presented as a fact.
+        print(
+            f"note: {merged.coverage()}, so {source!r} may exist in a "
+            f"directory this run could not reach",
+            file=sys.stderr,
+        )
     plugin = reg.install(source, ref)
     caps = ", ".join(sorted(plugin.manifest.capabilities))
     print(f"installed {plugin.slug} {plugin.manifest.version} (capabilities: {caps})")
@@ -1062,7 +1201,7 @@ def _cmd_search(args) -> int:
     if outcome.from_catalogue:
         print(
             f"  {', '.join(outcome.from_catalogue)} answered from a built "
-            f"catalogue rather than the network -- 'rom-hub catalogue report "
+            f"catalogue rather than the network -- 'rom-hub census report "
             f"<plugin>' says how complete it is and when it was built; "
             f"--live asks the source instead",
             file=sys.stderr,
@@ -2169,7 +2308,7 @@ def _cmd_catalogue_report(args) -> int:
     if not path.exists():
         print(
             f"no catalogue for {plugin.slug!r} yet -- build one with "
-            f"'rom-hub catalogue build {plugin.slug}'",
+            f"'rom-hub census build {plugin.slug}'",
             file=sys.stderr,
         )
         return EXIT_ERROR
@@ -2303,6 +2442,110 @@ def _print_report(report, *, units: bool = False) -> None:
                 f"{unit.unit_id[:52]:<52} {unit.kind:<9} {declared:>7} "
                 f"{unit.kept:>7,} {unit.state:<9}"
             )
+
+
+def _cmd_catalog_list(args) -> int:
+    """The configured directories, in precedence order, with their health.
+
+    Reads every one of them rather than just listing the config, because
+    "is this source working" is the question somebody runs this to answer,
+    and a list of strings cannot answer it.
+    """
+    root = default_root()
+    merged = load_all(root)
+    by_name = {s.source.name: s for s in merged.statuses}
+
+    print(f"{'#':>2}  {'NAME':<14} {'KIND':<10} {'PLUGINS':>7}  LOCATION")
+    for index, source in enumerate(read_sources(root), start=1):
+        status = by_name.get(source.name)
+        kind = "bundled" if source.bundled else ("https" if source.remote else "local")
+        count = str(status.count) if status and status.ok else "-"
+        print(f"{index:>2}  {source.name:<14} {kind:<10} {count:>7}  {source.location}")
+        if status is not None and (not status.ok or status.stale or not source.bundled):
+            print(f"    {status.summary()}")
+
+    print()
+    print(merged.coverage())
+    if merged.collisions:
+        print()
+        print("slug collisions (first source in this list wins):")
+        for collision in merged.collisions:
+            print(f"  {collision.summary()}")
+    ttl = ttl_seconds()
+    print()
+    print(
+        f"A remote catalog is cached for {human_age(ttl)} "
+        f"($ROM_HUB_CATALOG_TTL); a fetch that fails falls back to the "
+        f"cached copy and says how old it is."
+    )
+    print(
+        "A catalog grants nothing: an installed plugin's network allowlist "
+        "comes from its own manifest.toml, never from a directory."
+    )
+    return EXIT_OK
+
+
+def _cmd_catalog_add(args) -> int:
+    root = default_root()
+    source = add_source(root, args.name, args.location)
+    print(f"added catalog source {source.describe()}")
+    if source.remote:
+        print(
+            "  fetched over https only, with every redirect hop re-checked "
+            "against that host"
+        )
+    print(
+        f"  it is last in precedence, so it can add plugins but cannot "
+        f"replace one an earlier source already lists"
+    )
+    print(
+        "  it grants nothing: what an installed plugin may reach comes from "
+        "its own manifest.toml"
+    )
+
+    # Read it now rather than at the next `browse`, so a typo in the URL is
+    # a failure of the command that contained the typo.
+    entries, status = _load_one(root, source)
+    if status.ok:
+        print(f"  {status.count} plugin(s) listed")
+    else:
+        print(f"  ! not readable yet: {status.error}", file=sys.stderr)
+        print(
+            f"  ! it stays configured; 'rom-hub catalog remove {source.name}' "
+            f"drops it",
+            file=sys.stderr,
+        )
+    return EXIT_OK
+
+
+def _load_one(root: Path, source):
+    from .catalog_sources import load_source
+
+    return load_source(source, root)
+
+
+def _cmd_catalog_remove(args) -> int:
+    gone = remove_source(default_root(), args.name)
+    print(f"removed catalog source {gone.describe()}")
+    return EXIT_OK
+
+
+def _cmd_catalog_refresh(args) -> int:
+    """Refetch every remote source now, ignoring the TTL.
+
+    The escape hatch for "the plugin was published an hour ago and browse
+    still does not show it". Nothing else in the Hub refreshes on a timer,
+    and this is deliberately the only command that goes to the network for
+    a directory on purpose.
+    """
+    root = default_root()
+    merged = load_all(root, ttl=0)
+    for status in merged.statuses:
+        mark = "ok" if status.ok else "!!"
+        print(f"{mark:<3}{status.source.name:<14} {status.summary()}")
+    print()
+    print(merged.coverage())
+    return EXIT_OK if merged.complete else EXIT_ERROR
 
 
 def _cmd_jobs(args) -> int:
@@ -2536,7 +2779,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "ignore any built catalogue and ask every source over the "
-            "network, as searches did before 'rom-hub catalogue build'"
+            "network, as searches did before 'rom-hub census build'"
         ),
     )
     search.add_argument(
@@ -2794,16 +3037,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     firmware_install.set_defaults(func=_cmd_firmware_install)
 
-    catalogue = sub.add_parser(
-        "catalogue",
+    census = sub.add_parser(
+        "census",
         help=(
             "build and inspect a full enumeration of a source, with a "
             "coverage figure that has a denominator behind it"
         ),
     )
-    catsub = catalogue.add_subparsers(dest="catalogue_command", required=True)
+    censussub = census.add_subparsers(dest="census_command", required=True)
 
-    cat_build = catsub.add_parser(
+    cat_build = censussub.add_parser(
         "build",
         help=(
             "enumerate every unit of a source into a local catalogue "
@@ -2833,7 +3076,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     cat_build.set_defaults(func=_cmd_catalogue_build)
 
-    cat_report = catsub.add_parser(
+    cat_report = censussub.add_parser(
         "report",
         help="what the catalogue holds, against what the source says exists",
     )
@@ -2845,8 +3088,59 @@ def build_parser() -> argparse.ArgumentParser:
     )
     cat_report.set_defaults(func=_cmd_catalogue_report)
 
-    cat_list = catsub.add_parser("list", help="every catalogue that has been built")
+    cat_list = censussub.add_parser("list", help="every catalogue that has been built")
     cat_list.set_defaults(func=_cmd_catalogue_list)
+
+    catalog = sub.add_parser(
+        "catalog",
+        help="manage the plugin directories the Hub reads",
+        description=(
+            "The Hub reads an ordered list of plugin directories. The one "
+            "bundled with rom-hub is always first and cannot be removed; "
+            "anything you add comes after it, so a third-party directory "
+            "can add plugins but never replace one the bundled directory "
+            "already lists. A directory grants nothing -- an installed "
+            "plugin's network allowlist comes from its own manifest.toml."
+        ),
+    )
+    catsub = catalog.add_subparsers(dest="catalog_command", required=True)
+
+    catalog_list = catsub.add_parser(
+        "list",
+        help="show the configured directories, in precedence order",
+    )
+    catalog_list.set_defaults(func=_cmd_catalog_list)
+
+    catalog_add = catsub.add_parser(
+        "add",
+        help="add a directory: an https URL or a local path",
+        description=(
+            "https only. A catalog fetched over http can be rewritten in "
+            "flight by anyone on the path, and every install URL you would "
+            "then read comes from it."
+        ),
+    )
+    catalog_add.add_argument(
+        "name",
+        help=(
+            "a short name for this directory, shown in 'plugin browse' "
+            "(letters, digits, '.', '_', '-')"
+        ),
+    )
+    catalog_add.add_argument(
+        "location", help="an https:// URL, or a path to a plugins.json file"
+    )
+    catalog_add.set_defaults(func=_cmd_catalog_add)
+
+    catalog_remove = catsub.add_parser("remove", help="drop one directory")
+    catalog_remove.add_argument("name", help="the name given to 'catalog add'")
+    catalog_remove.set_defaults(func=_cmd_catalog_remove)
+
+    catalog_refresh = catsub.add_parser(
+        "refresh",
+        help="refetch every remote directory now, ignoring the cache TTL",
+    )
+    catalog_refresh.set_defaults(func=_cmd_catalog_refresh)
 
     jobs = sub.add_parser("jobs", help="list import jobs")
     jobs.add_argument(

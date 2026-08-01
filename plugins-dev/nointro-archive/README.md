@@ -14,7 +14,7 @@ search and metadata APIs for the third.
 
 **All of it, and the number has a denominator behind it.**
 
-    $ rom-hub catalogue build nointro-archive
+    $ rom-hub census build nointro-archive
     nointro-archive: complete -- 29,955 of 29,955 declared entries
       across 43 units; 28 units excluded (1,411 entries)
       29,771 catalogued rows -> 27,219 distinct dumps in 14,214 games

@@ -40,6 +40,34 @@ compromised directory cannot widen what an installed plugin may reach.
 `test_catalog_cannot_widen_permissions` pins that: the broker reads
 `manifest.network` and never consults the catalog at all.
 
+That property used to describe a file shipped in this repository. It now has to
+hold for a file fetched from somebody else's server, which is where it stops
+being a nicety — see **This is one directory of possibly several** below.
+
+## This is one directory of possibly several
+
+The Hub reads an **ordered list** of plugin directories, not just this one:
+
+    rom-hub catalog list                      # what is configured, and its health
+    rom-hub catalog add mine https://git.moveweight.com/wade/rom-hub-catalog/raw/branch/main/plugins.json
+    rom-hub catalog remove mine
+
+A source is an https URL or a local path; http is refused, because a catalog is
+a list of places to fetch code from and over http anyone on the path rewrites
+it. `CONTRIBUTING.md` has the format and the rules if you want to host one.
+
+**This directory is always first, and first source wins.** A third-party
+directory can add plugins but can never replace one listed here — the losing
+entry is dropped and the collision is printed rather than silently resolved.
+`rom-hub plugin browse` marks every entry with the directory it came from, says
+`N of M catalog(s) reachable` when one could not be read, and `rom-hub plugin
+install` prints a notice above any install that came from a directory this
+project does not vouch for.
+
+None of that changes what a directory *is*: the paragraph above still holds for
+every one of them. `docs/DESIGN.md` works through the trust model, including
+why a catalog URL is a different trust class from a plugin's `ctx.http`.
+
 ### What the sandbox does and does not cover
 
 Worth being exact, because "sandboxed" is doing less work than it sounds:
@@ -384,7 +412,7 @@ Records where a PC game keeps its save files, from the ludusavi manifest, as a s
 
 ### ❗ No-Intro sets on Archive.org — `nointro-archive`
 
-Censuses all 71 `identifier:nointro*` items on Archive.org -- 31,366 declared files, every one accounted for -- and serves search and import from the catalogue it built. `rom-hub catalogue build nointro-archive`.
+Censuses all 71 `identifier:nointro*` items on Archive.org -- 31,366 declared files, every one accounted for -- and serves search and import from the catalogue it built. `rom-hub census build nointro-archive`.
 
 **Source terms.** Plainly: these are copyrighted commercial console ROMs, and this plugin does not launder that. No-Intro sets are checksum-verified dumps of retail cartridges; the copyright belongs to the publishers, most of whom have never licensed redistribution. Whether you may download one depends on where you live and on whether you own the original media — in the United States the archival exemption courts have recognised does not extend to downloading a copy of something you do not own. The plugin circumvents no access control, paywall, login or robots directive, and `https://archive.org/download/` is a public unauthenticated listing the Archive's robots.txt does not disallow. If you want only material that is unambiguously free to redistribute, use `homebrew` instead.
 
@@ -527,4 +555,11 @@ Open a pull request adding an entry to
 The catalog is validated on load, so a malformed entry fails the test suite
 rather than reaching a user. `terms` and `description` must be non-empty: a
 blank cell reads like "nothing to declare" rather than "nobody filled this
-in".
+in". An entry may carry **only** the fields the loader reads — an unknown one
+is rejected rather than ignored, the same posture `manifest.toml` has.
+
+**You do not have to be listed here.** Anyone can host their own directory and
+point the Hub at it with `rom-hub catalog add`; see *Publishing your own
+catalog* in [`CONTRIBUTING.md`](../CONTRIBUTING.md). Getting listed on this
+page means this project vouches for the entry, which is why it goes through
+review — and why an install from anywhere else says so at install time.
