@@ -83,8 +83,10 @@ def _hashes(result: SearchResult) -> dict[str, str]:
     name like any other, which is the same outcome it would have had if
     the plugin had said nothing.
     """
+    extra = result.extra
+    if not extra:
+        return {}
     out: dict[str, str] = {}
-    extra = result.extra or {}
     for kind, keys in _HASH_KEYS.items():
         for key in keys:
             raw = extra.get(key)
@@ -315,12 +317,18 @@ def group_results(results, query: str = "") -> list[GameGroup]:
     query_key = normalise_title(query)
     query_tokens = tuple(query_key.split()) if query_key else ()
 
-    buckets: dict[tuple[str | None, str], list[SearchResult]] = {}
+    # Parsed once and carried, not looked up again per stage: `parse` is
+    # cached, but a cache big enough for one page is not big enough for a
+    # ten-thousand-row fan-out, and re-parsing would double the only part
+    # of this that is not a dictionary operation.
+    buckets: dict[
+        tuple[str | None, str], list[tuple[SearchResult, RomName]]
+    ] = {}
     for result in results:
         name = parse(result.title)
         buckets.setdefault(
             (platform_key(result.platform), name.title_key), []
-        ).append(result)
+        ).append((result, name))
 
     groups: list[GameGroup] = []
     for (platform, title_key), members in buckets.items():
@@ -331,7 +339,7 @@ def group_results(results, query: str = "") -> list[GameGroup]:
                 # lowercased key -- the key exists to compare with, and
                 # printing it would be showing our own bookkeeping.
                 platform=next(
-                    (m.platform for m in members if m.platform), None
+                    (m.platform for m, _ in members if m.platform), None
                 ),
                 variants=_variants(members),
                 relevance=relevance(title_key, query_key, query_tokens),
@@ -342,9 +350,10 @@ def group_results(results, query: str = "") -> list[GameGroup]:
     return groups
 
 
-def _variants(members: list[SearchResult]) -> list[Variant]:
+def _variants(pairs: list[tuple[SearchResult, RomName]]) -> list[Variant]:
     """Split one game's results into distinct dumps of it."""
-    names = [parse(m.title) for m in members]
+    members = [m for m, _ in pairs]
+    names = [n for _, n in pairs]
     digests = [_hashes(m) for m in members]
     sets = _Sets(digests)
 

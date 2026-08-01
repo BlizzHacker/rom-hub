@@ -871,6 +871,17 @@ def _search_size(size_bytes: int | None) -> str:
     return f"{size_bytes / 1_048_576:.1f} MB" if size_bytes else "-"
 
 
+def _ellipsis(text: str, width: int) -> str:
+    """`text` cut to `width`, so one long value cannot shift every column.
+
+    Only ever applied to the two derived columns of a variant line -- the
+    tag summary and the source list. The result's own title is printed in
+    full at the end of the same line, so nothing on that line is only
+    available in truncated form.
+    """
+    return text if len(text) <= width else text[: width - 3] + "..."
+
+
 def _expanded_rows(args, page) -> set[int]:
     """Which printed row numbers should list their variants.
 
@@ -924,7 +935,8 @@ def _print_groups(page, expand: set[int]) -> None:
         for variant in group.variants:
             vflag = " [stream-only]" if variant.stream_only else ""
             print(
-                f"        - {variant.label:<24} {', '.join(variant.sources):<28} "
+                f"        - {_ellipsis(variant.label, 28):<28} "
+                f"{_ellipsis(', '.join(variant.sources), 20):<20} "
                 f"{_search_size(variant.size_bytes):>10}  "
                 f"{variant.primary.title}{vflag}"
             )

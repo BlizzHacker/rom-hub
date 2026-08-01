@@ -237,6 +237,12 @@ def _fold_accents(text: str) -> str:
     punctuation, because it is not alphanumeric -- would delete the ones
     this function just went to the trouble of keeping.
     """
+    if text.isascii():
+        # Nothing to decompose, and this is the overwhelmingly common case
+        # -- skipping the two normalisation passes here is most of the
+        # difference between grouping ten thousand rows in a moment and in
+        # a noticeable pause.
+        return text
     decomposed = unicodedata.normalize("NFKD", text)
     out: list[str] = []
     for ch in decomposed:
@@ -468,6 +474,9 @@ _STATUS_RANK = (
     # (flag, rank). Lowest wins. Absent from this table -> 10, i.e. a
     # plain release, which is the common case and sits in the middle.
     ("verified", 0),
+    # A later re-release (Virtual Console, Switch Online) is the same game
+    # in a different wrapper; the original press leads.
+    ("rerelease", 15),
     ("fixed", 20),
     ("translation", 25),
     ("alternate", 30),
