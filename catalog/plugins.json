@@ -448,10 +448,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-cheats",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-cheats",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-cheats/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "assets"
@@ -464,9 +464,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "RetroArch cheat files from libretro-database's cht/ tree, for the systems you choose.",
+      "description": "RetroArch cheat files from libretro-database's 28,298-file cht/ tree, for the systems you choose.",
       "terms": "CC-BY-SA-4.0, verified by reading libretro-database's own LICENSE rather than a badge — the full Creative Commons Attribution-ShareAlike 4.0 text sits at the repository root and GitHub's detection agrees. ShareAlike is the live obligation: a redistributed derivative has to carry the same terms, which is the difference from the overlays plugin's plain CC-BY. One caveat is stated in the plugin's README rather than glossed: libretro-database's own README notes that much of the repository is imported from No-Intro, Redump, TOSEC and GameTDB without saying which upstream terms attach to which subtree. That caveat is about the DAT and metadata imports (dat/, metadat/, rdb/); this plugin touches only cht/, which is contributed directly and which the repository-level LICENSE covers with no carve-out naming it. Both hosts are public and unauthenticated and this plugin sends no credential.",
-      "comments": "The source that makes the size problem real: libretro-database is 795 MB and its cht/ tree alone runs to tens of thousands of files across 44 systems. Nothing is cloned — a catalogue is one Git Trees API call per selected system and an install is one file of a few hundred bytes. The trap this plugin was built around is that GitHub's contents API truncates a directory listing at 1,000 entries with no error and no flag, so a contents-API implementation would have offered 1,000 of the NES tree's 2,265 files and looked like it was working; the Trees API returns all of them, sets a `truncated` boolean when it cannot, and is smaller on the wire because it carries no per-entry URL block. A truncated listing is refused outright rather than shown as though it were complete. Because every system at once is far past the 512 assets a plugin may return, the first run makes the one cheap call that enumerates the systems and names them in the refusal — an empty catalogue would have been technically true and useless.",
+      "comments": "The source that makes the size problem real: libretro-database is 795 MB and its cht/ tree holds 28,298 cheat files across 44 systems, counted directory by directory on 2026-08-01. Nothing is cloned — a catalogue is one Git Trees API call per selected system and an install is one file of a few hundred bytes. The trap this plugin was built around is that GitHub's contents API truncates a directory listing at 1,000 entries with no error and no flag, so a contents-API implementation would have offered under half the NES tree's 2,262 files and under a quarter of the Nintendo DS tree's 4,204, and looked like it was working; the Trees API returns all of them, sets a `truncated` boolean when it cannot, and is smaller on the wire because it carries no per-entry URL block. A truncated listing is refused outright rather than shown as though it were complete. Because every system at once is fifty-five times the 512 assets a plugin may return, the first run makes the one cheap call that enumerates the systems and names them in the refusal — an empty catalogue would have been technically true and useless. **What 0.2.0 fixes is the message an operator most often actually sees.** Thirteen of the 44 systems are over the 512 ceiling on their own, by margins from 750 files to 4,204, and they are the systems anybody asks for — so most people meet this plugin through its overflow refusal rather than through a listing. That refusal used to say \"more than 512\", because the old code appended artifacts and raised the moment it passed the limit and so never knew the real total. It now counts first and prints the exact number per system, and when a `match` is already set it shows both numbers (\"900 of 4,204\") so an operator can tell whether the filter is nearly there or barely biting. The 512 is the host's bound, not this plugin's, and is not something a plugin gets to raise; what the plugin owes is an accurate account of what you are up against. The documented counts were also wrong and are now measured: the NES is 2,262 rather than 2,265, the PlayStation 1,958 rather than 2,050, and the NES was never the largest directory.",
       "platforms": []
     },
     {
@@ -1130,10 +1130,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig",
       "install": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig",
-      "download": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.1.0.tar.gz",
-      "version": "0.1.0",
-      "ref": "v0.1.0",
-      "updated": "2026-07-29",
+      "download": "https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-08-01",
       "rpp_version": "1",
       "capabilities": [
         "assets"
@@ -1146,9 +1146,9 @@
       "search_only": false,
       "key_required": false,
       "in_tree": false,
-      "description": "RetroArch controller autoconfiguration profiles, so a gamepad your emulator does not recognise gets a mapping somebody already wrote.",
+      "description": "RetroArch controller autoconfiguration profiles — all 1,094 of them, across every input driver the repository has — so a gamepad your emulator does not recognise gets a mapping somebody already wrote.",
       "terms": "MIT, and this one needed checking rather than reading off a badge: GitHub reports retroarch-joypad-autoconfig as NOASSERTION, which invites the assumption that its terms are unclear. They are not. Its COPYING contains two licences, which is what defeats GitHub's single-licence detection — the MIT License (copyright 2019 The RetroArch team) covering the .cfg profiles this plugin offers, and the zlib-style SDL licence (copyright 1997-2025 Sam Lantinga) covering the bundled SDL gamecontrollerdb.cfg, which this plugin does not offer. Both halves were read from the repository itself. Both hosts are public and unauthenticated and this plugin sends no credential.",
-      "comments": "The smallest source in this set and the one that solves a whole problem: a pad RetroArch does not recognise is a pad you remap by hand, and the fix is a 1.7 KB text file that already exists — 437 of them for the udev driver alone. The input driver is config and is never detected from the host OS, for the reason libretro-cores does not detect its build target: the Hub is routinely not running on the machine the pad is plugged into, and udev profiles handed to a Windows frontend are silently useless. An unknown driver is refused by name against the list that exists, before any request goes out. This plugin's repository is only 2.6 MB, so the Trees-API listing here is not strictly necessary — it is the same mechanism the overlays and cheats plugins need against 29 MB and 795 MB, kept identical so there is one way this plugin family reads a GitHub tree rather than three.",
+      "comments": "The smallest source in this set and the one that solves a whole problem: a pad RetroArch does not recognise is a pad you remap by hand, and the fix is a 1.7 KB text file that already exists. The input driver is config and is never detected from the host OS, for the reason libretro-cores does not detect its build target: the Hub is routinely not running on the machine the pad is plugged into, and udev profiles handed to a Windows frontend are silently useless. An unknown driver is refused by name against the list that exists, before any request goes out. This plugin's repository is only 2.6 MB, so the Trees-API listing here is not strictly necessary — it is the same mechanism the overlays and cheats plugins need against 29 MB and 795 MB, kept identical so there is one way this plugin family reads a GitHub tree rather than three. **Unlike every other plugin in the emulator-support set, this one had no gap to close, and 0.2.0 is the measurement rather than an addition.** The repository has thirteen input-driver directories and this plugin offers all thirteen: 1,094 profiles in total (udev 437, dinput 232, android 214, sdl2 80, hid 60, xinput 39, linuxraw 13, winraw 11, qnx 3, x 2, and one each for mfi, parport and sdl3), counted against the live tree on 2026-08-01. Nothing else in that repository is a profile — its root holds only COPYING, Makefile, README.md, configure, two CI files, a layout PNG and .github/, and no driver directory contains a subdirectory or a non-.cfg file. Completeness is only worth claiming if something notices when it stops being true, so the test suite pins the plugin's DRIVERS tuple against a captured copy of the repository root: a driver directory added upstream fails the suite rather than being quietly unreachable. One number is worth knowing — udev's 437 is not far under the 512 assets a plugin may return, so that ceiling is a real event here rather than a theoretical one.",
       "platforms": []
     },
     {
