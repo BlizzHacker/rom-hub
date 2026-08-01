@@ -53,9 +53,58 @@ FILE_BASE = "https://ifarchive.org/"
 #: The subtree this plugin will read or plan a fetch from, ever.
 GAMES_ROOT = "if-archive/games/"
 
-#: The directories searched when the operator names none. Exactly the four
-#: runtimes RomM 4.9.2 has a platform slug for; see formats.py.
-DEFAULT_DIRECTORIES = ("zcode", "glulx", "tads", "hugo")
+#: The directories searched when the operator names none.
+#:
+#: The four runtime roots RomM 4.9.2 has a platform slug for -- see
+#: formats.py -- **and every subdirectory the archive nests under them**,
+#: which is where the last quarter of the games are. The archive files
+#: translations and superseded releases one level down: `zcode/spanish`
+#: holds 42 mapped story files, `zcode/old` 59, `glulx/old` 46. Reading
+#: only the four roots reached 1,158 of the 1,410 story files these
+#: thirty directories hold.
+#:
+#: The subdirectory list is checked in rather than discovered, because
+#: discovering it means parsing each root's `subdirlist` and then
+#: fetching whatever it named -- which is a plugin deciding at runtime
+#: which URLs to request. Read from the four roots' own subdirlists on
+#: 2026-08-01; a new language directory is one line here.
+#:
+#: Thirty indexes is 1,251 KB and 4.4 seconds against the host's
+#: 30-second ceiling (measured 2026-08-01, one keep-alive connection).
+#: The roots alone are 914 KB of that: the twenty-six subdirectories are
+#: small, and they were the cheap three-quarters of what was missing.
+DEFAULT_DIRECTORIES = (
+    "zcode",
+    "zcode/old",
+    "zcode/danish",
+    "zcode/dutch",
+    "zcode/french",
+    "zcode/german",
+    "zcode/italian",
+    "zcode/lojban",
+    "zcode/russian",
+    "zcode/slovenian",
+    "zcode/spanish",
+    "zcode/swedish",
+    "glulx",
+    "glulx/old",
+    "glulx/french",
+    "glulx/german",
+    "glulx/italian",
+    "glulx/russian",
+    "glulx/spanish",
+    "glulx/swedish",
+    "tads",
+    "tads/old",
+    "tads/czech",
+    "tads/german",
+    "tads/italian",
+    "tads/russian",
+    "tads/spanish",
+    "tads/swedish",
+    "hugo",
+    "hugo/old",
+)
 
 #: A directory name is a path component the plugin puts in a URL. An
 #: allowlist of what one may contain, not a denylist of what it may not --
