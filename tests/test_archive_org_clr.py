@@ -701,3 +701,19 @@ def test_a_shared_boundary_size_is_read_whole_rather_than_half_dropped():
     assert len(spans) > 1
     for (_, first_high), (second_low, _) in zip(spans, spans[1:]):
         assert first_high < second_low
+
+
+def test_the_nes_and_snes_corners_carry_no_control_information_at_all():
+    """Every downloadable NES or SNES item in the collection that has a
+    `notes` or `emulator_instructions` field -- all eleven of them --
+    captured live.
+
+    Not one is a control mapping. Nine are lists of related games
+    ("(1985) Battle City [Nintendo Family Computer] (1989) Tank 1989
+    [Dendy] ..."), one is a sound-test menu path, one is an alternate
+    title. So the gate has to reject all eleven, and the honest answer for
+    a NES rom is that Archive.org says nothing about how to play it.
+    """
+    docs = fixture("search_nes_snes_notes.json")["response"]["docs"]
+    assert len(docs) == 11
+    assert all(controls.extract(doc, doc["identifier"]) is None for doc in docs)

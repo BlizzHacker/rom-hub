@@ -140,6 +140,15 @@ plugin does not pretend otherwise: 10,382 of 10,557 Genesis items have `notes`,
 and **1** of 219 SNES items does. A rom that gets no control blob is the normal
 case for several platforms.
 
+**And for NES and SNES it is every case.** Eleven downloadable NES or SNES
+items in the whole collection have a `notes` or `emulator_instructions` field,
+and not one is a control mapping — nine are lists of related games
+(*"(1985) Battle City [Nintendo Family Computer] · (1989) Tank 1989
+[Dendy] · …"*), one is a sound-test menu path, one is an alternate title. All
+eleven are checked in as a fixture and all eleven are rejected. If you import
+the NES half of the Console Living Room you will get no control information,
+because there is none to get.
+
 `notes` is gated because it is also where an uploader writes *"Unofficial boxart
 by me"*. The gate requires the text to name both something you press and
 something on a controller; across the 72 distinct `notes` texts in a 4,000-item
