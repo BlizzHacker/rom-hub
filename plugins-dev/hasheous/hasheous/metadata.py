@@ -38,14 +38,33 @@ are used: a `NotMapped` row is a search hasheous has *scheduled*, not an
 answer it has, and copying its empty id into a library would look exactly
 like a resolved one afterwards.
 
-**And another provider's id is not free to write.** Handing RomM an
-`igdb_id` or an `ra_id` does not store a number -- it makes RomM go and
-fetch from that provider, which needs that provider's key. Writing
-`ra_id` to a RomM with no RetroAchievements key answers **500**, not a
-degraded write. So the two ids that do that are behind
-`cross_provider_ids`, off by default: this plugin's whole point is that it
-needs no key, and a default that only works if you have somebody else's
-would undo it. See `ALWAYS_SAFE_IDS`.
+**Another provider's id is not free to write, and that is now the host's
+problem rather than this plugin's guess.** Handing RomM an `igdb_id` or
+an `ra_id` does not always store a number -- RomM re-fetches from a
+provider whenever that provider's id changes, and writing `ra_id` to a
+RomM with no RetroAchievements key answers **500**, not a degraded write.
+This plugin used to answer that by withholding both ids unless the
+operator set `cross_provider_ids`, which meant hasheous's entire reason to
+exist was off by default in case the library on the far end was not
+ready.
+
+The host asks the backend instead (`rom_hub.backends.base.
+provider_id_policy`): refused ids are dropped before the write, the rest
+of the patch lands, and the operator is told which id was withheld and
+what would make it writable. So this plugin offers everything it resolved
+and `provider_ids` decides per source -- an operator may well want an
+IGDB reference in their library and not a RetroAchievements one, since
+`ra_id` is what an achievements client will act on later and the others
+are cross-references nothing acts on.
+
+**The signature row was being read past.** `signature.game` carries a
+year, a publisher, the countries and languages the release covers, and
+which corpus verified the dump; every answer had all of it and this
+plugin took `id` and `name` and dropped the rest. It goes into `summary`
+now, which is the only field RomM will store any of it in -- see
+README.md, "What cannot reach RomM". The last sentence of that summary is
+the one no other plugin here can write: the difference between "a file
+called Altered Beast" and "the No-Intro verified dump of Altered Beast".
 """
 
 import json
@@ -69,24 +88,44 @@ SOURCE_FIELDS: dict[str, str] = {
     "RetroAchievements": "ra_id",
 }
 
-# Fields RomM stores and fields RomM *acts on*, which is not the same
-# thing and cost this plugin a 500 to learn.
+# The `provider_ids` config names *sources*, not RomM form fields. An
+# operator deciding whether this plugin may hand their library an IGDB
+# reference is thinking about IGDB, not about the spelling of a column.
+PROVIDER_KEYS: dict[str, str] = {
+    "igdb": "igdb_id",
+    "tgdb": "tgdb_id",
+    "ra": "ra_id",
+}
+
+# `hasheous_id` is hasheous's own object id and is not in `provider_ids`
+# at all: it is not another provider's reference, it is the identity of
+# the thing that just answered, and switching it off would leave a patch
+# that cannot be traced back to the lookup that produced it.
+OWN_ID_FIELD = "hasheous_id"
+
+# Which sources this plugin offers when the operator has said nothing.
 #
-# RomM 4.9.2's `update_rom` re-fetches from a provider whenever that
-# provider's id **changes** (`backend/endpoints/roms/__init__.py`, the
-# "Fetch metadata from external sources" block): flashpoint, launchbox,
-# ra, moby, ss and igdb each trigger a `get_rom_by_id` against the real
-# service. Writing `ra_id` to a RomM with no RetroAchievements key does
-# not degrade -- it raises `TypeError: Invalid variable type: value
-# should be str, int or float, got None` out of `yarl` when the auth
-# middleware appends a `None` key to the query, and the whole PUT answers
-# 500. Verified against RomM 4.9.2 on 2026-07-29.
+# **All three, and that is a change.** This used to be `hasheous_id` and
+# `tgdb_id` only, with IGDB and RetroAchievements behind an off-by-default
+# `cross_provider_ids` flag, because writing `ra_id` to a RomM with no
+# RetroAchievements key answers HTTP 500 rather than degrading -- RomM
+# re-fetches from a provider whenever that provider's id changes, and with
+# no key the auth middleware appends a `None` to the query and `yarl`
+# raises out of the request handler.
 #
-# `hasheous_id` and `tgdb_id` are in neither the fetch block nor any
-# handler: RomM stores them and stops. So they are always safe, and the
-# two that make RomM go out to a keyed service are behind
-# `cross_provider_ids`.
-ALWAYS_SAFE_IDS = frozenset({"hasheous_id", "tgdb_id"})
+# That is still true and it is no longer this plugin's problem to guess
+# about. The **host** asks the backend which ids it will take before the
+# write (`rom_hub.backends.base.provider_id_policy`), drops the ones it
+# refuses, keeps the rest of the patch, and tells the operator why -- so
+# a `ra_id` proposed to a RomM without RA credentials is withheld with a
+# sentence naming the missing configuration, instead of either a 500 or a
+# silence.
+#
+# Which frees this plugin to do the thing it exists for. Mapping a dump to
+# every other provider's id is hasheous's entire purpose; defaulting to
+# withholding two thirds of that, in case the library on the far end was
+# not ready for it, was solving a library's problem in the wrong place.
+DEFAULT_SOURCES = ("igdb", "tgdb", "ra")
 
 # The only mapping status whose id means anything. `NotMapped` rows carry
 # a scheduled `nextSearch` and no id; `MappedWithErrors` means hasheous
@@ -166,8 +205,42 @@ class Metadata(MetadataProvider):
     def _raw_metadata(self) -> bool:
         return bool(self.ctx.config.get("raw_metadata", True))
 
-    def _cross_provider_ids(self) -> bool:
-        return bool(self.ctx.config.get("cross_provider_ids", False))
+    def _summary(self) -> bool:
+        return bool(self.ctx.config.get("summary", True))
+
+    def _wanted_fields(self) -> frozenset[str]:
+        """The RomM id fields this operator has allowed, from source names.
+
+        Per source rather than one switch, because the reasons differ per
+        source. An operator may be perfectly happy for their library to
+        carry an IGDB reference and not want a RetroAchievements one --
+        `ra_id` is what an achievements client will act on later, and the
+        other two are cross-references nothing acts on.
+
+        An unknown name is a refusal, not a shrug. `provider_ids =
+        ["igbd"]` silently doing nothing is how an operator concludes the
+        plugin is broken.
+        """
+        raw = self.ctx.config.get("provider_ids")
+        if raw is None:
+            raw = DEFAULT_SOURCES
+        if isinstance(raw, str):
+            raw = [raw]
+        fields = {OWN_ID_FIELD}
+        for item in raw:
+            name = str(item).strip().lower()
+            if not name:
+                continue
+            field = PROVIDER_KEYS.get(name)
+            if field is None:
+                raise LookupFailed(
+                    f"provider_ids names {name!r}, and hasheous maps a dump to "
+                    f"{sorted(PROVIDER_KEYS)} -- those are the three sources "
+                    f"it carries that RomM has a field for. Nothing was "
+                    f"written."
+                )
+            fields.add(field)
+        return frozenset(fields)
 
     # -- the network -----------------------------------------------------
 
@@ -223,15 +296,22 @@ class Metadata(MetadataProvider):
             if isinstance(name, str) and name.strip():
                 patch["name"] = name.strip()
 
+        if self._summary():
+            summary = _summary(payload)
+            if summary:
+                patch["summary"] = summary
+
+        wanted = self._wanted_fields()
         provider_ids: dict[str, int | str] = {}
 
         object_id = payload.get("id")
-        if isinstance(object_id, int) and not isinstance(object_id, bool):
-            provider_ids["hasheous_id"] = object_id
-        elif isinstance(object_id, str) and _is_identifier(object_id):
-            provider_ids["hasheous_id"] = object_id
+        if OWN_ID_FIELD in wanted:
+            if isinstance(object_id, int) and not isinstance(object_id, bool):
+                provider_ids[OWN_ID_FIELD] = object_id
+            elif isinstance(object_id, str) and _is_identifier(object_id):
+                provider_ids[OWN_ID_FIELD] = object_id
 
-        provider_ids.update(self._mapped_ids(payload.get("metadata")))
+        provider_ids.update(self._mapped_ids(payload.get("metadata"), wanted))
         if provider_ids:
             patch["provider_ids"] = provider_ids
 
@@ -306,13 +386,15 @@ class Metadata(MetadataProvider):
         # once even when six DATs agree about it.
         return list(dict.fromkeys(names))
 
-    def _mapped_ids(self, metadata) -> dict[str, int | str]:
+    def _mapped_ids(self, metadata, wanted: frozenset[str]) -> dict[str, int | str]:
         """Other providers' ids, but only the ones hasheous calls `Mapped`.
 
-        And only the ones RomM merely *stores*, unless the operator has
-        set `cross_provider_ids`. See `ALWAYS_SAFE_IDS`.
+        And only the sources `provider_ids` names. Whether the library on
+        the far end will *accept* one is not decided here: the host asks
+        the backend and withholds what it refuses, with a reason. This
+        function's job is what hasheous knows and what the operator wants
+        offered, which are the two questions a plugin can actually answer.
         """
-        cross = self._cross_provider_ids()
         out: dict[str, int | str] = {}
         for entry in metadata or []:
             if not isinstance(entry, dict):
@@ -320,9 +402,7 @@ class Metadata(MetadataProvider):
             if entry.get("status") != MAPPED:
                 continue
             field = SOURCE_FIELDS.get(entry.get("source"))
-            if field is None or field in out:
-                continue
-            if field not in ALWAYS_SAFE_IDS and not cross:
+            if field is None or field in out or field not in wanted:
                 continue
             value = entry.get("id")
             if not isinstance(value, str) or not _is_identifier(value):
@@ -362,3 +442,103 @@ _MAX_RAW_CHARS = 256 * 1024
 
 def _is_identifier(value: str) -> bool:
     return bool(value) and len(value) <= _MAX_ID_CHARS and not (set(value) - _ID_CHARS)
+
+
+# -- what the signature itself says --------------------------------------
+
+
+def _summary(payload: dict) -> str | None:
+    """The DAT entry's own facts, in the one field RomM stores.
+
+    `signature.game` is the row hasheous matched, and it carries far more
+    than the name this plugin used to take out of it: a year, a publisher,
+    the countries and languages the release covers, and which signature
+    corpus verified the dump. All of it was arriving in every answer and
+    being read past on the way to `id` and `name`.
+
+    None of it has a structured home. RomM keeps companies and release
+    dates in a `metadatum` sub-object populated by its own providers, with
+    no form field that reaches it, so this is prose or it is nothing --
+    see README.md, "What cannot reach RomM".
+
+    The last sentence is the one worth having and the one no other plugin
+    in this directory can write: it names the corpus and the dump status,
+    which is the difference between "a file called Altered Beast" and
+    "the No-Intro verified dump of Altered Beast".
+    """
+    game = payload.get("signature")
+    game = game.get("game") if isinstance(game, dict) else None
+    if not isinstance(game, dict):
+        game = {}
+    rom = payload.get("signature")
+    rom = rom.get("rom") if isinstance(rom, dict) else None
+    if not isinstance(rom, dict):
+        rom = {}
+
+    parts: list[str] = []
+
+    publisher = _clean(game.get("publisher")) or _publisher_name(payload)
+    if publisher:
+        parts.append(f"Published by {publisher}.")
+
+    year = _clean(game.get("year"))
+    if year:
+        parts.append(f"Released {year}.")
+
+    countries = _clean(game.get("countryString"))
+    if countries:
+        parts.append(f"Region: {countries}.")
+
+    languages = _values(game.get("language")) or _clean(game.get("languageString"))
+    if languages:
+        parts.append(f"Language: {languages}.")
+
+    source = _SIGNATURE_SOURCES.get(_clean(rom.get("signatureSource"))) or _clean(
+        rom.get("signatureSource")
+    )
+    status = _clean(rom.get("status"))
+    if source:
+        line = f"Matched against the {source} signature"
+        if status:
+            line += f" ({status.lower()} dump)"
+        parts.append(line + ".")
+
+    return " ".join(parts) or None
+
+
+#: How hasheous spells a corpus internally, and how a person spells it.
+#: `NoIntros` in a summary would read as a typo.
+_SIGNATURE_SOURCES = {
+    "NoIntros": "No-Intro",
+    "Redump": "Redump",
+    "TOSEC": "TOSEC",
+    "MAME": "MAME",
+    "WHDLoad": "WHDLoad",
+    "FBNeo": "FinalBurn Neo",
+    "RetroAchievements": "RetroAchievements",
+}
+
+
+def _publisher_name(payload: dict) -> str:
+    publisher = payload.get("publisher")
+    if isinstance(publisher, dict):
+        return _clean(publisher.get("name"))
+    return ""
+
+
+def _clean(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _values(mapping) -> str:
+    """`{"En": "English"}` -> `English`. Hasheous's own expansion, not ours.
+
+    The two-letter keys are the DAT's tags and the values are hasheous's
+    spelling of them, so quoting the values means a summary says "English"
+    where the DAT said "En" without this file holding a language table it
+    would then have to maintain.
+    """
+    if not isinstance(mapping, dict):
+        return ""
+    names = [value.strip() for value in mapping.values() if isinstance(value, str)]
+    return ", ".join(name for name in names if name)

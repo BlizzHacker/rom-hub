@@ -162,21 +162,44 @@ def test_the_patch_carries_the_name_and_the_id_romm_merely_stores():
     assert patch.provider_ids["hasheous_id"] == 4321
 
 
-def test_ids_that_make_romm_call_a_keyed_service_are_off_by_default():
-    """RomM 4.9.2 re-fetches from IGDB / RA when their id *changes*, and a
-    RomM with no RetroAchievements key answers 500 rather than degrading.
-    Verified live on 2026-07-29 -- see ALWAYS_SAFE_IDS."""
+def test_every_mapped_id_is_offered_by_default():
+    """Mapping a dump to other providers' ids is what hasheous is *for*.
+
+    This used to withhold `igdb_id` and `ra_id` unless an operator set
+    `cross_provider_ids`, because writing `ra_id` to a RomM with no
+    RetroAchievements key answers 500 rather than degrading. That is still
+    true and it is no longer decided here: the host asks the backend which
+    ids it will take, withholds what it refuses, and says why. A plugin
+    guessing about a library it cannot see was the wrong place for it.
+    """
     provider, _ = _provider()
-    patch = provider.enrich(_ref())
-    assert "igdb_id" not in patch.provider_ids
-    assert "ra_id" not in patch.provider_ids
-
-
-def test_cross_provider_ids_turns_them_on_for_an_operator_who_has_the_keys():
-    provider, _ = _provider(cross_provider_ids=True)
     patch = provider.enrich(_ref())
     assert patch.provider_ids["igdb_id"] == "1234"
     assert patch.provider_ids["ra_id"] == "7195"
+    assert patch.provider_ids["hasheous_id"] == 4321
+
+
+def test_provider_ids_opts_in_per_source_not_all_or_nothing():
+    """An operator may want an IGDB reference and not an RA one: `ra_id`
+    is what an achievements client acts on later, the others are not."""
+    provider, _ = _provider(provider_ids=["igdb"])
+    patch = provider.enrich(_ref())
+    assert set(patch.provider_ids) == {"hasheous_id", "igdb_id"}
+
+
+def test_an_empty_provider_ids_still_records_where_the_answer_came_from():
+    """`hasheous_id` is not another provider's reference -- it is the
+    identity of the thing that answered."""
+    provider, _ = _provider(provider_ids=[])
+    assert set(provider.enrich(_ref()).provider_ids) == {"hasheous_id"}
+
+
+def test_an_unknown_source_name_is_a_refusal_not_a_shrug():
+    from hasheous.metadata import LookupFailed
+
+    provider, _ = _provider(provider_ids=["igbd"])
+    with pytest.raises(LookupFailed, match="provider_ids names"):
+        provider.enrich(_ref())
 
 
 def test_a_notmapped_entry_is_never_written_as_a_provider_id():
@@ -185,14 +208,14 @@ def test_a_notmapped_entry_is_never_written_as_a_provider_id():
     Its `id` is null, and an id written from it would afterwards be
     indistinguishable from one that was actually resolved.
     """
-    provider, _ = _provider(cross_provider_ids=True)
+    provider, _ = _provider()
     patch = provider.enrich(_ref())
     assert "tgdb_id" not in patch.provider_ids
 
 
 def test_a_source_romm_has_no_field_for_is_left_out_of_provider_ids():
     """GiantBomb is mapped in the fixture. RomM's endpoint has no field."""
-    provider, _ = _provider(cross_provider_ids=True)
+    provider, _ = _provider()
     patch = provider.enrich(_ref())
     assert set(patch.provider_ids) == {"hasheous_id", "igdb_id", "ra_id"}
 
@@ -203,7 +226,8 @@ def test_a_partial_answer_never_blanks_a_curated_field():
     provider, _ = _provider(FakeHasheous(payload))
     patch = provider.enrich(_ref())
     fields = patch.form_fields()
-    assert fields == {"hasheous_id": "4321", "raw_hasheous_metadata": json.dumps(payload)}
+    assert fields["hasheous_id"] == "4321"
+    assert fields["raw_hasheous_metadata"] == json.dumps(payload)
     assert "name" not in fields
     assert "igdb_id" not in fields
     assert patch.artwork_url is None
@@ -370,3 +394,46 @@ def test_the_table_is_keyed_by_real_romm_slugs():
 
     known = set(SYSTEMS) | {"atari-jaguar-cd"}
     assert set(PLATFORMS) <= known, sorted(set(PLATFORMS) - known)
+
+
+# -- the signature's own facts -------------------------------------------
+
+
+def test_the_summary_carries_what_the_signature_row_says():
+    """`signature.game` had a year, a publisher, countries and languages in
+    every answer, and this plugin read past all of it."""
+    provider, _ = _provider()
+    assert provider.enrich(_ref()).summary == (
+        "Published by Sega. Released 1988. Region: USA, Europe. "
+        "Language: English. Matched against the No-Intro signature "
+        "(verified dump)."
+    )
+
+
+def test_the_corpus_is_named_the_way_a_person_spells_it():
+    """Hasheous stores `NoIntros`, which in a summary reads as a typo."""
+    provider, _ = _provider()
+    summary = provider.enrich(_ref()).summary
+    assert "No-Intro" in summary and "NoIntros" not in summary
+
+
+def test_the_language_map_is_expanded_by_hasheous_not_by_us():
+    """`{"En": "English"}` -- the values are hasheous's own spelling, so
+    quoting them keeps a language table out of this plugin."""
+    provider, _ = _provider()
+    assert "Language: English." in provider.enrich(_ref()).summary
+
+
+def test_an_answer_with_no_signature_proposes_no_summary():
+    """Absent, not blank: a blank erases whatever RomM already had."""
+    provider, _ = _provider(
+        FakeHasheous({"id": 4321, "name": "Altered Beast"}), verify_platform=False
+    )
+    patch = provider.enrich(_ref())
+    assert patch.summary is None
+    assert "summary" not in patch.form_fields()
+
+
+def test_summary_false_leaves_romms_description_alone():
+    provider, _ = _provider(summary=False)
+    assert provider.enrich(_ref()).summary is None
