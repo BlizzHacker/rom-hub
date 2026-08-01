@@ -1,5 +1,6 @@
 import hashlib
 import io
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from rom_hub.cli import configure_output_encoding, main
+from rom_hub.stream import PlayRoute
 
 MANIFEST = """
 [plugin]
@@ -506,6 +508,180 @@ def test_stream_prints_the_resolved_target(tmp_path, source_repo, monkeypatch, c
     assert "https://demo.example/play/rubik_202308" in out
     assert "url" in out
     assert "Demo Game" in out
+
+
+def _stream_plugin(host: str) -> str:
+    """A `stream` provider resolving to a URL on `host`.
+
+    Parameterised by host so the undeclared-host case is the *same*
+    plugin pointed somewhere the manifest never named -- which is the
+    shape of both the mistake and the attack.
+    """
+    return (
+        "from rom_hub_sdk import StreamProvider, StreamTarget\n"
+        "\n"
+        "\n"
+        "class Stream(StreamProvider):\n"
+        "    def resolve(self, result):\n"
+        "        return StreamTarget(\n"
+        '            kind="url",\n'
+        f'            target="https://{host}/play/" + result.source_id,\n'
+        '            title="Demo Game",\n'
+        "        )\n"
+    )
+
+
+def _install_stream_plugin(
+    tmp_path, source_repo, monkeypatch, capsys=None, host="demo.example"
+):
+    """A `demo` plugin that also declares `stream`, installed and ready.
+
+    `capsys` is drained afterwards when given: `plugin install` prints a
+    paragraph, and a test reading `--json` off stdout would otherwise be
+    parsing that paragraph.
+    """
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROM_HUB_ALLOW_UNSANDBOXED", "1")
+    main(["plugin", "install", str(source_repo)])
+    installed = tmp_path / "home" / "plugins" / "demo"
+    (installed / "demo_stream.py").write_text(
+        _stream_plugin(host), encoding="utf-8"
+    )
+    (installed / "manifest.toml").write_text(
+        MANIFEST.replace(
+            '[capabilities]\nsearch = "demo:Search"',
+            '[capabilities]\nsearch = "demo:Search"\nstream = "demo_stream:Stream"',
+        ),
+        encoding="utf-8",
+    )
+    if capsys is not None:
+        capsys.readouterr()
+    return installed
+
+
+def test_stream_says_what_to_do_with_what_it_resolved(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """Resolving is half of it. An operator holding a validated URL still
+    has to be told it is theirs to open."""
+    _install_stream_plugin(tmp_path, source_repo, monkeypatch)
+    assert main(["stream", "demo", "rubik_202308"]) == 0
+    out = capsys.readouterr().out
+    assert "https://demo.example/play/rubik_202308" in out
+    assert "play\topen this URL in a browser to play it" in out
+
+
+def test_stream_json_is_the_handover_a_launcher_can_consume(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    _install_stream_plugin(tmp_path, source_repo, monkeypatch, capsys)
+    assert main(["stream", "demo", "rubik_202308", "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["route"] == "browser"
+    assert data["kind"] == "url"
+    assert data["url"] == "https://demo.example/play/rubik_202308"
+    assert data["source"] == "demo"
+
+
+def test_stream_open_launches_the_resolved_url(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    opened = []
+    monkeypatch.setattr(
+        "rom_hub.stream.webbrowser.open", lambda url: opened.append(url) or True
+    )
+    _install_stream_plugin(tmp_path, source_repo, monkeypatch, capsys)
+    assert main(["stream", "demo", "rubik_202308", "--open"]) == 0
+    assert opened == ["https://demo.example/play/rubik_202308"]
+    assert "opened\thttps://demo.example/play/rubik_202308" in capsys.readouterr().out
+
+
+def test_stream_refuses_a_target_on_a_host_the_manifest_never_declared(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """The whole command, not just the broker: a plugin naming an
+    undeclared host must not be able to make the Hub open a browser at it."""
+    opened = []
+    monkeypatch.setattr(
+        "rom_hub.stream.webbrowser.open", lambda url: opened.append(url) or True
+    )
+    _install_stream_plugin(
+        tmp_path, source_repo, monkeypatch, capsys, host="evil.example"
+    )
+    assert main(["stream", "demo", "rubik_202308", "--open"]) != 0
+    assert "evil.example" in capsys.readouterr().err
+    assert opened == []
+
+
+def test_stream_asks_a_configured_stream_server_about_the_platform(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """Read-only, and optional: what it asks is whether that server could
+    play the platform, which is the one thing it can answer about a target
+    it has never seen."""
+    asked = {}
+
+    class FakeClient:
+        def __init__(self, base, **kwargs):
+            asked["base"] = base
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def route(self, platform):
+            asked["platform"] = platform
+            return PlayRoute(platform=platform, tier="local")
+
+    monkeypatch.setattr("rom_hub.cli.StreamServerClient", FakeClient)
+    monkeypatch.setenv("ROM_HUB_STREAM_SERVER", "http://stream.example:8090")
+    _install_stream_plugin(tmp_path, source_repo, monkeypatch, capsys)
+    assert main(["stream", "demo", "rubik_202308", "--platform", "dos"]) == 0
+    assert asked == {"base": "http://stream.example:8090", "platform": "dos"}
+    assert "EmulatorJS in the client" in capsys.readouterr().out
+
+
+def test_a_stream_server_that_is_down_does_not_fail_the_command(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROM_HUB_STREAM_SERVER", "not a url")
+    _install_stream_plugin(tmp_path, source_repo, monkeypatch, capsys)
+    assert main(["stream", "demo", "rubik_202308", "--platform", "dos"]) == 0
+    out = capsys.readouterr().out
+    assert "https://demo.example/play/rubik_202308" in out
+    assert "note\tstream server not asked" in out
+
+
+def test_stream_from_the_library_needs_no_plugin_at_all(
+    tmp_path, source_repo, monkeypatch, capsys
+):
+    """The second real case: a rom the library already holds, played by the
+    library's own in-browser player."""
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("ROMM_URL", "http://library.example:8080")
+    monkeypatch.setenv("ROMM_USER", "u")
+    monkeypatch.setenv("ROMM_PASSWORD", "p")
+    assert main(["stream", "--library-rom", "42"]) == 0
+    out = capsys.readouterr().out
+    assert "http://library.example:8080/rom/42/ejs" in out
+
+
+def test_the_library_player_and_a_plugin_are_not_asked_for_together(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["stream", "demo", "x", "--library-rom", "42"]) != 0
+    assert "--library-rom" in capsys.readouterr().err
+
+
+def test_stream_with_nothing_to_resolve_says_what_to_type(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setenv("ROM_HUB_HOME", str(tmp_path / "home"))
+    assert main(["stream"]) != 0
+    assert "--library-rom" in capsys.readouterr().err
 
 
 # --- cores ----------------------------------------------------------------

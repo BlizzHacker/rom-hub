@@ -337,7 +337,8 @@ inherited leak.
 | `rom-hub search <query> [--platform] [--limit]` | fan out across enabled `search` plugins |
 | `rom-hub import <plugin> <source_id> [--platform] [--collection]` | plan → download → dedup → upload → collection |
 | `rom-hub enrich <plugin> <rom_id> [--source-id]` | enrich → fetch artwork → `PUT /api/roms/{id}` |
-| `rom-hub stream <plugin> <source_id>` | resolve one item to a validated stream target and print it |
+| `rom-hub stream <plugin> <source_id> [--open] [--json] [--platform] [--server]` | resolve one item to a validated stream target and hand it over: print what to do with it, `--open` it, or emit it as JSON for a launcher |
+| `rom-hub stream --library-rom <id> [--open] [--json]` | hand over the active backend's own in-browser player for a rom the library already holds. No plugin, no subprocess, no connection |
 | `rom-hub cores list\|install <plugin> [<core>]` | list a plugin's cores, or download one into the configured cores directory |
 | `rom-hub firmware list\|install <plugin> [<firmware>] [--no-library]` | list a plugin's BIOS/firmware **with each item's licence**, or install one into the configured firmware directory and the library |
 | `rom-hub assets list|install <plugin> [<asset>] [--kind]` | list a plugin's support files **with each item's licence**, or download one into the directory configured for its kind. No library server is involved |
@@ -453,7 +454,7 @@ api_key     = { type = "secret" }           # never in state.json; no default al
 | `search` | `search(query, platform, limit)` | `SearchResult[]` | merges, dedups against the library |
 | `importer` | `plan(result)` | `FetchPlan` — URLs, target platform, filenames | downloads, hashes, uploads, files under a platform |
 | `metadata` | `enrich(rom_ref)` | `MetadataPatch` | fetches the artwork, `PUT /api/roms/{id}` |
-| `stream` | `resolve(result)` | `StreamTarget` | validates and returns it — nothing else |
+| `stream` | `resolve(result)` | `StreamTarget` | validates it, then routes it to a **handover**: a `url` is opened in the operator's browser, a `handle` is printed for the service that issued it. Opens nothing else, streams nothing |
 | `cores` | `list()` / `plan(core)` | `CoreArtifact[]` / `FetchPlan` | downloads into the configured cores directory |
 | `firmware` | `list()` / `plan(firmware)` | `FirmwareArtifact[]` / `FetchPlan` | downloads into the configured firmware directory, unpacks the declared archive members, and stores the files in the library where the backend can hold firmware |
 | `assets` | `list()` / `plan(asset)` | `AssetArtifact[]` / `FetchPlan` | downloads into the directory configured for the item's `kind` — shaders, overlays, cheats, controller profiles. Touches no library at all |
@@ -484,7 +485,7 @@ allowlist before the host fetches it.
 | `search` | result metadata only | nothing to fetch; `ctx.http` was already gated |
 | `importer` | `FetchPlan` | `check_url` per file, in `PluginProcess.plan()`; `FetchFile` validates every filename; `dest_in_job_dir` contains every write |
 | `metadata` | `MetadataPatch` | `check_url` on `artwork_url` in `PluginProcess.enrich()` **and** again in `metadata.run_enrich()`; the artwork filename goes through the same `bare_filename` and `dest_in_job_dir`; the RomM form-field names are an allowlist |
-| `stream` | `StreamTarget` | `check_url` when `kind="url"`; a `kind="handle"` may not *be* a URL, so the discriminator cannot be lied about to skip the check |
+| `stream` | `StreamTarget` | `check_url` when `kind="url"` in `PluginProcess.resolve_stream()`, **again** in `stream.plan_handover()` when the route is decided, and a **third** time in `stream.open_handover()` immediately before a browser is launched; a `kind="handle"` may not *be* a URL, so the discriminator cannot be lied about to skip the check |
 | `cores` | `CoreArtifact[]`, `FetchPlan` | the **same** `_gated_plan()` the importer uses — one implementation, so the two cannot drift |
 | `firmware` | `FirmwareArtifact[]`, `FetchPlan` | the same `_gated_plan()` again. Plus: every archive member goes through `bare_filename` on the *type*, and is matched against the zip by full-name equality and written to a destination the host built with `dest_in_job_dir` — an entry named `../../etc/passwd` is simply not one of the members, and is never joined onto a path |
 | `assets` | `AssetArtifact[]`, `FetchPlan` | the same `_gated_plan()` a third time. `kind` is a closed `Literal`, so the host can always choose a destination; the `asset_id` may contain `/` because it is a path *within the source tree* and is never joined onto a filesystem path — every write is built from a `FetchPlan` filename, which `bare_filename` and `dest_in_job_dir` still gate |
@@ -514,10 +515,96 @@ name-only `PUT` left an existing `igdb_id` untouched, and an *empty* artwork
 part is a `400` — so, unlike `ensure_collection`, an artwork-less update must
 carry no artwork part at all.
 
-**`stream` is deliberately shallow.** `romm-stream` is a separate service;
-integrating it is not this capability's job. The host validates the target and
-returns it, and the CLI prints it. Building a second streaming transport inside
-the Hub would be inventing infrastructure the deployment already has.
+**`stream` resolves and hands over. It is not a streaming server.** See
+[What `stream` does, and what it refuses to do](#what-stream-does-and-what-it-refuses-to-do).
+
+### What `stream` does, and what it refuses to do
+
+For a while `stream` ended at the host gate: the plugin's answer was
+validated and printed. That is a *contract*, not a capability — an operator
+holding a validated URL still had to work out what to do with it. The host
+side now lives in `rom_hub.stream`, shaped like `cores`/`firmware`/
+`emuassets`: the plugin describes, the host acts, and what the host will act
+on is a closed set.
+
+| The target | The handover | What `--open` does |
+|---|---|---|
+| `kind="url"` | `browser` | opens it. For the case that exists today this **is** playback: an Archive.org `/details/` page runs Emularity in the page |
+| `kind="handle"` | `handoff` | refuses. The Hub does not know which service issued the identifier and will not guess a URL around it |
+| *(no plugin)* `--library-rom <id>` | `browser` | opens the library's own in-browser player — `<backend base>/rom/<id>/ejs` — built entirely from the operator's settings |
+
+`--json` emits the same handover for a launcher, a TV app or another command
+to consume: the target *plus* the host's decision about it, so a consumer
+never has to re-derive the route from `kind` and thereby re-implement the
+part that carries the security reasoning.
+
+**The library player table has one entry, and that is honest rather than
+lazy.** RomM's `/rom/<id>/ejs` is there because it is *verified* — it is the
+URL `romm-stream` itself drives when it autoplays a library rom. The other
+backends have no player path this project has confirmed, and a guessed URL
+is worse than a refusal: it opens, it 404s, and the operator cannot tell
+whether the guess or their library is at fault. `rom-hub stream
+--library-rom` against those backends says so and names the one that works.
+
+#### `romm-stream` is asked, never driven
+
+`romm-stream` is the streaming server. Nothing in the Hub becomes a second
+one: `rom_hub.stream` imports no `subprocess`, no `socket` and no `asyncio`,
+and a test reads its import graph and fails if that changes.
+
+With `--server` (or `$ROM_HUB_STREAM_SERVER`) the Hub asks a `romm-stream`
+server whether it could play a platform, over the only two endpoints that
+answer a question rather than start work:
+
+* `GET /api/play/route?platform=<slug>` → `{"tier": "local"|"stream"}`, or a
+  404 carrying the server's own reason
+* `GET /api/play/streamable` → the slugs it can serve
+
+`StreamServerClient.ALLOWED_PATHS` is exactly those two and is asserted by a
+test, so adding a third is a visible change. This is optional in
+`backends.degrade`'s sense: the operator's answer — the resolved target — is
+already in hand, so a stream server that is down or misconfigured produces a
+`note` line and never a failed command.
+
+**What cannot be done, stated plainly.** The Hub cannot start a `romm-stream`
+session for a plugin-resolved target, and that is a property of the server's
+API rather than a decision taken here. Its session routes are
+`POST /api/stream/start`, `POST /api/rtc/offer` and `GET /api/rtc/signal`,
+and each of them takes either a `platform` plus a `rom_name` that must
+resolve to a file inside the stream server's *own* ROM directory, or a
+`romm_rom_id` plus RomM credentials; `start`'s `url` form is gated on a
+hardcoded origin allowlist that a plugin's host would not be in. There is no
+route that accepts an arbitrary resolved URL or an opaque handle. So for an
+Archive.org target there is nothing to hand `romm-stream`, and a Hub command
+that appeared to hand it one would be a wrapper pretending to be an
+integration. Playing a *library* rom through `romm-stream` would need the
+Hub to forward RomM credentials to a second service, which is a design
+question and not a missing function call.
+
+#### Known gap: `romm-stream` has no TURN relay
+
+Not a Hub bug, and recorded here because it is the thing that actually stops
+remote streaming working.
+
+`romm-stream`'s `webrtc.py` hardcodes a single public STUN server. STUN
+*discovers* a peer's reflexive address; it cannot relay. Behind symmetric NAT
+or CGNAT — which is where a remote client sits — both ends gather candidates
+that never pair, and the failure is indistinguishable from a bad network. A
+`coturn` container has been running unused on the same host.
+
+`docs/patches/romm-stream-ice-servers.patch` makes the ICE list
+configuration instead of a constant (`ROMM_STREAM_ICE_SERVERS`, or
+`ROMM_STREAM_STUN_URLS` / `ROMM_STREAM_TURN_URLS` / `ROMM_STREAM_TURN_USER` /
+`ROMM_STREAM_TURN_PASS`), with the previous behaviour as the default so the
+file alone changes nothing until a relay is configured. It refuses to add a
+TURN URL that has no credentials, and says why: an unauthenticated allocation
+against a `lt-cred-mech` coturn is refused outright, so a half-configured
+relay looks exactly like no relay.
+
+Verified against a copy of the service on a spare port, not the live one:
+without it the offer carried `host` and `srflx` candidates only; with it the
+same offer carried a `typ relay` candidate at the site's external address.
+**The patch is not applied** — it is the service owner's to apply.
 
 ### Firmware: the capability where the licence is the product
 
@@ -1173,7 +1260,7 @@ curation.
 | `search` | `advancedsearch.php`, scoped to configured collections |
 | `importer` | `emulator_ext` selects the payload from the item's file list; refuses `stream_only` items |
 | `metadata` | `metadata.title` → name; `00_coverscreenshot.jpg` → cover, falling back to `files[].format` (`Emulator Screenshot`, then `Item Tile`), which makes artwork extraction deterministic |
-| `stream` | the item's own `/details/` page, which is where Emularity plays it; routes on the same `stream_only` signal the importer refuses on |
+| `stream` | the item's own `/details/` page, which is where Emularity plays it; routes on the same `stream_only` signal the importer refuses on. `rom-hub stream archive-org <id> --open` therefore plays the game, and `msdos_Oregon_Trail_The_1990` — the item the importer refuses — is exactly the one this serves |
 | `cores` | **not implemented** — see below |
 
 Two of these differ from the original design, both on evidence found while

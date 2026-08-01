@@ -1,8 +1,5 @@
 # ROM Hub
 
-A project of the [Move Weight Foundation](https://foundation.moveweight.com), an
-Oklahoma non-profit corporation with 501(c)(3) status pending.
-
 [![CI](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml)
 [![coverage 87%](https://img.shields.io/badge/coverage-87%25-brightgreen)](#coverage)
 [![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](pyproject.toml)
@@ -51,7 +48,6 @@ what is *not* confined.
 MIT licensed; see [LICENSE](LICENSE). Each plugin is a separate work under its
 own licence, carried in its own repository.
 
-
 ## It works — here is what that looks like
 
 ![RomM populated entirely by ROM Hub plugins](docs/screenshots/romm.png)
@@ -64,6 +60,40 @@ Retrom](docs/SHOWCASE.md) in the same session.
 See **[docs/SHOWCASE.md](docs/SHOWCASE.md)** for all three backends, the command
 transcripts, and an honest account of what is *not* in the picture — partial
 cover art, Gaseous landing ROMs on platform 0, and the two imports that failed.
+
+## Quick start
+
+    git clone https://github.com/BlizzHacker/rom-hub
+    cd rom-hub
+    python -m pip install -e ".[dev]"
+
+    rom-hub plugin browse                  # the seven published plugins
+    rom-hub plugin install archive-org     # clones the repo, pinned to its tag
+    rom-hub search "oregon trail" --limit 5
+
+`plugin install` takes a catalog slug, a git URL, or a local path. A slug is
+resolved through [`catalog/plugins.json`](catalog/plugins.json), which supplies
+the repository **and** the tag, so these two are the same install:
+
+    rom-hub plugin install archive-org
+    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
+
+Every install is pinned to a tag and the resolved commit SHA is recorded, so a
+tag moved after the fact does not change what you have. Updating is an explicit
+re-run with a new ref; nothing updates itself.
+
+**Searching needs no library server at all** — it fans out across installed
+plugins and prints results. `import` and `enrich` are the commands that need
+one configured.
+
+On Linux the install also pulls `pyseccomp`, which is what lets the plugin
+subprocess confine itself. If it is missing, `rom-hub` refuses to run plugins
+rather than running them unconfined. On **Windows and macOS there is no
+confinement available at all**, and plugins refuse to run without
+
+    ROM_HUB_ALLOW_UNSANDBOXED=1
+
+which means exactly what it says. See [Security model](#security-model).
 
 ## Renamed from `romm-hub`
 
@@ -102,7 +132,7 @@ implementation and a CLI command:
 | `search` | `rom-hub search <query>` | fans out across every enabled plugin |
 | `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection, warning first if the platform has no emulator core |
 | `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes metadata, the Hub fetches the artwork and writes to the library |
-| `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated stream target and prints it |
+| `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated target and hands it over — prints what to do with it, `--open`s it, or emits it as JSON |
 | `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
 | `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
 | `assets` | `rom-hub assets list\|install <plugin> [<asset>]` | lists a plugin's shaders, overlays, cheats and controller profiles **with each one's licence**, installs one to disk. No library involved |
@@ -260,40 +290,6 @@ Two RomM quirks the Hub works around, recorded because they cost time to find:
   so does the Hub. The rom is identified afterwards by finding its digest in the
   library, which doubles as proof it actually landed.
 
-## Quick start
-
-    git clone https://github.com/BlizzHacker/rom-hub
-    cd rom-hub
-    python -m pip install -e ".[dev]"
-
-    rom-hub plugin browse                  # the seven published plugins
-    rom-hub plugin install archive-org     # clones the repo, pinned to its tag
-    rom-hub search "oregon trail" --limit 5
-
-`plugin install` takes a catalog slug, a git URL, or a local path. A slug is
-resolved through [`catalog/plugins.json`](catalog/plugins.json), which supplies
-the repository **and** the tag, so these two are the same install:
-
-    rom-hub plugin install archive-org
-    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
-
-Every install is pinned to a tag and the resolved commit SHA is recorded, so a
-tag moved after the fact does not change what you have. Updating is an explicit
-re-run with a new ref; nothing updates itself.
-
-**Searching needs no library server at all** — it fans out across installed
-plugins and prints results. `import` and `enrich` are the commands that need
-one configured.
-
-On Linux the install also pulls `pyseccomp`, which is what lets the plugin
-subprocess confine itself. If it is missing, `rom-hub` refuses to run plugins
-rather than running them unconfined. On **Windows and macOS there is no
-confinement available at all**, and plugins refuse to run without
-
-    ROM_HUB_ALLOW_UNSANDBOXED=1
-
-which means exactly what it says. See [Security model](#security-model).
-
 ## Importing
 
 `import` takes a plugin's own id for an item and puts the ROM in the library.
@@ -391,15 +387,40 @@ plugin's manifest declares) or from bytes the plugin already has. It lands in
 
     rom-hub stream archive-org msdos_Oregon_Trail_The_1990
     url     https://archive.org/details/msdos_Oregon_Trail_The_1990
-    title   The Oregon Trail
+    title   Oregon Trail, The
     type    text/html
     emulator        dosbox
+    identifier      msdos_Oregon_Trail_The_1990
     stream_only     true
+    play    open this URL in a browser to play it
 
-That is the whole command, on purpose. `romm-stream` is a separate service;
-the Hub resolves and validates a target and hands it over rather than building
-a second streaming transport of its own. Items Archive.org marks `stream_only`
-are exactly the ones `import` refuses, so this is where they go.
+Add `--open` and the Hub opens it, which for this item *is* playing it: an
+Archive.org `/details/` page runs the emulator in the page. Items Archive.org
+marks `stream_only` are exactly the ones `import` refuses, so this is where
+they go.
+
+A target that is a *handle* rather than a URL — an identifier for some other
+service — is printed for whoever issued it and never opened. The Hub does not
+guess a URL around an opaque string.
+
+For a rom your library already holds there is no plugin to ask:
+
+    rom-hub stream --library-rom 42
+    url     http://romm.example:8080/rom/42/ejs
+
+That is the library's own in-browser player, built from your backend settings.
+
+`--json` prints the same handover for a launcher to consume. `--server
+http://stream.example:8090` (or `$ROM_HUB_STREAM_SERVER`) additionally asks a
+`romm-stream` server, over its read-only routing endpoints, whether *it* could
+play the platform — it never starts a session there.
+
+**The Hub is not a streaming server.** `romm-stream` is, and it is a separate
+service; the Hub resolves, validates and hands over rather than building a
+second transport. It also cannot start a `romm-stream` session for a
+plugin-resolved target, because that server's session routes take a rom on its
+own disk or a library rom id plus credentials — not a URL. See
+`docs/DESIGN.md` for the whole boundary.
 
 ## Emulator cores
 

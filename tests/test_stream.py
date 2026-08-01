@@ -331,3 +331,346 @@ def test_the_archive_org_target_is_inside_its_declared_allowlist():
     provider, _ = _archive()
     target = provider.resolve(SearchResult(source_id="msdos_x", title="x"))
     check_url(target.target, ["archive.org", "*.archive.org"])
+
+
+# --- the host side: what the Hub does with a validated target -------------
+#
+# The gate above proves a hostile plugin cannot get an undeclared host past
+# the boundary. These prove the *second* gate: the one standing immediately
+# in front of the act, which is what has to hold if the first has a gap.
+# Same reasoning as `paths.dest_in_job_dir` behind `bare_filename`.
+
+import httpx  # noqa: E402
+
+from rom_hub import stream as host_stream  # noqa: E402
+from rom_hub.stream import (  # noqa: E402
+    BROWSER,
+    HANDOFF,
+    Handover,
+    PlayRoute,
+    StreamError,
+    StreamOutcome,
+    StreamServerClient,
+    library_handover,
+    library_player_path,
+    library_player_url,
+    open_handover,
+    open_library_url,
+    plan_handover,
+)
+
+ALLOWED = ["allowed.example", "*.allowed.example"]
+
+
+class Opener:
+    """A stand-in browser. Records what it was asked to open."""
+
+    def __init__(self, result=True):
+        self.opened: list[str] = []
+        self.result = result
+
+    def __call__(self, url):
+        self.opened.append(url)
+        return self.result
+
+
+def test_a_url_target_becomes_a_browser_handover():
+    target = StreamTarget(
+        kind="url", target="https://allowed.example/play/x", title="X"
+    )
+    handover = plan_handover(target, ALLOWED, source="streamer")
+    assert handover.route == BROWSER
+    assert handover.url == "https://allowed.example/play/x"
+    assert handover.playable
+    assert "browser" in handover.how
+
+
+def test_a_handle_target_becomes_a_handoff_the_hub_will_not_guess_about():
+    handover = plan_handover(StreamTarget(kind="handle", target="ia:x"), ALLOWED)
+    assert handover.route == HANDOFF
+    assert handover.url is None
+    assert not handover.playable
+    assert "will not guess" in handover.how
+
+
+def test_planning_refuses_a_url_whose_host_the_plugin_never_declared():
+    """The third fetch-adjacent channel, gated identically to the other two.
+
+    A plugin's `network` allowlist is what the operator reviewed; a stream
+    target is a URL something will fetch, so an undeclared host is refused
+    here exactly as a FetchPlan URL and a MetadataPatch artwork_url are.
+    """
+    target = StreamTarget(kind="url", target="https://evil.example/play")
+    with pytest.raises(StreamError, match="evil.example"):
+        plan_handover(target, ALLOWED)
+
+
+def test_planning_refuses_a_cleartext_url_even_on_a_declared_host():
+    target = StreamTarget(kind="url", target="http://allowed.example/play")
+    with pytest.raises(StreamError, match="allowed.example"):
+        plan_handover(target, ALLOWED)
+
+
+def test_planning_refuses_a_lookalike_host():
+    """`host_matches` is the thing being relied on; prove it is reached."""
+    target = StreamTarget(kind="url", target="https://notallowed.example/x")
+    with pytest.raises(StreamError):
+        plan_handover(target, ALLOWED)
+
+
+def test_a_wildcard_subdomain_the_plugin_declared_is_allowed():
+    target = StreamTarget(kind="url", target="https://cdn.allowed.example/x")
+    assert plan_handover(target, ALLOWED).route == BROWSER
+
+
+def test_opening_checks_the_allowlist_again_at_the_moment_of_the_act():
+    """A Handover can be built anywhere -- from --json, from a queue -- so
+    the check that protects the operator is the one in front of the act."""
+    smuggled = Handover(
+        route=BROWSER,
+        target=StreamTarget(kind="url", target="https://evil.example/x"),
+        url="https://evil.example/x",
+        how="open this URL in a browser to play it",
+    )
+    opener = Opener()
+    with pytest.raises(StreamError, match="evil.example"):
+        open_handover(smuggled, ALLOWED, opener=opener)
+    assert opener.opened == []
+
+
+def test_opening_a_good_target_launches_exactly_it():
+    handover = plan_handover(
+        StreamTarget(kind="url", target="https://allowed.example/play/x"), ALLOWED
+    )
+    opener = Opener()
+    assert open_handover(handover, ALLOWED, opener=opener) == (
+        "https://allowed.example/play/x"
+    )
+    assert opener.opened == ["https://allowed.example/play/x"]
+
+
+def test_a_handle_cannot_be_opened():
+    handover = plan_handover(StreamTarget(kind="handle", target="ia:x"), ALLOWED)
+    opener = Opener()
+    with pytest.raises(StreamError, match="cannot be opened"):
+        open_handover(handover, ALLOWED, opener=opener)
+    assert opener.opened == []
+
+
+def test_a_browser_that_will_not_start_is_reported_not_swallowed():
+    handover = plan_handover(
+        StreamTarget(kind="url", target="https://allowed.example/x"), ALLOWED
+    )
+    with pytest.raises(StreamError, match="no browser"):
+        open_handover(handover, ALLOWED, opener=Opener(result=False))
+
+
+# --- the library's own player ---------------------------------------------
+
+
+def test_the_library_player_url_is_the_backend_path_for_that_rom():
+    assert (
+        library_player_url("romm", "http://library.example:8080", 7)
+        == "http://library.example:8080/rom/7/ejs"
+    )
+
+
+def test_a_trailing_slash_on_the_configured_base_does_not_double_up():
+    assert (
+        library_player_url("romm", "https://library.example/", 7)
+        == "https://library.example/rom/7/ejs"
+    )
+
+
+def test_a_backend_with_no_verified_player_is_refused_not_guessed_at():
+    """A guessed URL opens, 404s, and blames the wrong thing."""
+    with pytest.raises(StreamError, match="no in-browser player"):
+        library_player_path("nosuchbackend")
+
+
+def test_a_base_that_is_not_an_http_origin_is_refused():
+    for bad in ["", "library.example", "ftp://library.example", "/rom/1"]:
+        with pytest.raises(StreamError, match="http"):
+            library_player_url("romm", bad, 1)
+
+
+def test_a_rom_id_must_be_a_real_id():
+    with pytest.raises(StreamError, match="positive integer"):
+        library_player_url("romm", "http://library.example", 0)
+
+
+def test_the_library_handover_has_the_same_shape_as_a_plugin_one():
+    handover = library_handover("romm", "http://library.example", 7)
+    assert handover.route == BROWSER
+    assert handover.playable
+    assert handover.as_dict()["url"] == "http://library.example/rom/7/ejs"
+    assert handover.as_dict()["extra"]["rom_id"] == "7"
+
+
+def test_the_library_door_takes_no_allowlist_but_still_wants_an_origin():
+    """No plugin was involved, so `netpolicy`'s https-only rule would be a
+    plugin rule enforced against the operator's own LAN server. What is
+    still enforced is that this is a URL at all."""
+    opener = Opener()
+    assert open_library_url("http://library.example/rom/7/ejs", opener) == (
+        "http://library.example/rom/7/ejs"
+    )
+    with pytest.raises(StreamError, match="http"):
+        open_library_url("rom/7/ejs", opener)
+    assert opener.opened == ["http://library.example/rom/7/ejs"]
+
+
+# --- what a romm-stream server says it can play ---------------------------
+
+
+def _stream_server(handler):
+    return StreamServerClient(
+        "http://stream.example:8090", transport=httpx.MockTransport(handler)
+    )
+
+
+def test_the_stream_server_is_asked_only_about_routing():
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.path)
+        return httpx.Response(200, json={"tier": "stream"})
+
+    with _stream_server(handler) as client:
+        route = client.route("dc")
+    assert seen == ["/api/play/route"]
+    assert route.tier == "stream"
+    assert "server-side" in route.describe()
+
+
+def test_a_local_tier_is_named_as_the_client_playing_it_itself():
+    with _stream_server(
+        lambda r: httpx.Response(200, json={"tier": "local"})
+    ) as client:
+        assert "EmulatorJS in the client" in client.route("nes").describe()
+
+
+def test_an_unplayable_platform_carries_the_servers_own_reason():
+    def handler(request):
+        return httpx.Response(
+            404, json={"error": "unplayable", "why": "no core for this platform"}
+        )
+
+    with _stream_server(handler) as client:
+        route = client.route("windows")
+    assert route.tier is None
+    assert "no core for this platform" in route.describe()
+
+
+def test_a_stream_server_that_is_down_does_not_fail_the_resolve():
+    """The operator's answer is already in hand. `backends.degrade`'s
+    reasoning, applied to a second service."""
+
+    def handler(request):
+        raise httpx.ConnectError("connection refused")
+
+    with _stream_server(handler) as client:
+        route = client.route("nes")
+    assert not route.known
+    assert "unreachable" in route.describe()
+
+
+def test_a_reply_that_is_not_an_object_is_not_trusted():
+    with _stream_server(lambda r: httpx.Response(200, json=["nope"])) as client:
+        assert not client.route("nes").known
+
+
+def test_asking_about_no_platform_at_all_asks_nothing():
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.path)
+        return httpx.Response(200, json={"tier": "local"})
+
+    with _stream_server(handler) as client:
+        assert not client.route("  ").known
+    assert seen == []
+
+
+def test_the_streamable_list_comes_back_as_slugs():
+    def handler(request):
+        return httpx.Response(
+            200, json={"streamable": ["dc", "ngc", 7], "unavailable": {}}
+        )
+
+    with _stream_server(handler) as client:
+        assert client.streamable() == ["dc", "ngc"]
+
+
+def test_the_client_holds_no_endpoint_that_starts_anything():
+    """The session routes take a rom on the stream server's own disk or a
+    library rom id plus credentials -- neither of which a plugin-resolved
+    target is. Naming them here would be inventing an integration."""
+    assert StreamServerClient.ALLOWED_PATHS == {
+        "/api/play/route",
+        "/api/play/streamable",
+    }
+    for path in StreamServerClient.ALLOWED_PATHS:
+        assert "start" not in path and "offer" not in path
+
+
+def test_a_path_outside_the_read_only_set_is_refused_by_the_client():
+    with _stream_server(lambda r: httpx.Response(200, json={})) as client:
+        with pytest.raises(StreamError, match="read-only"):
+            client._get("/api/stream/start")
+
+
+def test_a_stream_server_base_that_is_not_a_url_is_refused():
+    for bad in ["", "stream.example", "ws://stream.example"]:
+        with pytest.raises(StreamError, match="stream server"):
+            StreamServerClient(bad)
+
+
+# --- the outcome the CLI prints and --json emits --------------------------
+
+
+def test_the_outcome_carries_the_decision_not_just_the_target():
+    handover = plan_handover(
+        StreamTarget(
+            kind="url",
+            target="https://allowed.example/x",
+            title="X",
+            extra={"stream_only": "true"},
+        ),
+        ALLOWED,
+        source="streamer",
+    )
+    outcome = StreamOutcome(
+        handover=handover,
+        route=PlayRoute(platform="dos", tier="local"),
+        opened="https://allowed.example/x",
+        notes=["a note"],
+    )
+    data = outcome.as_dict()
+    assert data["route"] == BROWSER
+    assert data["kind"] == "url"
+    assert data["source"] == "streamer"
+    assert data["extra"]["stream_only"] == "true"
+    assert data["stream_server"]["tier"] == "local"
+    assert data["opened"] == "https://allowed.example/x"
+    assert data["notes"] == ["a note"]
+
+
+def test_the_host_side_never_builds_a_transport():
+    """`stream` resolves and hands over; `romm-stream` streams.
+
+    Read off the import graph rather than the prose, because the prose
+    talks about subprocesses and sockets at length and should keep being
+    allowed to. A second streaming server growing in here would need one
+    of these modules first.
+    """
+    import ast
+
+    tree = ast.parse(Path(host_stream.__file__).read_text(encoding="utf-8"))
+    imported = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module.split(".")[0])
+    assert not imported & {"subprocess", "socket", "asyncio", "selectors"}
