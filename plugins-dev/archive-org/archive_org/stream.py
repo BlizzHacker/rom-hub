@@ -96,8 +96,11 @@ class Stream(StreamProvider):
             text = controls.get("instructions") or controls.get("notes") or ""
             if text:
                 # `extra` is a flat string map and this is prose, so it is
-                # bounded here rather than shipped whole; the full text
-                # goes to the library through `metadata`, not through this.
+                # bounded here rather than shipped whole. The unabridged
+                # text goes through `metadata`, to whichever backend will
+                # keep a raw blob -- which RomM 4.9.2 will not, see
+                # `controls.patch_field`. So in practice this is the copy
+                # an operator actually reads today.
                 extra["controls"] = text[:1000]
 
         return StreamTarget(
