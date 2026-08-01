@@ -135,12 +135,15 @@ printed here whatever it holds, and `--set` refuses one outright rather than
 writing it to `state.json` — it names `plugin secret set`, which puts it in the
 OS keyring instead.
 
-**Not demonstrated, because no plugin installed for this run exercised it.** At
-the versions pinned in `catalog/plugins.json` on this branch, none of the 22
-declares a `secret`-typed config field — `retroachievements` v0.1.0 keeps its
-API key as a plain `str`. So the refusal above is covered by tests rather than
-by a screenshot, and this page does not show a secret being protected because
-this stack had no secret to protect.
+**The secret refusal is not in the picture, because nothing on the stack had a
+secret to protect.** At the versions installed when these captures were taken,
+none of the 22 declared a `secret`-typed config field: `retroachievements`
+v0.1.0 kept its API key as a plain `str`, on the strength of a manifest comment
+saying the host rejected `secret` — true when that plugin was written and no
+longer. So the refusal is covered by tests rather than by a screenshot. The
+catalogue pin has since moved to `retroachievements` v0.2.0, which does declare
+it `secret`; that is the commit below this one on this branch, and it landed
+after the captures.
 
 ### One query, every source at once
 
