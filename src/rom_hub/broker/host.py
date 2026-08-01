@@ -64,9 +64,12 @@ from rom_hub.protocol import ProtocolError, read_message, write_message
 from rom_hub.secrets import scrub
 from rom_hub.types import (
     MAX_ASSETS_PER_PLUGIN,
+    MAX_CENSUS_UNITS,
     MAX_CORES_PER_PLUGIN,
     MAX_FIRMWARE_PER_PLUGIN,
     AssetArtifact,
+    CensusPage,
+    CensusUnit,
     CoreArtifact,
     FetchPlan,
     FirmwareArtifact,
@@ -657,6 +660,77 @@ class PluginProcess:
         return self._gated_plan(
             self._call("plan_asset", {"asset": asset.model_dump()})
         )
+
+    def census_scope(self) -> list[CensusUnit]:
+        """Every unit this source is made of. A description, nothing more.
+
+        No URL crosses this boundary, so there is no allowlist gate to
+        apply -- but the *shape* is re-established host-side like every
+        other capability's return value, because `CensusUnit`'s validator
+        is what refuses an exclusion with no reason attached, and a
+        validator that only ran inside the subprocess would be a rule the
+        plugin enforces on itself.
+        """
+        raw = self._call("census_scope", {})
+        if not isinstance(raw, list):
+            raise self._fail(
+                f"plugin {self.manifest.slug} returned {type(raw).__name__}, "
+                "expected a list of census units"
+            )
+        if len(raw) > MAX_CENSUS_UNITS:
+            raise self._fail(
+                f"plugin {self.manifest.slug} described {len(raw)} census "
+                f"units, over the {MAX_CENSUS_UNITS} limit"
+            )
+        units = []
+        seen: set[str] = set()
+        for item in raw:
+            try:
+                unit = CensusUnit(**item)
+            except (ValidationError, TypeError) as exc:
+                raise self._fail(
+                    f"plugin {self.manifest.slug} returned an invalid census "
+                    f"unit: {exc}"
+                ) from exc
+            if unit.unit_id in seen:
+                # The unit id is the catalogue's primary key and the thing
+                # a resumed build looks itself up by. Two units sharing one
+                # would silently make the second overwrite the first's
+                # progress, and the completeness report would then be
+                # arithmetic over a corpus that never existed.
+                raise self._fail(
+                    f"plugin {self.manifest.slug} described the census unit "
+                    f"{unit.unit_id!r} twice; unit ids must be unique because "
+                    f"they are what a resumed build keys on"
+                )
+            seen.add(unit.unit_id)
+            units.append(unit)
+        return units
+
+    def census_page(self, unit: CensusUnit, cursor: str | None) -> CensusPage:
+        """One bounded page of one unit, re-validated on this side.
+
+        The cursor is opaque and is handed back to the plugin verbatim, so
+        it is bounded by `CensusPage`'s own field limit rather than trusted
+        -- an unbounded continuation token would be a way for a plugin to
+        make the host store arbitrary strings for it.
+        """
+        raw = self._call(
+            "census_page",
+            {"unit": unit.model_dump(), "cursor": cursor},
+        )
+        if not isinstance(raw, dict):
+            raise self._fail(
+                f"plugin {self.manifest.slug} returned an invalid CensusPage: "
+                f"expected an object, got {type(raw).__name__}"
+            )
+        try:
+            return CensusPage(**raw)
+        except (ValidationError, TypeError) as exc:
+            raise self._fail(
+                f"plugin {self.manifest.slug} returned an invalid CensusPage: "
+                f"{exc}"
+            ) from exc
 
     def enrich(self, rom: RomRef) -> MetadataPatch:
         """Ask the plugin what to change about a rom. The host changes it.

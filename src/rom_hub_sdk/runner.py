@@ -14,6 +14,7 @@ from rom_hub.protocol import read_message, write_message
 from rom_hub.sandbox import SandboxUnavailable, install as install_sandbox
 from rom_hub.types import (
     AssetArtifact,
+    CensusUnit,
     CoreArtifact,
     FirmwareArtifact,
     RomRef,
@@ -167,6 +168,28 @@ def run_plugin(stdin, stdout) -> None:
                 # Re-validated and re-gated host-side by the same code that
                 # gates an import plan, a core plan and a firmware plan.
                 result = asset_plan.model_dump()
+            elif method == "census_scope":
+                if ctx is None:
+                    raise RuntimeError("init must be called before census_scope")
+                if "census" not in instances:
+                    instances["census"] = _load(entrypoints["census"], ctx)
+                result = [u.model_dump() for u in instances["census"].scope()]
+            elif method == "census_page":
+                if ctx is None:
+                    raise RuntimeError("init must be called before census_page")
+                if "census" not in instances:
+                    instances["census"] = _load(entrypoints["census"], ctx)
+                # The unit is round-tripped through the host, which stored
+                # it after `census_scope` validated it. Rebuilding it here
+                # is what gives the plugin a typed object rather than the
+                # raw dict the host happens to have persisted.
+                page = instances["census"].enumerate(
+                    CensusUnit(**params["unit"]), params.get("cursor")
+                )
+                # Re-validated host-side like every other capability's
+                # return value; the host is what checks kept + skipped
+                # against the declared total.
+                result = page.model_dump()
             elif method == "resolve":
                 if ctx is None:
                     raise RuntimeError("init must be called before resolve")
