@@ -26,12 +26,12 @@ numbers and says which one of them is misleading and why.
 Move Weight
 └─ Yarr.It ................ one front door for a self-hosted media library
    └─ Cartridge ........... tools for self-hosting a retro game library
-      └─ Romarr ........... the *arr for games: request it, get it, file it
+      └─ ROMarr ........... the *arr for games: request it, get it, file it
          └─ ROM Hub ....... you are here
 ```
 
 ROM Hub is the bottom of that stack and needs none of it: it is a sidecar to
-your library server, and nothing above it is required. Being underneath Romarr
+your library server, and nothing above it is required. Being underneath ROMarr
 in the stack is not the same as being subordinate to it for the one job they
 share — see
 [An alternative to Romarr, not a replacement for it](#an-alternative-to-romarr-not-a-replacement-for-it),
