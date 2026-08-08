@@ -1,14 +1,7 @@
 # ROM Hub
 
-**A plugin host for self-hosted ROM library managers.** Runs beside
-[RomM](https://github.com/rommapp/romm),
-[Gaseous](https://github.com/gaseous-project/gaseous-server) or
-[Retrom](https://github.com/JMBeresford/retrom) and adds sources — searching them,
-importing from them, and enriching what you already have — to a server with no
-plugin system of its own.
-
 [![CI](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml)
-[![coverage 87%](https://img.shields.io/badge/coverage-87%25-brightgreen)](#tests)
+[![coverage 87%](https://img.shields.io/badge/coverage-87%25-brightgreen)](#coverage)
 [![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](pyproject.toml)
 [![licence MIT](https://img.shields.io/github/license/BlizzHacker/rom-hub)](LICENSE)
 
@@ -20,7 +13,13 @@ what actually works against a live server of each of the three backends, cell
 by cell, with the evidence for each; [Coverage](#coverage) has the honest
 numbers and says which one of them is misleading and why.
 
----
+**A plugin host for self-hosted ROM library managers.** It runs beside
+[RomM](https://github.com/rommapp/romm),
+[Gaseous](https://github.com/gaseous-project/gaseous-server) or
+[Retrom](https://github.com/JMBeresford/retrom) as a sidecar and never modifies
+the library server. Plugins add sources — searching them, importing from them,
+enriching what you already have — to a server that has no plugin system of its
+own.
 
 ```
 Move Weight
@@ -30,12 +29,14 @@ Move Weight
          └─ ROM Hub ....... you are here
 ```
 
-ROM Hub is the bottom of that stack and needs none of it: it is a sidecar to
-your library server, and nothing above it is required. Being underneath ROMarr
-in the stack is not the same as being subordinate to it for the one job they
-share — see
-[An alternative to Romarr, not a replacement for it](#an-alternative-to-romarr-not-a-replacement-for-it),
-which is still the accurate account of when to reach for which.
+**ROM Hub is ROMarr's plugin factory.** It is where plugins are written, run
+and confined, and [ROMarr](https://github.com/BlizzHacker/romarr) consumes them
+— its Hub tab manages the plugins this host runs. Write a plugin here and
+ROMarr gains a source. That is what this project is for: giving people, and us,
+a way to add sources without touching either codebase.
+
+It also runs perfectly well on its own, as a sidecar to your library server
+with nothing above it. But standalone is the smaller case, not the identity.
 
 **A plugin is backend-agnostic, and that is structural rather than a promise.**
 A plugin never talks to a library server and holds no credential for one. It
@@ -46,85 +47,71 @@ known which of the three is on the other side, so a plugin written against one
 works against all of them, as far as that server is capable (`rom-hub backend
 info` says what the chosen one can do).
 
-- [Features](#features)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Command reference](#command-reference)
-- [Configuration](#configuration)
-- [Library backends](#library-backends)
-- [Plugin catalogue](#plugin-catalogue)
-- [Plugin credentials](#plugin-credentials)
-- [Security](#security)
-- [Using it from ROMarr](#using-it-from-romarr)
-- [Development](#development)
+The same shape is what makes untrusted plugins tractable: a plugin runs as its
+own subprocess with no token, no filesystem mount and no sockets, and reaches
+the network only through an RPC the host checks against the allowlist that
+plugin declared. See [Security model](#security-model) — including, plainly,
+what is *not* confined.
 
----
+- **[docs/PLUGINS.md](docs/PLUGINS.md)** — the plugin directory: seven
+  published plugins, what each one asks for, and the terms of the source it
+  reads from.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — how to write a plugin and get it
+  listed.
+- **[docs/DESIGN.md](docs/DESIGN.md)** — the architecture.
+- **[docs/DESIGN-federation-netplay.md](docs/DESIGN-federation-netplay.md)** —
+  deferred federation and multiplayer work.
 
-## Features
+MIT licensed; see [LICENSE](LICENSE). Each plugin is a separate work under its
+own licence, carried in its own repository.
 
-- **Backend-agnostic plugins.** A plugin never talks to a library server and holds no credential for one. It returns a description of work; the Hub executes it against whichever backend is configured. One plugin works against all three servers.
-- **Nine capabilities** — `search`, `importer`, `metadata`, `stream`, `cores`, `firmware`, `assets`, `census`, `torrent`.
-- **22 published plugins** — Internet Archive, No-Intro, Demozoo, Aminet, IF Archive, itch.io, ScummVM, homebrew hubs, Hasheous, OpenVGDB, libretro DATs/thumbnails/cores/overlays/cheats, RetroAchievements, Open BIOS and more.
-- **Sandboxed execution.** Plugins run as subprocesses with no token, no filesystem mount and no network except through a host RPC checked against the plugin's declared allowlist. On Linux a self-imposed seccomp filter blocks sockets and `exec` outright.
-- **Third-party catalogues.** Publish your own plugin directory; the bundled one always wins collisions.
-- **Resumable jobs.** Downloads and import state survive a restart.
+## It works — here is what that looks like
 
-## Requirements
+![RomM's Game Gear shelf, box art written by a ROM Hub plugin](docs/screenshots/romm.png)
 
-| | |
-|---|---|
-| **Python** | 3.12 or 3.13 |
-| **Library server** | RomM, Gaseous or Retrom (only for `import` and `enrich` — `search` needs none) |
-| **Platform** | Linux for sandboxed plugin execution. Windows and macOS require an explicit opt-out (see [Security](#security)) |
+Imported by the `nointro-archive` plugin, box art written by the
+`libretro-thumbnails` plugin, both installed by slug from their public repos.
+Nothing was hand-copied and no database was written directly.
 
----
+And the plugin system itself, which is the actual point:
 
-## Installation
+![Turning a plugin off and back on](docs/screenshots/cli-plugin-toggle.png)
 
-```bash
-pip install "rom-hub @ git+https://github.com/BlizzHacker/rom-hub@master"
-```
+Disable one and it drops out of the fan-out — the source count falls — and any
+command aimed at it refuses and names the command that undoes it.
 
-Or from a clone, for development:
-
-```bash
-git clone https://github.com/BlizzHacker/rom-hub
-cd rom-hub
-python -m pip install -e ".[dev]"
-```
-
-On Linux this also installs `pyseccomp`, which is what lets the plugin subprocess
-confine itself. Without it, `rom-hub` refuses to run plugins rather than running
-them unconfined.
-
----
+**[docs/SHOWCASE.md](docs/SHOWCASE.md)** is the sixty-second tour: what a plugin
+is, the sandbox, the nine capabilities, all three backends, the fan-out search
+and an import running end to end. It also carries the honest half — the real
+cover-art ratio, which roms RomM's player cannot actually run, and the import
+batch that lost roms to a scan race.
 
 ## Quick start
 
-```bash
-rom-hub plugin browse                  # the published plugin catalogue
-rom-hub plugin install archive-org     # clones the repo, pinned to its tag
-rom-hub search "oregon trail" --limit 5
-```
+    git clone https://github.com/BlizzHacker/rom-hub
+    cd rom-hub
+    python -m pip install -e ".[dev]"
 
-Searching needs no library server. `import` and `enrich` do — configure one under
-[Library backends](#library-backends), then:
+    rom-hub plugin browse                  # the seven published plugins
+    rom-hub plugin install archive-org     # clones the repo, pinned to its tag
+    rom-hub search "oregon trail" --limit 5
 
-```bash
-rom-hub import archive-org rubik_202308
-rom-hub enrich openvgdb 42 --source-id 1234
-```
+`plugin install` takes a catalog slug, a git URL, or a local path. A slug is
+resolved through [`catalog/plugins.json`](catalog/plugins.json), which supplies
+the repository **and** the tag, so these two are the same install:
 
-Every install is pinned to a tag and the resolved commit SHA is recorded, so a tag
-moved after the fact does not change what you have. Updating is an explicit re-run
-with a new `--ref`; nothing updates itself.
+    rom-hub plugin install archive-org
+    rom-hub plugin install https://github.com/BlizzHacker/rom-hub-archive-org --ref v0.2.0
 
----
+Every install is pinned to a tag and the resolved commit SHA is recorded, so a
+tag moved after the fact does not change what you have. Updating is an explicit
+re-run with a new ref; nothing updates itself.
 
-## Command reference
+**That directory is not the only one.** The Hub reads an ordered list of them,
+so anybody can publish plugins without going through this repository:
 
-### Plugins
+    rom-hub catalog add mine https://git.moveweight.com/wade/rom-hub-catalog/raw/branch/main/plugins.json
+    rom-hub catalog list                   # what is configured, and its health
 
 https URLs and local paths only. The bundled directory is always first and
 **first source wins**, so a third-party directory can add plugins but never
@@ -199,11 +186,10 @@ survives a restart. No web UI yet.
 **One thing arrives rather than being typed.** `rom-hub webhook serve` receives
 [GG Requestz](https://github.com/ggrequestz/ggrequestz) game requests and
 fulfils them through the same `search` fan-out and the same `importer` pipeline
-above — which makes the Hub an alternative to
-[Romarr](https://github.com/BlizzHacker/romarr) for that job: the same trigger,
-curated sources instead of torrent indexers. See [Fulfilling requests from GG
-Requestz](#fulfilling-requests-from-gg-requestz), including why the token in
-the URL is a shared secret and not authentication.
+above — so the Hub can answer a request directly, without ROMarr in front of
+it, from its own curated sources. See [Answering requests without
+ROMarr](#answering-requests-without-romarr), including why the token in the URL
+is a shared secret and not authentication.
 
 ## Which library server
 
@@ -450,17 +436,21 @@ Request state lives in `$ROM_HUB_HOME/var/requests.db`, separate from the job
 queue: a request can end without any job at all, and it has to outlive every
 retry for the duplicate guard below to mean anything.
 
-### An alternative to Romarr, not a replacement for it
+### Answering requests without ROMarr
 
-[Romarr](https://github.com/BlizzHacker/romarr) answers the same webhook. It
-fulfils from **torrent indexers** — public and private trackers, via Prowlarr,
-through a download client. This fulfils from the **curated sources the Hub
-already searches**: Archive.org's software collections, homebrew release pages,
-itch.io, the No-Intro archive, ScummVM's freeware, the demoscene archives.
+The normal arrangement is ROMarr in front, using the Hub's plugins as sources —
+that is what the Hub is for. This section is about the other case: pointing a
+request webhook straight at the Hub when you are not running ROMarr at all.
 
-That is the whole difference, and it is a sourcing policy rather than a feature
-list. Which one you want depends on what you are willing to have your server
-fetch:
+Both answer the same webhook, and what differs is only where the file comes
+from. ROMarr fulfils from **torrent indexers** — public and private trackers,
+via Prowlarr, through a download client. The Hub alone fulfils from the
+**curated sources its plugins already search**: Archive.org's software
+collections, homebrew release pages, itch.io, the No-Intro archive, ScummVM's
+freeware, the demoscene archives.
+
+That is a sourcing difference, not a rivalry. It decides what you are willing
+to have your server fetch:
 
 * The Hub's sources are **publicly published catalogues fetched over HTTPS from
   the origin that published them**. Every URL is inside the requesting plugin's
@@ -470,13 +460,15 @@ fetch:
   abandonware, homebrew, freeware, public-domain and archived material — which
   is a smaller set than a tracker's and a different kind of set. A request for a
   current commercial release will usually come back `NO_MATCH`.
-* Romarr's sources are trackers. Far broader coverage, and everything that
+* ROMarr's sources are trackers. Far broader coverage, and everything that
   follows from BitTorrent: a swarm, a client to configure, and whatever your
   jurisdiction and your trackers' rules make of it.
 
-Point `REQUEST_WEBHOOK_URL` at whichever one you want. Running both is not
-supported by GG Requestz — it posts to one URL — so this is a choice, not a
-layering.
+If you run ROMarr, point `REQUEST_WEBHOOK_URL` at ROMarr and let it use the
+Hub's plugins as sources — you get both sets of sources and one place to manage
+them. Aim the webhook at the Hub only when you are not running ROMarr: GG
+Requestz posts to a single URL, so the webhook itself can only have one
+destination.
 
 ### The token in the URL is a shared secret, not authentication
 
@@ -866,66 +858,56 @@ depends on the host and the command prints the honest answer:
 
 | Store | What it protects |
 |---|---|
-| `rom-hub plugin browse` | List the catalogue |
-| `rom-hub plugin install <slug\|url\|path>` | Install; `--ref` pins a branch, tag or SHA |
-| `rom-hub plugin list` | Installed plugins, versions and capabilities |
-| `rom-hub plugin enable\|disable <slug>` | Toggle without uninstalling |
-| `rom-hub plugin uninstall <slug>` | Remove |
-| `rom-hub plugin config <slug>` | Show configuration (secrets redacted) |
-| `rom-hub plugin secret set <slug> <field>` | Store an API key |
-| `rom-hub plugin assets <slug> [--fetch]` | Declared data assets and cache state |
+| OS keyring | Whatever your OS gives — a locked login keychain is a real boundary; a keyring unlocked at login is not |
+| file + `ROM_HUB_SECRET_KEY` | Real encryption at rest: the key is supplied from outside the box and never written to disk |
+| file, generated key (**the default**) | **Obfuscation, not secrecy** — the key sits beside the ciphertext. It keeps the value out of `state.json` and out of every command's output; it does not survive somebody reading the directory |
 
-### Capabilities
+A headless Docker deployment gets the third row unless `ROM_HUB_SECRET_KEY` is
+set, which is why the fallback exists at all: a keyring-only design would not
+work on this Hub's primary platform.
 
-| Command | Description |
-|---|---|
-| `rom-hub search <query>` | Fan out across every enabled plugin; results merge to one row per game per platform. `--expand`, `--no-group`, `--limit`, `--offset` |
-| `rom-hub import <plugin> <source_id>` | Plan → download → hash-dedup → upload → register → collection. `--platform`, `--collection` |
-| `rom-hub enrich <plugin> <rom_id>` | Write name, summary, provider ids and artwork. `--source-id` |
-| `rom-hub stream <plugin> <source_id>` | Resolve to a playable target. `--open`, `--json`, `--library-rom` |
-| `rom-hub cores list\|install <plugin> [<core>]` | Emulator cores |
-| `rom-hub firmware list\|install <plugin> [<fw>]` | BIOS files, with each one's licence |
-| `rom-hub assets list\|install <plugin> [<asset>]` | Shaders, overlays, cheats, controller profiles |
-| `rom-hub census build\|report\|list <plugin>` | Enumerate a whole source into a local catalogue |
-| `rom-hub torrent <plugin> <source_id>` | Resolve to a `.torrent` or magnet |
+**What is not claimed.** The plugin *receives* the value — it needs it to make
+its request, and it already runs arbitrary code. The threat this addresses is
+accidental disclosure, not a malicious plugin. The value is handed over in the
+`init` frame down the stdin pipe and **never through the environment**, which
+is the one channel the allowlist above exists to keep closed.
 
-### System
+An `api_key` set before this type existed is migrated out of `state.json` on
+the next command that runs the plugin, with one notice on stderr; rotate it
+anyway if that file was ever committed or backed up.
 
-| Command | Description |
-|---|---|
-| `rom-hub backend info` | Selected backend, whether it is configured, what it can do |
-| `rom-hub platforms [--installed]` | Which platforms play in the library's web player |
-| `rom-hub jobs [--state FAILED]` | Job history and failure reasons |
-| `rom-hub catalog add\|list <name> <url>` | Manage plugin directories |
+## Tests
 
----
+    python -m pytest          # offline; live tests deselected
+    python -m pytest -m live  # also hits the real Archive.org
 
-## Configuration
+On a host with no seccomp — Windows and macOS — the live test and the CLI both
+need the opt-out, because the Hub otherwise refuses to run a plugin it cannot
+confine:
 
-| Variable | Default | Description |
-|---|---|---|
-| `ROM_HUB_HOME` | `~/.rom-hub` | Plugins, job database, downloads, artwork, cores, firmware, assets |
-| `ROM_HUB_BACKEND` | `romm` | `romm`, `gaseous` or `retrom` |
-| `ROM_HUB_ALLOW_UNSANDBOXED` | unset | Required on Windows and macOS. Means no confinement at all |
-| `ROM_HUB_SECRET_KEY` | unset | Encrypts stored plugin secrets with a key from outside the box |
-| `ROM_HUB_CORES_DIR` | `$ROM_HUB_HOME/var/cores` | Where cores install |
-| `ROM_HUB_FIRMWARE_DIR` | `$ROM_HUB_HOME/var/firmware` | Where BIOS files install |
-| `ROM_HUB_ASSETS_DIR` | `$ROM_HUB_HOME/var/assets` | Shaders, overlays, cheats, controller profiles |
-| `ROM_HUB_NO_ASSET_FETCH` | unset | Refuse to fetch plugin data assets automatically |
-| `ROM_HUB_STREAM_SERVER` | unset | A `romm-stream` server to query for playability |
+    ROM_HUB_ALLOW_UNSANDBOXED=1 python -m pytest -m live -q
 
-Point the install directories at what your emulator already reads and there is
-nothing to copy afterwards:
+### What CI checks that a green exit code does not
 
-```bash
-ROM_HUB_ASSETS_DIR=~/.config/retroarch rom-hub assets install retroarch-autoconfig ...
-ROM_HUB_FIRMWARE_DIR=/opt/retroarch/system rom-hub firmware install open-bios ...
-```
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the suite on
+`ubuntu-latest` and `windows-latest`, on Python 3.12 and 3.13. Two of this
+project's guarantees are invisible to pytest's exit code, so
+[`scripts/ci_gate.py`](scripts/ci_gate.py) asserts them against the junit
+record instead:
 
-`ROM_HUB_SHADERS_DIR`, `ROM_HUB_OVERLAYS_DIR`, `ROM_HUB_CHEATS_DIR` and
-`ROM_HUB_CONTROLLERS_DIR` override a single asset kind.
+- **A skipped containment test looks exactly like a passing one.** The seccomp
+  tests carry `skipif(sys.platform != "linux")`. On Windows that skip is
+  honest; on Linux it would mean `pyseccomp` failed to build and the suite went
+  green having proven nothing about the claim in
+  [Security model](#security-model). So the Linux job requires each of them
+  **by name to have passed**, and the Windows job asserts that seccomp is the
+  only thing skipped there.
+- **`-m 'not live'` is a default, and defaults get overridden.** A gate proves
+  the four network-hitting tests still carry the marker and that none of them
+  is collected by default, so the suite's colour can never come to depend on a
+  third-party service being up.
 
----
+### Coverage
 
 `pytest --cov` reports **86.6 %** on Windows (branch coverage, `rom_hub` +
 `rom_hub_sdk`); the Linux figure differs because seccomp is only reachable
@@ -937,112 +919,149 @@ built from `{}` upward — instrumenting it would mean punching a hole in the
 allowlist that `tests/test_hostile_plugin.py` exists to defend. It is covered
 by tests; it is not covered by `coverage`.
 
-| Backend | Settings | Import | Scan | Metadata | Artwork | Collections |
-|---|---|:-:|:-:|:-:|:-:|:-:|
-| `romm` | `ROMM_URL`, `ROMM_USER`, `ROMM_PASSWORD` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `gaseous` | `GASEOUS_URL`, `GASEOUS_USER`, `GASEOUS_PASSWORD` | ✅ | ✅ | — | — | — |
-| `retrom` | `RETROM_URL` | ✅ | ✅ | ✅ | ✅ | — |
+### Proof against real backends
 
-`ROM_HUB_BACKEND_URL` / `_USER` / `_PASSWORD` work for any of them. Retrom has no
-accounts and reads only the URL.
+[`scripts/proof_matrix.py`](scripts/proof_matrix.py) runs the real import and
+enrich pipelines against a live RomM, Gaseous and Retrom, and writes
+[docs/PROOF.md](docs/PROOF.md) — backend × capability, with the evidence for
+each cell and with **UNSUPPORTED** kept distinct from **FAIL**, so a backend
+that genuinely has no collections never looks like a broken one.
+[`scripts/proof-stack.compose.yml`](scripts/proof-stack.compose.yml) stands up
+the three disposable servers it needs.
 
-```bash
-rom-hub backend info      # opens no connection; reports what is configured
-```
+## Security model
 
-A backend that cannot do something **refuses up front** when the capability is
-essential (`import`, `metadata`) and **proceeds with a reported skip** when it is an
-extra (`collections`, `artwork`). An explicit `--collection` you typed is always
-refused rather than silently dropped.
+Plugins run as subprocesses and are given **no RomM token and no filesystem
+mount**, and the plugin API offers no way to open a socket. A plugin calls
+`ctx.http`, which is an RPC back to the host; the host checks the URL against
+the plugin's declared `network` allowlist before opening any connection.
 
-**Retrom** has no upload API — files land over its WebDAV service, so the content
-directory must be inside `RETROM_DATA_DIR` (`/app/data` in the official image), and
-a platform directory must exist before importing. **Gaseous** derives platform from
-the file signature rather than the requested id, and its rom records are read-only.
-Details and measurements: [docs/BACKENDS.md](docs/DESIGN.md) and
-[docs/PROOF.md](docs/PROOF.md).
+That check is genuinely enforced **on the broker path**. `check_url` is
+unavoidable en route to the only code that opens a socket, and the matcher is
+adversarially tested. `tests/test_netpolicy.py` and
+`test_disallowed_fetch_never_reaches_the_fetcher` in
+`tests/test_broker_host.py` are the tests that hold it up; if either regresses,
+the allowlist stops meaning anything at all.
 
----
+**Every capability's return value gets the same check.** `ctx.http` is only the
+first way a plugin can make the Hub reach a host; a `FetchPlan` URL, a
+`MetadataPatch` artwork URL and a `StreamTarget` of kind `url` are the others,
+and each one passes `check_url` against the same allowlist before anything is
+fetched. Each is tested with an undeclared host, in `tests/test_broker_plan.py`,
+`tests/test_broker_enrich.py`, `tests/test_stream.py`, `tests/test_cores.py`
+and `tests/test_firmware.py`.
+A `stream` target of kind `handle` may not itself be a URL, so the
+discriminator cannot be lied about to skip the check.
 
-## Plugin catalogue
+Any filename a plugin supplies that the Hub writes to disk — a ROM, a cover, a
+core — goes through one validator (`types.bare_filename`) and one containment
+check (`paths.dest_in_job_dir`). They are shared functions, not three similar
+copies: a containment rule that exists in three places is a containment rule
+that is subtly different in one of them.
 
-`rom-hub plugin browse` lists everything installable. Full directory with
-per-plugin permissions and source terms: [docs/PLUGINS.md](docs/PLUGINS.md).
+### What is confined, and what is not
 
-| Capability | Plugins |
-|---|---|
-| `search` / `importer` | `archive-org`, `nointro-archive`, `demozoo`, `aminet`, `if-archive`, `itch-io`, `scummvm-freeware`, `homebrew`, `libretro-content`, `universal-db` |
-| `metadata` | `hasheous`, `openvgdb`, `libretro-database`, `libretro-thumbnails`, `retroachievements`, `ludusavi` |
-| `cores` | `emulators`, `libretro-cores` |
-| `assets` | `retroarch-autoconfig`, `libretro-overlays`, `libretro-cheats` |
-| `firmware` | `open-bios` |
+**Network egress: now enforced.** The plugin subprocess installs a
+**self-imposed seccomp filter on itself, before any plugin code is imported**
+(`PR_SET_NO_NEW_PRIVS`, then `EPERM` for `socket`, `socketcall`, `connect`,
+`sendto`, `sendmsg`). Restricting *yourself* needs no privilege, which is why
+this works in an unmodified container. Measured on the deployment target inside
+**default Docker** — no `--security-opt`, no added capabilities:
 
-### Third-party catalogues
+    NNP_OK → FILTER_LOADED → BLOCKED: PermissionError
 
-The Hub reads an ordered list of directories, so anyone can publish plugins without
-going through this repository:
+A plugin that ignores `ctx.http` and reaches for `import socket` gets a
+`PermissionError`, not a connection. The declared `network` allowlist is a
+containment boundary now, not a statement of intent.
 
-```bash
-rom-hub catalog add mine https://example.com/plugins.json
-rom-hub catalog list                   # what is configured, and its health
-```
+**Useful process spawn: enforced.** `execve` and `execveat` are denied, so a
+plugin cannot shell out to something that would run unconfined. `clone` and
+`fork` are deliberately *not* blocked — CPython uses `clone` for threads, so
+denying it breaks the interpreter rather than the attacker. That is safe here
+because a forked child **inherits the filter** and is confined anyway; there is
+no escape by forking.
 
-`https` URLs and local paths only. The bundled directory is always first and **first
-source wins** — a third-party directory can add plugins but never replace one this
-project ships, and collisions are printed rather than silently resolved. A directory
-**grants nothing**: what a plugin may reach comes from its own `manifest.toml`.
+**Arbitrary file read: still NOT enforced.** seccomp cannot filter on a path.
+It matches on syscall numbers and register values and cannot dereference a
+pointer argument, so the filename passed to `openat` is invisible to it.
+Confining reads needs a **mount namespace**. **A plugin can therefore still
+read any file the Hub process can read**, including the Hub's own config and
+database.
 
-See *Publishing your own catalog* in [CONTRIBUTING.md](CONTRIBUTING.md).
+**Why not bubblewrap:** measured, not assumed. Inside default Docker,
+`docker run --rm debian unshare --user --net` fails with `Operation not
+permitted` — Docker's own default seccomp profile refuses the `unshare` that a
+namespace sandbox is built on. Allowing it would mean
+`--security-opt seccomp=unconfined` or `--privileged`, a larger hole than the
+one being closed. Recorded here so it does not get re-litigated.
 
----
+> ### ⚠️ Only install plugins you trust — scoped to what is left
+>
+> An untrusted plugin can no longer reach an undeclared host and can no longer
+> exec its way out. It still runs with the Hub's own file-read reach: **a
+> plugin can read any file the Hub process can read.** A manifest tells you
+> where an honest plugin will go on the network; it tells you nothing about
+> which of your files a dishonest one will open.
 
-## Plugin credentials
+### Hosts that cannot install the filter
 
-A plugin that needs an API key declares the field as `type = "secret"`. The Hub keeps
-it out of `state.json` and redacts it from every command's output.
+The filter is Linux-only and additionally needs `pyseccomp`. Where
+`rom_hub.sandbox.probe()` reports it unavailable — Windows and macOS, most
+obviously — the Hub **fails closed**: plugins refuse to run, and the error
+names the override. Setting
 
-```bash
-rom-hub plugin secret set retroachievements api_key      # prompts, nothing echoed
-pass show ra | rom-hub plugin secret set retroachievements api_key --stdin
-rom-hub plugin secret set retroachievements api_key --env RA_KEY
-rom-hub plugin secret list                               # what is set, and where
-```
+    ROM_HUB_ALLOW_UNSANDBOXED=1
 
-| Store | Protection |
-|---|---|
-| OS keyring | Whatever the OS provides |
-| File + `ROM_HUB_SECRET_KEY` | Encryption at rest; the key comes from outside the box |
-| File, generated key *(default)* | Obfuscation only — the key sits beside the ciphertext. Keeps the value out of `state.json`, config dumps, screenshots and commits |
+lifts the refusal and means exactly what it says: **no confinement at all**.
+With it set, a hostile plugin can open its own sockets to undeclared hosts,
+spawn processes, and read any file the Hub can. It is a development
+convenience, never a deployment setting.
 
-Set `ROM_HUB_SECRET_KEY` from a Docker secret or systemd credential for real
-encryption at rest.
+### The Hub holds a RomM token, and file reads are still unconfined
 
----
+Phase 2 is the point at which the Hub first holds RomM credentials, and
+`docs/DESIGN.md` named filesystem confinement a prerequisite for reaching it.
+**That prerequisite has not been met** — a mount namespace is what confining
+reads needs, and default Docker denies the `unshare` it is built on (measured;
+see above). Phase 2 shipped anyway, and the capabilities added since sit on top
+of the *same* token — `metadata` and `firmware` write through it, `stream` and
+`cores` never touch the library at all, and none of them puts a new secret
+anywhere a plugin could read. The exposure is unchanged, which is not the same as fixed. The honest
+statement of where that leaves things:
 
-## Security
+- The RomM token is **never given to a plugin**. It is created inside the host
+  process, used only by host-side code, and never crosses the pipe. Nothing a
+  plugin can *call* returns it.
+- The plugin subprocess **inherits almost nothing from the environment**.
+  `subprocess.Popen` copies the parent's environment to the child by default,
+  which would hand a plugin every secret the operator's shell happens to hold —
+  needing no socket, no file, and no syscall the seccomp filter can see. So the
+  child's environment is built from `{}` upward and only these are added
+  (`broker/host.py`, `SAFE_ENV_VARS`):
 
-Plugins run as subprocesses with **no library token, no filesystem mount and no
-socket API**. Network access goes through an RPC the host checks against the
-plugin's declared `network` allowlist. Every URL a plugin returns — fetch plans,
-artwork, stream targets, core and firmware downloads — passes the same check.
+  | | |
+  |---|---|
+  | Everywhere | `PATH` |
+  | Windows | `SYSTEMROOT`, `COMSPEC`, `PATHEXT`, `TEMP`, `TMP` |
+  | POSIX | `HOME`, `TMPDIR` |
+  | Set by the host | `PYTHONIOENCODING=utf-8` |
 
-| Control | Status |
-|---|---|
-| Network egress | **Enforced.** A self-imposed seccomp filter denies `socket`, `connect`, `sendto`, `sendmsg` before any plugin code is imported. Works inside default Docker with no added capabilities |
-| Process spawn | **Enforced.** `execve` and `execveat` denied. Forked children inherit the filter |
-| Environment inheritance | **Enforced.** The child environment is built from `{}` and allowlisted — measured 92 variables down to 7 |
-| Path traversal | **Enforced.** One filename validator and one containment check for every file the Hub writes |
-| Arbitrary file read | **Not enforced.** seccomp cannot filter on a path; confining reads needs a mount namespace, which default Docker denies |
+  Nothing else: no `PYTHONPATH`, no `PYTHONHOME`, no user-defined variables,
+  nothing secret-shaped. Measured on the development workstation, a plugin's
+  visible environment went from **92 variables to 7**. This is an **allowlist**
+  because a denylist cannot work here — the next secret is always the one
+  nobody listed. Should a plugin ever legitimately need a variable, that is a
+  manifest declaration to be designed, not a hole reopened here.
+  `test_the_plugin_environment_is_an_allowlist_not_an_inheritance` asserts both
+  that seeded secrets do not arrive *and* that the total count stays small, so
+  a regression that reinstates inheritance fails loudly.
+- **But a plugin can still read any file the Hub process can**, and on Linux
+  that includes `/proc/<hub-pid>/environ`, which is same-uid readable. A
+  hostile plugin cannot be *handed* the credentials and cannot pick them up by
+  accident — it is not prevented from going and looking for them.
 
-> **Install only plugins you trust.** A plugin cannot reach an undeclared host or
-> exec its way out, but it runs with the Hub's own file-read reach — it can read any
-> file the Hub process can, including the Hub's own configuration.
-
-On Windows and macOS no confinement is available and the Hub **fails closed**.
-Setting `ROM_HUB_ALLOW_UNSANDBOXED=1` lifts the refusal and means exactly what it
-says. It is a development convenience, not a deployment setting.
-
-Full model, including what is deliberately not claimed:
+That last gap is why "install only plugins you trust" is stated as strongly as
+it is, and it is not closed by anything in Phase 2. See
 [docs/DESIGN.md](docs/DESIGN.md#security-the-broker-model).
 
 ### The one listening socket, and why it is a socket at all
