@@ -242,6 +242,52 @@ def test_a_token_prefix_is_not_enough(running):
     assert client.post(path=f"/requests/{TOKEN[:-1]}", data=body())[0] == 401
 
 
+def test_a_token_with_something_after_it_is_not_enough(running):
+    client = running()
+    assert client.post(path=f"/requests/{TOKEN}extra", data=body())[0] == 401
+    assert client.post(path=f"/requests/{TOKEN}/more", data=body())[0] == 401
+
+
+def test_a_non_ascii_path_is_answered_rather_than_crashing_the_handler(running):
+    """`BaseHTTPRequestHandler` decodes the request line as latin-1, so a
+    path can be a non-ASCII `str` -- and `hmac.compare_digest` raises
+    `TypeError` on those. Raising inside `authorised` would escape the
+    handler's own `try` and leave the sender with a reset instead of a
+    401."""
+    client = running()
+    answer = client.raw(
+        b"POST /requests/caf\xe9 HTTP/1.1\r\n"
+        b"Host: 127.0.0.1\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: 0\r\n"
+        b"\r\n"
+    )
+    assert b" 401 " in answer
+    # And the server is still serving, which a swallowed TypeError in the
+    # handler thread would not have prevented -- so this is the assertion
+    # that makes the one above mean something.
+    assert client.post(data=body())[0] == 202
+
+
+def test_the_root_path_configuration_still_authorises(tmp_path):
+    """ROM_HUB_WEBHOOK_PATH=/ normalises to the empty string, which is the
+    one configuration where the route and the prefix logic can disagree."""
+    log = RequestLog(tmp_path / "r.db")
+    server = WebhookServer(
+        token=TOKEN, log=log, fulfil=Recorder(), host="127.0.0.1", port=0, path="/"
+    )
+    server.start()
+    try:
+        client = Client(server, log, [])
+        assert server.path == ""
+        assert client.post(path=f"/{TOKEN}", data=body())[0] == 202
+        assert client.post(path=f"/?token={TOKEN}", data=body(request_id="q"))[0] == 202
+        assert client.post(path="/nope", data=body())[0] == 401
+    finally:
+        server.stop()
+        log.close()
+
+
 def test_the_wrong_method_on_the_right_path_gets_405(running):
     client = running()
     assert client.post(method="GET")[0] == 405

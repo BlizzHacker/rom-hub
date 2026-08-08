@@ -254,23 +254,27 @@ class WebhookServer:
     # -- what the handler needs ------------------------------------------
 
     def authorised(self, path: str) -> bool:
-        """Whether `path` carries the token. Constant-time on the compare.
+        """Whether `path` carries the token. Constant-time on both compares.
 
         Both forms are accepted because operators configure this by hand:
         a secret path segment reads better in a URL, and a query parameter
         is what somebody who already has a reverse-proxy route will reach
-        for.
+        for. Neither is compared with `==`; see `_token_matches`.
         """
         parts = urlsplit(path)
-        route = parts.path.rstrip("/") or "/"
-        if route == f"{self.path}/{self._token}".rstrip("/"):
-            return True
+        # `or ""` and not `or "/"`, so a receiver configured with
+        # ROM_HUB_WEBHOOK_PATH=/ -- whose normalised path *is* the empty
+        # string -- still matches its own root for the query form.
+        route = parts.path.rstrip("/") or ""
+        prefix = f"{self.path}/"
+        if route.startswith(prefix) and len(route) > len(prefix):
+            return _token_matches(route[len(prefix) :], self._token)
         if route != self.path:
-            # Compared even when the route is wrong, so a wrong path and a
-            # wrong token are indistinguishable from outside.
+            # Falls through to the same refusal a wrong token gets, so a
+            # wrong path and a wrong token are indistinguishable outside.
             return False
         offered = parse_qs(parts.query).get("token", [""])[0]
-        return hmac.compare_digest(offered, self._token)
+        return _token_matches(offered, self._token)
 
     def accept(self, body: bytes) -> tuple[int, dict]:
         """Claim a request and queue it. `(status, response body)`.
@@ -321,6 +325,25 @@ def _failed_state():
     from .webhook import RequestState
 
     return RequestState.FAILED
+
+
+def _token_matches(offered: str, token: str) -> bool:
+    """Constant-time comparison of a URL-supplied token against the real one.
+
+    Two things this is not allowed to be. Not `==`, because the token is
+    the only gate this endpoint has and `==` returns as soon as two bytes
+    differ. And not `hmac.compare_digest` on the strings directly:
+    `BaseHTTPRequestHandler` decodes the request line as latin-1, so a
+    request for `/requests/caf\xe9` yields a non-ASCII `str`, and
+    `compare_digest` raises `TypeError` on those -- which would escape
+    `authorised`, bypass the handler's own `try`, and leave the sender with
+    a reset connection instead of a `401`. Encoding both sides first is
+    what makes every possible path answerable.
+    """
+    return hmac.compare_digest(
+        offered.encode("utf-8", "surrogateescape"),
+        token.encode("utf-8", "surrogateescape"),
+    )
 
 
 def _normalise_path(path: str) -> str:
