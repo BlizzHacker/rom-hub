@@ -12,11 +12,39 @@ plugin system of its own.
 [![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](pyproject.toml)
 [![licence MIT](https://img.shields.io/github/license/BlizzHacker/rom-hub)](LICENSE)
 
-![RomM shelf populated by ROM Hub plugins](docs/screenshots/romm.png)
+The suite is 3311 tests and it runs on every push, on Linux and Windows, on
+Python 3.12 and 3.13. On Linux the seccomp confinement tests must *pass* — CI
+fails if they merely skip, because a skipped containment test looks exactly
+like a passing one. [docs/PROOF.md](docs/PROOF.md) is a generated matrix of
+what actually works against a live server of each of the three backends, cell
+by cell, with the evidence for each; [Coverage](#coverage) has the honest
+numbers and says which one of them is misleading and why.
 
 ---
 
-## Contents
+```
+Move Weight
+└─ Yarr.It ................ one front door for a self-hosted media library
+   └─ Cartridge ........... tools for self-hosting a retro game library
+      └─ Romarr ........... the *arr for games: request it, get it, file it
+         └─ ROM Hub ....... you are here
+```
+
+ROM Hub is the bottom of that stack and needs none of it: it is a sidecar to
+your library server, and nothing above it is required. Being underneath Romarr
+in the stack is not the same as being subordinate to it for the one job they
+share — see
+[An alternative to Romarr, not a replacement for it](#an-alternative-to-romarr-not-a-replacement-for-it),
+which is still the accurate account of when to reach for which.
+
+**A plugin is backend-agnostic, and that is structural rather than a promise.**
+A plugin never talks to a library server and holds no credential for one. It
+returns a *description* of work — which files to fetch, which metadata to set,
+where an item can be streamed — and the Hub executes that description against
+whichever server `ROM_HUB_BACKEND` selects. Nothing inside a plugin has ever
+known which of the three is on the other side, so a plugin written against one
+works against all of them, as far as that server is capable (`rom-hub backend
+info` says what the chosen one can do).
 
 - [Features](#features)
 - [Requirements](#requirements)
@@ -98,7 +126,745 @@ with a new `--ref`; nothing updates itself.
 
 ### Plugins
 
-| Command | Description |
+https URLs and local paths only. The bundled directory is always first and
+**first source wins**, so a third-party directory can add plugins but never
+replace one this project ships — and the collision is printed rather than
+silently resolved. `plugin browse` marks each entry with the directory it came
+from and reports `N of M catalog(s) reachable` when one cannot be read, so a
+source that is down looks like a source that is down rather than like plugins
+that do not exist. A directory still **grants nothing**: what an installed
+plugin may reach comes from its own `manifest.toml`. See *Publishing your own
+catalog* in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+**Searching needs no library server at all** — it fans out across installed
+plugins and prints results. `import` and `enrich` are the commands that need
+one configured.
+
+On Linux the install also pulls `pyseccomp`, which is what lets the plugin
+subprocess confine itself. If it is missing, `rom-hub` refuses to run plugins
+rather than running them unconfined. On **Windows and macOS there is no
+confinement available at all**, and plugins refuse to run without
+
+    ROM_HUB_ALLOW_UNSANDBOXED=1
+
+which means exactly what it says. See [Security model](#security-model).
+
+## Renamed from `romm-hub`
+
+The project, its packages and its `ROMM_HUB_*` environment variables lost a
+letter, because the host is no longer about one library server. Nothing in the
+plugin contract changed with it.
+
+| Was | Is | Old name still works? |
+|---|---|---|
+| `romm-hub` (CLI, project) | `rom-hub` | no — reinstall |
+| `romm_hub`, `romm_hub_sdk` | `rom_hub`, `rom_hub_sdk` | **yes**, deprecated |
+| `ROMM_HUB_HOME` | `ROM_HUB_HOME` | **yes**, deprecated |
+| `ROMM_HUB_ALLOW_UNSANDBOXED` | `ROM_HUB_ALLOW_UNSANDBOXED` | **yes**, deprecated |
+| `ROMM_HUB_CORES_DIR` | `ROM_HUB_CORES_DIR` | **yes**, deprecated |
+| "RomM Provider Protocol" | "**ROM** Provider Protocol" | acronym unchanged |
+
+**`rpp_version = "1"` is still correct and must not be bumped.** The protocol
+was renamed, not revised: the acronym, the capability names, the wire format
+and every validation rule are byte-for-byte what they were. A manifest written
+last week needs no edit.
+
+**For plugin authors, one line changes:** `from romm_hub_sdk import ...` becomes
+`from rom_hub_sdk import ...`. The old import still resolves — to the *same*
+objects, so `isinstance` still holds — and warns. It will be removed.
+
+`ROMM_URL`, `ROMM_USER` and `ROMM_PASSWORD` were **not** renamed. They are
+RomM's name, not the Hub's, and they configure one backend among several.
+
+## Status
+
+**RPP v1 is fully implemented.** All nine capabilities have a host
+implementation and a CLI command:
+
+| Capability | Command | What it does |
+|---|---|---|
+| `search` | `rom-hub search <query>` | fans out across every enabled plugin, then merges the results into one row per game per platform -- variants and cross-source duplicates collapse behind a count, `--expand <#>` opens one, `--no-group` turns it off. `--limit`/`--offset` page the merged set |
+| `importer` | `rom-hub import <plugin> <source_id>` | plan → download → hash-dedup → upload → register → collection, warning first if the platform has no emulator core |
+| `metadata` | `rom-hub enrich <plugin> <rom_id>` | plugin describes a name, a summary, provider ids and artwork; the Hub fetches the cover, asks the backend which ids it will accept, and writes what survives |
+| `stream` | `rom-hub stream <plugin> <source_id>` | resolves one item to a validated target and hands it over — prints what to do with it, `--open`s it, or emits it as JSON |
+| `cores` | `rom-hub cores list\|install <plugin> [<core>]` | lists a plugin's emulator cores, downloads one |
+| `firmware` | `rom-hub firmware list\|install <plugin> [<firmware>]` | lists a plugin's BIOS files **with each one's licence**, installs one to disk and to the library |
+| `assets` | `rom-hub assets list\|install <plugin> [<asset>]` | lists a plugin's shaders, overlays, cheats and controller profiles **with each one's licence**, installs one to disk. No library involved |
+| `census` | `rom-hub census build\|report\|list <plugin>` | enumerates a whole source into a local catalogue and states its coverage against the source's **own** declared total, per unit -- `29,955 of 29,955 declared entries across 43 units; 28 units excluded`, each exclusion named. Resumable; search is then served from it |
+| `torrent` | `rom-hub torrent <plugin> <source_id>` | resolves one item to a `.torrent` URL or magnet, reads the torrent as a verified file manifest, and prints it, hands it to the client you already run, or pulls one named file from the torrent's own https web seed and checks it against the torrent's own digest. Links no BitTorrent client |
+
+Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
+survives a restart. No web UI yet.
+
+**One thing arrives rather than being typed.** `rom-hub webhook serve` receives
+[GG Requestz](https://github.com/ggrequestz/ggrequestz) game requests and
+fulfils them through the same `search` fan-out and the same `importer` pipeline
+above — which makes the Hub an alternative to
+[Romarr](https://github.com/BlizzHacker/romarr) for that job: the same trigger,
+curated sources instead of torrent indexers. See [Fulfilling requests from GG
+Requestz](#fulfilling-requests-from-gg-requestz), including why the token in
+the URL is a shared secret and not authentication.
+
+## Which library server
+
+`ROM_HUB_BACKEND` selects it; `romm` is the default. Three ship:
+[RomM](https://github.com/rommapp/romm),
+[Gaseous](https://github.com/gaseous-project/gaseous-server) and
+[Retrom](https://github.com/JMBeresford/retrom).
+
+| Backend | Settings | Can | Cannot |
+|---|---|---|---|
+| `romm` | `ROMM_URL`, `ROMM_USER`, `ROMM_PASSWORD` | import, scan, metadata, artwork, collections | — |
+| `gaseous` | `GASEOUS_URL`, `GASEOUS_USER`, `GASEOUS_PASSWORD` | import, scan | collections, metadata, artwork |
+| `retrom` | `RETROM_URL` | import, scan, metadata, artwork | collections |
+
+`ROM_HUB_BACKEND_URL`/`_USER`/`_PASSWORD` also work for any of them, for a
+deployment that would rather not name a product in its unit file. Retrom has no
+accounts, so it reads only the URL.
+
+    rom-hub backend info
+
+    backend          romm
+    selected by      default (romm)
+    available        gaseous, retrom, romm
+    settings         ROMM_URL, ROMM_USER, ROMM_PASSWORD
+    configured       no -- ROMM_PASSWORD not set
+
+    can:
+      artwork        attach cover art to a rom
+      collections    group roms into a named collection (rom-hub import --collection)
+      import         accept a ROM upload, and list the library so a duplicate is caught first
+      metadata       write a rom's metadata fields (rom-hub enrich)
+      scan           needs an explicit registration step after an upload
+
+**It opens no connection.** The person most likely to run it is the one whose
+connection is not working yet.
+
+### How the three differ
+
+A plugin never sees any of this — it returns a *description* and the host
+executes it against whichever backend is configured. The differences below are
+the host's problem, not the plugin's, and every row was established from the
+backend's source and a live run rather than assumed.
+
+| | RomM | Gaseous | Retrom |
+|---|---|---|---|
+| Transport | REST | REST | gRPC-Web over HTTP/1.1 + WebDAV |
+| Import | chunked upload API | `POST /api/v1.1/Roms` multipart | no upload API — files land via WebDAV, then `UpdateLibrary` indexes them |
+| Dedup | by hash (archives hashed as decompressed members concatenated) | filename (see platform-0 note) | filename only — Retrom stores no checksums |
+| Collections | yes | no — `CollectionsController` is empty | no — not in the schema |
+| Metadata write | yes | no — a rom exposes only GET/DELETE | yes, read-modify-write |
+| Post-import | socket.io `scan` event | `ImportQueueProcessor` | `UpdateLibrary` |
+
+### Cannot-do-the-job vs cannot-do-an-extra
+
+A backend that cannot do something says so — but *what it does about it*
+depends on whether the missing capability is essential to the operation or an
+optional extra layered on top. The split is deliberate and is decided per
+capability in `src/rom_hub/backends/base.py`:
+
+- **Essential — refuse before anything is downloaded.** `import` (there is
+  nowhere to put the ROM) and `metadata` (`rom-hub enrich` writes nothing
+  otherwise) refuse up front. A backend that cannot be imported to fails the
+  job before a single byte moves, with a message naming the backend — never a
+  four-gigabyte download followed by a 404 from an endpoint that does not exist.
+- **Optional — do the job, report the skip.** `collections` and `artwork` are
+  extras. A collection groups a ROM that is already in the library; artwork is a
+  cover on a record. If the backend cannot do one, the import (or enrich)
+  proceeds without it and the outcome plainly says what was skipped and why —
+  in the result the CLI prints *and* in the job record, shown by `rom-hub jobs`
+  as a `~` note (a skip, not the `!` a failure gets).
+
+This is why `rom-hub import archive-org rubik_202308` now completes against
+Gaseous and Retrom. The archive-org plugin files everything under an
+"Archive.org" collection and its `collection` config cannot be emptied
+(`config.get("collection") or "Archive.org"`), so against a backend with no
+collections the whole import used to stop at that check with nothing
+downloaded. A collection is a grouping nicety, not part of getting a ROM into a
+library; it is now skipped and noted, and the ROM lands.
+
+**A `--collection` you typed is different.** Dropping a plugin's default costs
+you nothing you asked for; silently not honouring a name you typed is how a
+library ends up unsorted with no error to explain it. So `rom-hub import
+--collection "Shooters"` against a collection-less backend still refuses, up
+front before the plugin subprocess starts, and the refusal names the way out
+(re-run without the flag).
+
+### Gaseous
+
+[Gaseous](https://github.com/gaseous-project/gaseous-server) imports and scans
+but does not write metadata or group into collections, and two upstream
+quirks are worth knowing before you point the Hub at one:
+
+- **A rom you import may land on platform 0.** `OverridePlatformId` is stored,
+  resolved and passed into `ImportGameFile`, but its body never reads the
+  argument — the platform is taken from the file signature instead. An
+  unrecognised ROM therefore lands on platform 0 regardless of what you asked
+  for (measured: asked for 13/DOS, got 0). The Hub cannot correct this from
+  outside; it is Gaseous's own import path.
+- **Listing without a `PlatformId` 404s.** The unfiltered rom listing joins a
+  `Game` table that is absent from schema 1042, so the Hub always lists per
+  platform. Not a limitation you will hit through `rom-hub`, but it explains
+  why the backend never issues a bare list.
+- **`ContentManagerController` is not a ROM route.** It handles attachments —
+  screenshots, video, manuals, 50 MB cap — not game files, which is why it is
+  not wired up as an artwork path. A Gaseous rom exposes only GET and DELETE, so
+  there is no metadata write to make.
+
+### Retrom
+
+[Retrom](https://github.com/JMBeresford/retrom) works differently enough from
+RomM to be worth a few lines before you point the Hub at one.
+
+**Its library is the filesystem.** Retrom has no upload API — no `CreateGame`,
+no `CreatePlatform`, no RPC that carries file content anywhere in its schema. A
+scan (`UpdateLibrary`) walks the configured content directories and creates a
+platform per directory and a game per entry. So the Hub files a ROM by *writing
+a file*, over Retrom's own WebDAV service, and then asking for a rescan.
+
+**That WebDAV service is rooted at Retrom's data directory**, so a content
+directory has to live inside `RETROM_DATA_DIR` (`/app/data` in the official
+image) for the Hub to be able to write into it. The stock compose file mounts
+libraries at `/lib1` and `/lib2` instead, which is *outside* it: move or
+bind-mount your content directory under the data directory, e.g.
+`/app/data/library`. If it is not reachable, the backend probes and **refuses
+with instructions before anything is downloaded**.
+
+**A platform must already exist.** Retrom derives one from a directory name, so
+create `<content dir>/<platform>` and scan once before importing. The name has
+to match what the plugin plans — the archive-org plugin plans `dos` for a
+DOSBox item, so the directory is `dos`, not `dosbox`.
+
+Retrom has **no accounts** — there is no auth layer on any of its three
+services and none of its RPCs take a credential — so `RETROM_URL` is the whole
+configuration. Put a reverse proxy in front of it if it needs protecting.
+
+It has **no collections** and stores **no checksums**, so it dedups by filename
+only. A plugin-defaulted collection is skipped and reported (see above); an
+explicit `--collection` is refused up front.
+
+### RomM
+
+Two RomM quirks the Hub works around, recorded because they cost time to find:
+
+- **`/api/token` needs an explicit `scope`.** Without one, every subsequent
+  call 403s. The Hub requests the scopes it needs at auth time.
+- **`/complete` returns 201 with no body, and the ROM does not exist yet.** The
+  completion endpoint writes the file into the library directory and creates no
+  database row; RomM's own UI emits a socket.io `scan` after every upload, and
+  so does the Hub. The rom is identified afterwards by finding its digest in the
+  library, which doubles as proof it actually landed.
+
+## Importing
+
+`import` takes a plugin's own id for an item and puts the ROM in the library.
+The plugin only says *what* to fetch; the Hub downloads it, hashes it, checks it
+is not already in the library, and uploads it.
+
+    rom-hub import archive-org rubik_202308
+    rom-hub import archive-org rubik_202308 --platform dos --collection "Archive.org"
+
+`--platform` and `--collection` override what the plugin planned. They retarget
+where a ROM files; they cannot make the Hub fetch from anywhere the plugin's
+manifest does not already allow, and they cannot override a plugin's refusal —
+if a plugin says an emulator "needs mapping", the fix is to add the mapping,
+not to name a platform by hand and leave the gap open for the next person.
+`--collection` against a backend with no collections is refused up front (a name
+you typed is not dropped silently); a collection a plugin *defaulted* is skipped
+and reported instead — see [Cannot-do-the-job vs
+cannot-do-an-extra](#cannot-do-the-job-vs-cannot-do-an-extra).
+
+An import already in the library is reported as a duplicate and **not**
+uploaded. Matching is by file hash where the backend records one, and by
+filename where it does not (Gaseous and Retrom).
+
+    rom-hub jobs                # every import job and its state
+    rom-hub jobs --state FAILED # just the ones that went wrong, with reasons
+
+Job state lives in `$ROM_HUB_HOME/var/jobs.db` and downloads land in
+`$ROM_HUB_HOME/var/downloads/`, so an interrupted multi-GB import is resumed
+rather than restarted.
+
+### Importing something that cannot be played
+
+**A library platform is not the same as a playable one.** RomM knows 458
+platforms and its web player, EmulatorJS, has a core for 78 of them — so a ROM
+filed under one of the other 380 imports perfectly, appears in the library with
+its cover and its metadata, and does **nothing at all** when clicked. Nothing
+about the library afterwards explains why. The Xbox client ships the same
+player, so the same list governs there.
+
+Across the plugins in this directory that is 33 platforms — Dreamcast,
+Vectrex, Apple II, ScummVM, every interactive-fiction runtime, every PC target
+— reachable from ten importer plugins.
+
+    rom-hub platforms              # what plays, what does not, and who imports to each
+    rom-hub platforms --installed  # narrowed to the plugins on this host
+
+An import to one of those warns first, before a byte is fetched:
+
+    $ rom-hub import libretro-content "Sega - Dreamcast/Wince Test"
+    warning: platform 'dc' cannot be played in the library's web player: RomM
+    4.9.2 has no EmulatorJS core for it, and the Xbox client ships the same
+    player. This ROM will import, appear in the library and do nothing when
+    played. That is a fine thing to want -- a catalogue is not only a player --
+    so the import is going ahead; pass --allow-unplayable to stop saying so.
+
+**It warns; it does not refuse.** Cataloguing an Apple II disk, a Z-machine
+story file or a ScummVM release is a legitimate thing to want, and four plugins
+here exist to do only that. Refusing would put the Hub's judgement in place of
+yours on a question the Hub cannot answer. `--allow-unplayable` silences the
+notice for a catalogue you are building deliberately; it has never gated the
+import. The warning is also written to the job row, so `rom-hub jobs` still
+explains it weeks later.
+
+Where a dead platform is simply the *wrong slug* for hardware RomM can play,
+the fix is the plugin's mapping table, not this warning — but that is rarer
+than it sounds. All 33 were checked against RomM's core map and none has a
+correct playable equivalent: filing a Dreamcast game under something else to
+make it "playable" would be worse than leaving it honest. The set is derived,
+not asserted — see `src/rom_hub/playability.py` and
+`scripts/audit_platforms.py`.
+
+## Fulfilling requests from GG Requestz
+
+Everything above is a command somebody types. This is the one thing the Hub
+does without being asked: it listens for [GG
+Requestz](https://github.com/ggrequestz/ggrequestz) game requests and imports
+what was asked for.
+
+    ROM_HUB_WEBHOOK_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+    export ROM_HUB_WEBHOOK_TOKEN
+    rom-hub webhook url        # the URL to paste into GG Requestz
+    rom-hub webhook serve      # listen (Ctrl-C to stop)
+
+Set that URL as `REQUEST_WEBHOOK_URL` in GG Requestz's environment. Nothing has
+to change on its side — it already POSTs a `game_request` event when a request
+is approved, and this reads the payload it already sends.
+
+    rom-hub webhook log                    # every request and what came of it
+    rom-hub webhook log --state NO_MATCH    # the ones nothing was found for
+    rom-hub webhook forget <request-id>     # let a re-approval be acted on again
+
+Request state lives in `$ROM_HUB_HOME/var/requests.db`, separate from the job
+queue: a request can end without any job at all, and it has to outlive every
+retry for the duplicate guard below to mean anything.
+
+### An alternative to Romarr, not a replacement for it
+
+[Romarr](https://github.com/BlizzHacker/romarr) answers the same webhook. It
+fulfils from **torrent indexers** — public and private trackers, via Prowlarr,
+through a download client. This fulfils from the **curated sources the Hub
+already searches**: Archive.org's software collections, homebrew release pages,
+itch.io, the No-Intro archive, ScummVM's freeware, the demoscene archives.
+
+That is the whole difference, and it is a sourcing policy rather than a feature
+list. Which one you want depends on what you are willing to have your server
+fetch:
+
+* The Hub's sources are **publicly published catalogues fetched over HTTPS from
+  the origin that published them**. Every URL is inside the requesting plugin's
+  declared allowlist, and the allowlist is re-checked on every redirect hop. No
+  peer-to-peer traffic leaves the host, so no VPN or seedbox is involved and
+  your IP is not in a swarm. What you get back is what those catalogues hold —
+  abandonware, homebrew, freeware, public-domain and archived material — which
+  is a smaller set than a tracker's and a different kind of set. A request for a
+  current commercial release will usually come back `NO_MATCH`.
+* Romarr's sources are trackers. Far broader coverage, and everything that
+  follows from BitTorrent: a swarm, a client to configure, and whatever your
+  jurisdiction and your trackers' rules make of it.
+
+Point `REQUEST_WEBHOOK_URL` at whichever one you want. Running both is not
+supported by GG Requestz — it posts to one URL — so this is a choice, not a
+layering.
+
+### The token in the URL is a shared secret, not authentication
+
+**Say it plainly, because the mechanism cannot be made stronger from this
+end.** GG Requestz posts with `Content-Type: application/json` and nothing
+else: no signature, no bearer token, no shared-secret header. That is merged
+upstream and is not going to change. So the only channel available is the URL
+itself, and the token is a path segment (`/requests/<token>`, or
+`?token=<token>` if a proxy route suits you better).
+
+What that means, exactly:
+
+* Anyone who learns the URL can queue an import. The token proves knowledge of
+  a string; it does not authenticate a sender.
+* It appears in GG Requestz's environment in plaintext, and in anything that
+  logs URLs — reverse proxies, browser history if you ever paste it, shell
+  history.
+* Over plain HTTP it is on the wire in the clear.
+
+What is done about it:
+
+* **Loopback by default.** `127.0.0.1`, so the default deployment is GG
+  Requestz and the Hub on the same host. Binding elsewhere is allowed and says
+  so on stderr when it happens.
+* **A minimum length.** 24 characters, refused below that, because the URL is
+  the entire gate.
+* **No default token.** `webhook serve` refuses to start without one rather
+  than shipping a guessable value.
+* **`401` for everything else**, including a wrong path — a `404` would tell a
+  scanner which paths exist.
+* **The token is kept out of the Hub's own log.** `http.server` would otherwise
+  write the request line, and the request line is the secret.
+
+If the two are not on one host, put TLS and an authenticating proxy in front of
+it. That is a real fix; nothing inside this receiver can be one.
+
+### What it does with a request, and what it refuses to do
+
+    POST /requests/<token>
+    {"type": "game_request",
+     "data": {"request_id": "eac1cd44-...", "game_title": "Chrono Trigger",
+              "igdb_id": "1234", "platforms": ["Super Nintendo"],
+              "request_type": "game"}}
+
+    202 {"status": "accepted", "request_id": "eac1cd44-..."}
+
+**It answers in milliseconds and works afterwards.** GG Requestz allows a
+receiver five seconds and logs a failure past it; an import is a multi-gigabyte
+download. So the handler records the request and answers `202`, and a worker
+thread does the search and the import. There is no configuration in which
+fulfilment happens inside the request.
+
+**The same request arriving twice imports once.** GG Requestz re-dispatches on
+re-open and on re-approval, so this is the normal case. Requests are keyed on
+`request_id`; a repeat is answered `202 {"status": "duplicate"}` and does
+nothing. `rom-hub webhook forget <id>` is the deliberate undo — a request
+recorded `NO_MATCH` becomes fulfillable the moment you install a plugin that
+covers it.
+
+**A near miss is not a match.** A wrong ROM in your library is worse than an
+unfulfilled request, so:
+
+* `igdb_id` decides when a source states one — an id identifies a game, a title
+  is a string two games can share. (No search plugin shipped here emits one
+  today; they index Archive.org items and release pages, which carry no IGDB
+  ids. So in practice matching falls to the title, and this is the key that gets
+  used the day a source does carry it.)
+* Otherwise the title must match **exactly** under the same normaliser the
+  search listing already groups by — case, accents, `&` versus `and`,
+  punctuation and a leading or trailing article are ignored; nothing else is.
+  `Chrono Trigger 2` does not answer a request for `Chrono Trigger`.
+* Two platforms offering the same title, with nothing in the request to choose
+  between them, is a refusal and not a coin toss.
+* A stream-only copy — an Archive.org item that plays in the page and has no
+  downloadable file — is refused with `rom-hub stream` named instead.
+
+Every refusal is recorded with the reason, in a sentence, on the request row.
+
+**`platforms` narrows the search when it can.** GG Requestz sends IGDB platform
+*names*; the plugins take RomM slugs. `src/rom_hub/webhook.py` holds that
+translation and a test checks every target against RomM's own slug vocabulary.
+A name with no entry is reported on the request row and the search runs
+unfiltered — narrowing on a guess would silently exclude the right answer.
+
+**Only `game` requests are acted on.** `update` and `fix` are complaints about
+a rom that is *already* in the library; the Hub cannot patch one, and importing
+a second copy is not what was asked for. Both are recorded `IGNORED` with that
+said. `ROM_HUB_WEBHOOK_TYPES=game,update,fix` widens it if you want it anyway.
+
+### Receiver settings
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `ROM_HUB_WEBHOOK_TOKEN` | the URL secret; required, 24 characters minimum | none — `serve` refuses without it |
+| `ROM_HUB_WEBHOOK_HOST` | address to bind | `127.0.0.1` |
+| `ROM_HUB_WEBHOOK_PORT` | port to bind | `8770` |
+| `ROM_HUB_WEBHOOK_PATH` | route the token hangs off | `/requests` |
+| `ROM_HUB_WEBHOOK_TYPES` | request types to fulfil | `game` |
+
+The backend, the plugins and the download directory are the ones every other
+command uses: `webhook serve` refuses to start if `ROM_HUB_BACKEND`'s backend
+cannot import, so a receiver that would answer `202` and fill nothing does not
+bind a port. See `docs/DESIGN.md`, *The request receiver*, for why this is
+`http.server` and not a web framework.
+
+## Enriching metadata
+
+`enrich` asks a plugin what it knows about a rom already in RomM, then writes
+it. The plugin describes; the Hub fetches the artwork and holds the token.
+
+    rom-hub enrich archive-org 1 --source-id rubik_202308
+
+**Only what the plugin actually set is written.** An unset field is absent from
+the request, not sent as an empty one — verified against a real RomM: a
+name-only update leaves an existing `igdb_id` alone. That distinction is the
+difference between a partial patch and erasing a curated library.
+
+`--source-id` is there because RomM does not record which plugin an import came
+from, so a plugin generally cannot tell which of its own items a rom is. A
+plugin that will not guess says so and names the flag. Archive.org will not
+guess: searching for the rom's name and taking the top hit would write another
+game's title and cover into your library with nothing to notice it by.
+
+Artwork can come from a URL (the Hub fetches it, and only from a host the
+plugin's manifest declares) or from bytes the plugin already has. It lands in
+`$ROM_HUB_HOME/var/artwork/<rom_id>/` on its way to RomM.
+
+### What a patch can carry, and what a library will keep
+
+A patch carries a **name**, a **summary**, **provider ids**, **artwork** and
+the `raw_*_metadata` blobs. Two of those are worth knowing about before
+reading a plugin's README:
+
+**`summary` is the only prose field RomM stores**, and it is where a source's
+release date, developer, publisher, genre and player count end up — because
+there is nowhere else. RomM keeps that sort of thing in a `metadatum`
+sub-object populated by *its own* configured metadata providers, and
+`PUT /api/roms/{id}` has no form field that reaches it. Measured against a
+live 4.9.2: a `summary` round-trips verbatim; a part named `genres` is
+accepted with a 200 and discarded; and **all eight `raw_*_metadata` fields
+answer 200 and store nothing**, including when the matching provider id is
+written and changed in the same request. Each metadata plugin's README has a
+"What cannot reach RomM" section saying where its own data stops.
+
+**A provider id is the one field the library acts on rather than storing**, so
+the library gets a say in it. Writing `igdb_id` to a RomM that holds IGDB
+credentials makes RomM go and fetch that game's genre, summary, screenshots,
+release date and companies by itself — which is worth more than anything a
+plugin could compose. Writing `ra_id` to a RomM with *no* RetroAchievements
+key answers HTTP 500 rather than degrading. Ten of the eleven ids are simply
+stored when the provider is not configured; `ra_id` is the exception.
+
+So the Hub asks the backend before it writes. `GET /api/heartbeat` reports one
+flag per provider RomM holds credentials for, an id the server will not take is
+dropped and the rest of the patch is written anyway, and both halves are in the
+command's output:
+
+    rom 449: updated hasheous_id, igdb_id, name, summary, tgdb_id. Withheld
+    ra_id (RomM has no credentials for this provider (RA_API_ENABLED is false
+    in GET /api/heartbeat) and re-fetches from it whenever ra_id changes,
+    which answers HTTP 500 rather than degrading. The id was withheld so the
+    rest of the patch could be written; configure that provider in RomM and
+    enrich again to keep it)
+
+Backends declare this with `provider_id_policy()`, which is optional: one that
+never grows a policy has every id written as given, exactly as before.
+
+## Streaming
+
+    rom-hub stream archive-org msdos_Oregon_Trail_The_1990
+    url     https://archive.org/details/msdos_Oregon_Trail_The_1990
+    title   Oregon Trail, The
+    type    text/html
+    emulator        dosbox
+    identifier      msdos_Oregon_Trail_The_1990
+    stream_only     true
+    play    open this URL in a browser to play it
+
+Add `--open` and the Hub opens it, which for this item *is* playing it: an
+Archive.org `/details/` page runs the emulator in the page. Items Archive.org
+marks `stream_only` are exactly the ones `import` refuses, so this is where
+they go.
+
+A target that is a *handle* rather than a URL — an identifier for some other
+service — is printed for whoever issued it and never opened. The Hub does not
+guess a URL around an opaque string.
+
+For a rom your library already holds there is no plugin to ask:
+
+    rom-hub stream --library-rom 42
+    url     http://romm.example:8080/rom/42/ejs
+
+That is the library's own in-browser player, built from your backend settings.
+
+`--json` prints the same handover for a launcher to consume. `--server
+http://stream.example:8090` (or `$ROM_HUB_STREAM_SERVER`) additionally asks a
+`romm-stream` server, over its read-only routing endpoints, whether *it* could
+play the platform — it never starts a session there.
+
+**The Hub is not a streaming server.** `romm-stream` is, and it is a separate
+service; the Hub resolves, validates and hands over rather than building a
+second transport. It also cannot start a `romm-stream` session for a
+plugin-resolved target, because that server's session routes take a rom on its
+own disk or a library rom id plus credentials — not a URL. See
+`docs/DESIGN.md` for the whole boundary.
+
+## Emulator cores
+
+    rom-hub cores list <plugin>
+    rom-hub cores install <plugin> <core>
+
+Cores land in `$ROM_HUB_HOME/var/cores/<plugin>/` by default. Point them
+somewhere else — `/opt/romm-stream/cores` on the deployment target — with
+
+    ROM_HUB_CORES_DIR=/opt/romm-stream/cores rom-hub cores install ...
+
+A core download is gated by exactly the same code as a ROM import: the same
+allowlist check, the same filename validation, the same containment check. It
+is a binary from the internet landing on your disk, so it earns the same
+treatment.
+
+Archive.org does **not** offer cores. Its metadata names an emulator, not a
+downloadable artifact, so implementing the capability there would mean
+inventing a URL — and a plugin that fabricates a download target is one whose
+refusals cannot be believed either.
+
+## BIOS and firmware
+
+    rom-hub firmware list <plugin>
+    rom-hub firmware install <plugin> <firmware> [--no-library]
+
+Every emulation setup needs BIOS files, and the real question about a BIOS is
+not where to find it but whether you are allowed to have it. So the listing
+prints the licence next to the platform:
+
+    FIRMWARE    PLATFORM LICENCE     NAME
+    cult-of-gba gba      MIT         Cult-of-GBA BIOS
+    sameboy-dmg gb       MIT (Expat) SameBoy Game Boy boot ROMs
+    sameboy-cgb gbc      MIT (Expat) SameBoy Game Boy Color boot ROMs
+
+`FirmwareArtifact.license` is a **required** field of the protocol — a plugin
+cannot list a BIOS without saying what it is. The Hub cannot verify the claim,
+because a dumped BIOS and a clean-room reimplementation are identical bytes on
+the wire, and it does not pretend to. What the contract can do is make silence
+impossible.
+
+Files land in `$ROM_HUB_HOME/var/firmware/<plugin>/` by default. Point them at
+the directory your emulator already reads and there is nothing to copy
+afterwards:
+
+    ROM_HUB_FIRMWARE_DIR=/opt/retroarch/system rom-hub firmware install ...
+
+The same gate as a ROM import, again: same allowlist check, same filename
+validation, same containment check. Where an item's files ship inside a zip —
+SameBoy publishes its boot ROMs only inside its emulator release — the plugin
+declares the members and the **host** unpacks exactly those and discards the
+rest.
+
+`install` also stores the files in your library. Only RomM can hold firmware
+(`POST /api/firmware`); Gaseous' BIOS API is read-only and Retrom has no
+firmware concept at all, so against those the download happens, the library
+step is skipped, and the line you get back says so. That is the whole point of
+the capability declaration — see `docs/PROOF.md`, where the `firmware store`
+row reads PASS / UNSUPPORTED / UNSUPPORTED against three live servers.
+
+### Emulator support files: shaders, overlays, cheats, controller profiles
+
+`cores` gets you an emulator and `firmware` gets you a BIOS. Neither is why a
+game has black bars either side of it, why the pad you plugged in does
+nothing, or why you are typing Game Genie codes by hand. That is the `assets`
+capability.
+
+    rom-hub assets list retroarch-autoconfig --kind controller
+    rom-hub assets install retroarch-autoconfig "udev/8BitDo_ Wired_Xbox.cfg"
+
+`list` prints **each item's licence** in a column, for the reason `firmware
+list` does: these sources are community repositories of contributed files and
+the terms genuinely vary between them.
+
+Three plugins ship:
+
+| Plugin | Kind | Source | Licence |
+|---|---|---|---|
+| `retroarch-autoconfig` | `controller` | `libretro/retroarch-joypad-autoconfig` | MIT |
+| `libretro-overlays` | `overlay` | `libretro/common-overlays` | CC-BY-4.0 |
+| `libretro-cheats` | `cheat` | `libretro-database`, `cht/` | CC-BY-SA-4.0 |
+
+**Shaders are deliberately absent.** They are the most-wanted item on that
+list and neither `libretro/slang-shaders` nor `libretro/glsl-shaders` has a
+licence file at all — GitHub's licence endpoint returns 404 for both, and
+per-file headers range from public domain through GPL-2.0-or-later to nothing
+whatsoever. A file with no licence statement is not permissive by default, so
+there is no honest value to print in that column and the plugins were not
+built. `docs/DESIGN.md` records the evidence.
+
+**No library server is involved.** Unlike `firmware`, nothing here is ever
+filed in RomM, Gaseous or Retrom — an asset is a file in a directory an
+emulator reads, and that is the whole operation. `rom-hub assets install`
+works identically against any backend, and against no configured backend at
+all.
+
+Files land under `$ROM_HUB_HOME/var/assets/`, in a leaf directory chosen by
+the item's kind — `shaders`, `overlays`, `cheats`, `autoconfig`. Those are
+RetroArch's own names, so:
+
+    ROM_HUB_ASSETS_DIR=~/.config/retroarch rom-hub assets install ...
+
+puts every file exactly where RetroArch already looks. `ROM_HUB_SHADERS_DIR`,
+`ROM_HUB_OVERLAYS_DIR`, `ROM_HUB_CHEATS_DIR` and `ROM_HUB_CONTROLLERS_DIR`
+each override one kind outright, for a layout where they do not share a
+parent.
+
+The same gate as a ROM import, again: same allowlist check, same filename
+validation, same containment check.
+
+**Nothing clones a repository.** These sources are large — `libretro-database`
+is 795 MB — so a catalogue is one GitHub Git Trees API call per directory and
+an install is one `raw.githubusercontent.com` GET for the single file you
+chose. Some catalogues need narrowing before they fit: `libretro-cheats` holds
+tens of thousands of files across 44 systems, so its first run lists the
+systems and asks you to pick with its `systems` config key.
+
+### RomM connection settings
+
+`import` and `enrich` need a RomM account permitted to upload. It is read from
+the environment, never from a file in the repo:
+
+| Variable | Meaning | Example |
+|---|---|---|
+| `ROMM_URL` | base URL of the RomM instance | `http://romm.example:8080` |
+| `ROMM_USER` | RomM username | `admin` |
+| `ROMM_PASSWORD` | that user's password | |
+
+All three are required; both commands name whichever are missing and stop
+before opening any connection. `ROM_HUB_HOME` (default `~/.rom-hub`) decides
+where plugins, the job database, downloads, artwork, cores, firmware and
+plugin data assets live; `ROM_HUB_CORES_DIR` moves just the cores,
+`ROM_HUB_FIRMWARE_DIR` just the firmware, and `ROM_HUB_ASSETS_DIR` the
+shaders, overlays, cheats and controller profiles.
+
+### Plugin data assets
+
+Some sources are a *file*, not a service: OpenVGDB publishes no API at all —
+the whole project is one 8.7 MB SQLite database attached to a GitHub release.
+A plugin cannot fetch that for itself (`ctx.http` caps at 4 MiB, carries text
+rather than bytes, and follows no redirect), so it **declares** it in
+`manifest.toml` under `[[data_assets]]` and the host fetches it: the same
+downloader an import uses, so every redirect hop is re-checked against the
+plugin's own allowlist, then a **mandatory `sha256`** verified before the
+plugin is told where the file is, then cached under
+`$ROM_HUB_HOME/var/plugin-data/<slug>/` and re-verified on every later run.
+The plugin gets a **path** and opens the file itself, read-only.
+
+Nothing about that is silent:
+
+    rom-hub plugin install ./plugins-dev/openvgdb   # prints size, origin, digest
+    rom-hub plugin assets openvgdb                  # what it wants; is it cached?
+    rom-hub plugin assets openvgdb --fetch          # get it now, deliberately
+    ROM_HUB_NO_ASSET_FETCH=1 rom-hub enrich ...     # refuse, and say how to get it
+
+The fetch itself announces its size, its full URL and its digest on stderr
+before the request goes out. See `docs/DESIGN.md`, *Data assets*, for why the
+mechanism is declaration-based and why the integrity check is not optional.
+
+**The plugin never sees any of this.** The token, the upload, the artwork
+fetch, the metadata write and the collection call are all host-side; a
+plugin's whole involvement is returning a description. See the security model
+below.
+
+### Plugin credentials — the `secret` config type
+
+Some sources need an API key. A plugin declares that field as
+`type = "secret"`, and the Hub then keeps it **out of `state.json`** — the
+plain-config file that gets opened, dumped, screenshotted and committed —
+redacts it from `plugin list`, `plugin config`, `plugin secret list`, `browse`,
+`backend info`, `jobs` and `--help`, and scrubs it out of any error message it
+builds, including the plugin's own stderr.
+
+    rom-hub plugin secret set retroachievements api_key   # prompts; nothing echoed
+    pass show ra | rom-hub plugin secret set retroachievements api_key --stdin
+    rom-hub plugin secret set retroachievements api_key --env RA_KEY
+    rom-hub plugin secret list                            # what is set, and where
+    rom-hub plugin config retroachievements               # safe to screenshot
+
+**Read `plugin secret list` before trusting it.** What the storage protects
+depends on the host and the command prints the honest answer:
+
+| Store | What it protects |
 |---|---|
 | `rom-hub plugin browse` | List the catalogue |
 | `rom-hub plugin install <slug\|url\|path>` | Install; `--ref` pins a branch, tag or SHA |
@@ -161,7 +927,15 @@ ROM_HUB_FIRMWARE_DIR=/opt/retroarch/system rom-hub firmware install open-bios ..
 
 ---
 
-## Library backends
+`pytest --cov` reports **86.6 %** on Windows (branch coverage, `rom_hub` +
+`rom_hub_sdk`); the Linux figure differs because seccomp is only reachable
+there, and CI enforces a floor and publishes the per-module table to the run
+summary of every job. One number in that table is misleading and
+is explained rather than fixed: `rom_hub_sdk/runner.py` measures 12 % on Linux because
+it only ever executes inside the *plugin subprocess*, whose environment is
+built from `{}` upward — instrumenting it would mean punching a hole in the
+allowlist that `tests/test_hostile_plugin.py` exists to defend. It is covered
+by tests; it is not covered by `coverage`.
 
 | Backend | Settings | Import | Scan | Metadata | Artwork | Collections |
 |---|---|:-:|:-:|:-:|:-:|:-:|
@@ -271,85 +1045,30 @@ says. It is a development convenience, not a deployment setting.
 Full model, including what is deliberately not claimed:
 [docs/DESIGN.md](docs/DESIGN.md#security-the-broker-model).
 
----
+### The one listening socket, and why it is a socket at all
 
-## Using it from ROMarr
+Everything above is about a process that opens outbound connections and no
+inbound ones. `rom-hub webhook serve` is the exception and the only one: it
+binds a port and accepts a POST. That is worth stating in this section rather
+than only in the feature section, because it is a genuinely different exposure.
 
-Installed alongside [ROMarr](https://github.com/BlizzHacker/romarr), the same
-catalogue is a **Hub → Plugins** tab — every plugin with its capabilities,
-platforms and network reach, and one-click install, enable and disable. ROMarr
-drives this package through its Python API, so plugins installed there are the
-sources ROMarr searches and imports from.
-
-![ROM Hub plugins in ROMarr](https://raw.githubusercontent.com/BlizzHacker/romarr/main/docs/img/hub-plugins.png)
-
-```bash
-pip install "rom-hub @ git+https://github.com/BlizzHacker/rom-hub@master"
-```
-
----
-
-## Development
-
-```bash
-python -m pytest              # offline; live tests deselected
-python -m pytest -m live      # also hits the real Archive.org
-```
-
-1461 tests across Linux and Windows, Python 3.12 and 3.13. Branch coverage is 86.6 %
-on Linux and 86.9 % on Windows.
-
-CI additionally asserts two things a green exit code does not prove: that the seccomp
-containment tests **passed** rather than skipped on Linux, and that the
-network-hitting tests are still excluded by default.
-
-[`scripts/proof_matrix.py`](scripts/proof_matrix.py) runs the real import and enrich
-pipelines against live RomM, Gaseous and Retrom servers and writes
-[docs/PROOF.md](docs/PROOF.md), keeping **UNSUPPORTED** distinct from **FAIL**.
-[`scripts/proof-stack.compose.yml`](scripts/proof-stack.compose.yml) stands up the
-three disposable servers.
-
-- [CONTRIBUTING.md](CONTRIBUTING.md) — writing a plugin and getting it listed
-- [docs/DESIGN.md](docs/DESIGN.md) — architecture and the broker model
-- [docs/PLUGINS.md](docs/PLUGINS.md) — the plugin directory
-- [docs/SHOWCASE.md](docs/SHOWCASE.md) — a worked tour
-
-### Renamed from `romm-hub`
-
-The project, its packages and its `ROMM_HUB_*` variables lost a letter; the host is
-no longer about one library server. The plugin contract did not change —
-`rpp_version = "1"` is still correct and must not be bumped.
-
-| Was | Is | Old name still works |
-|---|---|:-:|
-| `romm-hub` (CLI, project) | `rom-hub` | no — reinstall |
-| `romm_hub`, `romm_hub_sdk` | `rom_hub`, `rom_hub_sdk` | yes, deprecated |
-| `ROMM_HUB_HOME` | `ROM_HUB_HOME` | yes, deprecated |
-| `ROMM_HUB_ALLOW_UNSANDBOXED` | `ROM_HUB_ALLOW_UNSANDBOXED` | yes, deprecated |
-| `ROMM_HUB_CORES_DIR` | `ROM_HUB_CORES_DIR` | yes, deprecated |
-
-`ROMM_URL`, `ROMM_USER` and `ROMM_PASSWORD` were **not** renamed — they are RomM's
-own names and configure one backend among several.
-
----
-
-## Cartridge ecosystem
-
-ROM Hub is the plugin layer of **Cartridge**, a self-hosted retro-gaming stack by
-MoveWeight.
-
-| | Project | Purpose |
-|---|---|---|
-| **Acquire** | [ROMarr](https://github.com/BlizzHacker/romarr) | Request, find, grab, file |
-| | [ROM Hub](https://github.com/BlizzHacker/rom-hub) | Plugin host — the sources ROMarr searches |
-| **Play** | [Desktop](https://github.com/BlizzHacker/RommForDesktop) · [Xbox](https://github.com/BlizzHacker/RommForXbox) · [Roku](https://github.com/BlizzHacker/RommForRoku) | Clients |
-| | [Stream Server](https://github.com/BlizzHacker/RommStreamServer) | Remote play |
-
-Brand and naming: [BRAND.md](BRAND.md).
-
-## Licence
-
-MIT — see [LICENSE](LICENSE). Each plugin is a separate work under its own licence,
-carried in its own repository.
-
-Unofficial. Not affiliated with or endorsed by the RomM, Gaseous or Retrom projects.
+* **It only exists while you run it.** No other command binds anything, and
+  nothing starts it for you. A Hub you never run `webhook serve` on has exactly
+  the network surface it had before.
+* **Loopback by default**, so the default deployment is not on the network at
+  all.
+* **The token in the URL is not authentication**, and the reasons and the
+  mitigations are set out in [The token in the URL is a shared secret, not
+  authentication](#the-token-in-the-url-is-a-shared-secret-not-authentication).
+  The short version: GG Requestz sends no signature and no auth header, that is
+  merged upstream, and no amount of work on this end changes it.
+* **A request cannot reach a plugin's privileges.** What arrives is a title, an
+  optional id and a list of platform names. It selects among results the
+  installed plugins returned; it cannot name a URL, a host, a file or a
+  platform slug the plugin did not already offer, and every byte fetched is
+  still gated by the requesting plugin's own declared allowlist. The receiver is
+  a caller of the same pipeline `rom-hub import` is — it has no extra powers to
+  lend.
+* **The body is bounded before it is read** (64 KiB, refused on the declared
+  `Content-Length`), the work queue is bounded (`503` when full), and a
+  malformed body is a `400` on a server that keeps listening.
