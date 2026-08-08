@@ -344,6 +344,7 @@ inherited leak.
 | `rom-hub assets list|install <plugin> [<asset>] [--kind]` | list a plugin's support files **with each item's licence**, or download one into the directory configured for its kind. No library server is involved |
 | `rom-hub catalog list\|add\|remove\|refresh` | the ordered list of plugin directories the Hub reads. The bundled one is always first and cannot be removed; anything added is an https URL or a local path, and comes after it — see [The plugin directory is plural, and none of it is trusted](#the-plugin-directory-is-plural-and-none-of-it-is-trusted) |
 | `rom-hub jobs [--state]` | the persisted import queue, with failure reasons |
+| `rom-hub webhook serve\|url\|log\|forget` | receive GG Requestz game requests and fulfil them through the fan-out and pipeline above — see [The request receiver](#the-request-receiver) |
 
 `--source-id` exists because RomM does not record which plugin an import came
 from, so a `metadata` plugin cannot in general work out which of its own items
@@ -356,6 +357,141 @@ files and cannot widen where bytes come from. They deliberately cannot rescue a
 plugin's refusal: a "needs mapping" emulator is fixed by adding the mapping,
 not by naming a platform once and leaving the gap for the next operator.
 
+### The request receiver
+
+Every other command is typed. This one is the only surface where something
+*arrives*: `rom-hub webhook serve` listens for
+[GG Requestz](https://github.com/ggrequestz/ggrequestz) `game_request` webhooks
+and fulfils them through the existing `search` fan-out and the existing
+`importer` pipeline. Nothing about the plugin contract changes; the receiver is
+a caller of `dispatcher.search_all` and `importer.run_import`, exactly as
+`_cmd_search` and `_cmd_import` are.
+
+It exists because the trigger already existed. GG Requestz emits that webhook
+today, merged upstream, and [ROMarr](https://github.com/BlizzHacker/romarr)
+already answers it from torrent indexers.
+
+**It is the standalone case, and that is deliberately the smaller one.** The
+Hub is ROMarr's plugin factory: the normal arrangement is `REQUEST_WEBHOOK_URL`
+pointed at ROMarr, which fulfils from trackers *and* from these plugins, and
+gives the operator one place to manage them. This receiver is for the operator
+who is not running ROMarr at all — GG Requestz posts to a single URL, so the
+webhook can only have one destination, and without this the Hub simply cannot
+be that destination.
+
+What differs when it is, is sourcing and nothing else: the Hub's plugins fetch
+publicly published catalogues over HTTPS from the origin that published them,
+inside each plugin's own declared allowlist, with no peer-to-peer traffic
+leaving the host. That is a smaller and different corpus than a tracker's, and
+a request for a current commercial release will usually come back `NO_MATCH`.
+The receiver states that plainly rather than implying parity of coverage.
+
+#### The dependency decision, and why it went the other way
+
+The obvious move is FastAPI and uvicorn. It was rejected, for the reasons the
+`libtorrent` decision above was rejected, and they are the same reasons rather
+than similar ones.
+
+**What it would cost.** FastAPI brings Starlette, anyio, h11, click and a
+settings stack — a dependency tree heavier than this project's entire runtime
+requirement list, added to a program whose security posture is that a plugin is
+a subprocess with no token, no mount and no socket. Every one of those packages
+is code running in the process that *does* hold the library credential.
+
+**What it would buy.** One POST route with no path parameters, no content
+negotiation, no schema generation and nothing to browse. The validation
+argument — the strongest one — does not survive contact with the fact that
+`pydantic` is already a dependency and is what parses the payload here.
+`http.server` supplies the socket, the request line and the headers, which is
+the whole remainder.
+
+So the receiver is `ThreadingHTTPServer` and one `BaseHTTPRequestHandler`
+subclass, in `src/rom_hub/webhook_server.py`, and the parts a framework would
+have supplied are written down instead: a `Content-Length` cap refused on the
+header, a `411` for the chunked body `http.server` cannot read, a bounded queue
+with a `503` when it is full, and a JSON body on every answer including the
+refusals.
+
+#### Five seconds is the whole shape of it
+
+GG Requestz allows a receiver five seconds and logs a failure past it. An
+import is a multi-gigabyte download followed by a chunked upload. Those two
+numbers are irreconcilable, so the handler does not attempt them: it claims the
+`request_id`, puts the event on a bounded queue and answers `202`, and a single
+worker thread searches and imports. There is no configuration in which
+fulfilment happens inside the request, and the test that proves it holds a
+fulfilment callable open on an `Event` and asserts the `202` came back anyway.
+
+One worker, not a pool. Two concurrent imports would list the same platform,
+dedup against the same snapshot and race each other's uploads; serialising them
+costs a queue and removes the whole class.
+
+#### The URL is the only gate, and it is not authentication
+
+GG Requestz posts `Content-Type: application/json` and nothing else. No
+signature, no bearer token, no shared-secret header — and that side is merged
+upstream, so this is a constraint and not a choice. The only channel left is
+the URL, so the token is a path segment or a `?token=` parameter, compared with
+`hmac.compare_digest`.
+
+**It is documented as a shared secret in a URL rather than dressed up as
+authentication**, because that is what it is: it proves knowledge of a string,
+it is plaintext in the sender's configuration, and anything that logs URLs logs
+it. What is done about it is proportionate rather than reassuring — loopback by
+default, a 24-character minimum, no default value, `401` for everything else
+including a wrong path (a `404` would enumerate paths), and the token kept out
+of the Hub's own log, because `BaseHTTPRequestHandler.log_request` would
+otherwise write the request line and the request line *is* the secret. Off
+loopback the honest advice is a TLS-terminating authenticating proxy, and the
+receiver says so on stderr when it binds anywhere else.
+
+#### Idempotency is a primary key, not a heuristic
+
+GG Requestz re-dispatches when an already-fulfilled request is re-opened, and
+again on re-approval. So a repeat is the normal case, and the guard is an
+`INSERT ... ON CONFLICT DO NOTHING` against `request_id` as a sqlite primary
+key: the second arrival is a no-op even when it lands while the first import is
+still running, because the claim happens on the acceptor thread before the
+`202` rather than in the worker.
+
+`ON CONFLICT DO NOTHING` and not `INSERT OR REPLACE`, which is the interesting
+half: the re-dispatched payload is the *original* one, so replacing would reset
+a `FULFILLED` row to `RECEIVED` and import a second copy. `rom-hub webhook
+forget <id>` is the deliberate undo, and it exists because a request recorded
+`NO_MATCH` becomes fulfillable the moment a plugin covering it is installed —
+without it the only way to retry would be to invent a new request id.
+
+This is the one place in the project where two threads share a sqlite
+connection, so it is opened `check_same_thread=False` and every statement is
+taken under a lock. Not decoration: Python's `sqlite3` raises on cross-thread
+use regardless of what the C library would have tolerated.
+
+#### A near miss is not a match
+
+The rule the matching exists to obey: **a wrong ROM in somebody's library is
+worse than an unfulfilled request.** So `igdb_id` decides when a source states
+one, and otherwise the title must match exactly under
+`romnames.normalise_title` — the same normaliser the search listing already
+groups by, not a second opinion. Two candidate platforms with nothing in the
+request to choose between them is a refusal. A stream-only copy is a refusal
+naming `rom-hub stream`. Every refusal is recorded on the request row as a
+sentence, because the operator reads that row and not the console the receiver
+was running on.
+
+No search plugin in this directory emits an `igdb_id` today — they index
+Archive.org items, homebrew releases and itch.io pages, none of which carry
+one — so in practice the title is what matches. The id path is implemented
+anyway: the sender always sends it, it is the stronger key the moment a source
+does carry it, and adding it later would mean migrating a table.
+
+`platforms` narrows the search rather than deciding the answer. GG Requestz
+sends IGDB platform *names* and every plugin takes a RomM slug, so
+`webhook.PLATFORM_NAMES` is that translation — and its targets are checked
+against `playability`'s own slug vocabulary by a test, so a typo cannot become
+a search filter no plugin recognises. A name with no entry is reported on the
+row and the search runs unfiltered, because narrowing on a guess would exclude
+the right answer silently.
+
 ### Where things live
 
 By convention: source is small and lives in git; anything that grows lives on
@@ -367,6 +503,7 @@ the deployment target's own storage, never on a workstation system drive.
 | Plugin git clones | deployment target `/opt/rom-hub/plugins/` |
 | In-flight downloads | deployment target `/opt/rom-hub/var/downloads/` |
 | Fetched artwork, in transit | `$ROM_HUB_HOME/var/artwork/<rom_id>/` |
+| Received game requests | `$ROM_HUB_HOME/var/requests.db` — its own file, not a table in `jobs.db`: a request can end with no job at all (`NO_MATCH`), it must outlive every retry for the duplicate guard to hold, and sharing a file would have `rom_hub.jobs`'s schema migration reaching a table it does not own |
 | Plugin data assets | `$ROM_HUB_HOME/var/plugin-data/<slug>/` |
 | Configured plugin directories | `$ROM_HUB_HOME/catalog-sources.json` — beside `state.json`, because it is configuration somebody typed and must survive clearing a cache |
 | Fetched directories, cached | `$ROM_HUB_HOME/var/catalogs/<hash of the URL>.json` — keyed on the location, so renaming a source cannot serve it another source's bytes |
