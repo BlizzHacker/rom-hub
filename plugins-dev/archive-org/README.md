@@ -36,15 +36,22 @@ A unit's id is its clause, so the report is checkable by hand:
 
 ```
 $ rom-hub census report archive-org --units
-archive-org: complete -- 250,586 of 250,586 declared entries across 27 units
+archive-org: complete -- 250,509 of 250,509 declared entries across 27 units
+  250,309 catalogued rows -> 242,928 distinct dumps in 189,878 games
+  skipped, by reason:
+         200  a sub-collection listing, not a software item (mediatype:collection)
+
 UNIT                                     KIND        DECL    KEPT STATE
-item_size:[0 TO 156073]                  roms       9,600   9,440 done
+item_size:[0 TO 156073]                  roms       9,599   9,439 done
+item_size:[156074 TO 209197]             roms       9,590   9,585 done
 ...
 item_size:[5698242445 TO *]              roms         946     946 done
 ```
 
 and `collection:(softwarelibrary) AND item_size:[0 TO 156073]` at `rows=0`
-is where that 9,600 came from.
+is where that 9,599 came from. The twenty-seven declared totals add up to
+250,509, which is what the collection's own `numFound` answered — measured
+2026-08-08, 651 seconds, 81 requests.
 
 **What is kept.** Everything except sub-collection *listings*
 (`mediatype:collection`), which are named and counted as a skip. Items
