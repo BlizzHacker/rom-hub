@@ -15,6 +15,28 @@ class UnsafeDestination(Exception):
     """A plugin-supplied filename would land outside the directory for it."""
 
 
+def _refuse_nul(name: str, value: str) -> None:
+    """Refuse an embedded NUL by looking for it, not by hoping something does.
+
+    Both functions below used to catch this only as a side effect: `resolve()`
+    raised `ValueError` on a NUL, so the `except` around it happened to cover
+    the case, and a comment said so. That held until Python 3.13 on Windows,
+    where `resolve()` stopped raising -- and the guard silently stopped
+    guarding. The tests caught it; nothing else would have.
+
+    A containment check must not depend on a library raising incidentally.
+    The rule is the same one the drive-letter gap taught: refuse the dangerous
+    thing *by name*, rather than inferring it from a side effect that a
+    future release is free to change.
+    """
+    if "\x00" in value:
+        raise UnsafeDestination(
+            f"refusing to write {value!r}: {name} contains an embedded NUL "
+            f"byte, which cannot appear in a legitimate filename and which "
+            f"truncates the path in any C API it reaches"
+        )
+
+
 def dest_in_job_dir(job_dir: Path, filename: str) -> Path:
     """Join `filename` onto `job_dir`, refusing anything that lands outside.
 
@@ -30,6 +52,7 @@ def dest_in_job_dir(job_dir: Path, filename: str) -> Path:
     path to Windows, and it must be refused either way.
     """
     job_dir = Path(job_dir)
+    _refuse_nul("the filename", filename)
     if PureWindowsPath(filename).parts != (filename,) or PurePosixPath(
         filename
     ).parts != (filename,):
@@ -45,7 +68,9 @@ def dest_in_job_dir(job_dir: Path, filename: str) -> Path:
         root = job_dir.resolve()
         resolved = dest.resolve()
     except (OSError, ValueError) as exc:
-        # ValueError is what an embedded NUL byte raises here.
+        # Kept as a backstop for whatever else resolve() may object to on a
+        # given platform. NUL is handled above rather than here, because
+        # relying on this except to catch it is exactly what broke.
         raise UnsafeDestination(
             f"refusing to write {filename!r} outside the job directory "
             f"{str(job_dir)!r} -- the name could not be resolved at all "
@@ -87,6 +112,7 @@ def dest_under_dir(root: Path, relative: str) -> Path:
     root = Path(root)
     if not relative:
         raise UnsafeDestination("refusing to write an empty destination")
+    _refuse_nul("the destination", relative)
 
     parts = relative.split("/")
     for part in parts:
@@ -134,7 +160,8 @@ def dest_under_dir(root: Path, relative: str) -> Path:
         root_resolved = root.resolve()
         resolved = dest.resolve()
     except (OSError, ValueError) as exc:
-        # ValueError is what an embedded NUL byte raises here.
+        # Backstop only; see the note in `dest_in_job_dir`. NUL is refused
+        # by name at the top of this function.
         raise UnsafeDestination(
             f"refusing to write {relative!r} outside {str(root)!r} -- the "
             f"path could not be resolved at all ({type(exc).__name__}: {exc})"
