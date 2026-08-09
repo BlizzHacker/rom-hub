@@ -358,7 +358,9 @@ def test_a_mixed_plugin_reports_the_blocked_and_the_merely_reduced_apart():
     assert fit["gaseous"].verdict == "partial"
     assert fit["gaseous"].blocked == ("metadata",)
     assert fit["gaseous"].reduced == (("importer", "collections"),)
-    assert set(fit["gaseous"].unaffected) == {"search", "stream"}
+    # `census` joins them: it writes a catalogue under the Hub's own
+    # `var/`, so which library server is configured cannot reduce it.
+    assert set(fit["gaseous"].unaffected) == {"search", "stream", "census"}
 
     # Retrom writes metadata but has no collections.
     assert fit["retrom"].verdict == "reduced"

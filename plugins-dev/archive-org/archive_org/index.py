@@ -291,17 +291,37 @@ def build_query(
     return " AND ".join(clauses)
 
 
-def size_window(q: str, low: int, high: int | str = MAX_ITEM_SIZE) -> str:
-    """`q` narrowed to one `item_size` range, inclusive at both ends.
+def size_clause(low: int, high: int | str = MAX_ITEM_SIZE) -> str:
+    """One `item_size` range, inclusive at both ends.
 
-    The one place this project writes an `item_size` clause, because two
-    places would eventually disagree about whether the bounds are
-    inclusive -- and a partition whose windows overlap by one byte
-    double-counts every item of exactly that size, while one that gaps by
-    one byte loses them. `high` may be `OPEN`, which is what the last
-    window of a partition uses.
+    The one place this project writes such a clause, because two places
+    would eventually disagree about whether the bounds are inclusive --
+    and a partition whose windows overlap by one byte double-counts every
+    item of exactly that size, while one that gaps by one byte loses them.
+    `high` may be `OPEN`, which is what the last window of a partition
+    uses.
     """
-    return f"{q} AND item_size:[{low} TO {high}]"
+    return f"item_size:[{low} TO {high}]"
+
+
+def parse_size_clause(clause: str) -> tuple[int, int | str]:
+    """`size_clause` read back, or a ValueError naming what was wrong.
+
+    `census.py` uses the clause itself as a unit id, so this is what turns
+    a stored id back into the window it names.
+    """
+    text = str(clause).strip()
+    if not (text.startswith("item_size:[") and text.endswith("]")):
+        raise ValueError(f"{clause!r} is not an item_size range")
+    low, sep, high = text[len("item_size:[") : -1].partition(" TO ")
+    if not sep:
+        raise ValueError(f"{clause!r} has no 'TO' between its bounds")
+    return int(low), (OPEN if high == OPEN else int(high))
+
+
+def size_window(q: str, low: int, high: int | str = MAX_ITEM_SIZE) -> str:
+    """`q` narrowed to one `item_size` range."""
+    return f"{q} AND {size_clause(low, high)}"
 
 
 class Index:

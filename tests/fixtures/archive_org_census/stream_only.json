@@ -1,0 +1,425 @@
+{
+ "response": {
+  "numFound": 5941,
+  "docs": [
+   {
+    "collection": [
+     "softwarelibrary_workbench",
+     "stream_only",
+     "softwarelibrary",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_The_Nine_Lives_of_Secret_Agent_Katt_1991",
+    "item_size": 11323,
+    "mediatype": "software",
+    "title": "The Nine Lives of Secret Agent Katt"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_SpaceWORM_1995",
+    "item_size": 19989,
+    "mediatype": "software",
+    "title": "SpaceWORM"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_F-Bird_2017",
+    "item_size": 20781,
+    "mediatype": "software",
+    "title": "F-Bird"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Car_1987",
+    "item_size": 23175,
+    "mediatype": "software",
+    "title": "Car"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation",
+     "fav-extreme_wreck_2000",
+     "fav-joeguilian77",
+     "fav-matthew_clark924",
+     "fav-tristan_apos_t"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_LadyBug_2008",
+    "item_size": 24590,
+    "mediatype": "software",
+    "title": "LadyBug"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_TetRAM_2000",
+    "item_size": 24987,
+    "mediatype": "software",
+    "title": "TetRAM"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Sokoban_2007",
+    "item_size": 25192,
+    "mediatype": "software",
+    "title": "Sokoban"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation",
+     "fav-ashlaynesaar"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Kitty_of_Death_1995",
+    "item_size": 26238,
+    "mediatype": "software",
+    "title": "Kitty of Death"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Indecent_1995",
+    "item_size": 27229,
+    "mediatype": "software",
+    "title": "Indecent"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Floppy_Bird_2014",
+    "item_size": 27357,
+    "mediatype": "software",
+    "title": "Floppy Bird"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Game_of_Yahtzee_The_1988",
+    "item_size": 28723,
+    "mediatype": "software",
+    "title": "Game of Yahtzee, The"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Cbgtron_1991",
+    "item_size": 28805,
+    "mediatype": "software",
+    "title": "Cbgtron"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Line123_1991",
+    "item_size": 29188,
+    "mediatype": "software",
+    "title": "Line123"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_TinyTris_2004",
+    "item_size": 29490,
+    "mediatype": "software",
+    "title": "TinyTris"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Las_Vegas_Solitaire_1990",
+    "item_size": 30026,
+    "mediatype": "software",
+    "title": "Las Vegas Solitaire"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Worm_Burner_1987",
+    "item_size": 30797,
+    "mediatype": "software",
+    "title": "Worm Burner"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation",
+     "fav-nm03"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Sorry_Ass_2016",
+    "item_size": 31326,
+    "mediatype": "software",
+    "title": "Sorry Ass"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Rebound_1985",
+    "item_size": 31676,
+    "mediatype": "software",
+    "title": "Rebound"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Alien_River_2017",
+    "item_size": 33325,
+    "mediatype": "software",
+    "title": "Alien River"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Lazer_Beam_Wars_1988",
+    "item_size": 33379,
+    "mediatype": "software",
+    "title": "Lazer Beam Wars"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_CRAZYDOS_1989",
+    "item_size": 34342,
+    "mediatype": "software",
+    "title": "CRAZYDOS"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_BooTris_1993",
+    "item_size": 34473,
+    "mediatype": "software",
+    "title": "BooTris"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "fav-arconinternet"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Rompe_Muros_1989",
+    "item_size": 34704,
+    "mediatype": "software",
+    "title": "Rompe Muros"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "fav-raven667"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Bugs_1982",
+    "item_size": 34896,
+    "mediatype": "software",
+    "title": "Bugs!"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Cybotron_1989",
+    "item_size": 35011,
+    "mediatype": "software",
+    "title": "Cybotron"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_VENTURE_pci_1993",
+    "item_size": 35445,
+    "mediatype": "software",
+    "title": "VENTURE"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation",
+     "fav-boredboi",
+     "fav-bruno_cordeiro436",
+     "fav-lisabelle",
+     "fav-mr_jurjie",
+     "fav-oweeeeendennis"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Pentix_1986",
+    "item_size": 35789,
+    "mediatype": "software",
+    "title": "Pentix"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Battleships_1991",
+    "item_size": 36120,
+    "mediatype": "software",
+    "title": "Battleships"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Worm_The_1985",
+    "item_size": 36383,
+    "mediatype": "software",
+    "title": "Worm, The"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_games",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "stream_only",
+     "emulation",
+     "fav-ashlaynesaar"
+    ],
+    "emulator": "dosbox",
+    "identifier": "msdos_Hamburger_Hell_1986",
+    "item_size": 36545,
+    "mediatype": "software",
+    "title": "Hamburger Hell"
+   }
+  ]
+ }
+}
