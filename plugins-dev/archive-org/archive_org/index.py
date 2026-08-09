@@ -158,7 +158,17 @@ SAFE_ROWS = _rows_that_fit(False)
 
 #: Bigger than any Archive.org item by a wide margin (4 TiB), and the
 #: upper bound the size bisection starts from.
+#:
+#: `_collect` uses it as a closed upper bound because it only ever needs a
+#: window big enough to hold the rest of a result set it is peeling. Code
+#: that needs the windows to *provably* tile the whole size axis wants
+#: `OPEN` instead -- see `size_window`.
 MAX_ITEM_SIZE = 2**42
+
+#: Lucene's open bound. `item_size:[N TO *]` is the only upper bound that
+#: cannot be beaten by an item larger than a constant somebody guessed, so
+#: a partition whose completeness is the claim ends on it.
+OPEN = "*"
 
 #: A bisection that cannot terminate must stop anyway. Reached only if a
 #: single `item_size` value holds more documents than fit in one
@@ -281,6 +291,19 @@ def build_query(
     return " AND ".join(clauses)
 
 
+def size_window(q: str, low: int, high: int | str = MAX_ITEM_SIZE) -> str:
+    """`q` narrowed to one `item_size` range, inclusive at both ends.
+
+    The one place this project writes an `item_size` clause, because two
+    places would eventually disagree about whether the bounds are
+    inclusive -- and a partition whose windows overlap by one byte
+    double-counts every item of exactly that size, while one that gaps by
+    one byte loses them. `high` may be `OPEN`, which is what the last
+    window of a partition uses.
+    """
+    return f"{q} AND item_size:[{low} TO {high}]"
+
+
 class Index:
     """One capability call's view of `advancedsearch.php`.
 
@@ -341,7 +364,14 @@ class Index:
     # -- one query, one response ----------------------------------------
 
     def _read(
-        self, q: str, rows: int, page: int | None, *, with_notes: bool
+        self,
+        q: str,
+        rows: int,
+        page: int | None,
+        *,
+        with_notes: bool,
+        fields: list[str] | None = None,
+        sort: str | None = None,
     ) -> list[dict]:
         """`rows` documents in one response, retrying and then shrinking.
 
@@ -349,10 +379,47 @@ class Index:
         served than one given an exception, so a request that fails twice
         halves `rows` and tries again.
         """
+        return self._read_sized(
+            q, rows, page, with_notes=with_notes, fields=fields, sort=sort
+        )[0]
+
+    def read_smallest_first(
+        self, q: str, rows: int, fields: list[str]
+    ) -> tuple[list[dict], int]:
+        """Up to `rows` documents for `q`, smallest `item_size` first.
+
+        Returns the documents **and the number of rows the successful
+        request actually asked for**, which is the only way a caller can
+        tell "that is the whole of `q`" from "the response would not fit
+        and `rows` was halved". `census.py` needs that distinction: the
+        first means a window is finished, the second means it has to be
+        split further, and guessing wrong in either direction is a wrong
+        completeness claim rather than a slow one.
+
+        Sorted ascending because a partition resumes from the largest size
+        it has seen. Unsorted, the documents that came back are an
+        arbitrary subset and no size bound can be drawn under them.
+        """
+        return self._read_sized(
+            q, rows, None, with_notes=False, fields=fields, sort="item_size asc"
+        )
+
+    def _read_sized(
+        self,
+        q: str,
+        rows: int,
+        page: int | None,
+        *,
+        with_notes: bool,
+        fields: list[str] | None = None,
+        sort: str | None = None,
+    ) -> tuple[list[dict], int]:
         for _ in range(HALVINGS + 1):
-            docs = self._attempt(q, rows, page, with_notes=with_notes)
+            docs = self._attempt(
+                q, rows, page, with_notes=with_notes, fields=fields, sort=sort
+            )
             if docs is not None:
-                return docs
+                return docs, rows
             if rows <= 1:
                 break
             rows = max(1, rows // 2)
@@ -413,46 +480,57 @@ class Index:
         requests = 0
 
         while len(out) < limit and requests < MAX_PARTITION_REQUESTS:
-            window = f"{q} AND item_size:[{low} TO {MAX_ITEM_SIZE}]"
             wanted = min(ceiling, limit - len(out))
-            boundary = self._size_at_rank(window, ceiling)
+            bounded, next_low = self.next_window(q, low, ceiling)
             requests += 1
-
-            if boundary is None:
-                # Fewer than `ceiling` documents left: the tail is one read.
-                self._absorb(
-                    self._read(window, wanted, None, with_notes=with_notes),
-                    out, seen, limit,
-                )
-                break
-
-            if boundary > low:
-                # **Below** the boundary, not up to it. The boundary size
-                # may be shared by several documents -- Archive.org's
-                # `item_size` is a byte count and nothing makes it unique
-                # -- and a window that included some of them would have to
-                # either exceed `ceiling` or drop the rest. Excluding the
-                # size entirely puts every document that has it in the
-                # next window, where they are read together.
-                bounded = f"{q} AND item_size:[{low} TO {boundary - 1}]"
-                next_low = boundary
-            else:
-                # The boundary is the window's own first size, so one byte
-                # count holds `ceiling` documents or more. Take that size
-                # alone and step past it. This is the only case that can
-                # lose a document, and only above `ceiling` items of
-                # exactly equal size -- which no observed collection has.
-                bounded = f"{q} AND item_size:[{low} TO {low}]"
-                next_low = low + 1
-
             self._absorb(
                 self._read(bounded, wanted, None, with_notes=with_notes),
                 out, seen, limit,
             )
             requests += 1
+            if next_low is None:
+                break
             low = next_low
 
         return out
+
+    def next_window(
+        self, q: str, low: int, ceiling: int, high: int | str = MAX_ITEM_SIZE
+    ) -> tuple[str, int | None]:
+        """The next `item_size` slice of `q` at or above `low`, and its successor.
+
+        Returns the bounded query for at most `ceiling` documents, and the
+        `low` that the window after it starts from -- `None` when this
+        window is the tail of `[low, high]` and nothing follows it.
+
+        Factored out of `_collect` so `census.py` steps the same way rather
+        than growing a second partitioner. Two implementations of "where
+        does the next window start" is exactly how a catalogue ends up
+        claiming a total its own windows do not add up to.
+        """
+        remaining = size_window(q, low, high)
+        boundary = self.size_at_rank(remaining, ceiling)
+
+        if boundary is None:
+            # Fewer than `ceiling` documents left: the tail is one read.
+            return remaining, None
+
+        if boundary > low:
+            # **Below** the boundary, not up to it. The boundary size may
+            # be shared by several documents -- Archive.org's `item_size`
+            # is a byte count and nothing makes it unique -- and a window
+            # that included some of them would have to either exceed
+            # `ceiling` or drop the rest. Excluding the size entirely puts
+            # every document that has it in the next window, where they are
+            # read together.
+            return size_window(q, low, boundary - 1), boundary
+
+        # The boundary is the window's own first size, so one byte count
+        # holds `ceiling` documents or more. Take that size alone and step
+        # past it. This is the only case that can lose a document, and only
+        # above `ceiling` items of exactly equal size -- which no observed
+        # collection has.
+        return size_window(q, low, low), low + 1
 
     @staticmethod
     def _absorb(part: list[dict], out: list[dict], seen: set, limit: int) -> None:
@@ -471,7 +549,7 @@ class Index:
             if len(out) >= limit:
                 return
 
-    def _size_at_rank(self, q: str, rank: int) -> int | None:
+    def size_at_rank(self, q: str, rank: int) -> int | None:
         """`item_size` of the `rank`-th smallest document, or None.
 
         None means there are fewer than `rank` documents -- which is the
@@ -508,7 +586,14 @@ class Index:
     # -- one attempt ----------------------------------------------------
 
     def _attempt(
-        self, q: str, rows: int, page: int | None, *, with_notes: bool = True
+        self,
+        q: str,
+        rows: int,
+        page: int | None,
+        *,
+        with_notes: bool = True,
+        fields: list[str] | None = None,
+        sort: str | None = None,
     ) -> list[dict] | None:
         """`rows` documents, or None for "ask again, smaller".
 
@@ -517,10 +602,13 @@ class Index:
         readable. A *permanent* problem -- a query the service rejects --
         raises instead, since halving `rows` will never fix it.
         """
-        fields = list(FIELDS) + ([NOTES_FIELD] if with_notes else [])
+        if fields is None:
+            fields = list(FIELDS) + ([NOTES_FIELD] if with_notes else [])
         params = {"q": q, "fl[]": fields, "rows": rows, "output": "json"}
         if page is not None:
             params["page"] = page
+        if sort is not None:
+            params["sort[]"] = sort
 
         for _ in range(ATTEMPTS_PER_SIZE):
             response = self._http.get(ENDPOINT, params=params)
