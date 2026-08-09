@@ -1785,43 +1785,77 @@ live search covers whatever the plugin reached and is current. `--live`
 forces the old path, and a missing or unreadable catalogue degrades to it
 silently.
 
-### `softwarelibrary` (250,398): measured, deliberately not built
+### `softwarelibrary` (250,509): built, in disjoint `item_size` windows
 
-The next largest source. Everything below was measured live on 2026-08-01,
-and it is written down because the next person should start from data.
+The next largest source, and the one whose unit decomposition this section
+used to record as unsolved. It is `archive_org.census` now. What follows
+is why the units are what they are, because the wrong answer here is not a
+smaller catalogue — it is a bigger one that is wrong.
 
-**Enumeration is affordable.** A lean two-field read costs **155 bytes per
-document**, so the host's 4 MiB cap holds ~17,800 — and `item_size` is
-present on **all 250,398** items (`NOT item_size:[* TO *]` matches zero),
-so `archive_org.index._collect`'s existing window partitioning covers the
-collection with roughly 26 windows and ~52 requests. `numFound` was stable
-across repeated calls. Two to four minutes of polite requests, not hours.
+**Sub-collections look like the partition and are not one.** They
+**overlap**. In one 500-item sample, 440 items were in
+`softwarelibrary_apple` *and* 433 in `softwarelibrary_apple_contribs`
+*and* all 500 in `softwarelibrary` itself. Summing `softwarelibrary_c64`
+(98,843), `_apple` (42,273), `_msdos` (23,200), `_atari` (15,570),
+`_amiga` (13,206) and `_zx_spectrum` (12,305) double-counts, and a
+catalogue built on them would report more entries than the collection has
+while claiming to be complete.
 
-**The unit decomposition is the unsolved part, and it is not a detail.**
-`census` needs units whose declared totals *sum* to the collection's, or
-the headline number is a lie in the direction that flatters. Sub-collections
-look like the obvious answer and are not a partition — they **overlap**. In
-one 500-item sample, 440 items were in `softwarelibrary_apple` *and* 433 in
-`softwarelibrary_apple_contribs` *and* all 500 in `softwarelibrary` itself.
-Summing `softwarelibrary_c64` (98,843), `_apple` (42,273), `_msdos`
-(23,200), `_atari` (15,570), `_amiga` (13,206) and `_zx_spectrum` (12,305)
-double-counts, and a catalogue built on them would report more entries than
-the collection has while claiming to be complete.
+**`item_size` windows are disjoint by construction**, and the design turns
+on two properties rather than on hope:
 
-`item_size` windows *are* disjoint by construction and each one's
-`declared_total` can be had from its own `rows=0` request — a genuine
-independent denominator, and the sum is checkable against 250,398. That is
-the design worth building. It was not built here because it is a different
-shape from the No-Intro census (where the source's own items were already
-disjoint), it needs its own verification, and shipping a 250k catalogue
-whose arithmetic had not been proved is precisely the failure this whole
-section exists to prevent.
+- `item_size` is present on **every** item. `NOT item_size:[* TO *]`
+  matches zero, and `scope()` re-checks that on every build rather than
+  trusting this paragraph. An item without the field would sit in no
+  window and be missing from the catalogue *without ever appearing as a
+  shortfall* — the one way this design could be silently wrong, so it is
+  the one thing checked before any window is proposed.
+- the last window ends on Lucene's open bound, `item_size:[N TO *]`, not
+  on a constant. `_collect` uses `2**42` as an upper bound because it only
+  needs a window big enough to hold what it is peeling; a partition whose
+  completeness is the claim cannot end on a number somebody guessed.
 
-So `softwarelibrary` remains served by `archive-org`'s live search, which
-is honest about being a search. Note also that 220,228 of the items carry
-an `emulator` field and 244,457 are downloadable, so the useful scope is
-most but not all of it — another reason the unit design has to be settled
-before a number is published.
+Each window's `declared_total` is its own `rows=0` request — twenty-seven
+independent denominators — and a unit's id **is** its clause, so
+`collection:(softwarelibrary) AND item_size:[0 TO 156073]` reproduces the
+number the report compares against. Measured 2026-08-08: the windows sum
+to **250,509**, and a separate `rows=0` on the collection answered
+250,509. The 250,398 this section recorded on 2026-08-01 was not wrong; the
+collection gained 111 items in a week, which is why the sum is reconciled
+against the service and not against a document.
+
+**Three things the first real build taught, all recorded in code.** A
+whole 9,599-item window fits in one request — 2.5 MB, 2.3 seconds through
+the subprocess — and two windows of twenty-seven were still lost to a
+transient slowdown, because a 2.3-second call only has to be thirteen
+times slower once to exceed the host's 30-second budget and be killed. So
+a page is 5,000 rows and the plugin gives up at 20 seconds on its own
+terms. Second: `scope()` cannot afford one count per window (0.75s quiet,
+2.0s busy, twenty-seven of them) because a scope failure fails the whole
+build rather than one unit — so the ladder is a measured constant and
+`enumerate` fetches the counts, and correctness does not depend on the
+ladder being current. Third: a unit that declares no total is not a unit
+whose total moved, which `Catalogue.begin` now distinguishes — otherwise
+the pages committed for an interrupted window are discarded on the next
+run and the resume machinery does nothing.
+
+**What is counted and what is skipped.** 220,228 items carry an
+`emulator` and 244,568 are not `stream_only`, so the useful scope is most
+but not all of it — and *all* of it is catalogued, because the alternative
+is a denominator that flatters. Items with no emulator, items whose
+emulator is not in the platform table, items under mediatypes that are not
+`software` (`movies` holds `msdos_Epidemic_1983`), and `stream_only` items
+are all kept; the unmapped ones carry **no platform** rather than a
+plausible neighbour, exactly as the 912 unmapped No-Intro files do. The
+only skip is the ~200 `mediatype:collection` listings, which are listings
+*of* items, and it is named and counted in the report.
+
+**What this catalogue cannot do that the No-Intro one can.**
+`advancedsearch.php` publishes no digest at item level, and the metadata
+endpoint that does would be one request per item — 250,509 of them. So
+`rom_hub.grouping` merges these rows on the parsed name alone, the weaker
+half of its evidence ladder, where the No-Intro census collapses two
+uploads of one set on matching sha1s.
 
 ---
 

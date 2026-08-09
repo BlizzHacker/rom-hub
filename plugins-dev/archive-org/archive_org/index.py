@@ -111,6 +111,7 @@ served than one given an exception.
 from __future__ import annotations
 
 import json
+import time
 
 ENDPOINT = "https://archive.org/advancedsearch.php"
 
@@ -333,9 +334,23 @@ class Index:
     call would start answering with yesterday's collection.
     """
 
-    def __init__(self, http, *, max_rows: int = MAX_ROWS):
+    def __init__(self, http, *, max_rows: int = MAX_ROWS, deadline: float | None = None):
         self._http = http
         self._max_rows = max(1, min(int(max_rows), MAX_ROWS))
+        #: A `time.monotonic()` value past which no further request is
+        #: made. Optional, and `search` does not set it.
+        #:
+        #: **It exists because overrunning the host's budget is worse than
+        #: failing inside it.** `broker.host` enforces its 30-second
+        #: ceiling by killing the subprocess -- the only portable way to
+        #: interrupt a blocking pipe read -- so a plugin that overruns does
+        #: not fail one call, it dies, and the host has to start another
+        #: process. Measured on the first real census build: two windows of
+        #: twenty-seven were lost that way to a transient slowdown, on a
+        #: call that normally takes 2.3 seconds. Giving up while there is
+        #: still time to say so turns a kill into a legible failure of one
+        #: unit.
+        self.deadline = deadline
         self._cache: dict[tuple, list[dict]] = {}
         #: Whether the last `fetch` asked for `notes`. A caller reading
         #: control information out of the documents has to know the
@@ -578,6 +593,7 @@ class Index:
         """
         if rank < 1 or rank > DEEP_PAGING_LIMIT:
             return None
+        self._check_deadline(q)
         response = self._http.get(
             ENDPOINT,
             params={
@@ -631,6 +647,7 @@ class Index:
             params["sort[]"] = sort
 
         for _ in range(ATTEMPTS_PER_SIZE):
+            self._check_deadline(q)
             response = self._http.get(ENDPOINT, params=params)
             if response.status_code != 200:
                 continue
@@ -655,6 +672,15 @@ class Index:
                 return [d for d in docs if isinstance(d, dict)]
         return None
 
+    def _check_deadline(self, q: str) -> None:
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            raise IndexUnavailable(
+                f"gave up on {q!r} rather than overrun the host's call "
+                f"budget. Archive.org rate-limits, and a plugin that keeps "
+                f"asking past its budget is killed rather than answered -- "
+                f"which costs the whole call instead of this one request."
+            )
+
     def total(self, q: str) -> int | None:
         """`numFound` for `q`, or None if the service would not say.
 
@@ -662,6 +688,7 @@ class Index:
         any document. Used to tell an operator how much of a collection
         they are about to ask for.
         """
+        self._check_deadline(q)
         response = self._http.get(
             ENDPOINT, params={"q": q, "rows": 0, "output": "json"}
         )

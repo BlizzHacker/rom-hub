@@ -38,6 +38,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -55,7 +56,7 @@ from archive_org.census import (  # noqa: E402
     Census,
     CensusUnavailable,
 )
-from archive_org.index import OPEN, parse_size_clause  # noqa: E402
+from archive_org.index import Index, OPEN, parse_size_clause  # noqa: E402
 
 from rom_hub.census import Catalogue, build  # noqa: E402
 from rom_hub.grouping import group_results  # noqa: E402
@@ -589,6 +590,24 @@ def test_a_window_the_service_will_not_serve_fails_loudly():
 
     with pytest.raises(CensusUnavailable):
         census.enumerate(unit(SMALL_WINDOW), None)
+
+
+def test_a_slow_service_costs_one_unit_rather_than_the_subprocess():
+    """The plugin stops before the host's 30 seconds do.
+
+    `broker.host` enforces its budget by killing the subprocess, so a
+    plugin that overruns costs a process restart on top of the unit. The
+    first real build lost two windows of twenty-seven to exactly that, on
+    a call that normally takes 2.3 seconds.
+    """
+    census, _ = make_census()
+    # Already spent, which is what a service that answered slowly leaves
+    # behind by the time the next request is due.
+    census._index = lambda: Index(census.ctx.http, deadline=time.monotonic() - 1)
+
+    with pytest.raises(CensusUnavailable) as exc:
+        census.enumerate(unit(SMALL_WINDOW), None)
+    assert "rather than overrun the host's call budget" in str(exc.value)
 
 
 def test_the_lean_field_set_is_what_is_actually_asked_for():

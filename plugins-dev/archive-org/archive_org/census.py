@@ -58,9 +58,11 @@ Growth costs requests, never rows.
 
 ## What a unit is, and what it is not
 
-A unit is `item_size:<low>-<high>`, and the id **is** the query: anyone
-can paste it into `advancedsearch.php` and get the unit's declared total
-back. There is no classification here, unlike the No-Intro census, where
+A unit is `item_size:[<low> TO <high>]`, and the id **is** a Lucene
+clause: `collection:(softwarelibrary) AND <unit id>` pasted into
+`advancedsearch.php` returns that unit's declared total, so every row of
+the completeness report can be checked by hand against the service it
+came from. There is no classification here, unlike the No-Intro census, where
 the units were items of genuinely different kinds -- a directory of
 games, a 44 GB pack, a 928 GB CDN mirror. A size window is a slice of one
 collection, so every window is the same kind of thing and every window is
@@ -95,6 +97,9 @@ distinct-game counts should know why.
 
 from __future__ import annotations
 
+import time
+from contextlib import contextmanager
+
 from rom_hub_sdk import CensusPage, CensusProvider, CensusRecord, CensusUnit
 
 from .index import (
@@ -126,10 +131,21 @@ CENSUS_FIELDS = (
     "collection",
 )
 
-#: Rows asked for per page. `rom_hub.types.MAX_CENSUS_RECORDS_PER_PAGE` is
-#: the host's own ceiling on a page and is the binding one here; the byte
-#: budget is checked against it below rather than assumed to be looser.
-PAGE_ROWS = 10000
+#: Rows asked for per page, and **not** the largest that would fit.
+#:
+#: The first real build asked for a whole 9,599-item window in one
+#: request. It works: 2.5 MB of JSON, 2.3 seconds end to end through the
+#: subprocess, measured. It also lost two windows out of twenty-seven to a
+#: transient Archive.org slowdown, because a call that normally takes 2.3
+#: seconds only has to be thirteen times slower once to exceed the host's
+#: 30-second budget and be killed. Half the rows is half the bytes on the
+#: one request most likely to spike, and it costs one extra request per
+#: window against a service that answers a `rows=0` count in 0.3 seconds.
+#:
+#: `rom_hub.types.MAX_CENSUS_RECORDS_PER_PAGE` (10,000) is the host's
+#: ceiling on a page; this is well under it, and under the byte budget
+#: checked below.
+PAGE_ROWS = 5000
 
 #: Measured over six windows spread across the ladder: 262, 272, 272, 280,
 #: 287 and 326 bytes per document with `CENSUS_FIELDS`. The largest full
@@ -143,6 +159,15 @@ BYTES_PER_DOC = 320
 #: splitting below exists to absorb. The assertion is here so the two
 #: numbers cannot drift apart unnoticed.
 assert PAGE_ROWS * BYTES_PER_DOC < MAX_RESPONSE_BYTES
+
+#: How long one capability call may spend before this plugin gives up on
+#: its own terms, against the host's 30 seconds. Set with room for an
+#: in-flight request to return and for a 5,000-record page to be
+#: serialised back, because the point is to fail *inside* the budget: the
+#: host enforces its ceiling by killing the subprocess, so a plugin that
+#: overruns costs a process restart and a unit, where one that gives up
+#: costs a unit and says why.
+CALL_BUDGET_SECONDS = 20.0
 
 #: Where the size windows begin, in bytes. Derived on 2026-08-08 by asking
 #: `advancedsearch.php` for the item_size of the 9,600th smallest item in
@@ -197,6 +222,21 @@ class CensusUnavailable(Exception):
     """A window could not be read, and the message says which part."""
 
 
+@contextmanager
+def _as_census_failure():
+    """`IndexUnavailable` reaches the host as this module's own refusal.
+
+    One exception type per plugin module keeps the failure legible in the
+    `error` column of the completeness report -- and `index` raises for
+    reasons this module has no better wording for than the one `index`
+    already wrote.
+    """
+    try:
+        yield
+    except IndexUnavailable as exc:
+        raise CensusUnavailable(str(exc)) from exc
+
+
 class Census(CensusProvider):
     """`collection:softwarelibrary`, sliced by `item_size`, arithmetic kept."""
 
@@ -218,10 +258,13 @@ class Census(CensusProvider):
            can be silently wrong, checked on every build rather than once
            in a design note.
         """
-        index = Index(self.ctx.http)
+        index = self._index()
         base = self._base_query()
 
-        declared = index.total(base)
+        with _as_census_failure():
+            declared = index.total(base)
+            unsized = index.total(f"{base} AND NOT item_size:[* TO *]")
+
         if not declared:
             raise CensusUnavailable(
                 f"{base!r} matched nothing on advancedsearch.php. That is "
@@ -230,7 +273,6 @@ class Census(CensusProvider):
                 f"completeness claim about nothing."
             )
 
-        unsized = index.total(f"{base} AND NOT item_size:[* TO *]")
         if unsized is None:
             raise CensusUnavailable(
                 "Archive.org would not say how many items of "
@@ -294,26 +336,23 @@ class Census(CensusProvider):
         low, high = _parse_unit_id(unit.unit_id)
         resume, seen, declared = _parse_cursor(cursor, low)
 
-        index = Index(self.ctx.http)
+        index = self._index()
         base = self._base_query()
 
-        if declared is None:
-            declared = index.total(size_window(base, low, high))
+        with _as_census_failure():
             if declared is None:
-                raise CensusUnavailable(
-                    f"Archive.org would not count "
-                    f"{size_window(base, low, high)!r}. Without the "
-                    f"window's own total there is no denominator to check "
-                    f"the walk against, and a walk that cannot be checked "
-                    f"is a list, not a census."
-                )
-
-        try:
+                declared = index.total(size_window(base, low, high))
+                if declared is None:
+                    raise CensusUnavailable(
+                        f"Archive.org would not count "
+                        f"{size_window(base, low, high)!r}. Without the "
+                        f"window's own total there is no denominator to "
+                        f"check the walk against, and a walk that cannot be "
+                        f"checked is a list, not a census."
+                    )
             docs, asked = index.read_smallest_first(
                 size_window(base, resume, high), PAGE_ROWS, list(CENSUS_FIELDS)
             )
-        except IndexUnavailable as exc:
-            raise CensusUnavailable(str(exc)) from exc
 
         # `asked` is what the successful request actually asked for, which
         # is not always `PAGE_ROWS`: a response that would not fit is
@@ -478,6 +517,17 @@ class Census(CensusProvider):
             return None
 
     # -- query ----------------------------------------------------------
+
+    def _index(self) -> Index:
+        """An index reader that stops before the host's budget does.
+
+        See `CALL_BUDGET_SECONDS`. The deadline is set here rather than
+        inside `Index` so `search` -- which makes one small request and
+        answers a person -- keeps its unbudgeted behaviour.
+        """
+        return Index(
+            self.ctx.http, deadline=time.monotonic() + CALL_BUDGET_SECONDS
+        )
 
     def _base_query(self) -> str:
         collection = str(
