@@ -346,7 +346,8 @@ def test_a_sub_collection_listing_is_skipped_with_a_reason_not_dropped():
     """48 of the window's 776 rows are listings *of* items, not items.
 
     Cataloguing a listing as if it were a game is how a catalogue ends up
-    reporting more entries than the collection holds.
+    reporting more entries than the collection holds. The whole collection
+    holds 200 of them, and the live build skipped exactly 200.
     """
     census, _ = make_census()
     page = census.enumerate(unit(SMALL_WINDOW), None)
@@ -356,6 +357,11 @@ def test_a_sub_collection_listing_is_skipped_with_a_reason_not_dropped():
     assert not any(
         r.extra.get("mediatype") == "collection" for r in page.records
     )
+    # The same rows read straight from `sub_collections.json`, so the
+    # thing being skipped is identifiable rather than merely counted.
+    listings = {d["identifier"] for d in SUB_COLLECTIONS["response"]["docs"]}
+    assert "fav-naira92" in listings
+    assert not (listings & {r.record_id for r in page.records})
 
 
 def test_the_unbounded_tail_window_is_read_like_any_other():
