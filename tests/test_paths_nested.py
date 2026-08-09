@@ -24,6 +24,7 @@ import pytest
 
 from rom_hub.paths import (
     UnsafeDestination,
+    dest_in_job_dir,
     dest_under_dir,
     flat_destination_only,
 )
@@ -197,3 +198,33 @@ def test_a_missing_root_is_still_checked(tmp_path):
     with pytest.raises(UnsafeDestination):
         dest_under_dir(root, "../escape.png")
     assert isinstance(dest_under_dir(root, "img/a.png"), Path)
+
+
+def test_a_nul_byte_is_refused_by_name_and_not_by_resolve(tmp_path):
+    """The NUL refusal must not depend on `resolve()` raising for us.
+
+    Both guards used to catch an embedded NUL only as a side effect: on the
+    Pythons of the day `resolve()` raised `ValueError`, the `except` around
+    it happened to cover the case, and a comment recorded that as the
+    mechanism. Python 3.13 on Windows stopped raising, and the guard
+    silently stopped guarding -- it was still *called*, still *passed*, and
+    still returned a destination containing a NUL.
+
+    So this asserts the property rather than the symptom: refused on every
+    platform, at both layers, without the filesystem being consulted at all.
+    A root that does not exist is used deliberately -- if the answer needed
+    `resolve()` to object, it could not be given here.
+    """
+    missing = tmp_path / "never" / "created"
+    assert not missing.exists()
+
+    for hostile in ("\x00", "a\x00b", "\x00.png", "img\x00"):
+        with pytest.raises(UnsafeDestination, match="NUL"):
+            dest_in_job_dir(missing, hostile)
+        with pytest.raises(UnsafeDestination, match="NUL"):
+            dest_under_dir(missing, hostile)
+
+    # Nested, where the NUL is in a component rather than the whole name.
+    for hostile in ("img/a\x00b", "a\x00b/img.png", "img/sub/\x00"):
+        with pytest.raises(UnsafeDestination, match="NUL"):
+            dest_under_dir(missing, hostile)
