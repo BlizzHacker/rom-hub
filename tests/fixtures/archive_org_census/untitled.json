@@ -1,0 +1,108 @@
+{
+ "response": {
+  "numFound": 8,
+  "docs": [
+   {
+    "collection": [
+     "msdos_demoscene",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "emulation",
+     "fav-extreme_wreck_2000"
+    ],
+    "emulator": "dosbox",
+    "identifier": "demoscene_-ZaStaR",
+    "item_size": 693334,
+    "mediatype": "software",
+    "title": ")"
+   },
+   {
+    "collection": [
+     "softwarelibrary_msdos_zzt",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "zzt_YAAAY",
+    "item_size": 760118,
+    "mediatype": "software",
+    "title": "____________________"
+   },
+   {
+    "collection": [
+     "msdos_demoscene",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "emulation",
+     "fav-brett34",
+     "fav-extreme_wreck_2000",
+     "fav-jeremy_therriault",
+     "fav-slaykes"
+    ],
+    "emulator": "dosbox",
+    "identifier": "demoscene_--cokers",
+    "item_size": 1669359,
+    "mediatype": "software",
+    "title": "-"
+   },
+   {
+    "collection": [
+     "msdos_demoscene",
+     "softwarelibrary_msdos",
+     "softwarelibrary",
+     "emulation"
+    ],
+    "emulator": "dosbox",
+    "identifier": "demoscene_-Trybit",
+    "item_size": 3530068,
+    "mediatype": "software",
+    "title": "???"
+   },
+   {
+    "collection": [
+     "softwarelibrary_c64_demos",
+     "softwarelibrary_c64",
+     "softwarelibrary"
+    ],
+    "emulator": "vice-resid",
+    "identifier": "c64__-",
+    "item_size": 17096174,
+    "mediatype": "software"
+   },
+   {
+    "collection": [
+     "osu-skins",
+     "softwarelibrary",
+     "emulation"
+    ],
+    "identifier": "simplicity_202105",
+    "item_size": 21777438,
+    "mediatype": "data"
+   },
+   {
+    "collection": [
+     "osu-skins",
+     "softwarelibrary",
+     "emulation",
+     "fav-tristan_apos_t"
+    ],
+    "identifier": "vopbe-skin-v-1",
+    "item_size": 33588839,
+    "mediatype": "data"
+   },
+   {
+    "collection": [
+     "rpgmaker-net-game-archive",
+     "softwarelibrary",
+     "emulation",
+     "fav-redpandamet"
+    ],
+    "identifier": "rmn-game-9339-",
+    "item_size": 73035279,
+    "mediatype": "software",
+    "title": "_"
+   }
+  ]
+ }
+}

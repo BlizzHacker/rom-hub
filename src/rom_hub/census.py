@@ -412,6 +412,25 @@ class Catalogue:
         identity, declared total and kind are unchanged keeps its records
         and its state; anything else is reset, because a unit whose
         declared total moved is a unit whose contents moved.
+
+        **A unit that declares no total is a separate case, and only half
+        of it is a reset.** Some sources cannot state a total in `scope`
+        at all: `archive_org.census` partitions a 250,000-item collection
+        into `item_size` windows, and counting each window costs a request
+        that a scope has no room for -- a scope failure fails the whole
+        build rather than one unit. Those units arrive with
+        `declared_total=None` every time, which is not "the total moved"
+        and must not be read as it.
+
+        * A **partial** unit keeps its rows and its cursor. It was
+          interrupted, its denominator is carried in its own cursor, and
+          throwing away pages that were committed exactly so an interrupted
+          build could resume would defeat the mechanism that wrote them.
+        * A **done** unit is still reset and re-walked. A window has no
+          identity beyond its bounds -- `item_size:[a TO b]` is the same
+          window whatever is in it -- so there is no signal that its
+          contents changed, and a refresh that kept the old rows would be a
+          refresh that refreshed nothing.
         """
         kinds = tuple(kinds if kinds is not None else DEFAULT_KINDS)
         self._set_meta("slug", slug)
@@ -436,12 +455,17 @@ class Catalogue:
                 "SELECT declared_total, kind, state FROM units WHERE unit_id = ?",
                 (unit.unit_id,),
             ).fetchone()
-            unchanged = (
-                row is not None
-                and row["declared_total"] == unit.declared_total
-                and row["kind"] == unit.kind
+            same_kind = row is not None and row["kind"] == unit.kind
+            unchanged = same_kind and row["declared_total"] == unit.declared_total
+            # See the docstring: a plugin that cannot afford to state a
+            # total at scope keeps a half-walked unit and re-walks a
+            # finished one.
+            resumable = (
+                same_kind
+                and unit.declared_total is None
+                and row["state"] == PARTIAL
             )
-            if unchanged and included and row["state"] in (DONE, PARTIAL):
+            if (unchanged or resumable) and included and row["state"] in (DONE, PARTIAL):
                 self._db.execute(
                     "UPDATE units SET label = ?, platform = ?, size_bytes = ?, "
                     "included = 1, reason = ? WHERE unit_id = ?",

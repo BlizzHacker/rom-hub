@@ -306,11 +306,11 @@ def load_catalog(path: Path) -> list[CatalogEntry]:
 #: at all. `require()` is what refuses; this is the same rule stated for
 #: a reader deciding what to install.
 #:
-#: `search`, `stream`, `cores` and `firmware` map to nothing on purpose.
-#: None of them *needs* the library: a search returns results, a stream
-#: resolves a target somebody else plays, and a core or a BIOS lands in a
-#: directory of the Hub's own. They work against every backend, including
-#: none at all.
+#: `search`, `stream`, `census`, `cores` and `firmware` map to nothing on
+#: purpose. None of them *needs* the library: a search returns results, a
+#: stream resolves a target somebody else plays, a census writes a
+#: catalogue under `var/`, and a core or a BIOS lands in a directory of
+#: the Hub's own. They work against every backend, including none at all.
 CAPABILITY_NEEDS: dict[str, str] = {
     "importer": "import",
     "metadata": "metadata",

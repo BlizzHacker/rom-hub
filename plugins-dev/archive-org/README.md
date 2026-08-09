@@ -1,6 +1,6 @@
 # Archive.org plugin for ROM Hub
 
-Implements four RPP v1 capabilities:
+Implements five RPP v1 capabilities:
 
 | Capability | Endpoint | Does |
 |---|---|---|
@@ -8,6 +8,67 @@ Implements four RPP v1 capabilities:
 | `importer` | `metadata/<identifier>` | picks the payload file and the RomM platform |
 | `metadata` | `metadata/<identifier>` | title, cover, and **how the game is controlled** |
 | `stream` | `metadata/<identifier>` | resolves an item to the page that plays it |
+| `census` | `advancedsearch.php` | all of `softwarelibrary`, in windows whose totals add up |
+
+## The census, and why the units are byte counts
+
+`rom-hub census build archive-org` walks the whole of `softwarelibrary` —
+**250,509 items** on 2026-08-08 — into a catalogue that can state its own
+denominator. The hard part is not the walk. It is choosing units whose
+declared totals *sum* to the collection's, because units that overlap
+produce a number that is too big and reads like success.
+
+**Sub-collections overlap.** In one 500-item sample 440 items were in
+`softwarelibrary_apple`, 433 in `softwarelibrary_apple_contribs`, and all
+500 in `softwarelibrary` itself. Adding up `_c64` (98,843), `_apple`
+(42,273), `_msdos` (23,200) and the rest reports more entries than the
+collection has.
+
+**`item_size` ranges do not.** The 27 windows tile `[0, ∞)` — the first
+starts at zero, each ends one byte below the next, and the last ends on
+Lucene's open bound so no item is too large to be inside the partition.
+Every item carries `item_size` (`NOT item_size:[* TO *]` matches zero),
+which `scope` re-checks on every build and **refuses** to partition
+without: an item in no window would be missing without ever showing up as
+a shortfall.
+
+A unit's id is its clause, so the report is checkable by hand:
+
+```
+$ rom-hub census report archive-org --units
+archive-org: complete -- 250,509 of 250,509 declared entries across 27 units
+  250,309 catalogued rows -> 242,928 distinct dumps in 189,878 games
+  skipped, by reason:
+         200  a sub-collection listing, not a software item (mediatype:collection)
+
+UNIT                                     KIND        DECL    KEPT STATE
+item_size:[0 TO 156073]                  roms       9,599   9,439 done
+item_size:[156074 TO 209197]             roms       9,590   9,585 done
+...
+item_size:[5698242445 TO *]              roms         946     946 done
+```
+
+and `collection:(softwarelibrary) AND item_size:[0 TO 156073]` at `rows=0`
+is where that 9,599 came from. The twenty-seven declared totals add up to
+250,509, which is what the collection's own `numFound` answered — measured
+2026-08-08, 651 seconds, 81 requests.
+
+**What is kept.** Everything except sub-collection *listings*
+(`mediatype:collection`), which are named and counted as a skip. Items
+with no `emulator`, items whose emulator is not in the platform table, and
+items under a mediatype that is not `software` are all catalogued —
+unmapped ones with **no platform** rather than a plausible neighbour.
+`stream_only` items are marked, not dropped.
+
+**What it cannot do.** `advancedsearch.php` publishes no digest at item
+level, so `rom_hub.grouping` merges these rows on the parsed name alone.
+The No-Intro census carries sha1/md5/crc32 and collapses duplicate uploads
+on proof; this one cannot.
+
+`census_collection` (default `softwarelibrary`) chooses the collection.
+One, not the search scope's list: two collections would need two
+partitions and two denominators, and summing them would double-count the
+212 items in both.
 
 ## The Console Living Room
 
