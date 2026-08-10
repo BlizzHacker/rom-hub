@@ -929,6 +929,37 @@ that genuinely has no collections never looks like a broken one.
 [`scripts/proof-stack.compose.yml`](scripts/proof-stack.compose.yml) stands up
 the three disposable servers it needs.
 
+### State of the project, and where help lands hardest
+
+The host is the well-tested part: 3,311 tests, the CI gates above, and the
+PROOF matrix against live backends. The honest asymmetry is that **each
+plugin lives in its own repository with its own, much smaller suite** — the
+host proves a plugin cannot escape its box and that its *declarations* are
+consistent, not that its parser still matches its upstream's HTML this week.
+[docs/PLUGINS.md](docs/PLUGINS.md) marks every plugin ✔/❗/✖ against the
+current host, and that table is regenerated rather than hand-edited, so it
+is current but it is not a substitute for people actually using each source.
+
+What a contribution is worth here, most-leveraged first:
+
+- **A new plugin.** One file, one manifest, sandboxed by default —
+  [CONTRIBUTING.md](CONTRIBUTING.md) walks it end to end, and
+  `rom-hub plugin submit` prepares the catalogue entry for you. Sources we
+  would take tomorrow: TOSEC-catalogued sets, MSX archives, Atari 8-bit
+  archives, and any archive with clean terms that the
+  [refused-sources list](docs/PLUGINS.md#every-plugin-listed-here-is-published)
+  doesn't already rule out.
+- **Field reports against Gaseous and Retrom.** The PROOF matrix runs
+  against disposable containers; a report from a lived-in install with real
+  data catches what a fresh one cannot.
+- **Breakage reports for the ❗ plugins.** Each ❗ in
+  [docs/PLUGINS.md](docs/PLUGINS.md) names its caveat; when an upstream
+  changes shape, the person who notices first is whoever used it that day.
+- **A second pair of eyes on the sandbox.** The
+  [Security model](#security-model) section says exactly what is and is not
+  confined; adversarial review of that boundary is welcome — file it
+  privately if you think you got out.
+
 ## Security model
 
 Plugins run as subprocesses and are given **no RomM token and no filesystem
