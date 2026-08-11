@@ -1,7 +1,5 @@
 # RomM Hub Phase 1.5 — Plugin Sandbox Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Make the manifest's `network` allowlist a genuine containment boundary by having each plugin subprocess install a restrictive seccomp filter on itself before any plugin code is imported — so the claim retracted in finding C1 can be truthfully re-asserted for network egress.
 
 **Architecture:** `pyseccomp` filter installed by the runner after `PR_SET_NO_NEW_PRIVS` and after the SDK imports, but *before* `importlib.import_module` loads the plugin. The child reports its sandbox state back in the `init` result; the host refuses to proceed unsandboxed unless explicitly opted out.

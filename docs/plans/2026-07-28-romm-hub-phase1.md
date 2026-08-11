@@ -1,7 +1,5 @@
 # RomM Hub Phase 1 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** A CLI that searches Archive.org through an installed plugin, over the brokered `ctx.http` path — proving the RPP contract and the broker security model before any UI or import work is built on top of them. Phase 1 does **not** sandbox the plugin subprocess; see Global Constraints.
 
 **Architecture:** A host process spawns each plugin as a subprocess and speaks newline-delimited JSON-RPC over stdin/stdout. Plugins are handed no RomM token and no library mount, and the plugin API offers no socket — they call `ctx.http`, which is an RPC back to the host that enforces the plugin's declared allowlist before performing the request. (The subprocess itself is unsandboxed in Phase 1, so that is the supported path, not the only one.) Search fans out across plugins in parallel and returns partial results with per-plugin status.

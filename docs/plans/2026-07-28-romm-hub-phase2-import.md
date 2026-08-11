@@ -1,7 +1,5 @@
 # RomM Hub Phase 2 — Import Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** The Hub can take a search result from a plugin and put the actual ROM into RomM's library — download, dedup, chunked upload, collection grouping — with a job queue that survives a restart.
 
 **Architecture:** A new `importer` capability lets a plugin return a *`FetchPlan`* describing what to fetch; the **host** validates every URL in that plan against the plugin's own allowlist, downloads it, hashes it, dedups against RomM, and uploads it via RomM's chunked upload API. The plugin never sees the RomM token and never performs a privileged step.
