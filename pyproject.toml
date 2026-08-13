@@ -29,6 +29,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+rom_hub = ["catalog/*.json"]
+
 [tool.pytest.ini_options]
 # Resolve the package from THIS tree. Worktrees share site-packages, so a
 # `pip install -e` in one silently repointed imports for the other.

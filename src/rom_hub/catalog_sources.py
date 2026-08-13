@@ -98,9 +98,14 @@ from .catalog import CatalogEntry, CatalogError, parse_catalog
 from .netpolicy import url_allowed
 from .paths import UnsafeDestination, dest_in_job_dir
 
-#: The directory this repository ships. Always present, always first, and
+#: The directory this Python package ships. Always present, always first, and
 #: not removable -- see `read_sources`.
-BUNDLED_CATALOG = Path(__file__).resolve().parents[2] / "catalog" / "plugins.json"
+#:
+#: This must live *inside* ``rom_hub``. The old source-tree-relative path
+#: reached ``catalog/plugins.json`` from a checkout, but pointed outside the
+#: package after pip built a wheel. Docker installs the wheel, so a fresh
+#: container had a healthy Hub and an empty catalogue.
+BUNDLED_CATALOG = Path(__file__).resolve().parent / "catalog" / "plugins.json"
 
 #: The name reserved for it. A configured source may not take this name,
 #: because "which one said that" has to have exactly one answer.

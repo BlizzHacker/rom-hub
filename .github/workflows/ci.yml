@@ -25,6 +25,22 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 jobs:
+  # ------------------------------------------------------------ packaging
+  # Editable installs can see files that a wheel forgot to include. Docker
+  # installs a wheel, so inspect that exact artifact before calling CI green.
+  package:
+    name: packaged catalogue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps --wheel-dir dist
+      - name: Bundled plugin catalogue is in the wheel
+        run: python scripts/check_wheel_catalog.py dist/*.whl
+
   # ---------------------------------------------------------------- Linux
   #
   # The load-bearing job. seccomp is a Linux facility, so Linux is the only
@@ -196,12 +212,14 @@ jobs:
   ci:
     name: ci
     runs-on: ubuntu-latest
-    needs: [linux, windows]
+    needs: [package, linux, windows]
     if: always()
     steps:
       - name: Every job succeeded
         run: |
           echo "linux:   ${{ needs.linux.result }}"
           echo "windows: ${{ needs.windows.result }}"
+          echo "package: ${{ needs.package.result }}"
+          test "${{ needs.package.result }}" = success
           test "${{ needs.linux.result }}" = success
           test "${{ needs.windows.result }}" = success

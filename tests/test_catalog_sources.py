@@ -91,6 +91,16 @@ def test_a_fresh_install_has_exactly_the_bundled_directory(tmp_path):
     assert not sources_path(tmp_path).exists()
 
 
+def test_the_bundled_catalogue_lives_inside_the_installable_package():
+    """A source checkout and a pip-installed wheel must find the same file."""
+    packaged = Path(bundled_source().location)
+    assert packaged.is_file()
+    assert packaged.parent.name == "catalog"
+    assert packaged.parent.parent.name == "rom_hub"
+    source_copy = Path(__file__).resolve().parents[1] / "catalog" / "plugins.json"
+    assert packaged.read_bytes() == source_copy.read_bytes()
+
+
 def test_added_sources_come_after_the_bundled_one_in_the_order_given(tmp_path):
     add_source(tmp_path, "first", str(THIRD_PARTY))
     add_source(tmp_path, "second", str(ONE_PLUGIN))
