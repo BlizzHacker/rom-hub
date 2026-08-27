@@ -414,165 +414,32 @@ not asserted — see `src/rom_hub/playability.py` and
 
 ## Fulfilling requests from GG Requestz
 
-Everything above is a command somebody types. This is the one thing the Hub
-does without being asked: it listens for [GG
-Requestz](https://github.com/ggrequestz/ggrequestz) game requests and imports
-what was asked for.
+The released ROM Hub CLI does **not** include a `webhook` command. An earlier
+version of this README described an unmerged standalone receiver as if it had
+already shipped, which led operators to search for a command that was not in
+their container.
 
-    ROM_HUB_WEBHOOK_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-    export ROM_HUB_WEBHOOK_TOKEN
-    rom-hub webhook url        # the URL to paste into GG Requestz
-    rom-hub webhook serve      # listen (Ctrl-C to stop)
+The supported arrangement is [ROMarr](https://github.com/BlizzHacker/romarr)
+in front, using Hub plugins as sources. Configure the sender in the **GG
+Requestz container**:
 
-Set that URL as `REQUEST_WEBHOOK_URL` in GG Requestz's environment. Nothing has
-to change on its side — it already POSTs a `game_request` event when a request
-is approved, and this reads the payload it already sends.
+    REQUEST_WEBHOOK_URL=http://romarr:6868/api/v1/webhook/ggrequestz?apikey=<ROMARR_API_KEY>
 
-    rom-hub webhook log                    # every request and what came of it
-    rom-hub webhook log --state NO_MATCH    # the ones nothing was found for
-    rom-hub webhook forget <request-id>     # let a re-approval be acted on again
+Open **System → GG Requestz requests** in ROMarr to build the exact value for
+your installation. `http://romarr:6868` assumes both containers share a Docker
+network; otherwise use ROMarr's LAN or HTTPS URL as reachable from inside GG
+Requestz. GG Requestz 1.5+ sends an event only when its request is approved, so
+enable `request.auto_approve` or approve it manually.
 
-Request state lives in `$ROM_HUB_HOME/var/requests.db`, separate from the job
-queue: a request can end without any job at all, and it has to outlive every
-retry for the duplicate guard below to mean anything.
+`GGREQUESTZ_URL` in ROMarr is only the opposite-direction page link and
+reachability check. It does not configure this webhook. The completed URL
+contains ROMarr's API key because GG Requestz cannot attach an authentication
+header; treat it as a password and keep it on a trusted network or HTTPS.
 
-### Answering requests without ROMarr
-
-The normal arrangement is ROMarr in front, using the Hub's plugins as sources —
-that is what the Hub is for. This section is about the other case: pointing a
-request webhook straight at the Hub when you are not running ROMarr at all.
-
-Both answer the same webhook, and what differs is only where the file comes
-from. ROMarr fulfils from **torrent indexers** — public and private trackers,
-via Prowlarr, through a download client. The Hub alone fulfils from the
-**curated sources its plugins already search**: Archive.org's software
-collections, homebrew release pages, itch.io, the No-Intro archive, ScummVM's
-freeware, the demoscene archives.
-
-That is a sourcing difference, not a rivalry. It decides what you are willing
-to have your server fetch:
-
-* The Hub's sources are **publicly published catalogues fetched over HTTPS from
-  the origin that published them**. Every URL is inside the requesting plugin's
-  declared allowlist, and the allowlist is re-checked on every redirect hop. No
-  peer-to-peer traffic leaves the host, so no VPN or seedbox is involved and
-  your IP is not in a swarm. What you get back is what those catalogues hold —
-  abandonware, homebrew, freeware, public-domain and archived material — which
-  is a smaller set than a tracker's and a different kind of set. A request for a
-  current commercial release will usually come back `NO_MATCH`.
-* ROMarr's sources are trackers. Far broader coverage, and everything that
-  follows from BitTorrent: a swarm, a client to configure, and whatever your
-  jurisdiction and your trackers' rules make of it.
-
-If you run ROMarr, point `REQUEST_WEBHOOK_URL` at ROMarr and let it use the
-Hub's plugins as sources — you get both sets of sources and one place to manage
-them. Aim the webhook at the Hub only when you are not running ROMarr: GG
-Requestz posts to a single URL, so the webhook itself can only have one
-destination.
-
-### The token in the URL is a shared secret, not authentication
-
-**Say it plainly, because the mechanism cannot be made stronger from this
-end.** GG Requestz posts with `Content-Type: application/json` and nothing
-else: no signature, no bearer token, no shared-secret header. That is merged
-upstream and is not going to change. So the only channel available is the URL
-itself, and the token is a path segment (`/requests/<token>`, or
-`?token=<token>` if a proxy route suits you better).
-
-What that means, exactly:
-
-* Anyone who learns the URL can queue an import. The token proves knowledge of
-  a string; it does not authenticate a sender.
-* It appears in GG Requestz's environment in plaintext, and in anything that
-  logs URLs — reverse proxies, browser history if you ever paste it, shell
-  history.
-* Over plain HTTP it is on the wire in the clear.
-
-What is done about it:
-
-* **Loopback by default.** `127.0.0.1`, so the default deployment is GG
-  Requestz and the Hub on the same host. Binding elsewhere is allowed and says
-  so on stderr when it happens.
-* **A minimum length.** 24 characters, refused below that, because the URL is
-  the entire gate.
-* **No default token.** `webhook serve` refuses to start without one rather
-  than shipping a guessable value.
-* **`401` for everything else**, including a wrong path — a `404` would tell a
-  scanner which paths exist.
-* **The token is kept out of the Hub's own log.** `http.server` would otherwise
-  write the request line, and the request line is the secret.
-
-If the two are not on one host, put TLS and an authenticating proxy in front of
-it. That is a real fix; nothing inside this receiver can be one.
-
-### What it does with a request, and what it refuses to do
-
-    POST /requests/<token>
-    {"type": "game_request",
-     "data": {"request_id": "eac1cd44-...", "game_title": "Chrono Trigger",
-              "igdb_id": "1234", "platforms": ["Super Nintendo"],
-              "request_type": "game"}}
-
-    202 {"status": "accepted", "request_id": "eac1cd44-..."}
-
-**It answers in milliseconds and works afterwards.** GG Requestz allows a
-receiver five seconds and logs a failure past it; an import is a multi-gigabyte
-download. So the handler records the request and answers `202`, and a worker
-thread does the search and the import. There is no configuration in which
-fulfilment happens inside the request.
-
-**The same request arriving twice imports once.** GG Requestz re-dispatches on
-re-open and on re-approval, so this is the normal case. Requests are keyed on
-`request_id`; a repeat is answered `202 {"status": "duplicate"}` and does
-nothing. `rom-hub webhook forget <id>` is the deliberate undo — a request
-recorded `NO_MATCH` becomes fulfillable the moment you install a plugin that
-covers it.
-
-**A near miss is not a match.** A wrong ROM in your library is worse than an
-unfulfilled request, so:
-
-* `igdb_id` decides when a source states one — an id identifies a game, a title
-  is a string two games can share. (No search plugin shipped here emits one
-  today; they index Archive.org items and release pages, which carry no IGDB
-  ids. So in practice matching falls to the title, and this is the key that gets
-  used the day a source does carry it.)
-* Otherwise the title must match **exactly** under the same normaliser the
-  search listing already groups by — case, accents, `&` versus `and`,
-  punctuation and a leading or trailing article are ignored; nothing else is.
-  `Chrono Trigger 2` does not answer a request for `Chrono Trigger`.
-* Two platforms offering the same title, with nothing in the request to choose
-  between them, is a refusal and not a coin toss.
-* A stream-only copy — an Archive.org item that plays in the page and has no
-  downloadable file — is refused with `rom-hub stream` named instead.
-
-Every refusal is recorded with the reason, in a sentence, on the request row.
-
-**`platforms` narrows the search when it can.** GG Requestz sends IGDB platform
-*names*; the plugins take RomM slugs. `src/rom_hub/webhook.py` holds that
-translation and a test checks every target against RomM's own slug vocabulary.
-A name with no entry is reported on the request row and the search runs
-unfiltered — narrowing on a guess would silently exclude the right answer.
-
-**Only `game` requests are acted on.** `update` and `fix` are complaints about
-a rom that is *already* in the library; the Hub cannot patch one, and importing
-a second copy is not what was asked for. Both are recorded `IGNORED` with that
-said. `ROM_HUB_WEBHOOK_TYPES=game,update,fix` widens it if you want it anyway.
-
-### Receiver settings
-
-| Variable | Meaning | Default |
-|---|---|---|
-| `ROM_HUB_WEBHOOK_TOKEN` | the URL secret; required, 24 characters minimum | none — `serve` refuses without it |
-| `ROM_HUB_WEBHOOK_HOST` | address to bind | `127.0.0.1` |
-| `ROM_HUB_WEBHOOK_PORT` | port to bind | `8770` |
-| `ROM_HUB_WEBHOOK_PATH` | route the token hangs off | `/requests` |
-| `ROM_HUB_WEBHOOK_TYPES` | request types to fulfil | `game` |
-
-The backend, the plugins and the download directory are the ones every other
-command uses: `webhook serve` refuses to start if `ROM_HUB_BACKEND`'s backend
-cannot import, so a receiver that would answer `202` and fill nothing does not
-bind a port. See `docs/DESIGN.md`, *The request receiver*, for why this is
-`http.server` and not a web framework.
+A direct-to-Hub receiver remains development work. Until its implementation is
+merged and released, do not follow examples using `rom-hub webhook serve`,
+`rom-hub webhook url`, or `ROM_HUB_WEBHOOK_TOKEN`: those commands and settings
+are not present in the published CLI.
 
 ## Enriching metadata
 
