@@ -183,13 +183,10 @@ implementation and a CLI command:
 Plus the broker, a seccomp-confined plugin subprocess, and a job queue that
 survives a restart. No web UI yet.
 
-**One thing arrives rather than being typed.** `rom-hub webhook serve` receives
-[GG Requestz](https://github.com/ggrequestz/ggrequestz) game requests and
-fulfils them through the same `search` fan-out and the same `importer` pipeline
-above — so the Hub can answer a request directly, without ROMarr in front of
-it, from its own curated sources. See [Answering requests without
-ROMarr](#answering-requests-without-romarr), including why the token in the URL
-is a shared secret and not authentication.
+**Requests arrive through ROMarr.** [GG Requestz](https://github.com/XTREEMMAK/ggrequestz)
+posts approved requests to ROMarr, which searches torrent indexers and the
+Hub's enabled plugins through one request pipeline. The released Hub remains a
+CLI and plugin host; it does not bind an inbound request port of its own.
 
 ## Which library server
 
@@ -423,7 +420,9 @@ The supported arrangement is [ROMarr](https://github.com/BlizzHacker/romarr)
 in front, using Hub plugins as sources. Configure the sender in the **GG
 Requestz container**:
 
-    REQUEST_WEBHOOK_URL=http://romarr:6868/api/v1/webhook/ggrequestz?apikey=<ROMARR_API_KEY>
+```env
+REQUEST_WEBHOOK_URL=http://romarr:6868/api/v1/webhook/ggrequestz?apikey=<ROMARR_API_KEY>
+```
 
 Open **System → GG Requestz requests** in ROMarr to build the exact value for
 your installation. `http://romarr:6868` assumes both containers share a Docker
@@ -437,9 +436,9 @@ contains ROMarr's API key because GG Requestz cannot attach an authentication
 header; treat it as a password and keep it on a trusted network or HTTPS.
 
 A direct-to-Hub receiver remains development work. Until its implementation is
-merged and released, do not follow examples using `rom-hub webhook serve`,
-`rom-hub webhook url`, or `ROM_HUB_WEBHOOK_TOKEN`: those commands and settings
-are not present in the published CLI.
+merged and released, do not follow older examples using standalone webhook
+subcommands or receiver-token settings: they are not present in the published
+CLI.
 
 ## Enriching metadata
 
@@ -962,30 +961,11 @@ That last gap is why "install only plugins you trust" is stated as strongly as
 it is, and it is not closed by anything in Phase 2. See
 [docs/DESIGN.md](docs/DESIGN.md#security-the-broker-model).
 
-### The one listening socket, and why it is a socket at all
+### No listening socket in the released CLI
 
-Everything above is about a process that opens outbound connections and no
-inbound ones. `rom-hub webhook serve` is the exception and the only one: it
-binds a port and accepts a POST. That is worth stating in this section rather
-than only in the feature section, because it is a genuinely different exposure.
-
-* **It only exists while you run it.** No other command binds anything, and
-  nothing starts it for you. A Hub you never run `webhook serve` on has exactly
-  the network surface it had before.
-* **Loopback by default**, so the default deployment is not on the network at
-  all.
-* **The token in the URL is not authentication**, and the reasons and the
-  mitigations are set out in [The token in the URL is a shared secret, not
-  authentication](#the-token-in-the-url-is-a-shared-secret-not-authentication).
-  The short version: GG Requestz sends no signature and no auth header, that is
-  merged upstream, and no amount of work on this end changes it.
-* **A request cannot reach a plugin's privileges.** What arrives is a title, an
-  optional id and a list of platform names. It selects among results the
-  installed plugins returned; it cannot name a URL, a host, a file or a
-  platform slug the plugin did not already offer, and every byte fetched is
-  still gated by the requesting plugin's own declared allowlist. The receiver is
-  a caller of the same pipeline `rom-hub import` is — it has no extra powers to
-  lend.
-* **The body is bounded before it is read** (64 KiB, refused on the declared
-  `Content-Length`), the work queue is bounded (`503` when full), and a
-  malformed body is a `400` on a server that keeps listening.
+Every released Hub command opens outbound connections only. The Hub does not
+bind an HTTP port, run a background request server or accept inbound webhook
+payloads. GG Requestz talks to ROMarr, and ROMarr invokes the Hub through the
+same local plugin bridge it uses for interactive searches. If a standalone
+receiver ships later, its inbound network and credential model must be
+documented here in the release that actually contains it.
