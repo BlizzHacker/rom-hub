@@ -22,6 +22,7 @@ import json
 import os
 import sqlite3
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from . import backends, emuassets, env, secrets
@@ -102,6 +103,17 @@ from .types import (
     MAX_TORRENT_BYTES,
     SearchResult,
 )
+from .webhook import (
+    DEFAULT_FULFIL_TYPES,
+    KNOWN_REQUEST_TYPES,
+    FulfilmentRefused,
+    RequestLog,
+    RequestState,
+    WebhookConfigError,
+    check_token,
+    fulfil as fulfil_request,
+)
+from .webhook_server import WebhookServer
 
 #: The directory this repository ships. Kept as a module attribute because
 #: it was one before there were several, and because "the bundled one" is
@@ -202,6 +214,20 @@ def jobs_db_path(root: Path | None = None) -> Path:
 def downloads_dir(root: Path | None = None) -> Path:
     """Where in-flight downloads land. Same reasoning as jobs_db_path."""
     return Path(root or default_root()) / "var" / "downloads"
+
+
+def requests_db_path(root: Path | None = None) -> Path:
+    """Where the webhook receiver records the requests it has seen.
+
+    Beside the job queue, for the same reason, and a *separate* file from
+    it on purpose: the two have different lifetimes and different owners.
+    A job is one import attempt and `rom-hub jobs` is where an operator
+    looks at it; a request is somebody asking for a game, may end without
+    any job at all (`NO_MATCH`), and is the row that must outlive every
+    retry for the duplicate guard to hold. Sharing one file would have
+    `rom_hub.jobs`'s schema migration reaching a table it does not own.
+    """
+    return Path(root or default_root()) / "var" / "requests.db"
 
 
 def artwork_dir(root: Path | None = None) -> Path:
@@ -2594,6 +2620,313 @@ def _cmd_jobs(args) -> int:
     return EXIT_OK
 
 
+# --- the request webhook ------------------------------------------------
+
+#: The port `rom-hub webhook serve` binds unless told otherwise. Chosen to
+#: collide with nothing an operator running this stack already has: RomM is
+#: 8080, GG Requestz is 3000, romm-stream is 8090, and 7878 belongs to
+#: Radarr on every *arr host in existence.
+DEFAULT_WEBHOOK_PORT = 8770
+
+#: How many *merged* results the fan-out behind one request aims for.
+#: Passed through `fanout_limit`, exactly as `rom-hub search` does, because
+#: grouping only ever collapses -- so the per-source number is larger.
+#: Bigger than a person's default page: nobody is reading this listing, and
+#: the match has to be able to see the right row to pick it.
+WEBHOOK_SEARCH_LIMIT = 25
+
+
+@dataclass(frozen=True)
+class WebhookSettings:
+    token: str
+    host: str
+    port: int
+    path: str
+    fulfil_types: tuple[str, ...]
+
+
+def webhook_settings() -> WebhookSettings:
+    """The receiver's configuration, from the environment.
+
+    Read at call time like every other setting in this module. Every
+    failure is a `WebhookConfigError`, which `main` turns into one line on
+    stderr -- a receiver misconfigured by one character is the commonest
+    way this feature will go wrong, and a traceback is no help with it.
+    """
+    token = env.get("ROM_HUB_WEBHOOK_TOKEN").strip()
+    if not token:
+        raise WebhookConfigError(
+            "ROM_HUB_WEBHOOK_TOKEN is not set. GG Requestz cannot "
+            "authenticate -- it posts JSON and nothing else -- so the token "
+            "in the URL is the only thing standing between this endpoint and "
+            "anyone who can reach it, and there is no safe default for it. "
+            'Generate one with: python -c "import secrets; '
+            'print(secrets.token_urlsafe(32))"'
+        )
+    # Refused here rather than at `WebhookServer.__init__`, so a token too
+    # short to be a secret is reported before a backend connection is
+    # attempted -- the operator hears about the thing they can fix, not
+    # about RomM.
+    token = check_token(token)
+
+    raw_port = env.get("ROM_HUB_WEBHOOK_PORT").strip()
+    if raw_port:
+        try:
+            port = int(raw_port)
+        except ValueError:
+            raise WebhookConfigError(
+                f"ROM_HUB_WEBHOOK_PORT is {raw_port!r}, which is not a port "
+                f"number"
+            ) from None
+        if not 1 <= port <= 65535:
+            raise WebhookConfigError(
+                f"ROM_HUB_WEBHOOK_PORT is {port}, outside 1-65535"
+            )
+    else:
+        port = DEFAULT_WEBHOOK_PORT
+
+    raw_types = env.get("ROM_HUB_WEBHOOK_TYPES").strip()
+    if raw_types:
+        wanted = tuple(
+            part.strip() for part in raw_types.split(",") if part.strip()
+        )
+        unknown = [t for t in wanted if t not in KNOWN_REQUEST_TYPES]
+        if unknown or not wanted:
+            raise WebhookConfigError(
+                f"ROM_HUB_WEBHOOK_TYPES names {', '.join(unknown) or 'nothing'}; "
+                f"GG Requestz sends only {', '.join(KNOWN_REQUEST_TYPES)}"
+            )
+    else:
+        wanted = DEFAULT_FULFIL_TYPES
+
+    # `requests`, `/requests` and `/requests/` are the same endpoint. Three
+    # spellings of one route is three ways for the URL an operator pasted
+    # into GG Requestz to 401 for a reason they cannot see.
+    route = env.get("ROM_HUB_WEBHOOK_PATH").strip().strip("/") or "requests"
+
+    return WebhookSettings(
+        token=token,
+        # Loopback by default. The token is a URL secret, not
+        # authentication, so the default has to be the binding where that
+        # matters least; an operator who wants it on the network says so.
+        host=env.get("ROM_HUB_WEBHOOK_HOST").strip() or "127.0.0.1",
+        port=port,
+        path=f"/{route}",
+        fulfil_types=wanted,
+    )
+
+
+def _webhook_note(line: str) -> None:
+    """Where the receiver's own log goes.
+
+    stderr, and unconditionally: this command's stdout is the endpoint it
+    is serving, and an operator watching a long-running sidecar needs the
+    request log whether or not they redirected anything.
+    """
+    print(f"webhook: {line}", file=sys.stderr)
+
+
+def _fulfil_request(event, log, settings: WebhookSettings):
+    """Search for a requested game and import it. Runs on the worker thread.
+
+    Everything is opened per request and closed again: a receiver may sit
+    idle for days between requests, and a `LibraryBackend` token, an httpx
+    client and a sqlite connection held open across that are three things
+    that can be stale by the time they are used. An import is measured in
+    minutes, so opening them costs nothing worth saving.
+
+    Nothing here decides *what* to import. That is `webhook.fulfil`'s job,
+    and this function exists only to hand it the same fan-out `rom-hub
+    search` uses and the same pipeline `rom-hub import` uses.
+    """
+    root = default_root()
+    registry = Registry(root)
+    plugins = registry.installed()
+    fetcher = HttpxFetcher()
+    backend = open_backend()
+
+    def search(query, platform):
+        return search_all(
+            plugins,
+            fetcher=fetcher,
+            query=query,
+            platform=platform,
+            limit=fanout_limit(WEBHOOK_SEARCH_LIMIT),
+            allow_unsandboxed=allow_unsandboxed(),
+            assets_for=prepare_assets,
+            secrets_for=prepare_secrets,
+            catalogue_for=_catalogue_rows,
+        )
+
+    def importer(chosen: SearchResult):
+        plugin = registry.get(chosen.plugin)
+        refusal = _require_capability(plugin, "importer")
+        if refusal:
+            # Cannot happen with any plugin in the shipped directory --
+            # every one that searches also imports -- and refused by name
+            # rather than assumed, because the failure if it ever does
+            # happen is a request that reports success having imported
+            # nothing.
+            raise FulfilmentRefused(
+                f"the best match came from {chosen.plugin!r}, which cannot "
+                f"import: {refusal}"
+            )
+        with (
+            JobQueue(jobs_db_path(root)) as queue,
+            PluginProcess(
+                plugin_dir=plugin.path,
+                manifest=plugin.manifest,
+                config=plugin.config,
+                fetcher=fetcher,
+                allow_unsandboxed=allow_unsandboxed(),
+                data_assets=prepare_assets(plugin, root),
+                secrets=prepare_secrets(plugin, root),
+            ) as proc,
+        ):
+            return run_import(
+                proc,
+                chosen,
+                backend=backend,
+                queue=queue,
+                download_dir=downloads_dir(root),
+            )
+
+    try:
+        return fulfil_request(
+            event,
+            log=log,
+            search=search,
+            importer=importer,
+            fulfil_types=settings.fulfil_types,
+        )
+    finally:
+        fetcher.close()
+        backend.close()
+
+
+def _cmd_webhook_serve(args) -> int:
+    settings = webhook_settings()
+    root = default_root()
+
+    # Refused here, before a socket is bound: a receiver that answers 202
+    # and can never import is worse than one that will not start. GG
+    # Requestz would record five seconds of success per request and the
+    # library would stay empty.
+    backend = open_backend()
+    try:
+        require(backend, IMPORT, "fulfilling a game request")
+    finally:
+        backend.close()
+
+    installed = Registry(root).installed()
+    searchable = [
+        p for p in installed if p.enabled and "search" in p.manifest.capabilities
+    ]
+    if not searchable:
+        # A warning and not a refusal: an operator may well be setting the
+        # receiver up before installing plugins, and the endpoint is
+        # useful to test against on its own.
+        _webhook_note(
+            "no enabled plugin provides 'search', so every request will be "
+            "recorded NO_MATCH -- install one with 'rom-hub plugin install'"
+        )
+
+    with RequestLog(requests_db_path(root)) as log:
+        server = WebhookServer(
+            token=settings.token,
+            log=log,
+            fulfil=lambda event, request_log: _fulfil_request(
+                event, request_log, settings
+            ),
+            host=settings.host,
+            port=settings.port,
+            path=settings.path,
+            log_line=_webhook_note,
+        )
+        print(f"point GG Requestz's REQUEST_WEBHOOK_URL at {server.url()}")
+        print(
+            f"fulfilling {', '.join(settings.fulfil_types)} requests via the "
+            f"{backend_name()} backend; Ctrl-C to stop"
+        )
+        server.serve_forever()
+    return EXIT_OK
+
+
+def _cmd_webhook_url(args) -> int:
+    settings = webhook_settings()
+    print(
+        f"http://{settings.host}:{settings.port}{settings.path}/{settings.token}"
+    )
+    print()
+    print("Set that as REQUEST_WEBHOOK_URL in GG Requestz's environment.")
+    print(
+        "The token in the path is a shared secret in a URL, not "
+        "authentication: GG Requestz sends no signature and no auth header, "
+        "so anyone who learns this URL can queue an import. It is logged by "
+        "anything that logs URLs. Keep the bind on loopback, or put TLS and "
+        "an authenticating proxy in front of it."
+    )
+    return EXIT_OK
+
+
+def _cmd_webhook_log(args) -> int:
+    state = None
+    if args.state:
+        try:
+            state = RequestState(args.state.upper())
+        except ValueError:
+            legal = ", ".join(s.value for s in RequestState)
+            print(
+                f"error: unknown request state {args.state!r}; expected one of "
+                f"{legal}",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+
+    with RequestLog(requests_db_path()) as log:
+        rows = log.list(state)
+
+    if args.json:
+        print(json.dumps([row.as_dict() for row in rows], indent=2))
+        return EXIT_OK
+
+    if not rows:
+        scope = f" in state {state.value}" if state else ""
+        print(f"no requests{scope}")
+        return EXIT_OK
+
+    print(f"{'STATE':<11} {'WHEN':<20} {'JOB':>5}  TITLE")
+    for row in rows:
+        job = str(row.job_id) if row.job_id is not None else "-"
+        print(f"{row.state.value:<11} {row.received_at:<20} {job:>5}  {row.game_title}")
+        print(f"            {row.request_id}")
+        if row.platforms:
+            print(f"            platforms: {', '.join(row.platforms)}")
+        # Never truncated: on a NO_MATCH this sentence is the entire reason
+        # anyone ran the command.
+        if row.detail:
+            print(f"            {row.detail}")
+    print()
+    print(f"{len(rows)} request(s)")
+    return EXIT_OK
+
+
+def _cmd_webhook_forget(args) -> int:
+    with RequestLog(requests_db_path()) as log:
+        if not log.forget(args.request_id):
+            print(
+                f"error: no request {args.request_id!r} has been received; "
+                f"'rom-hub webhook log' lists the ones that have",
+                file=sys.stderr,
+            )
+            return EXIT_ERROR
+    print(
+        f"forgot {args.request_id}; re-approving it in GG Requestz will now be "
+        f"acted on again"
+    )
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="rom-hub",
@@ -3150,6 +3483,72 @@ def build_parser() -> argparse.ArgumentParser:
     )
     jobs.set_defaults(func=_cmd_jobs)
 
+    webhook = sub.add_parser(
+        "webhook",
+        help="receive game requests from GG Requestz and fulfil them",
+        description=(
+            "A receiver for GG Requestz's request webhook. It searches the "
+            "installed plugins for the requested game and imports the best "
+            "confident match. For the operator not running ROMarr: with "
+            "ROMarr in front, point REQUEST_WEBHOOK_URL at ROMarr instead "
+            "and it fulfils from trackers as well as from these plugins. "
+            "The token in the URL is a shared secret, not authentication -- "
+            "see README.md."
+        ),
+    )
+    wsub = webhook.add_subparsers(dest="webhook_command", required=True)
+
+    webhook_serve = wsub.add_parser(
+        "serve",
+        help="listen for request webhooks (Ctrl-C to stop)",
+        description=(
+            "Binds ROM_HUB_WEBHOOK_HOST:ROM_HUB_WEBHOOK_PORT (127.0.0.1:"
+            f"{DEFAULT_WEBHOOK_PORT} by default) and accepts one POST route. "
+            "Answers 202 immediately and does the search and the import on a "
+            "worker thread, because GG Requestz allows five seconds. Requires "
+            "ROM_HUB_WEBHOOK_TOKEN."
+        ),
+    )
+    webhook_serve.set_defaults(func=_cmd_webhook_serve)
+
+    webhook_url = wsub.add_parser(
+        "url",
+        help="print the URL to set as GG Requestz's REQUEST_WEBHOOK_URL",
+    )
+    webhook_url.set_defaults(func=_cmd_webhook_url)
+
+    webhook_log = wsub.add_parser(
+        "log",
+        help="list the requests received and what came of each",
+    )
+    webhook_log.add_argument(
+        "--state",
+        default=None,
+        help=(
+            "only requests in this state ("
+            + ", ".join(s.value for s in RequestState)
+            + ")"
+        ),
+    )
+    webhook_log.add_argument(
+        "--json", action="store_true", help="machine-readable output"
+    )
+    webhook_log.set_defaults(func=_cmd_webhook_log)
+
+    webhook_forget = wsub.add_parser(
+        "forget",
+        help="drop a recorded request so a re-approval is acted on again",
+        description=(
+            "The duplicate guard keys on request_id and makes a repeat a "
+            "no-op, which is what stops a re-approval importing twice. This "
+            "is the deliberate undo: a request recorded NO_MATCH becomes "
+            "fulfillable once another plugin is installed, and without this "
+            "the only way to retry would be to invent a new request."
+        ),
+    )
+    webhook_forget.add_argument("request_id")
+    webhook_forget.set_defaults(func=_cmd_webhook_forget)
+
     backend = sub.add_parser("backend", help="inspect the library backend")
     bsub = backend.add_subparsers(dest="backend_command", required=True)
     backend_info = bsub.add_parser(
@@ -3189,6 +3588,7 @@ def main(argv: list[str] | None = None) -> int:
         AssetError,
         BackendError,
         SecretError,
+        WebhookConfigError,
         OSError,
     ) as exc:
         # ManifestError escapes a bad manifest on an otherwise clean install,
@@ -3225,6 +3625,11 @@ def main(argv: list[str] | None = None) -> int:
         # bytes did not hash to the info-hash the plugin claimed, and the
         # torrent names no web seed the allowlist permits. All three are
         # answers rather than crashes.
+        #
+        # WebhookConfigError is `webhook serve` refusing to start: no token,
+        # a port that is not a number, a token too short to be the only gate
+        # there is. All three are things an operator fixes in one line of
+        # shell, and all three are the likeliest way this feature goes wrong.
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
