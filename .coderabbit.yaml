@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json
+language: en-US
+tone_instructions: >-
+  Be direct; skip praise and preamble. ROM Hub is a public plugin platform where
+  third-party plugins run against user libraries. Prioritize the plugin contract,
+  sandbox boundaries, and backend-adapter correctness over style.
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: true
+  changed_files_summary: true
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  auto_apply_labels: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+  poem: false
+  enable_prompt_for_ai_agents: true
+  abort_on_close: true
+
+  slop_detection:
+    enabled: true
+    label: slop
+
+  path_filters:
+    - "!**/*.min.js"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/*.lock"
+    - "!**/vendor/**"
+    - "!**/__pycache__/**"
+    - "!catalog/**/*.json"
+
+  path_instructions:
+    - path: "src/**/*.py"
+      instructions: >-
+        This is the ROM Hub core. Changes here affect every plugin, so evaluate
+        each change as a public API change first and an implementation detail
+        second.
+
+        Plugin contract: if a change alters a signature, return shape, or
+        expected exception in the plugin-facing interface, say so explicitly and
+        ask whether existing plugin repositories need a matching release. Silent
+        contract drift is the highest-severity defect in this repository,
+        because plugins ship from separate repos on their own schedule and will
+        break in the field rather than at build time.
+
+        Sandbox boundaries: plugins are third-party code. Flag anything that
+        widens what a plugin can reach — filesystem paths outside the plugin's
+        own scope, subprocess execution, eval/exec, unpickling untrusted data,
+        or network access that bypasses the platform's own client. Do not treat
+        "the plugin author is trusted" as an argument.
+
+        Backend adapters: RomM, Gaseous, and Retrom differ in real ways. Gaseous
+        has no rescan endpoint. Do not accept code that assumes a capability is
+        present on all backends without a guard or a documented fallback.
+    - path: "plugins-dev/**"
+      instructions: >-
+        Reference/example plugin code. Hold it to the standard of documentation
+        others will copy: if an example omits timeouts, error handling, or input
+        validation, that omission will be replicated across plugin repos.
+    - path: "**/*.py"
+      instructions: >-
+        Flag network calls without an explicit timeout and pagination loops that
+        cannot terminate on a constant cursor. Partial upstream failure must
+        degrade gracefully rather than abort a whole catalog run.
+
+        Do not suggest type hints, docstrings, or logging purely for
+        completeness where surrounding code does not already use them.
+    - path: "tests/**"
+      instructions: >-
+        Tests must not make live network calls. Flag any test that reaches a
+        real upstream host instead of a recorded fixture. When a change fixes a
+        bug, check that a test actually reproduces the old failure rather than
+        only asserting the new happy path.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Check for unpinned third-party actions, secrets exposed to
+        pull_request_target, and steps that interpolate untrusted PR text
+        directly into a run block.
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    ignore_usernames:
+      - dependabot
+      - dependabot[bot]
+
+  tools:
+    ruff:
+      enabled: true
+    gitleaks:
+      enabled: true
+    semgrep:
+      enabled: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    languagetool:
+      enabled: false
+
+chat:
+  art: false
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: auto
