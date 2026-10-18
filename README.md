@@ -10,9 +10,10 @@ place. It runs beside **RomM**, **Gaseous** or **Retrom** and never changes them
 
 [![CI](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/BlizzHacker/rom-hub/actions/workflows/ci.yml)
 [![licence MIT](https://img.shields.io/github/license/BlizzHacker/rom-hub)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/BlizzHacker/rom-hub?style=social)](https://github.com/BlizzHacker/rom-hub/stargazers)
 [![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](pyproject.toml)
 
-[Quick start](#-quick-start) · [Plugins](docs/PLUGINS.md) · [60-second tour](docs/SHOWCASE.md) · [Write a plugin](CONTRIBUTING.md) · [Technical docs](docs/TECHNICAL.md)
+[Quick start](#-quick-start) · [Plugins](docs/PLUGINS.md) · [60-second tour](docs/SHOWCASE.md) · [Build a plugin in 5 minutes](#️-build-a-plugin-in-5-minutes) · [Technical docs](docs/TECHNICAL.md)
 
 ![Box art and games imported into RomM by ROM Hub plugins](docs/screenshots/romm.png)
 
@@ -74,12 +75,58 @@ Browse the directory in **[docs/PLUGINS.md](docs/PLUGINS.md)**: what each
 plugin does, what it is allowed to reach, and the terms of the site it reads
 from. Want your own directory? `rom-hub catalog add <name> <url>` adds one.
 
-## 🛠️ Build a plugin
+## 🛠️ Build a plugin in 5 minutes
 
-A plugin is a small Python package that describes work, such as "fetch these
-files" or "set this cover", and ROM Hub carries it out safely against whichever
-server you run. **[CONTRIBUTING.md](CONTRIBUTING.md)** walks you through
-writing one and getting it listed.
+A plugin is a tiny Python package. You describe what to fetch; ROM Hub does the
+fetching, sandboxing and talking to the library server. Your plugin works with
+RomM, Gaseous **and** Retrom without a single line about any of them.
+
+**`my-source/manifest.toml`** says what the plugin can do and the one site it may reach:
+
+```toml
+[plugin]
+slug        = "my-source"
+name        = "My Source"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search = "my_source.search:Search"
+
+[permissions]
+network  = ["example.org"]
+romm_api = []
+```
+
+**`my-source/my_source/search.py`** turns a query into results:
+
+```python
+from rom_hub_sdk import SearchProvider, SearchResult
+
+class Search(SearchProvider):
+    def search(self, query, platform, limit):
+        games = self.ctx.http.get("https://example.org/api/games",
+                                  params={"q": query}).json()
+        return [SearchResult(source_id=str(g["id"]), title=g["name"],
+                             platform=g.get("platform"), url=g.get("url"))
+                for g in games[:limit]]
+```
+
+```bash
+rom-hub plugin install ./my-source
+rom-hub search "oregon trail"        # your source is now in the results
+```
+
+Add `importer`, `metadata` or `stream` capabilities the same way, and ship it.
+**[CONTRIBUTING.md](CONTRIBUTING.md)** covers testing and getting it listed in the directory.
+
+### 💡 Plugins we'd love to see
+
+Homebrew sites · fan-translation archives · manual & box-scan libraries ·
+museum and preservation collections · your favourite niche platform.
+[Open an issue](https://github.com/BlizzHacker/rom-hub/issues) to claim one,
+or just send the pull request.
 
 ## 📚 Going deeper
 
