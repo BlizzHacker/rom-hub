@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-README = (Path(__file__).parents[1] / "README.md").read_text(encoding="utf-8")
+README = (Path(__file__).parents[1] / "docs" / "TECHNICAL.md").read_text(encoding="utf-8")
 
 
 def test_ggrequestz_points_at_romarr_until_the_standalone_receiver_ships():
