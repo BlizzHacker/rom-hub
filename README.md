@@ -88,6 +88,22 @@ importing, metadata, streaming, emulator cores and BIOS, the security model
 and exactly what it does and doesn't confine, test coverage, and the
 [proof matrix](docs/PROOF.md) against live servers.
 
+## 🌐 More from Move Weight
+
+ROM Hub is part of a family of open, self-hostable projects built by
+**[Move Weight](https://moveweight.com)**. Use one, or plug them all together.
+
+| Project | What it is |
+|---|---|
+| 🏴‍☠️ **[Yarr.It](https://yarrit.com)** | One front door for your whole media library: search, stream in the browser, and watch on your TV. |
+| 🎮 **[ROMarr](https://github.com/BlizzHacker/romarr)** | The *arr for games: request a title, and it's found, downloaded and filed into your library. |
+| 🧩 **[ROM Hub](https://github.com/BlizzHacker/rom-hub)** | The plugin engine behind ROMarr: new game sources, box art and metadata for RomM, Gaseous and Retrom. |
+| ⚔️ **[CrypticRealm](https://crypticrealm.com)** | An open-world fantasy RPG that plays right in your browser, with FPS and RTS modes. |
+| 🔥 **[Forgeverse](https://forgeverse.org)** | Creative studio apps for game makers: characters, textures and more, with bring-your-own AI. |
+| 🥊 **[Galaxy Kombat](https://gk.moveweight.com)** | A 3D fighting game that runs in the browser. |
+
+If one of these is useful to you, a ⭐ on GitHub is the easiest way to help.
+
 ## 💬 Help & community
 
 Found a bug or have an idea? [Open an issue](https://github.com/BlizzHacker/rom-hub/issues).
