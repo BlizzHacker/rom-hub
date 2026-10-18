@@ -47,6 +47,20 @@ run a library server without ROMarr, or when you want to write plugins.
 - **Safe by design.** Each plugin runs locked in its own sandbox: no passwords, no file access, and only the websites it declared.
 - **Nothing updates behind your back.** Every plugin is pinned to a release; you choose when to upgrade.
 
+## 🎮 Using ROMarr? Start here
+
+Install ROM Hub **into ROMarr's own environment**, then restart ROMarr. Its
+*Hub* tab lights up and manages plugins for you. On the Proxmox LXC or a
+source install:
+
+```bash
+apt-get install -y git
+/opt/romarr/.venv/bin/pip install "rom-hub @ git+https://github.com/BlizzHacker/rom-hub@master"
+systemctl restart romarr
+```
+
+Installing into the system Python, or into a different venv, is invisible to ROMarr.
+
 ## 🚀 Quick start
 
 You need **Python 3.12+**.
