@@ -1,6 +1,6 @@
 {
   "catalog_version": "1",
-  "updated": "2026-08-01",
+  "updated": "2026-10-28",
   "plugins": [
     {
       "slug": "aminet",
@@ -862,6 +862,45 @@
       ]
     },
     {
+      "slug": "minerva-archive",
+      "name": "MiNERVA Archive",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-minerva",
+      "install": "https://github.com/BlizzHacker/rom-hub-minerva",
+      "download": "https://github.com/BlizzHacker/rom-hub-minerva/archive/refs/tags/v0.2.0.tar.gz",
+      "version": "0.2.0",
+      "ref": "v0.2.0",
+      "updated": "2026-10-28",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "torrent"
+      ],
+      "network": [
+        "minerva-archive.org",
+        "tracker.opentrackr.org",
+        "open.demonii.com",
+        "open.tracker.cl",
+        "tracker.publictracker.xyz",
+        "tracker.wildkat.net",
+        "tracker.qu.ax",
+        "tracker.peerfect.org",
+        "tracker.ilibr.org",
+        "tracker.dler.org",
+        "tracker.bittor.pw",
+        "tracker.0x7c0.com",
+        "exodus.desync.com"
+      ],
+      "status": "caveat",
+      "search_only": true,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches MiNERVA's public ROM API and keeps each matching archive row distinct, including its exact path. Selecting a result still hands the whole collection torrent to your configured torrent client; the API requires no key.",
+      "terms": "MiNERVA is a community continuation of Myrient and its archive includes copyrighted commercial ROMs. A public listing is not a licence or permission to download; rights vary by work and jurisdiction. Use it only for material you are authorized to obtain. This plugin does not bypass login, access controls or payment restrictions, and it makes no claim that a listed file is lawful for you to download.",
+      "comments": "For the planned v0.2.0 release, search requests only GET /v1/api/rom/search and keeps each matching API file row separate, with its id, so_id and full_path. It never requests /api/, /browse/ or /rom/ paths; the result's /rom?id=... URL is a human click-out and is not fetched by the plugin. The API gives no file sizes or seeder counts. Each result's magnet identifies a whole collection torrent: the plugin does not select a file inside it or set file priorities, so the torrent client may download the whole collection. The twelve public tracker hosts appended to magnets are the same hosts declared in the plugin manifest and shown in the Network column. This catalog entry depends on the plugin's v0.2.0 tag being published after its code PR merges.",
+      "platforms": []
+    },
+    {
       "slug": "nointro-archive",
       "name": "No-Intro sets on Archive.org",
       "author": "BlizzHacker",
@@ -887,7 +926,7 @@
       "in_tree": false,
       "description": "Censuses all 71 `identifier:nointro*` items on Archive.org -- 31,366 declared files, every one accounted for -- and serves search and import from the catalogue it built. `rom-hub census build nointro-archive`.",
       "terms": "Plainly: these are copyrighted commercial console ROMs, and this plugin does not launder that. No-Intro sets are checksum-verified dumps of retail cartridges; the copyright belongs to the publishers, most of whom have never licensed redistribution. Whether you may download one depends on where you live and on whether you own the original media — in the United States the archival exemption courts have recognised does not extend to downloading a copy of something you do not own. The plugin circumvents no access control, paywall, login or robots directive, and `https://archive.org/download/` is a public unauthenticated listing the Archive's robots.txt does not disallow. If you want only material that is unambiguously free to redistribute, use `homebrew` instead.",
-      "comments": "Formerly `myrient`. Myrient (myrient.erista.me) shut down on 31 March 2026 and now answers HTTP 200 with the same 2,334-byte notice for every path — including paths it never served — so status codes cannot detect it. The plugin therefore checks that a page actually parsed as an index, which is the only thing standing between a dead source and an HTML page filed as a ROM. Its Myrient index parser and Wayback-captured fixture are retained in case a mirror reproduces that layout. MiNERVA, the successor, `Disallow`s `/browse/` and `/rom/` and is deliberately not used.",
+      "comments": "Formerly myrient. Myrient (myrient.erista.me) shut down on 31 March 2026 and now answers HTTP 200 with the same 2,334-byte notice for every path -- including paths it never served -- so status codes cannot detect it. The plugin therefore checks that a page actually parsed as an index, which is the only thing standing between a dead source and an HTML page filed as a ROM. Its Myrient index parser and Wayback-captured fixture are retained in case a mirror reproduces that layout. MiNERVA is a separate source. Its robots.txt disallows /api/, /browse/ and /rom/; the minerva-archive plugin calls only /v1/api/rom/search, which is outside the /api/ path prefix, and never fetches browse or ROM detail pages.",
       "platforms": [
         "amiga",
         "arduboy",

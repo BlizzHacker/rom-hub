@@ -18,6 +18,7 @@ run offline.
 | `libretro-cores` | <https://github.com/BlizzHacker/rom-hub-libretro-cores> | `v0.1.0` |
 | `libretro-database` | <https://github.com/BlizzHacker/rom-hub-libretro-database> | `v0.1.0` |
 | `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.1.0` |
+| `minerva-archive` | <https://github.com/BlizzHacker/rom-hub-minerva> | `v0.2.0` |
 | `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.1.0` |
 | `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.4.0` |
 | `openvgdb` | <https://github.com/BlizzHacker/rom-hub-openvgdb> | `v0.2.0` |
@@ -26,10 +27,14 @@ run offline.
 | `universal-db` | <https://github.com/BlizzHacker/rom-hub-universal-db> | `v0.2.0` |
 
 **`aminet`, `demozoo`, `emulators`, `if-archive`, `libretro-content`,
-`ludusavi` and `scummvm-freeware` are new and their repositories do not
-exist yet.** Everything else on this page resolves; those seven have to be
-created and tagged `v0.1.0` before `rom-hub plugin install <slug>` will work
-for them, and `pytest -m live` is what will say so.
+`ludusavi` and `scummvm-freeware` are new; their repositories do not exist
+yet.** Those seven need to be created and tagged `v0.1.0` before
+`rom-hub plugin install <slug>` can install them.
+
+The MiNERVA `v0.2.0` catalog entry is also pending: it will install only after
+the plugin PR merges and the `v0.2.0` tag is published. The existing
+`v0.1.0` tag remains available until then. `pytest -m live` checks published
+tags against these development copies.
 
 `catalog/plugins.json` points at those repositories, pinned to those tags, and
 that is what `rom-hub plugin install <slug>` clones. **Nothing installs from
@@ -67,7 +72,7 @@ Run the last one before publishing anything:
 
 ### Known drift, waiting to be published
 
-**Fifteen plugins have real, unpublished changes here.**
+**Sixteen plugins have real, unpublished changes here.**
 
 The "Content plugins that reach their whole source" work bumped `aminet`
 0.1.0→0.2.0, `demozoo` 0.1.0→0.2.0, `homebrew` 0.2.0→0.3.0,
@@ -75,6 +80,8 @@ The "Content plugins that reach their whole source" work bumped `aminet`
 0.1.0→0.2.0, `nointro-archive` 0.2.1→0.3.0 and then 0.3.0→0.4.0
 (the `census` capability), `scummvm-freeware`
 0.1.0→0.2.0 and `universal-db` 0.1.0→0.2.0.
+
+The MiNERVA Archive plugin now keeps matching API file rows separate, so the exact archive path is visible in search results. It is versioned 0.1.0 to 0.2.0 here; picking a row still hands off the whole collection magnet, and selecting an individual torrent file is not supported.
 
 The "Emulator-support plugins that ship their whole source" work bumped
 `libretro-overlays` 0.1.0→0.2.0, `libretro-cores` 0.1.0→0.2.0,
