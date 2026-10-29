@@ -18,6 +18,8 @@ Scope, stated plainly:
 """
 
 import ctypes
+import functools
+import subprocess
 import sys
 
 PR_SET_NO_NEW_PRIVS = 38
@@ -44,13 +46,39 @@ class SandboxUnavailable(Exception):
 
 
 def probe() -> tuple[bool, str]:
-    """Report whether a filter can be installed, and why not if it cannot."""
+    """Report whether a filter can be installed, and why not if it cannot.
+
+    Importable is not the same as loadable. A kernel built without
+    CONFIG_SECCOMP_FILTER (Synology DSM's 4.4 kernel is one) imports pyseccomp
+    fine and then fails every `seccomp_load` with ECANCELED. Reporting that as
+    "available" makes hosts trust a sandbox that cannot exist, and every plugin
+    is then refused at run time with no fallback offered. So the answer comes
+    from actually loading the filter -- in a throwaway child, because loading
+    is irreversible and would confine the caller.
+    """
+    return _probe_cached()
+
+
+@functools.lru_cache(maxsize=1)
+def _probe_cached() -> tuple[bool, str]:
     if sys.platform != "linux":
         return False, f"seccomp requires linux; this is {sys.platform}"
     try:
         import pyseccomp  # noqa: F401
     except ImportError as exc:
         return False, f"pyseccomp is not installed: {exc}"
+    try:
+        child = subprocess.run(
+            [sys.executable, "-c",
+             "from rom_hub.sandbox import _load_filter; _load_filter()"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return False, f"could not test-load the seccomp filter: {exc}"
+    if child.returncode != 0:
+        lines = (child.stderr or "").strip().splitlines()
+        detail = lines[-1] if lines else f"exit status {child.returncode}"
+        return False, f"seccomp filter cannot be loaded here: {detail}"
     return True, "seccomp filter available"
 
 
@@ -64,11 +92,21 @@ def install() -> None:
     child instead, or every later test in the same session that spawns a
     subprocess will fail with `PermissionError` once `execve` is blocked.
     """
-    available, reason = probe()
-    if not available:
-        raise SandboxUnavailable(reason)
+    if sys.platform != "linux":
+        raise SandboxUnavailable(f"seccomp requires linux; this is {sys.platform}")
+    _load_filter()
 
-    import pyseccomp
+
+def _load_filter() -> None:
+    """Set no_new_privs and load the deny filter on this process.
+
+    Kept separate from `install` so `probe`'s throwaway child can run it
+    without probing again (which would recurse, one child per level).
+    """
+    try:
+        import pyseccomp
+    except ImportError as exc:
+        raise SandboxUnavailable(f"pyseccomp is not installed: {exc}") from exc
 
     libc = ctypes.CDLL("libc.so.6", use_errno=True)
     if libc.prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0:
