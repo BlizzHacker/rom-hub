@@ -2,6 +2,7 @@ import socket
 import subprocess
 import sys
 import textwrap
+import types
 
 import pytest
 
@@ -41,6 +42,29 @@ def test_install_raises_off_linux():
 def test_probe_reports_available_on_linux():
     available, reason = probe()
     assert available, f"expected a working sandbox on Linux, got: {reason}"
+
+
+@linux_only
+def test_probe_reports_unavailable_when_filter_load_fails(monkeypatch):
+    from rom_hub import sandbox
+
+    failed_child = subprocess.CompletedProcess(
+        args=[sys.executable, "-c", "load filter"],
+        returncode=1,
+        stdout="",
+        stderr="OSError: [Errno 125] Operation canceled\n",
+    )
+    monkeypatch.setitem(sys.modules, "pyseccomp", types.ModuleType("pyseccomp"))
+    monkeypatch.setattr(sandbox.subprocess, "run", lambda *args, **kwargs: failed_child)
+    sandbox._probe_cached.cache_clear()
+    try:
+        available, reason = probe()
+    finally:
+        sandbox._probe_cached.cache_clear()
+
+    assert available is False
+    assert "Errno 125" in reason
+    assert "Operation canceled" in reason
 
 
 @linux_only
