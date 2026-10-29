@@ -1,0 +1,48 @@
+[plugin]
+slug        = "minerva-archive"
+name        = "MiNERVA Archive"
+version     = "0.2.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search  = "minerva_archive.search:Search"
+torrent = "minerva_archive.torrent:Torrent"
+
+[permissions]
+# The only host this plugin can cause traffic to, plus the public trackers it
+# appends to a magnet. The search API is public JSON with no key. MiNERVA's
+# magnets arrive bare (no trackers), so the `torrent` capability adds the
+# well-known public ones -- and the Hub gates every `tr=` by hostname against
+# this same list, so a tracker that is not declared here is silently dropped
+# and the magnet falls back to DHT-only.
+network = [
+  "minerva-archive.org",
+
+  "tracker.opentrackr.org",
+  "open.demonii.com",
+  "open.tracker.cl",
+  "tracker.publictracker.xyz",
+  "tracker.wildkat.net",
+  "tracker.qu.ax",
+  "tracker.peerfect.org",
+  "tracker.ilibr.org",
+  "tracker.dler.org",
+  "tracker.bittor.pw",
+  "tracker.0x7c0.com",
+  "exodus.desync.com",
+]
+romm_api = []
+
+[config]
+# Optional narrowing, straight from MiNERVA's own filter bar. Values must
+# match what https://minerva-archive.org/v1/api/rom/filters lists.
+group        = { type = "str",  default = "" }
+console      = { type = "str",  default = "" }
+region       = { type = "str",  default = "" }
+# MiNERVA's tokenised mode matches each query word separately instead of
+# substring-matching the whole phrase. Better recall, more noise; the site's
+# own default is off, so off is the default here too.
+tokenised    = { type = "bool", default = false }
+# Search pages are 100 rows; a full page means there is another.
+max_pages    = { type = "int",  default = 1 }

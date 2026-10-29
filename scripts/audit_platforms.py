@@ -86,6 +86,7 @@ NO_PLATFORM_TABLE: dict[str, str] = {
     "libretro-cheats": "cheat files, keyed by libretro's own system directory names",
     "libretro-cores": "libretro cores, keyed by core name -- never a platform slug",
     "libretro-overlays": "bezel overlays, keyed by libretro's system directory names",
+    "minerva-archive": "search rows and collection torrents, with no RomM platform mapping",
     "retroarch-autoconfig": "controller profiles, keyed by device name",
 }
 
