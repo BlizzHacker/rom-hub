@@ -13,6 +13,7 @@ run offline.
 | `hasheous` | <https://github.com/BlizzHacker/rom-hub-hasheous> | `v0.1.0` |
 | `homebrew` | <https://github.com/BlizzHacker/rom-hub-homebrew> | `v0.3.0` |
 | `if-archive` | <https://github.com/BlizzHacker/rom-hub-if-archive> | `v0.2.0` |
+| `igir` | <https://github.com/BlizzHacker/rom-hub-igir> | `v0.1.0` |
 | `itch-io` | <https://github.com/BlizzHacker/rom-hub-itch-io> | `v0.4.0` |
 | `libretro-content` | <https://github.com/BlizzHacker/rom-hub-libretro-content> | `v0.2.0` |
 | `libretro-cores` | <https://github.com/BlizzHacker/rom-hub-libretro-cores> | `v0.1.0` |

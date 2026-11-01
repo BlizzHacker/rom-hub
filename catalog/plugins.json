@@ -1,6 +1,6 @@
 {
   "catalog_version": "1",
-  "updated": "2026-10-28",
+  "updated": "2026-11-01",
   "plugins": [
     {
       "slug": "aminet",
@@ -405,6 +405,34 @@
         "tads",
         "z-machine"
       ]
+    },
+    {
+      "slug": "igir",
+      "name": "Igir (1G1R Collection Manager)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-igir",
+      "install": "https://github.com/BlizzHacker/rom-hub-igir",
+      "download": "https://github.com/BlizzHacker/rom-hub-igir/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-01",
+      "rpp_version": "1",
+      "capabilities": [
+        "cores"
+      ],
+      "network": [
+        "api.github.com",
+        "github.com",
+        "release-assets.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Lists and installs Christian Emmer's Igir (v5.8.0+) standalone 1G1R collection manager from GitHub releases, with a universal 1G1R cleanup planner for RomM, Gaseous, Retrom, ES-DE and Batocera.",
+      "terms": "Igir (`emmercm/igir`) is open-source software by Christian Emmer licensed under `GPL-3.0`, which permits free use and redistribution of the standalone release builds published on GitHub. Nothing here redistributes Igir or any DAT or ROM: the plugin queries `api.github.com/repos/emmercm/igir/releases/latest` and names the official release asset URL for the configured target (`linux/x86_64`, `linux/aarch64`, `windows/x86_64`, `windows/arm64`, `macos/x86_64`, `macos/arm64`), which the Hub fetches once for the operator who asked.",
+      "comments": "Built around Christian Emmer's Igir v5.8.0 (`https://github.com/emmercm/igir/releases/tag/v5.8.0`, adding BSDiff v4, Paper Mario Star Rod N64 patching, and Xdelta3 LZMA secondary compression) and the RomM 1G1R cleanup script workflow (`https://docs.romm.app/latest/ecosystem/igir/#the-cleanup-script`, community integration suggested by Ant#1695). Uses RPP v1's `cores` capability for the same reason `emulators` does: Igir ships standalone precompiled executables per OS/architecture on GitHub releases (`igir-5.8.0-Linux-amd64.tar.gz`, `igir-5.8.0-Linux-arm64v8.tar.gz`, `igir-5.8.0-Windows-x64.zip`, `igir-5.8.0-Windows-arm64.zip`, `igir-5.8.0-macOS-x64.tar.gz`, `igir-5.8.0-macOS-arm64.tar.gz`), and `cores` is the Hub's gated executable-fetch contract. Alongside `cores`, `igir.planner` provides deterministic `--single` 1G1R command and cleanup-script generation with `{romm}`, `{es}`, and `{batocera}` output tokens so ROMarr (`/api/v1/hub/igir`) acts as a universal 1G1R front-end across RomM, Gaseous, Retrom, ES-DE, and Batocera.",
+      "platforms": []
     },
     {
       "slug": "itch-io",

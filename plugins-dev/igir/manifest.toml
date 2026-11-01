@@ -1,0 +1,30 @@
+[plugin]
+slug        = "igir"
+name        = "Igir (1G1R Collection Manager)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+cores = "igir.cores:Cores"
+
+[permissions]
+network = [
+  "api.github.com",
+  "github.com",
+  "release-assets.githubusercontent.com",
+]
+romm_api = []
+
+[config]
+target           = { type = "str",       default = "linux/x86_64" }
+commands         = { type = "list[str]", default = ["copy", "extract", "test", "clean", "report"] }
+output_token     = { type = "str",       default = "{romm}" }
+single_1g1r      = { type = "bool",      default = true }
+prefer_verified  = { type = "bool",      default = true }
+prefer_good      = { type = "bool",      default = true }
+prefer_regions   = { type = "list[str]", default = ["USA", "WORLD", "EUR", "JPN"] }
+prefer_languages = { type = "list[str]", default = ["EN", "JA"] }
+no_demos         = { type = "bool",      default = true }
+no_prototypes    = { type = "bool",      default = true }
+no_betas         = { type = "bool",      default = true }
