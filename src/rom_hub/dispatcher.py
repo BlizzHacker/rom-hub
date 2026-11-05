@@ -132,6 +132,7 @@ def search_all(
     assets_for=None,
     secrets_for=None,
     catalogue_for=None,
+    fetcher_for=None,
 ) -> SearchOutcome:
     # The sandbox policy is bound to the default factory here rather than
     # added to the factory signature: an injected factory stays a plain
@@ -184,7 +185,8 @@ def search_all(
             # only for a plugin that is actually about to be started.
             if secrets_for is not None and process_factory is None:
                 kwargs["secrets"] = secrets_for(plugin)
-            with factory(plugin, fetcher, timeout, **kwargs) as proc:
+            plugin_fetcher = fetcher_for(plugin) if fetcher_for else fetcher
+            with factory(plugin, plugin_fetcher, timeout, **kwargs) as proc:
                 results = proc.search(query, platform, limit)
             return (
                 PluginStatus(

@@ -170,3 +170,8 @@ If one of these is useful to you, a ⭐ on GitHub is the easiest way to help.
 Found a bug or have an idea? [Open an issue](https://github.com/BlizzHacker/rom-hub/issues).
 ROM Hub is an independent, unofficial project and is not affiliated with RomM,
 Gaseous or Retrom. MIT licensed.
+
+## Archive.org authentication
+
+The CLI and ROMarr can share host-side Archive.org authentication. Start with
+`rom-hub auth login archive-org`; see [setup, storage and testing](docs/ARCHIVE_ORG_AUTH.md).

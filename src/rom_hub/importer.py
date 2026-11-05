@@ -357,8 +357,7 @@ def run_import(
     slug = _slug_of(plugin)
 
     # Close only what this call opened. A caller-supplied downloader may be
-    # reused across imports and is not ours to shut. The CLI supplies none,
-    # so it always takes the branch that builds -- and therefore owns -- one.
+    # reused across imports and is not ours to shut.
     owns_downloader = downloader is None
     if owns_downloader:
         downloader = HttpDownloader(allowlist=list(getattr(manifest, "network", [])))
