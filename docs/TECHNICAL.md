@@ -744,6 +744,32 @@ An `api_key` set before this type existed is migrated out of `state.json` on
 the next command that runs the plugin, with one notice on stderr; rotate it
 anyway if that file was ever committed or backed up.
 
+### Archive.org authentication
+
+The Hub can authenticate Archive.org requests for the `archive-org` plugin:
+
+    rom-hub auth login archive-org    # prompts for email and password
+    rom-hub auth status archive-org   # reports local configuration
+    rom-hub auth logout archive-org
+
+Login verifies the account before saving credentials in the secret store
+described above. CLI and ROMarr share them when they use the same `ROM_HUB_HOME`
+(normally `~/.rom-hub`) and secret-store settings. A successful login does not
+guarantee access to a restricted item.
+
+For unattended use, set `ROM_HUB_ARCHIVE_ORG_EMAIL_FILE` and
+`ROM_HUB_ARCHIVE_ORG_PASSWORD_FILE` to readable secret files, or use the
+corresponding variables without `_FILE`. Files take precedence per field. The
+legacy `ROMARR_ARCHIVE_ORG_*` names are supported when no `ROM_HUB_ARCHIVE_ORG_*`
+credential variable is set. External credentials override the saved record;
+incomplete configuration fails, and login and logout cannot change the saved
+record while external credentials are configured.
+
+The host holds the credentials and keeps session cookies in memory; they are not
+passed to the plugin. As with other secrets, a plugin can still read files
+accessible to the Hub process. Logout removes the saved credentials but does not
+revoke other sessions. Without credentials, requests remain anonymous.
+
 ## Tests
 
     python -m pytest          # offline; live tests deselected
