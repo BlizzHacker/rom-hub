@@ -263,3 +263,98 @@ def test_the_host_accepts_the_resolved_magnet():
     link = check_magnet(src.source, allowlist)
     assert link.info_hash == src.info_hash
     assert len(link.trackers) == 12, "every declared tracker must survive"
+
+
+# -- platform mapping (issue #2) ------------------------------------------------
+
+def test_a_platform_argument_becomes_a_console_filter():
+    """The whole point of the fix: `search(query, platform, limit)` with a
+    platform the plugin maps must send MiNERVA the console filter, not
+    search every system and hope."""
+    s, http = _search({}, lambda u, p: _Resp(200, [ROW]))
+    s.search("chrono trigger", "snes", 100)
+    consoles = sorted(c[1].get("console") for c in http.calls)
+    assert consoles == ["Nintendo Super Famicom",
+                        "Super Nintendo Entertainment System"]
+
+
+def test_an_explicit_console_config_wins_over_the_platform_argument():
+    """The operator typed the filter-bar value; nothing may silently AND a
+    second console onto it."""
+    s, http = _search({"console": "Nintendo 64"}, lambda u, p: _Resp(200, []))
+    s.search("mario", "ps2", 100)
+    assert len(http.calls) == 1
+    assert http.calls[0][1]["console"] == "Nintendo 64"
+
+
+def test_an_unmapped_platform_searches_unfiltered_not_empty():
+    s, http = _search({}, lambda u, p: _Resp(200, [ROW]))
+    out = s.search("game", "calculon-9000", 100)
+    assert len(http.calls) == 1
+    assert "console" not in http.calls[0][1]
+    assert len(out) == 1, "an unmapped slug must not mean 'no rows exist'"
+
+
+def test_no_platform_argument_searches_unfiltered():
+    s, http = _search({}, lambda u, p: _Resp(200, [ROW]))
+    s.search("game", None, 100)
+    assert "console" not in http.calls[0][1]
+
+
+def test_results_are_tagged_with_the_platform_of_the_filter_that_found_them():
+    """The API rows carry no console field, so the filter that produced the
+    row is the platform evidence. A row found under "Sony PlayStation 2"
+    comes back with platform="ps2"."""
+    def answers(url, params):
+        return _Resp(200, [ROW] if params.get("console") == "Sony PlayStation 2"
+                     else [])
+
+    s, http = _search({}, answers)
+    out = s.search("chrono trigger", "ps2", 100)
+    assert len(out) == 1
+    assert out[0].platform == "ps2"
+    # every mapped console was asked about exactly once
+    asked = sorted(c[1].get("console") for c in http.calls)
+    assert asked == ["Sony PlayStation 2"]
+
+
+def test_unfiltered_results_keep_platform_none():
+    s, _ = _search({}, lambda u, p: _Resp(200, [ROW]))
+    out = s.search("chrono trigger", None, 100)
+    assert out[0].platform is None
+
+
+def test_each_console_filter_pages_independently():
+    """The first-100-rows failure was pagination across every system; a
+    platform search must page *within* each console it asks about."""
+    full = [{"id": i, "so_id": i, "full_path": f"./x/g{i}.zip",
+             "magnet": f"magnet:?xt=urn:btih:{i:040x}"} for i in range(100)]
+    calls = []
+
+    def answers(url, params):
+        calls.append(dict(params))
+        if params.get("console") == "Nintendo Super Famicom":
+            # two full pages under one spelling, nothing under the other
+            return _Resp(200, full if params["offset"] < 100 else [])
+        return _Resp(200, [])
+
+    s, http = _search({"max_pages": 2}, answers)
+    out = s.search("chrono trigger", "snes", 500)
+    snes_offsets = [c["offset"] for c in calls
+                    if c.get("console") == "Nintendo Super Famicom"]
+    assert snes_offsets == [0, 100]
+    assert len(out) == 100
+
+
+def test_the_mapping_names_only_consoles_the_live_api_lists():
+    """Every console in the forward map was verified against
+    /v1/api/rom/filters on 2026-11-09; this pins the list so a typo or an
+    upstream rename shows up as a failing test against the recorded set
+    rather than as silently-empty searches."""
+    from minerva_archive.platforms import PLATFORM_CONSOLES
+    recorded = (Path(__file__).resolve().parent / "fixtures_consoles.json")
+    if recorded.exists():
+        import json
+        known = set(json.loads(recorded.read_text()))
+        unknown = {c for cs in PLATFORM_CONSOLES.values() for c in cs} - known
+        assert not unknown, f"consoles MiNERVA no longer lists: {sorted(unknown)}"

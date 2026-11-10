@@ -8,7 +8,7 @@ This is a *plugin*: a sandboxed subprocess that declares its capabilities and it
 
 | Capability | What it does |
 |---|---|
-| `search` | Queries only `GET /v1/api/rom/search` with MiNERVA's filters (`group`, `console`, `region`, `tokenised`) and 100-row offset pagination. Each matching API file row stays distinct, even when several rows share a collection magnet. Results include the exact archive path, row `id` and `so_id`, plus the collection torrent hash. |
+| `search` | Queries only `GET /v1/api/rom/search` with MiNERVA's filters (`group`, `console`, `region`, `tokenised`) and 100-row offset pagination. Each matching API file row stays distinct, even when several rows share a collection magnet. Results include the exact archive path, row `id` and `so_id`, plus the collection torrent hash. A host-supplied `platform` is translated through this plugin's own slug→console mapping (verified against `/v1/api/rom/filters`) and searched as one request per console name, so a platform-specific search pages within that system instead of paging through every system; results found under a mapped filter carry the platform back. An explicit `console` config still wins outright. |
 | `torrent` | MiNERVA's magnets arrive bare (no trackers — DHT-only). `resolve()` keeps the info-hash, appends twelve well-known public trackers (every host declared in the manifest, because the Hub gates each `tr=` against that list), and returns a `TorrentSource` the host validates and hands to your torrent client. |
 
 No `importer`: MiNERVA distributes by torrent only, and the Hub is deliberately not a torrent client — the host hands the magnet off to yours (qBittorrent, Transmission, Deluge).

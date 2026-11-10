@@ -520,7 +520,7 @@ class FakeDownloader:
         self.payload = payload
         self.calls: list[tuple[str, Path]] = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         self.calls.append((url, Path(dest)))
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)

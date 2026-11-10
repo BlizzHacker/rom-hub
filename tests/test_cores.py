@@ -263,7 +263,7 @@ class FakeDownloader:
         self.payload = payload
         self.calls: list[tuple[str, Path]] = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         self.calls.append((url, Path(dest)))
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -327,7 +327,7 @@ def test_a_refused_plan_installs_nothing(plugin_dir, tmp_path):
 
 def test_a_download_failure_is_reported_not_propagated_raw(plugin_dir, tmp_path):
     class Broken(FakeDownloader):
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             raise OSError("connection reset")
 
     with _proc(plugin_dir) as proc:

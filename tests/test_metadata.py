@@ -59,7 +59,7 @@ class FakeDownloader:
         self.payload = payload
         self.calls: list[str] = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         self.calls.append(url)
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -194,7 +194,7 @@ def test_a_failed_artwork_fetch_does_not_half_apply_the_patch(tmp_path):
     the cover silently missing is the worst of both."""
 
     class BrokenDownloader(FakeDownloader):
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             raise OSError("connection reset")
 
     romm = FakeRomm()

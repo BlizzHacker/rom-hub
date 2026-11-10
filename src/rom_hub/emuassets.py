@@ -321,7 +321,12 @@ def install_asset(
             # already proven to be inside `target`.
             dest.parent.mkdir(parents=True, exist_ok=True)
             try:
-                downloader.download(entry.url, dest, expected_size=entry.size_bytes)
+                downloader.download(
+                    entry.url,
+                    dest,
+                    expected_size=entry.size_bytes,
+                    headers=entry.headers,
+                )
             except Exception as exc:  # noqa: BLE001
                 raise AssetInstallError(
                     f"downloading {entry.filename!r} for asset "

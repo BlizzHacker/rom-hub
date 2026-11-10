@@ -468,7 +468,7 @@ class FakeDownloader:
         self.allowlist = allowlist
         self.requested: list[str] = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         from rom_hub.netpolicy import check_url
 
         check_url(url, self.allowlist)

@@ -104,7 +104,7 @@ class CountingDownloader:
     def __init__(self):
         self.calls: list[str] = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         self.calls.append(url)
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)

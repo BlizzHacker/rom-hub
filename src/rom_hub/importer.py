@@ -106,7 +106,11 @@ class DownloadError(Exception):
 
 class Downloader(Protocol):
     def download(
-        self, url: str, dest: Path, expected_size: int | None = None
+        self,
+        url: str,
+        dest: Path,
+        expected_size: int | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Path: ...
 
 
@@ -151,13 +155,28 @@ class HttpDownloader:
         self.close()
 
     def download(
-        self, url: str, dest: Path, expected_size: int | None = None
+        self,
+        url: str,
+        dest: Path,
+        expected_size: int | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Path:
         """Fetch `url` into `dest`, resuming a partial file if one is there.
 
         `expected_size` (from `FetchFile.size_bytes`, when the plugin
         offered one) lets an already-complete file be recognised without
         a request at all -- the cheapest possible resume.
+
+        `headers` (from `FetchFile.headers`, validated when the plan was
+        re-established host-side) are extra request headers sent on every
+        hop of this download. Authentication is the motivating case -- an
+        Archive.org S3 plugin sending `Authorization: LOW <access>:
+        <secret>` to `*.archive.org` -- and the allowlist gate, not this
+        parameter, is what bounds where a credential can travel: every
+        hop is re-checked against the plugin's declared network before the
+        request is built. Transport-owned names (including the resume
+        `Range`, which this method computes itself) never arrive here:
+        `types.validate_headers` refused them when the plan was parsed.
         """
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -172,7 +191,7 @@ class HttpDownloader:
                 offset = 0
 
         try:
-            self._stream_to(url, dest, offset)
+            self._stream_to(url, dest, offset, headers)
         except PolicyViolation as exc:
             raise DownloadError(
                 f"refusing to download from a host outside the plugin's "
@@ -189,7 +208,9 @@ class HttpDownloader:
                 f"{self.max_bytes}-byte limit for this download"
             )
 
-    def _stream_to(self, url: str, dest: Path, offset: int) -> None:
+    def _stream_to(
+        self, url: str, dest: Path, offset: int, extra_headers: dict[str, str] | None = None
+    ) -> None:
         current = url
         hops = 0
         restarted = False
@@ -199,7 +220,13 @@ class HttpDownloader:
             # this line runs for a URL the plugin never declared.
             check_url(current, self.allowlist)
 
-            headers = {"Range": f"bytes={offset}-"} if offset else {}
+            headers = dict(extra_headers) if extra_headers else {}
+            if offset:
+                # The resume Range is the downloader's own protocol and
+                # always wins: validate_headers refuses a plugin-supplied
+                # Range for exactly this reason, so this cannot clobber a
+                # credential -- it IS the only header of its name.
+                headers["Range"] = f"bytes={offset}-"
             with self._client.stream("GET", current, headers=headers) as resp:
                 if resp.is_redirect:
                     hops += 1
@@ -612,7 +639,12 @@ def _import(
             # containment message verbatim in the job's error column.
             raise _ImportFailure(str(exc)) from exc
         try:
-            downloader.download(entry.url, dest, expected_size=entry.size_bytes)
+            downloader.download(
+                entry.url,
+                dest,
+                expected_size=entry.size_bytes,
+                headers=entry.headers,
+            )
         except Exception as exc:
             raise _ImportFailure(
                 f"download of {entry.filename!r} from {entry.url!r} failed: {exc}"

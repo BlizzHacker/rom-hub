@@ -170,6 +170,56 @@ Declare the hosts you actually use and no more. The allowlist is the one thing
 a reader can judge you on before installing, and a search plugin asking for
 hosts unrelated to its source is the thing people are told to be suspicious of.
 
+## Authenticated downloads: `FetchFile.headers`
+
+Some sources gate their download endpoints behind a credential — Archive.org's
+S3 API answers `Authorization: LOW <access>:<secret>`, and login-protected
+collections work the same way. The supported path is:
+
+1. Declare the credential as a `secret` config field (never `str`):
+
+   ```toml
+   [config]
+   s3_access_key = { type = "str", label = "Internet Archive S3 Access Key", required = false }
+   s3_secret_key = { type = "secret", label = "Internet Archive S3 Secret Key", required = false }
+   ```
+
+2. Build the header in `plan()` from `ctx.config` and attach it per file:
+
+   ```python
+   from rom_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
+
+   class Importer(ImportProvider):
+       def plan(self, result: SearchResult) -> FetchPlan:
+           access = self.ctx.config.get("s3_access_key") or ""
+           secret = self.ctx.config.get("s3_secret_key") or ""
+           headers = {"Authorization": f"LOW {access}:{secret}"} if access and secret else None
+           return FetchPlan(
+               files=[FetchFile(url=url, filename=name, headers=headers)],
+               platform=result.platform or "dos",
+           )
+   ```
+
+What the host guarantees, and what it refuses:
+
+- The header travels **only to hosts your own manifest `network` list already
+  permits**, and is re-checked on every redirect hop before the request is
+  built — a credential can never ride a 302 to an undeclared host.
+- Transport-owned names are refused when the plan is validated, not
+  mid-download: `Host`, `Content-Length`, `Transfer-Encoding`, `Connection`,
+  `Upgrade`, `TE`, `Cookie`, and `Range` (the resume `Range` is computed by
+  the downloader itself from the partial file on disk). Values may not
+  contain CR/LF/NUL — header injection is refused at plan time.
+- Bound: 16 headers per file, 8 KiB per value.
+- Headers work on every `FetchPlan` capability — `importer`, `cores`,
+  `firmware` and `assets` — because they ride `FetchFile`, which all four
+  share. `ctx.http.get` remains headerless by design: it is a shared,
+  cookie-free RPC used in fan-out search, where one plugin's credential
+  could otherwise reach a host another plugin declared.
+
+If your search endpoint (not the download) needs the credential, put it in the
+query string or refuse — `ctx.http` will not carry headers for it.
+
 ## What a plugin does not get
 
 No library token. No filesystem mount. No sockets. And **almost no

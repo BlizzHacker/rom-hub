@@ -895,10 +895,10 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-minerva",
       "install": "https://github.com/BlizzHacker/rom-hub-minerva",
-      "download": "https://github.com/BlizzHacker/rom-hub-minerva/archive/refs/tags/v0.2.0.tar.gz",
-      "version": "0.2.0",
-      "ref": "v0.2.0",
-      "updated": "2026-10-28",
+      "download": "https://github.com/BlizzHacker/rom-hub-minerva/archive/refs/tags/v0.3.0.tar.gz",
+      "version": "0.3.0",
+      "ref": "v0.3.0",
+      "updated": "2026-11-09",
       "rpp_version": "1",
       "capabilities": [
         "search",
@@ -923,9 +923,9 @@
       "search_only": true,
       "key_required": false,
       "in_tree": false,
-      "description": "Searches MiNERVA's public ROM API and keeps each matching archive row distinct, including its exact path. Selecting a result still hands the whole collection torrent to your configured torrent client; the API requires no key.",
+      "description": "Searches MiNERVA's public ROM API and keeps each matching archive row distinct, including its exact path. A host-supplied platform is translated through the plugin's own slug-to-console mapping and searched per console name, so a platform-specific search pages within that system. Selecting a result still hands the whole collection torrent to your configured torrent client; the API requires no key.",
       "terms": "MiNERVA is a community continuation of Myrient and its archive includes copyrighted commercial ROMs. A public listing is not a licence or permission to download; rights vary by work and jurisdiction. Use it only for material you are authorized to obtain. This plugin does not bypass login, access controls or payment restrictions, and it makes no claim that a listed file is lawful for you to download.",
-      "comments": "For the planned v0.2.0 release, search requests only GET /v1/api/rom/search and keeps each matching API file row separate, with its id, so_id and full_path. It never requests /api/, /browse/ or /rom/ paths; the result's /rom?id=... URL is a human click-out and is not fetched by the plugin. The API gives no file sizes or seeder counts. Each result's magnet identifies a whole collection torrent: the plugin does not select a file inside it or set file priorities, so the torrent client may download the whole collection. The twelve public tracker hosts appended to magnets are the same hosts declared in the plugin manifest and shown in the Network column. This catalog entry depends on the plugin's v0.2.0 tag being published after its code PR merges.",
+      "comments": "Search requests only GET /v1/api/rom/search and keeps each matching API file row separate, with its id, so_id and full_path. It never requests /api/, /browse/ or /rom/ paths; the result's /rom?id=... URL is a human click-out and is not fetched by the plugin. The API gives no file sizes or seeder counts. Each result's magnet identifies a whole collection torrent: the plugin does not select a file inside it or set file priorities, so the torrent client may download the whole collection. The twelve public tracker hosts appended to magnets are the same hosts declared in the plugin manifest and shown in the Network column. v0.3.0 makes the host's platform argument do something: the API's `console` filter is filled from this plugin's own mapping of platform slugs to MiNERVA console names (every name verified against the live /v1/api/rom/filters), one request per console name, merged; results found under a mapped filter carry the platform slug back. An explicit `console` config still wins, and an unmapped slug searches unfiltered rather than returning nothing. This catalog entry depends on the plugin's v0.3.0 tag being published after its code PR merges.",
       "platforms": []
     },
     {

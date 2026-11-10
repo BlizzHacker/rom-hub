@@ -197,7 +197,12 @@ def install_firmware(
     try:
         for entry, dest in destinations:
             try:
-                downloader.download(entry.url, dest, expected_size=entry.size_bytes)
+                downloader.download(
+                    entry.url,
+                    dest,
+                    expected_size=entry.size_bytes,
+                    headers=entry.headers,
+                )
             except Exception as exc:  # noqa: BLE001
                 raise FirmwareError(
                     f"downloading {entry.filename!r} for firmware "

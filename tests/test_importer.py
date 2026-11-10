@@ -160,7 +160,7 @@ class FakeDownloader:
         self.error = error
         self.calls: list[tuple[str, Path]] = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         dest = Path(dest)
         self.calls.append((url, dest))
         if self.error is not None:
@@ -564,7 +564,7 @@ def test_a_multi_file_plan_costs_one_extra_listing_not_one_per_file(
     )
     downloader = FakeDownloader()
 
-    def distinct(url, dest, expected_size=None):
+    def distinct(url, dest, expected_size=None, headers=None):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(ROM_BYTES + dest.name.encode())
         downloader.calls.append((url, dest))
@@ -757,7 +757,7 @@ def test_run_import_closes_the_downloader_it_built_itself(tmp_path, queue, uploa
             self.closed = False
             built.append(self)
 
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             dest = Path(dest)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(ROM_BYTES)
@@ -819,7 +819,7 @@ def test_the_downloader_is_closed_even_when_the_import_fails(
             self.closed = False
             built.append(self)
 
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             raise DownloadError("the network went away")
 
         def close(self):

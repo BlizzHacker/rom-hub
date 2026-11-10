@@ -26,6 +26,8 @@ import hashlib
 
 from rom_hub_sdk import SearchProvider, SearchResult
 
+from .platforms import consoles_for_platform, platform_for_console
+
 ENDPOINT = "https://minerva-archive.org/v1/api/rom/search"
 DETAIL = "https://minerva-archive.org/rom?id="
 #: A full page is the API's "there is more" signal; it returns >100 when a
@@ -76,34 +78,74 @@ class Search(SearchProvider):
         except (TypeError, ValueError):
             max_pages = 1
 
-        rows: list[dict] = []
-        offset = 0
-        for _ in range(max_pages):
-            params: dict = {"query": query, "offset": offset}
+        # Which console filters to query, in priority order:
+        #
+        # 1. An explicit `console` config is the operator's own narrowing
+        #    and wins outright -- it is a MiNERVA filter-bar value they
+        #    typed, and silently ANDing a second filter onto it would
+        #    search for something they did not ask for.
+        # 2. Otherwise, the host's platform argument is translated through
+        #    this plugin's own mapping. One slug can name several MiNERVA
+        #    consoles (Redump, No-Intro and TOSEC spell "Sega Mega Drive"
+        #    three ways), so this is one request *per console name*,
+        #    merged below. That is the fix for the first-100-rows-only
+        #    failure: a platform-specific search now pages within the
+        #    system it asked for instead of paging through every system.
+        # 3. No platform, or an unmapped one, searches unfiltered --
+        #    unfiltered is "all rows exist and the host matches on
+        #    title"; empty would be "no rows exist", which is a lie.
+        if console:
+            console_filters: list[str] = [console]
+        else:
+            console_filters = list(consoles_for_platform(platform))
+
+        # Each row is kept with the console filter that produced it: the
+        # live API's row objects carry no `console` field (only id,
+        # full_path, magnet and so_id -- measured 2026-11-09), so the
+        # request is the only place that knowledge exists. Unfiltered
+        # searches tag rows with "".
+        rows: list[tuple[dict, str]] = []
+
+        def page_all(console_name: str) -> None:
+            offset = 0
+            for _ in range(max_pages):
+                params: dict = {"query": query, "offset": offset}
+                if console_name:
+                    params["console"] = console_name
+                if tokenised:
+                    params["tokenised"] = "true"
+                if group:
+                    params["group"] = group
+                if region:
+                    params["region"] = region
+                if not self._fetch_page(params, rows, console_name):
+                    break
+                offset += PAGE
+
+        if console_filters:
+            for console_name in console_filters:
+                page_all(console_name)
+        else:
             # Empty filters are omitted, not sent as "", so the API's own
             # defaults apply and the query string stays clean.
-            if tokenised:
-                params["tokenised"] = "true"
-            if group:
-                params["group"] = group
-            if console:
-                params["console"] = console
-            if region:
-                params["region"] = region
-            response = self.ctx.http.get(ENDPOINT, params=params)
-            if response.status_code != 200:
-                # A non-200 is a hard failure of this page; surface what we
-                # have rather than raise and lose earlier pages.
-                break
-            page = response.json()
-            if not isinstance(page, list) or not page:
-                break
-            rows.extend(r for r in page if isinstance(r, dict))
-            if len(page) < PAGE:
-                break
-            offset += PAGE
+            page_all("")
 
         return self._to_results(rows, limit)
+
+    def _fetch_page(
+        self, params: dict, rows: list[tuple[dict, str]], console_name: str
+    ) -> bool:
+        """Fetch one page into `rows`; True if another page may exist."""
+        response = self.ctx.http.get(ENDPOINT, params=params)
+        if response.status_code != 200:
+            # A non-200 is a hard failure of this page; surface what we
+            # have rather than raise and lose earlier pages.
+            return False
+        page = response.json()
+        if not isinstance(page, list) or not page:
+            return False
+        rows.extend((r, console_name) for r in page if isinstance(r, dict))
+        return len(page) >= PAGE
 
     def _to_results(self, rows: list[dict], limit: int) -> list[SearchResult]:
         if limit <= 0:
@@ -111,7 +153,7 @@ class Search(SearchProvider):
 
         out: list[SearchResult] = []
         seen_rows: set[tuple[str, str, str, str]] = set()
-        for row in rows:
+        for row, console_filter in rows:
             magnet = str(row.get("magnet") or "")
             full_path = str(row.get("full_path") or "")
             if not magnet.startswith("magnet:") or not full_path:
@@ -140,13 +182,18 @@ class Search(SearchProvider):
             # carried separately for Torrent.resolve().
             torrent_suffix = hashlib.sha256(magnet.encode("utf-8")).hexdigest()[:12]
             source_id = f"minerva-row:{row_identity}:{hash_suffix}:{torrent_suffix}"
+            # The console this row was found under, mapped back to a host
+            # platform slug. The API's rows carry no `console` field of
+            # their own, so the filter that produced the row is the
+            # evidence; if a future API revision does publish one, that
+            # wins. Rows found unfiltered, or under a console this plugin
+            # does not map, stay None and the host matches them on title
+            # exactly as it did when every row was None.
+            row_console = str(row.get("console") or console_filter or "")
             out.append(SearchResult(
                 source_id=source_id,
                 title=title,
-                # MiNERVA names no RomM platform in search results; the path's
-                # vendor segment is not a reliable slug. Left None so the host
-                # matches on title, exactly as it does for other sources.
-                platform=None,
+                platform=platform_for_console(row_console),
                 size_bytes=None,          # not published -- unknown, never 0
                 url=f"{DETAIL}{rom_id}" if rom_id is not None else None,
                 extra={

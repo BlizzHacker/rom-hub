@@ -808,7 +808,7 @@ def test_cores_install_writes_into_the_configured_directory(
     real_install = cores_module.install_core
 
     class FakeDownloader:
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             from pathlib import Path
 
             dest = Path(dest)
@@ -939,7 +939,7 @@ def test_firmware_install_writes_into_the_configured_directory(
     real_install = firmware_module.install_firmware
 
     class FakeDownloader:
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             from pathlib import Path
 
             dest = Path(dest)

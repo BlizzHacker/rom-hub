@@ -48,6 +48,99 @@ _MAX_FILENAME_CHARS = 200
 # posture the rest of this codebase takes.
 MAX_FILES_PER_PLAN = 256
 
+# How many headers a single FetchFile may carry and how long one value may
+# be. Authentication is a header or two; a plan entry that ships a
+# kilobyte of headers is not authenticating, it is smuggling a document
+# past the frame parser's own budget accounting.
+MAX_HEADERS_PER_FILE = 16
+MAX_HEADER_VALUE_CHARS = 8192
+
+# RFC 7230 tchar: the only characters a header field-name may contain.
+_HEADER_NAME = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
+
+# Headers the downloader itself owns. A plugin setting one of these is not
+# describing an authenticated request; it is describing a different
+# transfer than the host is about to make:
+#   * `Range` is the resume protocol -- HttpDownloader computes it from the
+#     partial file on disk, and a plugin-provided one would corrupt the
+#     append/restart decision (206-vs-200) that keeps resumed files honest.
+#   * `Host`, `Content-Length`, `Transfer-Encoding`, `Connection`,
+#     `Upgrade` and `TE` are transport semantics; httpx sets them from the
+#     actual request, and a second value either breaks the framing or lets
+#     a plugin negotiate something the host did not ask for.
+#   * `Cookie` is refused because the brokered `ctx.http` deliberately
+#     clears cookies to keep one plugin's session from riding along on
+#     another's request; a FetchFile that could set one would reopen that
+#     exact side channel on the download path. Credentials belong in
+#     `Authorization` or a source's own header, never in a cookie jar.
+# Casefolded for comparison; HTTP field-names are case-insensitive.
+_FORBIDDEN_HEADERS = frozenset(
+    {
+        "host",
+        "content-length",
+        "transfer-encoding",
+        "connection",
+        "upgrade",
+        "te",
+        "cookie",
+        "range",
+    }
+)
+
+
+def validate_headers(v: dict[str, str] | None) -> dict[str, str] | None:
+    """Validate plugin-supplied request headers the host will send verbatim.
+
+    The header *value* is the credential in the motivating case -- an
+    `Authorization: LOW <access>:<secret>` -- so this validator is written
+    for values nobody logged and nobody saw. The rules:
+
+    * Names must be RFC 7230 tokens and must not be a forbidden header.
+      No CR or LF anywhere in a name or a value: a value containing a
+      newline is a header-injection attempt against every hop this
+      download takes, and httpx would refuse it anyway -- refusing here
+      means the job record says "invalid header" instead of "httpx said
+      something about IllegalCharacter".
+    * An empty value is legal (`X-Flag: `), an empty name is not.
+    * Values are capped in count and length.
+    """
+    if v is None:
+        return None
+    if not v:
+        # An empty dict is just noise; normalise to absent so downstream
+        # code (and the resume/redirect paths) has one shape to handle.
+        return None
+    if len(v) > MAX_HEADERS_PER_FILE:
+        raise ValueError(
+            f"a file may carry at most {MAX_HEADERS_PER_FILE} headers; got {len(v)}"
+        )
+    for name, value in v.items():
+        if not isinstance(name, str) or not isinstance(value, str):
+            raise ValueError("header names and values must both be strings")
+        if not _HEADER_NAME.fullmatch(name):
+            raise ValueError(
+                f"header name {name!r} is not an RFC 7230 token: only the "
+                "characters !#$%&'*+-.^_`|~0-9A-Za-z are permitted"
+            )
+        if name.casefold() in _FORBIDDEN_HEADERS:
+            raise ValueError(
+                f"header {name!r} is owned by the downloader and may not be "
+                "set by a plugin (reserved: transport framing, the resume "
+                "Range, and Cookie, which the broker model refuses)"
+            )
+        if any(ch in value for ch in "\r\n\0") or not value.isprintable():
+            raise ValueError(
+                f"header {name!r} has a value containing a control "
+                "character; header injection is refused before the request "
+                "is built"
+            )
+        if len(value) > MAX_HEADER_VALUE_CHARS:
+            raise ValueError(
+                f"header {name!r} has a {len(value)}-character value, over "
+                f"the {MAX_HEADER_VALUE_CHARS}-character limit"
+            )
+    return v
+
 
 def bare_filename(v: str) -> str:
     """Validate a plugin-supplied name the host will open for writing.
@@ -212,6 +305,22 @@ class FetchFile(BaseModel):
     filename: str = Field(min_length=1)
     subdir: str | None = None
     size_bytes: int | None = Field(default=None, ge=0)
+    #: Extra request headers the host sends when fetching THIS file, on
+    #: every hop. This is the supported way for a plugin to authenticate a
+    #: download: the credential lives in the plugin's own `secret` config
+    #: (never in the manifest, never in the plan's URL), and the header is
+    #: built from it at plan() time. The host sends the header only to
+    #: hosts this plugin's own manifest allowlist already permits -- the
+    #: URL gate in `_gated_plan` runs first and unchanged, so a header
+    #: cannot travel to a host the plugin could not name anyway. The
+    #: downloader-owned names (transport framing, the resume `Range`,
+    #: `Cookie`) are refused; see `validate_headers`.
+    headers: dict[str, str] | None = None
+
+    @field_validator("headers")
+    @classmethod
+    def _headers_must_be_safe(cls, v: dict[str, str] | None) -> dict[str, str] | None:
+        return validate_headers(v)
 
     @field_validator("filename")
     @classmethod

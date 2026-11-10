@@ -185,7 +185,7 @@ class FakeDownloader:
         self.payload = payload
         self.downloads = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         dest = Path(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(self.payload)

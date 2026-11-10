@@ -206,7 +206,7 @@ class FakeDownloader:
         self.body = body
         self.urls: list[str] = []
 
-    def download(self, url, dest, expected_size=None):
+    def download(self, url, dest, expected_size=None, headers=None):
         self.urls.append(url)
         Path(dest).parent.mkdir(parents=True, exist_ok=True)
         Path(dest).write_bytes(self.body)
@@ -289,7 +289,7 @@ def test_a_hash_mismatch_refuses_and_caches_nothing(tmp_path):
 
 def test_a_download_failure_is_reported_with_the_url(tmp_path):
     class Broken(FakeDownloader):
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             raise DownloadError("connection reset")
 
     manifest = manifest_with(declaration())

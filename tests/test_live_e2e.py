@@ -133,7 +133,7 @@ def test_the_real_openvgdb_data_asset_downloads_verifies_and_caches(tmp_path):
     class Counting(HttpDownloader):
         requests = 0
 
-        def download(self, url, dest, expected_size=None):
+        def download(self, url, dest, expected_size=None, headers=None):
             type(self).requests += 1
             return super().download(url, dest, expected_size=expected_size)
 
