@@ -171,17 +171,23 @@ def inspect_exo_zip(zip_path: Path) -> str:
 
     has_slash = False
     tops: set[str] = set()
+    root_non_dirs: set[str] = set()
     for info in infos:
         name = info.filename
-        if not name:
+        raw_name = getattr(info, "orig_filename", name) or name
+        if not name and not raw_name:
             continue
-        if name.startswith(("/", "\\")) or (len(name) >= 2 and name[1] == ":"):
+        if "\\" in raw_name or "\\" in name:
+            raise ValueError(f"unsafe backslash in zip member path: {raw_name!r}")
+        if name.startswith("/") or (len(name) >= 2 and name[1] == ":"):
             raise ValueError(f"unsafe absolute zip member path: {name!r}")
-        parts = [seg for seg in re.split(r"[\\/]+", name) if seg]
+        parts = [seg for seg in name.split("/") if seg]
         if any(seg == ".." for seg in parts):
             raise ValueError(f"unsafe traversal zip member path: {name!r}")
         if "/" in name:
             has_slash = True
+        elif not info.is_dir():
+            root_non_dirs.add(name)
         head = name.split("/", 1)[0]
         if head:
             tops.add(head)
@@ -192,6 +198,8 @@ def inspect_exo_zip(zip_path: Path) -> str:
         raise ValueError("files sit at the zip root (no subdirectory)")
 
     top = next(iter(tops))
+    if top in root_non_dirs:
+        raise ValueError(f"root file conflicts with top-level directory: {top!r}")
     if top in ("", ".", "..") or "\\" in top or "/" in top or ":" in top:
         raise ValueError(f"unsafe top-level directory name: {top!r}")
     return top
@@ -243,9 +251,15 @@ def repackage_zip(
         return ZipResult(zip_path=str(zip_path), status="skipped_error", detail=msg)
 
     out_base = output_dir.resolve()
-    out_zip = (out_base / tag).resolve()
-    if not out_zip.is_relative_to(out_base):
+    if not tag or tag in (".", "..") or "/" in tag or "\\" in tag:
         msg = f"SKIP [{tag}]: unsafe output archive name"
+        if error_log and not dry_run:
+            _append_error_log(error_log, msg)
+        return ZipResult(zip_path=str(zip_path), status="skipped_error", top_dir=top, detail=msg)
+
+    out_zip = out_base / tag
+    if out_zip.parent != out_base or out_zip.is_symlink():
+        msg = f"SKIP [{tag}]: unsafe output archive target"
         if error_log and not dry_run:
             _append_error_log(error_log, msg)
         return ZipResult(zip_path=str(zip_path), status="skipped_error", top_dir=top, detail=msg)
@@ -280,12 +294,12 @@ def repackage_zip(
             preview_conf=preview,
         )
 
-    output_dir.mkdir(parents=True, exist_ok=True)
     target_entry = f"{top}/dosbox.conf".casefold()
     tmp_path: Path | None = None
     try:
+        out_base.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
-            dir=output_dir,
+            dir=out_base,
             prefix=f".{zip_path.stem}.",
             suffix=".tmp",
             delete=False,
@@ -313,8 +327,22 @@ def repackage_zip(
             conf_info.compress_type = zipfile.ZIP_DEFLATED
             dst_zf.writestr(conf_info, edited_conf)
 
-        os.replace(tmp_path, out_zip)
-        tmp_path = None
+        if overwrite:
+            os.replace(tmp_path, out_zip)
+            tmp_path = None
+        else:
+            try:
+                os.link(tmp_path, out_zip)
+            except OSError as link_exc:
+                if isinstance(link_exc, FileExistsError):
+                    raise
+                fd = os.open(out_zip, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+                try:
+                    with os.fdopen(fd, "wb") as dst_fh, tmp_path.open("rb") as src_fh:
+                        shutil.copyfileobj(src_fh, dst_fh, length=65536)
+                except Exception:
+                    out_zip.unlink(missing_ok=True)
+                    raise
     except Exception as exc:
         msg = f"SKIP [{tag}]: failed to write output zip: {exc}"
         if error_log:
@@ -353,19 +381,28 @@ def repackage_batch(
     )
 
     zips: list[Path] = []
+    results: list[ZipResult] = []
+    processed = 0
+    skipped = 0
     for raw_item in input_paths:
         text = str(raw_item or "").strip()
         if not text:
             continue
         candidate = Path(text)
         if candidate.is_dir():
-            zips.extend(sorted(p for p in candidate.iterdir() if p.is_file() and p.suffix.lower() == ".zip"))
+            try:
+                found = sorted(p for p in candidate.iterdir() if p.is_file() and p.suffix.lower() == ".zip")
+            except OSError as exc:
+                msg = f"SKIP [{candidate.name or candidate}]: cannot list directory: {exc}"
+                if err_path and not dry_run:
+                    _append_error_log(err_path, msg)
+                results.append(ZipResult(zip_path=str(candidate), status="skipped_error", detail=msg))
+                skipped += 1
+                continue
+            zips.extend(found)
         else:
             zips.append(candidate)
 
-    results: list[ZipResult] = []
-    processed = 0
-    skipped = 0
     for zp in zips:
         res = repackage_zip(
             zp,
@@ -381,7 +418,7 @@ def repackage_batch(
         else:
             skipped += 1
 
-    ok = bool(zips) and skipped == 0
+    ok = bool(results) and not any(r.status == "skipped_error" for r in results)
     return BatchResult(
         ok=ok,
         processed=processed,

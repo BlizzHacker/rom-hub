@@ -175,8 +175,23 @@ def test_inspect_exo_zip_rejects_flat_multi_top_and_traversal(tmp_path):
     with pytest.raises(ValueError, match="traversal"):
         inspect_exo_zip(evil)
 
+    backslash = tmp_path / "backslash.zip"
+    with zipfile.ZipFile(backslash, "w") as zf:
+        zi = zipfile.ZipInfo("Top/GAME.EXE")
+        zi.filename = "Top\\GAME.EXE"
+        zf.writestr(zi, b"1")
+    with pytest.raises(ValueError, match="backslash"):
+        inspect_exo_zip(backslash)
 
-def test_repackage_batch_logs_skips_and_carries_credit(tmp_path):
+    file_conflict = tmp_path / "conflict.zip"
+    with zipfile.ZipFile(file_conflict, "w") as zf:
+        zf.writestr("Top", b"file-at-root")
+        zf.writestr("Top/GAME.EXE", b"1")
+    with pytest.raises(ValueError, match="conflicts"):
+        inspect_exo_zip(file_conflict)
+
+
+def test_repackage_batch_logs_skips_and_carries_credit(tmp_path, monkeypatch):
     dos_dir = tmp_path / "!dos"
     out_dir = tmp_path / "out"
     (dos_dir / "OkGame").mkdir(parents=True)
@@ -199,3 +214,66 @@ def test_repackage_batch_logs_skips_and_carries_credit(tmp_path):
     err_log = Path(batch.error_log)
     assert err_log.is_file()
     assert "NoTemplate" in err_log.read_text(encoding="utf-8")
+
+    # Resume run with existing valid zip only should report ok=True.
+    resumed = repackage_batch([ok_zip], dos_dir=dos_dir, output_dir=out_dir)
+    assert resumed.processed == 0
+    assert resumed.skipped == 1
+    assert resumed.ok
+
+    # Unreadable input directory records an error without blocking later valid zips.
+    bad_dir = tmp_path / "unreadable_dir"
+    bad_dir.mkdir()
+    orig_iterdir = Path.iterdir
+
+    def flaky_iterdir(self):
+        if self == bad_dir:
+            raise PermissionError("denied")
+        return orig_iterdir(self)
+
+    monkeypatch.setattr(Path, "iterdir", flaky_iterdir)
+    mixed = repackage_batch([bad_dir, ok_zip], dos_dir=dos_dir, output_dir=out_dir, overwrite=True)
+    assert mixed.processed == 1
+    assert mixed.skipped == 1
+    assert not mixed.ok
+
+
+def test_repackage_zip_refuses_clobber_mkdir_failure_and_symlink(tmp_path, monkeypatch):
+    import os
+
+    dos_dir = tmp_path / "!dos"
+    out_dir = tmp_path / "out"
+    (dos_dir / "OkGame").mkdir(parents=True)
+    (dos_dir / "OkGame" / "dosbox.conf").write_text("[autoexec]\nmount c .\\eXoDOS\\OkGame\n", encoding="utf-8")
+    ok_zip = tmp_path / "OkGame.zip"
+    with zipfile.ZipFile(ok_zip, "w") as zf:
+        zf.writestr("OkGame/GAME.EXE", b"ok")
+
+    # Concurrent creation before atomic link raises FileExistsError -> skipped_error without clobbering.
+    def race_link(src, dst):
+        Path(dst).write_bytes(b"concurrent")
+        raise FileExistsError("already exists")
+
+    monkeypatch.setattr(os, "link", race_link)
+    raced = repackage_zip(ok_zip, dos_dir, out_dir)
+    assert raced.status == "skipped_error"
+    assert (out_dir / "OkGame.zip").read_bytes() == b"concurrent"
+    monkeypatch.undo()
+
+    # mkdir failure inside write path returns skipped_error rather than raising.
+    bad_parent = tmp_path / "file_not_dir"
+    bad_parent.write_text("blocker", encoding="utf-8")
+    bad_batch = repackage_batch([ok_zip], dos_dir=dos_dir, output_dir=bad_parent / "sub")
+    assert not bad_batch.ok
+    assert bad_batch.skipped == 1
+
+    # Output symlink is rejected instead of clobbering the symlink target.
+    sym_out = tmp_path / "sym_out"
+    sym_out.mkdir()
+    real_other = sym_out / "Other.zip"
+    real_other.write_bytes(b"keep-me")
+    sym_target = sym_out / "OkGame.zip"
+    monkeypatch.setattr(Path, "is_symlink", lambda self: self == sym_target)
+    sym_res = repackage_zip(ok_zip, dos_dir, sym_out, overwrite=True)
+    assert sym_res.status == "skipped_error"
+    assert real_other.read_bytes() == b"keep-me"
