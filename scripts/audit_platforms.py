@@ -63,6 +63,7 @@ TABLES: dict[str, tuple[str, str, object]] = {
     "aminet": ("aminet", "aminet.platforms", lambda m: values(m.ARCHITECTURES)),
     "archive-org": ("archive-org", "archive_org.platforms", lambda m: values(m.EMULATOR_PLATFORMS)),
     "demozoo": ("demozoo", "demozoo.platforms", lambda m: [p.slug for p in m.PLATFORMS.values()]),
+    "exo2romm": ("exo2romm", "exo2romm.platforms", lambda m: keys(m.PLATFORMS)),
     "hasheous": ("hasheous", "hasheous.platforms", lambda m: keys(m.PLATFORMS)),
     "homebrew": ("homebrew", "homebrew.platforms", lambda m: values(m.HUB_PLATFORMS)),
     "if-archive": ("if-archive", "if_archive.formats", lambda m: [f.platform for f in m._FORMATS if f.platform]),

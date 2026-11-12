@@ -1,0 +1,24 @@
+[plugin]
+slug        = "exo2romm"
+name        = "eXo2romm (eXoDOS to RomM Repackager)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "Unlicense"
+
+[capabilities]
+cores = "exo2romm.cores:Cores"
+
+[permissions]
+network = [
+  "api.github.com",
+  "github.com",
+  "raw.githubusercontent.com",
+]
+romm_api = []
+
+[config]
+dos_dir    = { type = "str",  default = "/data/eXoDOS/Content/eXo/eXoDOS/!dos" }
+output_dir = { type = "str",  default = "/var/lib/romm/library/roms/dos" }
+error_log  = { type = "str",  default = "" }
+dry_run    = { type = "bool", default = false }
+overwrite  = { type = "bool", default = false }
