@@ -7,7 +7,7 @@ run offline.
 | Plugin | Canonical repository | Pinned tag |
 |---|---|---|
 | `aminet` | <https://github.com/BlizzHacker/rom-hub-aminet> | `v0.2.0` |
-| `archive-org` | <https://github.com/BlizzHacker/rom-hub-archive-org> | `v0.2.0` |
+| `archive-org` | <https://github.com/BlizzHacker/rom-hub-archive-org> | `v0.4.1` |
 | `demozoo` | <https://github.com/BlizzHacker/rom-hub-demozoo> | `v0.2.0` |
 | `emulators` | <https://github.com/BlizzHacker/rom-hub-emulators> | `v0.1.0` |
 | `hasheous` | <https://github.com/BlizzHacker/rom-hub-hasheous> | `v0.1.0` |

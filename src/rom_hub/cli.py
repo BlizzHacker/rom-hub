@@ -22,6 +22,7 @@ import json
 import os
 import sqlite3
 import sys
+from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,7 +68,9 @@ from .dispatcher import fanout_limit, search_all
 from .emuassets import AssetInstallError, find_asset, install_asset
 from .firmware import FirmwareError, find_firmware, install_firmware
 from .grouping import group_results, paginate
-from .importer import run_import
+from .importer import HttpDownloader, run_import
+from .ia_auth import ArchiveAuthError
+from .ia_session import archive_transport
 from .jobs import JobQueue, JobState
 from .manifest import ManifestError
 from .metadata import EnrichError, rom_ref_from, run_enrich
@@ -1167,6 +1170,64 @@ def _catalogue_rows(plugin, query, platform, limit):
     return rows
 
 
+def _plugin_fetcher(plugin):
+    transport = archive_transport(plugin.slug, default_root())
+    return HttpxFetcher(transport=transport) if transport is not None else HttpxFetcher()
+
+
+@contextmanager
+def _search_fetchers(fallback):
+    with ExitStack() as stack:
+        clients = {}
+
+        def fetcher_for(plugin):
+            if plugin.slug != "archive-org":
+                return fallback
+            if plugin.slug not in clients:
+                client = _plugin_fetcher(plugin)
+                stack.callback(client.close)
+                clients[plugin.slug] = client
+            return clients[plugin.slug]
+
+        yield fetcher_for
+
+
+def _auth_downloader(plugin):
+    transport = archive_transport(plugin.slug, default_root())
+    if transport is None:
+        return nullcontext(None)
+    return HttpDownloader(allowlist=list(plugin.manifest.network), transport=transport)
+
+
+def _cmd_auth(args) -> int:
+    from . import ia_auth
+
+    root = default_root()
+    if args.action == "status":
+        state = ia_auth.status(root)
+        print(f"ROM Hub home: {root}")
+        print(f"Credential source: {ia_auth._external_prefix() or 'secret store'}")
+        print(f"Configured: {state['configured']}")
+        if not state["external"]:
+            print(f"Secret store: {type(secrets.open_store(root)).__name__}")
+        if state["error"]:
+            raise ArchiveAuthError(state["error"])
+        return EXIT_OK
+    if args.action == "logout":
+        result = ia_auth.configure(root, clear=True)
+    else:
+        if ia_auth.status(root)["external"]:
+            raise ArchiveAuthError("External credentials override saved settings")
+        email = input("Archive.org email: ").strip()
+        password = getpass.getpass("Archive.org password: ")
+        result = ia_auth.login(root, email, password)
+    if not result["ok"]:
+        raise ArchiveAuthError(result["error"])
+    print("Saved credentials cleared." if args.action == "logout" else
+          "Archive.org login verified and credentials saved.")
+    return EXIT_OK
+
+
 def _cmd_search(args) -> int:
     plugins = Registry(default_root()).installed()
     searchable = [p for p in plugins if p.enabled and "search" in p.manifest.capabilities]
@@ -1182,17 +1243,19 @@ def _cmd_search(args) -> int:
 
     fetcher = HttpxFetcher()
     try:
-        outcome = search_all(
-            plugins,
-            fetcher=fetcher,
-            query=args.query,
-            platform=args.platform,
-            limit=per_source,
-            allow_unsandboxed=allow_unsandboxed(),
-            assets_for=prepare_assets,
-            secrets_for=prepare_secrets,
-            catalogue_for=None if args.live else _catalogue_rows,
-        )
+        with _search_fetchers(fetcher) as fetcher_for:
+            outcome = search_all(
+                plugins,
+                fetcher=fetcher,
+                query=args.query,
+                platform=args.platform,
+                limit=per_source,
+                allow_unsandboxed=allow_unsandboxed(),
+                assets_for=prepare_assets,
+                secrets_for=prepare_secrets,
+                catalogue_for=None if args.live else _catalogue_rows,
+                fetcher_for=fetcher_for,
+            )
     finally:
         fetcher.close()
 
@@ -1333,9 +1396,10 @@ def _cmd_import(args) -> int:
 
     root = default_root()
     data_assets = prepare_assets(plugin, root)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
     try:
         with (
+            _auth_downloader(plugin) as downloader,
             JobQueue(jobs_db_path(root)) as queue,
             PluginProcess(
                 plugin_dir=plugin.path,
@@ -1354,6 +1418,7 @@ def _cmd_import(args) -> int:
                 queue=queue,
                 download_dir=downloads_dir(root),
                 warn_unplayable=not args.allow_unplayable,
+                downloader=downloader,
             )
     finally:
         fetcher.close()
@@ -1414,9 +1479,9 @@ def _cmd_enrich(args) -> int:
     # Before the subprocess, before the backend call: a plugin whose
     # dataset cannot be fetched or verified should cost neither.
     data_assets = prepare_assets(plugin, root)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
     try:
-        with PluginProcess(
+        with _auth_downloader(plugin) as downloader, PluginProcess(
             plugin_dir=plugin.path,
             manifest=plugin.manifest,
             config=plugin.config,
@@ -1431,6 +1496,7 @@ def _cmd_enrich(args) -> int:
                 rom_ref_from(rom, args.rom_id, {"source_id": args.source_id or ""}),
                 backend=backend,
                 work_dir=artwork_dir(root) / str(args.rom_id),
+                downloader=downloader,
             )
     finally:
         fetcher.close()
@@ -1525,7 +1591,7 @@ def _cmd_stream(args) -> int:
     )
 
     data_assets = prepare_assets(plugin)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
     try:
         with PluginProcess(
             plugin_dir=plugin.path,
@@ -1698,7 +1764,7 @@ def _resolve_torrent(args):
     )
 
     data_assets = prepare_assets(plugin)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
     try:
         with PluginProcess(
             plugin_dir=plugin.path,
@@ -1729,7 +1795,9 @@ def _resolve_torrent(args):
             f"client:\n  {source.source}"
         )
 
-    raw = _download_torrent(source.source, allowlist)
+    transport = archive_transport(plugin.slug, default_root())
+    raw = (_download_torrent(source.source, allowlist, transport=transport)
+           if transport is not None else _download_torrent(source.source, allowlist))
     torrent = parse_torrent(raw)
 
     if source.info_hash and source.info_hash != torrent.info_hash:
@@ -1755,7 +1823,7 @@ def _resolve_torrent(args):
     return outcome, allowlist
 
 
-def _download_torrent(url: str, allowlist: list[str]) -> bytes:
+def _download_torrent(url: str, allowlist: list[str], transport=None) -> bytes:
     """Pull a `.torrent` with the same downloader an import uses.
 
     Written to a temporary file and read back rather than buffered from a
@@ -1771,7 +1839,8 @@ def _download_torrent(url: str, allowlist: list[str]) -> bytes:
 
     with tempfile.TemporaryDirectory(prefix="rom-hub-torrent-") as tmp:
         dest = Path(tmp) / "resolved.torrent"
-        with HttpDownloader(allowlist=allowlist, max_bytes=MAX_TORRENT_BYTES) as dl:
+        with HttpDownloader(allowlist=allowlist, max_bytes=MAX_TORRENT_BYTES,
+                            transport=transport) as dl:
             dl.download(url, dest)
         return dest.read_bytes()
 
@@ -1929,7 +1998,7 @@ def _with_cores_plugin(args, action):
         return EXIT_ERROR
 
     data_assets = prepare_assets(plugin)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
     try:
         with PluginProcess(
             plugin_dir=plugin.path,
@@ -2011,7 +2080,7 @@ def _with_firmware_plugin(args, action):
         return EXIT_ERROR
 
     data_assets = prepare_assets(plugin)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
     try:
         with PluginProcess(
             plugin_dir=plugin.path,
@@ -2132,7 +2201,7 @@ def _with_assets_plugin(args, action):
         return EXIT_ERROR
 
     data_assets = prepare_assets(plugin)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
     try:
         with PluginProcess(
             plugin_dir=plugin.path,
@@ -2284,7 +2353,7 @@ def _cmd_catalogue_build(args) -> int:
     kinds = _requested_kinds(args.kinds)
     data_assets = prepare_assets(plugin, root)
     secrets = prepare_secrets(plugin, root)
-    fetcher = HttpxFetcher()
+    fetcher = _plugin_fetcher(plugin)
 
     def open_process():
         """A freshly started subprocess, on demand.
@@ -2744,6 +2813,8 @@ def _fulfil_request(event, log, settings: WebhookSettings):
     plugins = registry.installed()
     fetcher = HttpxFetcher()
     backend = open_backend()
+    fetchers = ExitStack()
+    fetcher_for = fetchers.enter_context(_search_fetchers(fetcher))
 
     def search(query, platform):
         return search_all(
@@ -2756,6 +2827,7 @@ def _fulfil_request(event, log, settings: WebhookSettings):
             assets_for=prepare_assets,
             secrets_for=prepare_secrets,
             catalogue_for=_catalogue_rows,
+            fetcher_for=fetcher_for,
         )
 
     def importer(chosen: SearchResult):
@@ -2772,12 +2844,13 @@ def _fulfil_request(event, log, settings: WebhookSettings):
                 f"import: {refusal}"
             )
         with (
+            _auth_downloader(plugin) as downloader,
             JobQueue(jobs_db_path(root)) as queue,
             PluginProcess(
                 plugin_dir=plugin.path,
                 manifest=plugin.manifest,
                 config=plugin.config,
-                fetcher=fetcher,
+                fetcher=fetcher_for(plugin),
                 allow_unsandboxed=allow_unsandboxed(),
                 data_assets=prepare_assets(plugin, root),
                 secrets=prepare_secrets(plugin, root),
@@ -2789,6 +2862,7 @@ def _fulfil_request(event, log, settings: WebhookSettings):
                 backend=backend,
                 queue=queue,
                 download_dir=downloads_dir(root),
+                downloader=downloader,
             )
 
     try:
@@ -2800,6 +2874,7 @@ def _fulfil_request(event, log, settings: WebhookSettings):
             fulfil_types=settings.fulfil_types,
         )
     finally:
+        fetchers.close()
         fetcher.close()
         backend.close()
 
@@ -2937,6 +3012,13 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    auth = sub.add_parser("auth", help="manage host-side authentication")
+    authsub = auth.add_subparsers(dest="action", required=True)
+    for action in ("login", "status", "logout"):
+        command = authsub.add_parser(action)
+        command.add_argument("provider", choices=["archive-org"])
+        command.set_defaults(func=_cmd_auth)
 
     plugin = sub.add_parser("plugin", help="manage plugins")
     psub = plugin.add_subparsers(dest="plugin_command", required=True)
@@ -3575,6 +3657,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.func(args)
     except (
+        ArchiveAuthError,
         RegistryError,
         ManifestError,
         CatalogError,

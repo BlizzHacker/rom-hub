@@ -59,9 +59,14 @@ def keys(table) -> list[str]:
 #: and `retroarch-autoconfig` deal in emulator, core and controller names,
 #: none of which is a platform. They are listed in `NO_PLATFORM_TABLE` so
 #: that "missing" and "deliberately none" stay distinguishable.
+def _archive_org_platforms(m) -> list[str]:
+    set_platforms = importlib.import_module("archive_org.set_platforms")
+    return values(m.EMULATOR_PLATFORMS) + values(set_platforms.ALIASES)
+
+
 TABLES: dict[str, tuple[str, str, object]] = {
     "aminet": ("aminet", "aminet.platforms", lambda m: values(m.ARCHITECTURES)),
-    "archive-org": ("archive-org", "archive_org.platforms", lambda m: values(m.EMULATOR_PLATFORMS)),
+    "archive-org": ("archive-org", "archive_org.platforms", _archive_org_platforms),
     "demozoo": ("demozoo", "demozoo.platforms", lambda m: [p.slug for p in m.PLATFORMS.values()]),
     "exo2romm": ("exo2romm", "exo2romm.platforms", lambda m: keys(m.PLATFORMS)),
     "hasheous": ("hasheous", "hasheous.platforms", lambda m: keys(m.PLATFORMS)),
