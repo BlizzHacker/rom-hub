@@ -224,6 +224,36 @@
       "platforms": []
     },
     {
+      "slug": "exo2romm",
+      "name": "eXo2romm (eXoDOS to RomM Repackager)",
+      "author": "derkommutator / BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-exo2romm",
+      "install": "https://github.com/BlizzHacker/rom-hub-exo2romm",
+      "download": "https://github.com/BlizzHacker/rom-hub-exo2romm/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-12",
+      "rpp_version": "1",
+      "capabilities": [
+        "cores"
+      ],
+      "network": [
+        "api.github.com",
+        "github.com",
+        "raw.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Repackages eXoDOS game zips for standalone RomM / ROMarr playback by rewriting pack-root .\\eXoDOS\\<game> dosbox.conf mounts cleanly. Credits derkommutator (inspired to assist with more users having this).",
+      "terms": "Original upstream eXo2romm (https://github.com/derkommutator/eXo2romm) by derkommutator is dedicated to the public domain under The Unlicense, which permits free use, modification, and redistribution. This ROM Hub plugin is likewise released under The Unlicense and inspired to assist with more users having this workflow directly inside ROM Hub and ROMarr.",
+      "comments": "Credits derkommutator (`https://github.com/derkommutator/eXo2romm`) — inspired to assist with more users having standalone eXoDOS zips in RomM and ROMarr. Pairs the RPP v1 `cores` capability (`exo2romm.cores:Cores`, fetching `derkommutator/eXo2romm`'s `eXo2romm.sh` reference script over GitHub) with `exo2romm.repackager`, a pure-Python cross-platform implementation that runs cleanly on Alpine Linux, Debian, macOS, and Windows without requiring `bash`, `awk`, or `zip`/`unzip`. Rewrites `mount`/`imgmount`/`boot` lines (with optional `@`) on a copy of `$DOS_DIR/<top>/dosbox.conf` using non-regex literal matching, preserves CRLF line endings and `#`/`rem` comments, skips existing outputs safely, avoids duplicate zip entries when grafting `<top>/dosbox.conf`, and guards against zip-slip path traversal.",
+      "platforms": [
+        "dos"
+      ]
+    },
+    {
       "slug": "hasheous",
       "name": "Hasheous",
       "author": "BlizzHacker",
