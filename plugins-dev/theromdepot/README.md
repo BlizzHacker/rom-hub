@@ -148,6 +148,6 @@ how they use it.
 
 MIT — see `LICENSE`.
 
-## Version 0.2.1 catalogue validation
+## Version 0.2.2 catalogue validation
 
 Search excludes non-game document extensions and known resource folders such as manuals, firmware and SDKs. Both normalized exports and recursive trees enforce unique-entry bounds; malformed sizes and overdeep subtrees cannot hide valid sibling entries. These filters classify metadata and do not establish that a particular game runs.

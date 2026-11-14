@@ -44,3 +44,16 @@ def test_manuals_bios_and_documents_do_not_become_games():
     items = [row("Nintendo 64/Manual.pdf"), row("[Game Manuals]/Nintendo 64/Manual.zip"), row("[BIOS]/Nintendo 64/firmware.zip"), row()]
     entries = catalog.entries_from({"items": items})
     assert [x.path for x in entries] == ["Nintendo 64/Game.z64"]
+
+
+@pytest.mark.parametrize("container", ["children", "contents", "nodes", "entries"])
+@pytest.mark.parametrize("empty", [[], {}])
+def test_normalized_size_bytes_rows_survive_empty_child_containers(container, empty):
+    """Empty child metadata must not misclassify an otherwise normalized game."""
+    item = row()
+    item["size_bytes"] = item.pop("size")
+    item[container] = empty
+    entries = catalog.entries_from({"items": [item]})
+    assert len(entries) == 1
+    assert entries[0].path == "Nintendo 64/Game.z64"
+    assert entries[0].size_bytes == 1

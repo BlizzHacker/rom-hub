@@ -1335,9 +1335,9 @@
       "author": "MoveWeight",
       "repository": "https://git.romarr.app/romarr/rom-hub-theromdepot",
       "install": "https://git.romarr.app/romarr/rom-hub-theromdepot",
-      "download": "https://git.romarr.app/romarr/rom-hub-theromdepot/archive/v0.2.1.tar.gz",
-      "version": "0.2.1",
-      "ref": "v0.2.1",
+      "download": "https://git.romarr.app/romarr/rom-hub-theromdepot/archive/v0.2.2.tar.gz",
+      "version": "0.2.2",
+      "ref": "v0.2.2",
       "updated": "2026-11-14",
       "rpp_version": "1",
       "capabilities": [
@@ -1399,7 +1399,7 @@
       "in_tree": false,
       "description": "Browser-assisted provider. Searches a local export of the signed-in user's one-call /api/getContents directory tree and hands /api/download paths back to that user's browser, where the existing site session authenticates them.",
       "terms": "An account grants access under The ROM Depot's own terms, not a redistribution licence. The plugin indexes metadata the operator can already see and opens the site's own authenticated download route in that operator's browser.",
-      "comments": "Installable as of 0.2.1. Sign in with a normal browser, save https://theromdepot.com/api/getContents, and set catalog_path to that JSON file. The plugin never accepts a username, password, cookie, or token and makes no network request during search. stream is a browser handoff to the percent-encoded /api/download/<path> route and is marked login-required/download rather than playable. No importer is declared because a ROM Hub host fetch would not have the browser cookie. Raw recursive API trees and ROMarr Capture's normalized {items:[...]} shape are both accepted; paths and catalogue membership are revalidated before every handoff. Checked 2026-11-14: unauthenticated getContents returns HTTP 401. Install disabled until an authenticated local export is configured; no download proof claimed."
+      "comments": "Installable as of 0.2.2. Sign in with a normal browser, save https://theromdepot.com/api/getContents, and set catalog_path to that JSON file. The plugin never accepts a username, password, cookie, or token and makes no network request during search. stream is a browser handoff to the percent-encoded /api/download/<path> route and is marked login-required/download rather than playable. No importer is declared because a ROM Hub host fetch would not have the browser cookie. Raw recursive API trees and ROMarr Capture's normalized {items:[...]} shape are both accepted; paths and catalogue membership are revalidated before every handoff. Checked 2026-11-14: unauthenticated getContents returns HTTP 401. Install disabled until an authenticated local export is configured; no download proof claimed."
     }
   ]
 }

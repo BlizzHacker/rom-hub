@@ -173,7 +173,7 @@ def _normalised_items(payload: object) -> Iterable[dict[str, Any]] | None:
         return None
     items = payload["items"]
     if any(isinstance(item, dict) and (str(item.get("type") or "").casefold() in {"directory", "dir", "folder"}
-           or any(isinstance(item.get(key), (list, dict)) for key in ("children", "contents", "nodes", "entries"))) for item in items):
+           or any(isinstance(item.get(key), (list, dict)) and bool(item.get(key)) for key in ("children", "contents", "nodes", "entries"))) for item in items):
         return None
     if not items:
         return ()
