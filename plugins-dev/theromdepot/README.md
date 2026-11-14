@@ -51,7 +51,7 @@ the ordinary site login, and one API response contains the full directory.
 4. Install this repository and configure the saved path:
 
    ```sh
-   rom-hub plugin install https://git.moveweight.com/BlizzHacker/rom-hub-theromdepot
+   rom-hub plugin install https://git.romarr.app/romarr/rom-hub-theromdepot
    rom-hub plugin config theromdepot --set catalog_path=/srv/romarr/theromdepot-getContents.json
    ```
 
@@ -147,3 +147,7 @@ how they use it.
 ## License
 
 MIT — see `LICENSE`.
+
+## Version 0.2.1 catalogue validation
+
+Search excludes non-game document extensions and known resource folders such as manuals, firmware and SDKs. Both normalized exports and recursive trees enforce unique-entry bounds; malformed sizes and overdeep subtrees cannot hide valid sibling entries. These filters classify metadata and do not establish that a particular game runs.

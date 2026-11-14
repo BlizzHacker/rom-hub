@@ -114,7 +114,10 @@ def _size(value: object) -> int | None:
     if isinstance(value, float) and value.is_integer():
         return int(value) if value >= 0 else None
     if isinstance(value, str) and value.strip().isdigit():
-        return int(value.strip())
+        try:
+            return int(value.strip())
+        except (ValueError, OverflowError):
+            return None
     return None
 
 
@@ -133,6 +136,10 @@ def _entry(path: object, name: object, size: object, *, platform: object = "",
     try:
         safe_path = clean_path(path)
     except InvalidEntry:
+        return None
+    if Path(safe_path).suffix.casefold() not in _KNOWN_EXTENSIONS:
+        return None
+    if any(part.strip("[] ").casefold() in {"bios", "documentation", "emulators", "game manuals", "manuals", "sdk", "soundtracks", "commercials", "advertisements"} for part in safe_path.split("/")[:-1]):
         return None
     size_bytes = _size(size)
     if size_bytes is None:
@@ -165,6 +172,9 @@ def _normalised_items(payload: object) -> Iterable[dict[str, Any]] | None:
     if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
         return None
     items = payload["items"]
+    if any(isinstance(item, dict) and (str(item.get("type") or "").casefold() in {"directory", "dir", "folder"}
+           or any(isinstance(item.get(key), (list, dict)) for key in ("children", "contents", "nodes", "entries"))) for item in items):
+        return None
     if not items:
         return ()
     if not any(isinstance(item, dict) and ("id" in item or "path" in item)
@@ -191,6 +201,8 @@ def entries_from(payload: object) -> list[Entry]:
                 mtime=item.get("mtime"),
             )
             if found and found.path not in seen:
+                if len(entries) >= MAX_ENTRIES:
+                    raise CatalogUnavailable("catalogue exceeds the file safety limit")
                 seen.add(found.path)
                 entries.append(found)
         return entries
@@ -201,9 +213,7 @@ def entries_from(payload: object) -> list[Entry]:
     while stack:
         node, trail, depth = stack.pop()
         if depth > MAX_TREE_DEPTH:
-            raise CatalogUnavailable(
-                f"catalogue tree exceeds the {MAX_TREE_DEPTH}-level safety limit"
-            )
+            continue
         if isinstance(node, list):
             for child in reversed(node):
                 stack.append((child, trail, depth + 1))
@@ -213,7 +223,7 @@ def entries_from(payload: object) -> list[Entry]:
 
         kind = str(node.get("type") or "").strip().casefold()
         name = str(node.get("name") or node.get("filename") or "").strip()
-        raw_path = node.get("path") or node.get("fullPath") or node.get("relativePath")
+        raw_path = node.get("path") or node.get("fullPath") or node.get("relativePath") or node.get("id")
         has_children = any(isinstance(node.get(key), (list, dict))
                            for key in ("children", "contents", "nodes", "entries"))
         is_file = kind == "file" or (
