@@ -1,0 +1,24 @@
+[plugin]
+slug        = "theromdepot"
+name        = "The ROM Depot"
+version     = "0.2.0"
+rpp_version = "1"
+license     = "MIT"
+
+# The catalogue is exported by the operator's already-authenticated browser.
+# `stream` hands the matching /api/download URL back to that same browser;
+# neither capability receives or stores a site password or session cookie.
+[capabilities]
+search = "theromdepot.search:Search"
+stream = "theromdepot.stream:Stream"
+
+[permissions]
+network  = ["theromdepot.com"]
+romm_api = []
+
+[config]
+# Save https://theromdepot.com/api/getContents while logged in, then make that
+# file readable on the ROM Hub host. The API returns the whole tree in one
+# document, so this is one browser request rather than a crawl.
+catalog_path = { type = "str", default = "" }
+collection   = { type = "str", default = "The ROM Depot" }

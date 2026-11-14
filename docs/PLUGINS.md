@@ -190,6 +190,7 @@ and neither can this directory change it for you.
 | ✔ [RetroArch controller profiles](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.2.0.tar.gz) | `assets` | Gaseous · Retrom · RomM | — | — | `api.github.com`, `raw.githubusercontent.com` |
 | ✔ [ScummVM freeware games](https://github.com/BlizzHacker/rom-hub-scummvm-freeware) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-scummvm-freeware)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | **none** — catalogue only (1) | — | `downloads.scummvm.org` |
 | ✔ [Standalone emulators (GitHub releases)](https://github.com/BlizzHacker/rom-hub-emulators) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-emulators)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-emulators/archive/refs/tags/v0.2.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | — | `api.github.com`, `github.com`, `release-assets.githubusercontent.com` |
+| ❗ [The ROM Depot](https://git.romarr.app/romarr/rom-hub-theromdepot) | MoveWeight ([repo](https://git.romarr.app/romarr/rom-hub-theromdepot)) | 0.2.0 | 2026-08-12 | [`v0.2.0` tarball](https://git.romarr.app/romarr/rom-hub-theromdepot/archive/v0.2.0.tar.gz) | `search`, `stream` | Gaseous · Retrom · RomM | n/a (imports nothing) | — | `theromdepot.com` |
 | ✔ [Universal-DB (3DS/DS homebrew)](https://github.com/BlizzHacker/rom-hub-universal-db) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-universal-db)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-universal-db/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | 1 of 2, 1 needs netplay | — | `db.universal-team.net`, `github.com`, `*.githubusercontent.com`, `gitlab.com`, `codeberg.org`, `gbatemp.net`, `cdn.classicube.net`, `apotrisstorage.blob.core.windows.net` |
 
 **Reading the Playable column.** A ROM is only playable if the library's web player has an emulator core for its platform, and the player's list of those is shorter than the library's list of platforms. A ROM filed under a platform with no core imports cleanly, appears in the library with its cover and metadata, and does nothing at all when clicked — so this column says, per plugin, how many of the platforms it can import to will actually start. `none — catalogue only` is not a broken plugin: interactive fiction, ScummVM games and PC downloads are real things to keep in a library, and the Hub warns at import rather than refusing. `n/a (imports nothing)` is a metadata, asset, core or firmware plugin, which files no ROM and therefore cannot file an unplayable one.
@@ -541,6 +542,20 @@ Lists and installs standalone emulator builds — twelve projects, from DuckStat
 **Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
 
 **Network requested.** `api.github.com`, `github.com`, `release-assets.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ The ROM Depot — `theromdepot`
+
+Browser-assisted provider. Searches a local export of the signed-in user's one-call /api/getContents directory tree and hands /api/download paths back to that user's browser, where the existing site session authenticates them.
+
+**Source terms.** An account grants access under The ROM Depot's own terms, not a redistribution licence. The plugin indexes metadata the operator can already see and opens the site's own authenticated download route in that operator's browser.
+
+**Comments.** Installable as of 0.2.0. Sign in with a normal browser, save https://theromdepot.com/api/getContents, and set catalog_path to that JSON file. The plugin never accepts a username, password, cookie, or token and makes no network request during search. stream is a browser handoff to the percent-encoded /api/download/<path> route and is marked login-required/download rather than playable. No importer is declared because a ROM Hub host fetch would not have the browser cookie. Raw recursive API trees and ROMarr Capture's normalized {items:[...]} shape are both accepted; paths and catalogue membership are revalidated before every handoff. Checked 2026-11-14: unauthenticated getContents returns HTTP 401. Install disabled until an authenticated local export is configured; no download proof claimed.
+
+**Playability.** This plugin imports nothing — it covers 44 platforms to enrich or equip ROMs that reached the library some other way, so a platform with no emulator core costs nothing here. Whether those ROMs play is decided by whichever plugin imported them.
+
+**Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
+
+**Network requested.** `theromdepot.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Universal-DB (3DS/DS homebrew) — `universal-db`
 
