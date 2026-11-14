@@ -82,6 +82,7 @@ TABLES: dict[str, tuple[str, str, object]] = {
     "openvgdb": ("openvgdb", "openvgdb.platforms", lambda m: keys(m.SYSTEMS)),
     "retroachievements": ("retroachievements", "retroachievements.consoles", lambda m: keys(m.CONSOLES)),
     "scummvm-freeware": ("scummvm-freeware", "scummvm_freeware.games", lambda m: [g.platform for g in m.GAMES.values()]),
+    "theromdepot": ("theromdepot", "theromdepot.platforms", lambda m: values(m.PLATFORM_ALIASES)),
     "universal-db": ("universal-db", "universal_db.platforms", lambda m: values(m.SYSTEM_PLATFORMS)),
 }
 
