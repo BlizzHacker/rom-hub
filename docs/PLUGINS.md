@@ -170,6 +170,7 @@ and neither can this directory change it for you.
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.4.1 | 2026-11-12 | [`v0.4.1` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.4.1.tar.gz) | `search`, `importer`, `metadata`, `stream`, `census` | Gaseous! · Retrom* · RomM | 37 of 64, 1 needs netplay | — | `archive.org`, `*.archive.org` |
 | ❗ [Demozoo (demoscene)](https://github.com/BlizzHacker/rom-hub-demozoo) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-demozoo)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | 27 of 46, 2 need netplay | — | `demozoo.org`, `media.demozoo.org`, `files.scene.org`, `archive.scene.org`, `fujiology.org` |
 | ✔ [eXo2romm (eXoDOS to RomM Repackager)](https://github.com/BlizzHacker/rom-hub-exo2romm) | derkommutator / BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-exo2romm)) | 0.1.0 | 2026-11-12 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-exo2romm/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | n/a (imports nothing) | — | `api.github.com`, `github.com`, `raw.githubusercontent.com` |
+| ✔ [gamesgamesgamesgamesgames (Video Game Lexicons, HappyView & Cartridge Studio)](https://github.com/BlizzHacker/rom-hub-gamesgames) | gamesgamesgamesgamesgames / BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-gamesgames)) | 0.1.0 | 2026-11-15 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-gamesgames/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | — | `api.github.com`, `raw.githubusercontent.com`, `bsky.social` |
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.3.0 | 2026-08-01 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.3.0.tar.gz) | `importer`, `metadata`, `search`, `stream` | Gaseous! · Retrom* · RomM | all 4 | — | `hh3.gbdev.io`, `hh.gbdev.io` |
 | ✔ [IF Archive (Interactive Fiction)](https://github.com/BlizzHacker/rom-hub-if-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-if-archive)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-if-archive/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `search` | Gaseous* · Retrom* · RomM | **none** — catalogue only (4) | — | `ifarchive.org`, `ukrestrict.ifarchive.org` |
@@ -256,6 +257,20 @@ Repackages eXoDOS game zips for standalone RomM / ROMarr playback by rewriting p
 **Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
 
 **Network requested.** `api.github.com`, `github.com`, `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ gamesgamesgamesgamesgames (Video Game Lexicons, HappyView & Cartridge Studio) — `gamesgames`
+
+Decentralized video game data standard (games.gamesgamesgamesgames.* lexicons), HappyView gaming AppView XRPC & Jetstream sync, and Cartridge Studio sovereign game library claims.
+
+**Source terms.** MIT License. Absorbs gamesgamesgamesgamesgames' open video game data standard (https://github.com/gamesgamesgamesgamesgames/lexicon, MIT), HappyView schema-driven gaming AppView (https://github.com/gamesgamesgamesgamesgames/happyview), and Cartridge sovereign gaming studio (https://github.com/gamesgamesgamesgamesgames/cartridge). Rather than absorbing a generic social network, this plugin uses ATProto strictly as the transport for portable, player-owned video game records, DAT verification proofs, and cross-device playStates.
+
+**Comments.** Purpose & concept: Self-hosted game libraries keep game metadata, verified ROM hashes, play states, and achievements inside isolated local databases. This plugin brings the `games.gamesgamesgamesgames.*` namespace (`game`, `release`, `playState`, `achievement`, `rating`, and `dev.cartridge.verificationRequest`) into ROM Hub so operators can enrich ROMs with deterministic AT-URIs and cryptographic No-Intro/Redump checksum assertions, query a local HappyView gaming AppView (`/xrpc/games.gamesgamesgamesgames.getGame`, `listGames`, `getPlayState`), process real-time Jetstream game commit events, and export their verified collection into sovereign player-owned records.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
+
+**Network requested.** `api.github.com`, `raw.githubusercontent.com`, `bsky.social` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Hasheous — `hasheous`
 

@@ -90,6 +90,7 @@ TABLES: dict[str, tuple[str, str, object]] = {
 #: that a plugin which *loses* its table is a failure rather than a shrug.
 NO_PLATFORM_TABLE: dict[str, str] = {
     "emulators": "GitHub release assets, keyed by emulator project and build target",
+    "gamesgames": "games.gamesgamesgamesgames.* lexicon records, keyed by game and release URI",
     "igir": "Igir v5.8.0 standalone release assets and 1G1R cleanup planner, keyed by build target",
     "libretro-cheats": "cheat files, keyed by libretro's own system directory names",
     "libretro-cores": "libretro cores, keyed by core name -- never a platform slug",

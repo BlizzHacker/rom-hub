@@ -1,0 +1,24 @@
+[plugin]
+slug        = "gamesgames"
+name        = "gamesgamesgamesgamesgames (Video Game Lexicons, HappyView & Cartridge Studio)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+metadata = "gamesgames.metadata:Metadata"
+
+[permissions]
+network = [
+  "api.github.com",
+  "raw.githubusercontent.com",
+  "bsky.social",
+]
+romm_api = []
+
+[config]
+did               = { type = "str",  default = "did:plc:romarr-local" }
+pds_url           = { type = "str",  default = "https://bsky.social" }
+emit_release      = { type = "bool", default = true }
+emit_verification = { type = "bool", default = true }
+dat_catalog       = { type = "str",  default = "No-Intro" }
