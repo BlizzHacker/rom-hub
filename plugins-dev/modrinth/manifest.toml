@@ -1,0 +1,22 @@
+[plugin]
+slug        = "modrinth"
+name        = "Modrinth Mods, Modpacks & Shaders"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "modrinth.search:Search"
+importer = "modrinth.importer:Importer"
+stream   = "modrinth.stream:Stream"
+
+[permissions]
+network  = [
+    "api.modrinth.com",
+    "cdn.modrinth.com",
+    "modrinth.com",
+]
+romm_api = []
+
+[config]
+project_type = { type = "str", default = "" }

@@ -1,0 +1,23 @@
+[plugin]
+slug        = "moddb"
+name        = "ModDB Mods, Addons & Total Conversions"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "moddb.search:Search"
+importer = "moddb.importer:Importer"
+stream   = "moddb.stream:Stream"
+
+[permissions]
+network  = [
+    "www.moddb.com",
+    "moddb.com",
+    "media.moddb.com",
+    "*.moddb.com",
+]
+romm_api = []
+
+[config]
+game_slug = { type = "str", default = "" }

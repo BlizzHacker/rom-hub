@@ -1,0 +1,25 @@
+[plugin]
+slug        = "curseforge"
+name        = "CurseForge Mods & Addons"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "curseforge.search:Search"
+importer = "curseforge.importer:Importer"
+stream   = "curseforge.stream:Stream"
+
+[permissions]
+network  = [
+    "api.curseforge.com",
+    "www.curseforge.com",
+    "edge.forgecdn.net",
+    "mediafilez.forgecdn.net",
+    "*.forgecdn.net",
+]
+romm_api = []
+
+[config]
+api_key = { type = "secret" }
+game_id = { type = "int", default = 1 }

@@ -1,0 +1,18 @@
+[plugin]
+slug        = "game-manuals"
+name        = "Game Manuals & Strategy Guides (Archive.org)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "game_manuals.search:Search"
+importer = "game_manuals.importer:Importer"
+stream   = "game_manuals.stream:Stream"
+
+[permissions]
+network  = ["archive.org", "*.archive.org"]
+romm_api = []
+
+[config]
+collection = { type = "str", default = "Game Manuals" }

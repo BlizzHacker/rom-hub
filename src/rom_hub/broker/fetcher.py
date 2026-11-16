@@ -10,9 +10,12 @@ protocol's per-message cap, because whatever comes back here still has to fit
 in one JSON frame on its way to the plugin.
 """
 
-from typing import Protocol
+from typing import Any, Protocol
 
 import httpx
+
+from rom_hub.flaresolverr import build_transport
+from rom_hub.types import validate_headers
 
 USER_AGENT = "rom-hub/0.1 (+https://github.com/rommapp/romm)"
 
@@ -22,7 +25,9 @@ MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 
 
 class Fetcher(Protocol):
-    def get(self, url: str, params: dict) -> tuple[int, str]: ...
+    def get(
+        self, url: str, params: dict, *, headers: dict[str, str] | None = None
+    ) -> tuple[int, str]: ...
 
 
 class ResponseTooLarge(Exception):
@@ -35,13 +40,15 @@ class HttpxFetcher:
         timeout: float = 30.0,
         max_response_bytes: int = MAX_RESPONSE_BYTES,
         transport: httpx.BaseTransport | None = None,
+        flaresolverr_url: str | None = None,
     ):
         self.max_response_bytes = max_response_bytes
+        effective_transport = build_transport(transport, flaresolverr_url=flaresolverr_url)
         self._client = httpx.Client(
             timeout=timeout,
             follow_redirects=False,  # a redirect could escape the allowlist
             headers={"User-Agent": USER_AGENT},
-            transport=transport,
+            transport=effective_transport,
         )
 
     def _too_large(self, url: str, size: int) -> ResponseTooLarge:
@@ -51,14 +58,14 @@ class HttpxFetcher:
             f"ctx.http one"
         )
 
-    def get(self, url: str, params: dict) -> tuple[int, str]:
+    def _stream_request(self, method: str, url: str, **kwargs) -> tuple[int, str]:
         # One HttpxFetcher is shared by every plugin in a fan-out, so a
         # Set-Cookie from one plugin's request would ride along on another
         # plugin's request to the same allowed host: a side channel between
         # plugins that are supposed to be isolated. Nothing in the brokered
         # API can set or read a cookie, so there is nothing to preserve.
         self._client.cookies.clear()
-        with self._client.stream("GET", url, params=params or None) as resp:
+        with self._client.stream(method, url, **kwargs) as resp:
             # Believe Content-Length when it is offered: refusing before a
             # single body byte is pulled is strictly cheaper. It is a hint,
             # not a guarantee, so the streaming budget below still applies.
@@ -82,6 +89,37 @@ class HttpxFetcher:
         except LookupError:
             text = b"".join(chunks).decode("utf-8", errors="replace")
         return status_code, text
+
+    def get(
+        self,
+        url: str,
+        params: dict | None = None,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> tuple[int, str]:
+        safe_headers = validate_headers(headers) if headers else None
+        return self._stream_request(
+            "GET", url, params=params or None, headers=safe_headers
+        )
+
+    def post(
+        self,
+        url: str,
+        *,
+        params: dict | None = None,
+        json: Any = None,
+        data: dict | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> tuple[int, str]:
+        safe_headers = validate_headers(headers) if headers else None
+        return self._stream_request(
+            "POST",
+            url,
+            params=params or None,
+            json=json,
+            data=data,
+            headers=safe_headers,
+        )
 
     def close(self) -> None:
         self._client.close()
