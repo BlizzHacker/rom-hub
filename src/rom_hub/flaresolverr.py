@@ -96,14 +96,28 @@ class FlareSolverrTransport(httpx.BaseTransport):
 
     def _solve(self, url: str) -> tuple[int, str, dict[str, str]]:
         payload = {"cmd": "request.get", "url": url, "maxTimeout": 60000}
-        with httpx.Client(
-            timeout=self._timeout,
-            follow_redirects=False,
-            transport=self._solver_transport,
-        ) as client:
-            resp = client.post(self._endpoint(), json=payload)
-            resp.raise_for_status()
+        try:
+            with httpx.Client(
+                timeout=self._timeout,
+                follow_redirects=False,
+                transport=self._solver_transport,
+            ) as client:
+                resp = client.post(self._endpoint(), json=payload)
+            if resp.status_code >= 400:
+                raise RuntimeError(
+                    f"FlareSolverr HTTP {resp.status_code} while solving {url!r}"
+                )
             data = resp.json()
+        except httpx.HTTPError as exc:
+            # Never propagate httpx exceptions directly: they embed the solver
+            # URL, which may contain basic-auth credentials.
+            raise RuntimeError(
+                f"FlareSolverr request failed while solving {url!r}: {type(exc).__name__}"
+            ) from None
+        except ValueError:
+            raise RuntimeError(
+                f"FlareSolverr returned invalid JSON while solving {url!r}"
+            ) from None
         if data.get("status") != "ok":
             raise RuntimeError(
                 f"FlareSolverr failed for {url!r}: {data.get('message') or data.get('status')}"
