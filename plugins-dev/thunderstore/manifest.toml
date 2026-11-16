@@ -1,0 +1,22 @@
+[plugin]
+slug        = "thunderstore"
+name        = "Thunderstore Game Mods (100+ Games)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "thunderstore.search:Search"
+importer = "thunderstore.importer:Importer"
+stream   = "thunderstore.stream:Stream"
+
+[permissions]
+network  = [
+    "thunderstore.io",
+    "cdn.thunderstore.io",
+    "*.thunderstore.io",
+]
+romm_api = []
+
+[config]
+community = { type = "str", default = "valheim" }

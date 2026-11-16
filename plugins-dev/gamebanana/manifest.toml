@@ -1,0 +1,22 @@
+[plugin]
+slug        = "gamebanana"
+name        = "GameBanana Mods, Skins & Tools"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "gamebanana.search:Search"
+importer = "gamebanana.importer:Importer"
+stream   = "gamebanana.stream:Stream"
+
+[permissions]
+network  = [
+    "gamebanana.com",
+    "*.gamebanana.com",
+]
+romm_api = []
+
+[config]
+game_id = { type = "str", default = "" }
+models  = { type = "str", default = "Mod,Tool,Skin" }

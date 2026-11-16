@@ -1,0 +1,1 @@
+"""GameFAQs Guides & FAQs plugin."""

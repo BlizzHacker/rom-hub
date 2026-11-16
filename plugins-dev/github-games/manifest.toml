@@ -1,0 +1,26 @@
+[plugin]
+slug        = "github-games"
+name        = "GitHub Open-Source Games, Engines & Bots"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "github_games.search:Search"
+importer = "github_games.importer:Importer"
+stream   = "github_games.stream:Stream"
+
+[permissions]
+network  = [
+    "api.github.com",
+    "github.com",
+    "objects.githubusercontent.com",
+    "release-assets.githubusercontent.com",
+    "codeload.github.com",
+]
+romm_api = []
+
+[config]
+github_token   = { type = "secret" }
+mode           = { type = "str", default = "all" }
+include_source = { type = "bool", default = true }

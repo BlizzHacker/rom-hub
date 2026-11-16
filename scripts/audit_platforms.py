@@ -97,6 +97,17 @@ NO_PLATFORM_TABLE: dict[str, str] = {
     "libretro-overlays": "bezel overlays, keyed by libretro's system directory names",
     "minerva-archive": "search rows and collection torrents, with no RomM platform mapping",
     "retroarch-autoconfig": "controller profiles, keyed by device name",
+    "gamefaqs": "walkthroughs and FAQs, not RomM console ROMs",
+    "strategywiki": "wiki walkthroughs and chapters, not RomM console ROMs",
+    "game-manuals": "scanned manuals and player's guides, not RomM console ROMs",
+    "youtube-tutorials": "video tutorials and walkthrough streams, not RomM console ROMs",
+    "github-games": "open-source game repos, engines, bots and tools",
+    "curseforge": "mods and addons across PC games",
+    "moddb": "mods, addons and total conversions",
+    "nexusmods": "mods across Nexus Mods games",
+    "modrinth": "Minecraft mods, modpacks and shaders",
+    "thunderstore": "mod packages across Thunderstore communities",
+    "gamebanana": "mods, skins, maps and modding tools",
 }
 
 

@@ -1,0 +1,1 @@
+"""StrategyWiki Walkthroughs plugin."""

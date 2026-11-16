@@ -45,14 +45,50 @@ class HttpClient:
         self._counter += 1
         return f"p{self._counter}"
 
-    def get(self, url: str, params: dict | None = None) -> HttpResponse:
+    def get(
+        self,
+        url: str,
+        params: dict | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> HttpResponse:
         call_id = self._next_id()
+        payload = {"url": url, "params": params or {}}
+        if headers:
+            payload["headers"] = dict(headers)
         self._channel.send(
             {
                 "kind": "call",
                 "id": call_id,
                 "method": "http.get",
-                "params": {"url": url, "params": params or {}},
+                "params": payload,
+            }
+        )
+        result = self._channel.await_result(call_id)
+        return HttpResponse(status_code=result["status_code"], text=result["text"])
+
+    def post(
+        self,
+        url: str,
+        *,
+        params: dict | None = None,
+        json: Any = None,
+        data: dict | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> HttpResponse:
+        call_id = self._next_id()
+        payload: dict[str, Any] = {"url": url, "params": params or {}}
+        if json is not None:
+            payload["json"] = json
+        if data is not None:
+            payload["data"] = data
+        if headers:
+            payload["headers"] = dict(headers)
+        self._channel.send(
+            {
+                "kind": "call",
+                "id": call_id,
+                "method": "http.post",
+                "params": payload,
             }
         )
         result = self._channel.await_result(call_id)

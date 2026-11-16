@@ -1,0 +1,24 @@
+[plugin]
+slug        = "nexusmods"
+name        = "Nexus Mods"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "nexusmods.search:Search"
+importer = "nexusmods.importer:Importer"
+stream   = "nexusmods.stream:Stream"
+
+[permissions]
+network  = [
+    "api.nexusmods.com",
+    "www.nexusmods.com",
+    "cf-files.nexusmods.com",
+    "*.nexusmods.com",
+]
+romm_api = []
+
+[config]
+api_key     = { type = "secret" }
+game_domain = { type = "str", default = "diablo2resurrected" }

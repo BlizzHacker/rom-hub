@@ -83,6 +83,7 @@ from rom_hub.types import (
     SearchResult,
     StreamTarget,
     TorrentSource,
+    validate_headers,
 )
 
 from .fetcher import Fetcher
@@ -445,13 +446,33 @@ class PluginProcess:
         # defence in depth costs nothing here.
         call_id = msg.get("id")
         try:
-            if msg["method"] != "http.get":
-                raise self._fail(f"unsupported host method {msg['method']!r}")
+            method = msg["method"]
+            if method not in ("http.get", "http.post"):
+                raise self._fail(f"unsupported host method {method!r}")
             params = msg.get("params") or {}
             url = params["url"]
             # The enforcement point. Nothing below runs for a blocked URL.
             check_url(url, self.manifest.network)
-            status, text = self.fetcher.get(url, params.get("params") or {})
+            req_headers = params.get("headers")
+            safe_headers = validate_headers(req_headers) if req_headers else None
+            if method == "http.get":
+                if safe_headers:
+                    status, text = self.fetcher.get(
+                        url, params.get("params") or {}, headers=safe_headers
+                    )
+                else:
+                    status, text = self.fetcher.get(url, params.get("params") or {})
+            else:
+                post_fn = getattr(self.fetcher, "post", None)
+                if post_fn is None:
+                    raise self._fail("configured fetcher does not support http.post")
+                status, text = post_fn(
+                    url,
+                    params=params.get("params") or None,
+                    json=params.get("json"),
+                    data=params.get("data"),
+                    headers=safe_headers,
+                )
             reply = {
                 "kind": "result",
                 "id": call_id,

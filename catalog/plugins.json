@@ -1,6 +1,6 @@
 {
   "catalog_version": "1",
-  "updated": "2026-11-14",
+  "updated": "2026-11-16",
   "plugins": [
     {
       "slug": "aminet",
@@ -1428,6 +1428,336 @@
       "description": "Browser-assisted provider. Searches a local export of the signed-in user's one-call /api/getContents directory tree and hands /api/download paths back to that user's browser, where the existing site session authenticates them.",
       "terms": "An account grants access under The ROM Depot's own terms, not a redistribution licence. The plugin indexes metadata the operator can already see and opens the site's own authenticated download route in that operator's browser.",
       "comments": "Installable as of 0.2.2. Sign in with a normal browser, save https://theromdepot.com/api/getContents, and set catalog_path to that JSON file. The plugin never accepts a username, password, cookie, or token and makes no network request during search. stream is a browser handoff to the percent-encoded /api/download/<path> route and is marked login-required/download rather than playable. No importer is declared because a ROM Hub host fetch would not have the browser cookie. Raw recursive API trees and ROMarr Capture's normalized {items:[...]} shape are both accepted; paths and catalogue membership are revalidated before every handoff. Checked 2026-11-14: unauthenticated getContents returns HTTP 401. Install disabled until an authenticated local export is configured; no download proof claimed."
+    },
+    {
+      "slug": "gamefaqs",
+      "name": "GameFAQs Guides & FAQs",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "gamefaqs.gamespot.com"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches GameFAQs walkthroughs, FAQs, and maps, downloading full single-page printable guides (?single=1&print=1) via host FlareSolverr fallback when challenged.",
+      "terms": "User-contributed walkthroughs and FAQs hosted on GameFAQs; intended for personal offline reading. Configure optional FlareSolverr URL in ROMarr Settings -> General if Cloudflare challenges plain HTTP.",
+      "comments": "Supports search, full guide file import, and browser stream links. Plain HTTP requests hit Cloudflare challenge (403); host-side FlareSolverrTransport handles challenge resolution cleanly without giving plugins sockets or cookies.",
+      "platforms": []
+    },
+    {
+      "slug": "strategywiki",
+      "name": "StrategyWiki Walkthroughs",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "strategywiki.org"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches StrategyWiki via MediaWiki JSON API and downloads complete walkthroughs, subchapters, and plain-text/HTML guides with zero API key or Cloudflare.",
+      "terms": "StrategyWiki content is licensed under CC BY-SA 3.0; accessible openly via /w/api.php.",
+      "comments": "Zero key, zero Cloudflare. Discovers hierarchical subpages via apprefix and downloads parse JSON/HTML or plain text.",
+      "platforms": []
+    },
+    {
+      "slug": "game-manuals",
+      "name": "Game Manuals & Strategy Guides (Archive.org)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "archive.org",
+        "*.archive.org"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches Internet Archive for scanned official game manuals and player's guides, downloading PDF, CBZ, EPUB, and OCR text files directly.",
+      "terms": "Internet Archive public-domain and preservation text collections accessible via /advancedsearch.php, /metadata/, and /download/.",
+      "comments": "Zero key, zero Cloudflare. Downloads all manual documents up to 32 files per item.",
+      "platforms": []
+    },
+    {
+      "slug": "youtube-tutorials",
+      "name": "YouTube Game Tutorials & Walkthroughs",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "www.youtube.com",
+        "www.googleapis.com",
+        "i.ytimg.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches YouTube game tutorials and walkthroughs (keyless InnerTube/search or optional YouTube Data API v3 key), downloads oEmbed metadata, thumbnails, and captions, and resolves watch streams.",
+      "terms": "YouTube public search, oEmbed, and caption metadata; optional Data API v3 key supported for higher quota.",
+      "comments": "Supports keyless search, stream URLs, and downloading tutorial metadata, thumbnails, and timedtext transcripts.",
+      "platforms": []
+    },
+    {
+      "slug": "github-games",
+      "name": "GitHub Open-Source Games, Engines & Bots",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "api.github.com",
+        "github.com",
+        "objects.githubusercontent.com",
+        "release-assets.githubusercontent.com",
+        "codeload.github.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches GitHub for open-source games, source ports, engines, game bots (Diablo II, WoW, Minecraft, OSRS), and modding tools; downloads all latest release assets plus source ZIP.",
+      "terms": "Open-source repositories on GitHub; each repo carries its own OSI/open-source license. Works unauthenticated (60 req/hr) or with optional github_token (5,000 req/hr).",
+      "comments": "Mode config supports all, games, bots, and tools. Downloads all release binary assets and/or codeload source zip archives.",
+      "platforms": []
+    },
+    {
+      "slug": "curseforge",
+      "name": "CurseForge Mods & Addons",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "api.curseforge.com",
+        "www.curseforge.com",
+        "edge.forgecdn.net",
+        "mediafilez.forgecdn.net",
+        "*.forgecdn.net"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches CurseForge mods and addons (World of Warcraft, Minecraft, Stardew Valley, BG3, Terraria) via Core API or FlareSolverr web fallback, downloading mod archives from ForgeCDN.",
+      "terms": "CurseForge mod packages. Uses official api.curseforge.com/v1 with optional free Core API key (or host FlareSolverr web search fallback) and ForgeCDN fallback URLs.",
+      "comments": "Supports game prefixes like wow:dbm or mc:sodium and downloads all mod files cleanly.",
+      "platforms": []
+    },
+    {
+      "slug": "moddb",
+      "name": "ModDB Mods, Addons & Total Conversions",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "www.moddb.com",
+        "moddb.com",
+        "media.moddb.com",
+        "*.moddb.com"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches ModDB mods, addons, and total conversions (Diablo II LoD, S.T.A.L.K.E.R., Doom, Half-Life) and resolves 2-step mirror downloads with optional FlareSolverr fallback.",
+      "terms": "ModDB community-hosted game mods and patches. Uses realistic browser headers with automatic host FlareSolverr fallback when Cloudflare challenges.",
+      "comments": "Supports game_slug config or prefixes like diablo-2-lod:plugy and resolves /downloads/start/{id} -> /downloads/mirror/... CDN redirects.",
+      "platforms": []
+    },
+    {
+      "slug": "nexusmods",
+      "name": "Nexus Mods",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "api.nexusmods.com",
+        "www.nexusmods.com",
+        "cf-files.nexusmods.com",
+        "*.nexusmods.com"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches Nexus Mods anonymously across all games (Diablo II: Resurrected, BG3, Skyrim, etc.) via GraphQL v2, with v1 API file downloads for Premium keys or browser stream fallback.",
+      "terms": "Nexus Mods community mods. Public GraphQL v2 search requires zero key; Premium API key enables direct CDN downloads, while free accounts use browser stream links.",
+      "comments": "Supports domain prefixes like skyrimspecialedition:skyui and exposes both importer and browser stream target.",
+      "platforms": []
+    },
+    {
+      "slug": "modrinth",
+      "name": "Modrinth Mods, Modpacks & Shaders",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "api.modrinth.com",
+        "cdn.modrinth.com",
+        "modrinth.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches Modrinth open API v2 for Minecraft mods, modpacks, shaders, and plugins, downloading all latest version files directly from cdn.modrinth.com with zero API key.",
+      "terms": "Open-API Modrinth mod ecosystem; zero API key or Cloudflare solver required.",
+      "comments": "Supports project_type filtering (mod, modpack, shader, plugin) and direct CDN downloads.",
+      "platforms": []
+    },
+    {
+      "slug": "thunderstore",
+      "name": "Thunderstore Game Mods (100+ Games)",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "thunderstore.io",
+        "cdn.thunderstore.io",
+        "*.thunderstore.io"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches Thunderstore across 100+ modded PC games (Valheim, Lethal Company, Risk of Rain 2, etc.) and downloads package ZIPs directly with zero API key.",
+      "terms": "Open Thunderstore community package API; zero key or Cloudflare solver required.",
+      "comments": "Supports community config or query prefix like lethal-company:morecompany.",
+      "platforms": []
+    },
+    {
+      "slug": "gamebanana",
+      "name": "GameBanana Mods, Skins & Tools",
+      "author": "BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub",
+      "install": "https://github.com/BlizzHacker/rom-hub",
+      "download": "https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-16",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer",
+        "stream"
+      ],
+      "network": [
+        "gamebanana.com",
+        "*.gamebanana.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches GameBanana API v11 for game mods, skins, maps, bots, and modding tools, downloading all attached archive files directly with zero API key.",
+      "terms": "Open GameBanana API v11; zero API key or Cloudflare solver required.",
+      "comments": "Supports Mod, Tool, and Skin models and fetches all _aFiles attachments.",
+      "platforms": []
     }
   ]
 }

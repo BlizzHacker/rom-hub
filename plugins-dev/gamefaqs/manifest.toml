@@ -1,0 +1,19 @@
+[plugin]
+slug        = "gamefaqs"
+name        = "GameFAQs Guides & FAQs"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "gamefaqs.search:Search"
+importer = "gamefaqs.importer:Importer"
+stream   = "gamefaqs.stream:Stream"
+
+[permissions]
+network  = ["gamefaqs.gamespot.com"]
+romm_api = []
+
+[config]
+platform   = { type = "str", default = "" }
+collection = { type = "str", default = "GameFAQs Guides" }

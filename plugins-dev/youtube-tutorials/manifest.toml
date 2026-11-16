@@ -1,0 +1,20 @@
+[plugin]
+slug        = "youtube-tutorials"
+name        = "YouTube Game Tutorials & Walkthroughs"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "youtube_tutorials.search:Search"
+importer = "youtube_tutorials.importer:Importer"
+stream   = "youtube_tutorials.stream:Stream"
+
+[permissions]
+network  = ["www.youtube.com", "www.googleapis.com", "i.ytimg.com"]
+romm_api = []
+
+[config]
+api_key        = { type = "secret" }
+default_suffix = { type = "str", default = "walkthrough tutorial" }
+collection     = { type = "str", default = "YouTube Tutorials" }

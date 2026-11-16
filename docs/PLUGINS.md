@@ -168,9 +168,14 @@ and neither can this directory change it for you.
 |---|---|---|---|---|---|---|---|---|---|
 | ❗ [Aminet (Amiga)](https://github.com/BlizzHacker/rom-hub-aminet) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-aminet)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `search` | Gaseous* · Retrom* · RomM | all 1 | — | `aminet.net` |
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.4.1 | 2026-11-12 | [`v0.4.1` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.4.1.tar.gz) | `search`, `importer`, `metadata`, `stream`, `census` | Gaseous! · Retrom* · RomM | 37 of 64, 1 needs netplay | — | `archive.org`, `*.archive.org` |
+| ✔ [CurseForge Mods & Addons](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `api.curseforge.com`, `www.curseforge.com`, `edge.forgecdn.net`, `mediafilez.forgecdn.net`, `*.forgecdn.net` |
 | ❗ [Demozoo (demoscene)](https://github.com/BlizzHacker/rom-hub-demozoo) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-demozoo)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | 27 of 46, 2 need netplay | — | `demozoo.org`, `media.demozoo.org`, `files.scene.org`, `archive.scene.org`, `fujiology.org` |
 | ✔ [eXo2romm (eXoDOS to RomM Repackager)](https://github.com/BlizzHacker/rom-hub-exo2romm) | derkommutator / BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-exo2romm)) | 0.1.0 | 2026-11-12 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-exo2romm/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | n/a (imports nothing) | — | `api.github.com`, `github.com`, `raw.githubusercontent.com` |
+| ✔ [Game Manuals & Strategy Guides (Archive.org)](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `archive.org`, `*.archive.org` |
+| ✔ [GameBanana Mods, Skins & Tools](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `gamebanana.com`, `*.gamebanana.com` |
+| ❗ [GameFAQs Guides & FAQs](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `gamefaqs.gamespot.com` |
 | ✔ [gamesgamesgamesgamesgames (Video Game Lexicons, HappyView & Cartridge Studio)](https://github.com/BlizzHacker/rom-hub-gamesgames) | gamesgamesgamesgamesgames / BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-gamesgames)) | 0.1.0 | 2026-11-15 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-gamesgames/archive/refs/tags/v0.1.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | — | — | `api.github.com`, `raw.githubusercontent.com`, `bsky.social` |
+| ✔ [GitHub Open-Source Games, Engines & Bots](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `api.github.com`, `github.com`, `objects.githubusercontent.com`, `release-assets.githubusercontent.com`, `codeload.github.com` |
 | ✔ [Hasheous](https://github.com/BlizzHacker/rom-hub-hasheous) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-hasheous)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-hasheous/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `hasheous.org` |
 | ✔ [Homebrew Hub (gbdev)](https://github.com/BlizzHacker/rom-hub-homebrew) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-homebrew)) | 0.3.0 | 2026-08-01 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-homebrew/archive/refs/tags/v0.3.0.tar.gz) | `importer`, `metadata`, `search`, `stream` | Gaseous! · Retrom* · RomM | all 4 | — | `hh3.gbdev.io`, `hh.gbdev.io` |
 | ✔ [IF Archive (Interactive Fiction)](https://github.com/BlizzHacker/rom-hub-if-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-if-archive)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-if-archive/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `search` | Gaseous* · Retrom* · RomM | **none** — catalogue only (4) | — | `ifarchive.org`, `ukrestrict.ifarchive.org` |
@@ -184,6 +189,9 @@ and neither can this directory change it for you.
 | ✔ [libretro Thumbnails](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `thumbnails.libretro.com` |
 | ❗ [Ludusavi (save locations)](https://github.com/BlizzHacker/rom-hub-ludusavi) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-ludusavi)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-ludusavi/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `raw.githubusercontent.com` |
 | ❗ [MiNERVA Archive](https://github.com/BlizzHacker/rom-hub-minerva) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-minerva)) | 0.3.0 | 2026-11-09 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-minerva/archive/refs/tags/v0.3.0.tar.gz) | `search`, `torrent` | Gaseous · Retrom · RomM | — | **cannot import** (every import is refused) | `minerva-archive.org`, `tracker.opentrackr.org`, `open.demonii.com`, `open.tracker.cl`, `tracker.publictracker.xyz`, `tracker.wildkat.net`, `tracker.qu.ax`, `tracker.peerfect.org`, `tracker.ilibr.org`, `tracker.dler.org`, `tracker.bittor.pw`, `tracker.0x7c0.com`, `exodus.desync.com` |
+| ❗ [ModDB Mods, Addons & Total Conversions](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `www.moddb.com`, `moddb.com`, `media.moddb.com`, `*.moddb.com` |
+| ✔ [Modrinth Mods, Modpacks & Shaders](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `api.modrinth.com`, `cdn.modrinth.com`, `modrinth.com` |
+| ❗ [Nexus Mods](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `api.nexusmods.com`, `www.nexusmods.com`, `cf-files.nexusmods.com`, `*.nexusmods.com` |
 | ❗ [No-Intro sets on Archive.org](https://github.com/BlizzHacker/rom-hub-nointro-archive) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-nointro-archive)) | 0.4.0 | 2026-08-01 | [`v0.4.0` tarball](https://github.com/BlizzHacker/rom-hub-nointro-archive/archive/refs/tags/v0.4.0.tar.gz) | `census`, `importer`, `search` | Gaseous* · Retrom* · RomM | 27 of 32, 1 needs netplay | — | `archive.org`, `*.archive.org` |
 | ✔ [Open BIOS](https://github.com/BlizzHacker/rom-hub-open-bios) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-open-bios)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-open-bios/archive/refs/tags/v0.2.0.tar.gz) | `firmware` | Gaseous* · Retrom* · RomM | n/a (imports nothing) | — | `raw.githubusercontent.com`, `github.com`, `release-assets.githubusercontent.com` |
 | ✔ [OpenVGDB](https://github.com/BlizzHacker/rom-hub-openvgdb) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-openvgdb)) | 0.3.0 | 2026-08-01 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-openvgdb/archive/refs/tags/v0.3.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `raw.githubusercontent.com`, `gamefaqs.gamespot.com`, `github.com`, `release-assets.githubusercontent.com` |
@@ -191,8 +199,11 @@ and neither can this directory change it for you.
 | ✔ [RetroArch controller profiles](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-retroarch-autoconfig/archive/refs/tags/v0.2.0.tar.gz) | `assets` | Gaseous · Retrom · RomM | — | — | `api.github.com`, `raw.githubusercontent.com` |
 | ✔ [ScummVM freeware games](https://github.com/BlizzHacker/rom-hub-scummvm-freeware) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-scummvm-freeware)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-scummvm-freeware/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | **none** — catalogue only (1) | — | `downloads.scummvm.org` |
 | ✔ [Standalone emulators (GitHub releases)](https://github.com/BlizzHacker/rom-hub-emulators) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-emulators)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-emulators/archive/refs/tags/v0.2.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | — | `api.github.com`, `github.com`, `release-assets.githubusercontent.com` |
+| ✔ [StrategyWiki Walkthroughs](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `strategywiki.org` |
 | ❗ [The ROM Depot](https://git.romarr.app/romarr/rom-hub-theromdepot) | MoveWeight ([repo](https://git.romarr.app/romarr/rom-hub-theromdepot)) | 0.2.2 | 2026-11-14 | [`v0.2.2` tarball](https://git.romarr.app/romarr/rom-hub-theromdepot/archive/v0.2.2.tar.gz) | `search`, `stream` | Gaseous · Retrom · RomM | n/a (imports nothing) | **cannot import** (every import is refused) | `theromdepot.com` |
+| ✔ [Thunderstore Game Mods (100+ Games)](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `thunderstore.io`, `cdn.thunderstore.io`, `*.thunderstore.io` |
 | ✔ [Universal-DB (3DS/DS homebrew)](https://github.com/BlizzHacker/rom-hub-universal-db) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-universal-db)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-universal-db/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | 1 of 2, 1 needs netplay | — | `db.universal-team.net`, `github.com`, `*.githubusercontent.com`, `gitlab.com`, `codeberg.org`, `gbatemp.net`, `cdn.classicube.net`, `apotrisstorage.blob.core.windows.net` |
+| ✔ [YouTube Game Tutorials & Walkthroughs](https://github.com/BlizzHacker/rom-hub) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `www.youtube.com`, `www.googleapis.com`, `i.ytimg.com` |
 
 **Reading the Playable column.** A ROM is only playable if the library's web player has an emulator core for its platform, and the player's list of those is shorter than the library's list of platforms. A ROM filed under a platform with no core imports cleanly, appears in the library with its cover and metadata, and does nothing at all when clicked — so this column says, per plugin, how many of the platforms it can import to will actually start. `none — catalogue only` is not a broken plugin: interactive fiction, ScummVM games and PC downloads are real things to keep in a library, and the Hub warns at import rather than refusing. `n/a (imports nothing)` is a metadata, asset, core or firmware plugin, which files no ROM and therefore cannot file an unplayable one.
 
@@ -230,6 +241,20 @@ Searches Internet Archive software collections and individual files/ZIP members 
 
 **Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
+### ✔ CurseForge Mods & Addons — `curseforge`
+
+Searches CurseForge mods and addons (World of Warcraft, Minecraft, Stardew Valley, BG3, Terraria) via Core API or FlareSolverr web fallback, downloading mod archives from ForgeCDN.
+
+**Source terms.** CurseForge mod packages. Uses official api.curseforge.com/v1 with optional free Core API key (or host FlareSolverr web search fallback) and ForgeCDN fallback URLs.
+
+**Comments.** Supports game prefixes like wow:dbm or mc:sodium and downloads all mod files cleanly.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `api.curseforge.com`, `www.curseforge.com`, `edge.forgecdn.net`, `mediafilez.forgecdn.net`, `*.forgecdn.net` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
 ### ❗ Demozoo (demoscene) — `demozoo`
 
 Searches and browses Demozoo's 386,682 demoscene productions, imports the ones that are runnable files, and writes the production's title and screenshot.
@@ -258,6 +283,48 @@ Repackages eXoDOS game zips for standalone RomM / ROMarr playback by rewriting p
 
 **Network requested.** `api.github.com`, `github.com`, `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
+### ✔ Game Manuals & Strategy Guides (Archive.org) — `game-manuals`
+
+Searches Internet Archive for scanned official game manuals and player's guides, downloading PDF, CBZ, EPUB, and OCR text files directly.
+
+**Source terms.** Internet Archive public-domain and preservation text collections accessible via /advancedsearch.php, /metadata/, and /download/.
+
+**Comments.** Zero key, zero Cloudflare. Downloads all manual documents up to 32 files per item.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ GameBanana Mods, Skins & Tools — `gamebanana`
+
+Searches GameBanana API v11 for game mods, skins, maps, bots, and modding tools, downloading all attached archive files directly with zero API key.
+
+**Source terms.** Open GameBanana API v11; zero API key or Cloudflare solver required.
+
+**Comments.** Supports Mod, Tool, and Skin models and fetches all _aFiles attachments.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `gamebanana.com`, `*.gamebanana.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ GameFAQs Guides & FAQs — `gamefaqs`
+
+Searches GameFAQs walkthroughs, FAQs, and maps, downloading full single-page printable guides (?single=1&print=1) via host FlareSolverr fallback when challenged.
+
+**Source terms.** User-contributed walkthroughs and FAQs hosted on GameFAQs; intended for personal offline reading. Configure optional FlareSolverr URL in ROMarr Settings -> General if Cloudflare challenges plain HTTP.
+
+**Comments.** Supports search, full guide file import, and browser stream links. Plain HTTP requests hit Cloudflare challenge (403); host-side FlareSolverrTransport handles challenge resolution cleanly without giving plugins sockets or cookies.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `gamefaqs.gamespot.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
 ### ✔ gamesgamesgamesgamesgames (Video Game Lexicons, HappyView & Cartridge Studio) — `gamesgames`
 
 Decentralized video game data standard (games.gamesgamesgamesgames.* lexicons), HappyView gaming AppView XRPC & Jetstream sync, and Cartridge Studio sovereign game library claims.
@@ -271,6 +338,20 @@ Decentralized video game data standard (games.gamesgamesgamesgames.* lexicons), 
 **Backends.** Fully usable against Retrom, RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it.
 
 **Network requested.** `api.github.com`, `raw.githubusercontent.com`, `bsky.social` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ GitHub Open-Source Games, Engines & Bots — `github-games`
+
+Searches GitHub for open-source games, source ports, engines, game bots (Diablo II, WoW, Minecraft, OSRS), and modding tools; downloads all latest release assets plus source ZIP.
+
+**Source terms.** Open-source repositories on GitHub; each repo carries its own OSI/open-source license. Works unauthenticated (60 req/hr) or with optional github_token (5,000 req/hr).
+
+**Comments.** Mode config supports all, games, bots, and tools. Downloads all release binary assets and/or codeload source zip archives.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `api.github.com`, `github.com`, `objects.githubusercontent.com`, `release-assets.githubusercontent.com`, `codeload.github.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Hasheous — `hasheous`
 
@@ -458,6 +539,48 @@ Searches MiNERVA's public ROM API and keeps each matching archive row distinct, 
 
 **Network requested.** `minerva-archive.org`, `tracker.opentrackr.org`, `open.demonii.com`, `open.tracker.cl`, `tracker.publictracker.xyz`, `tracker.wildkat.net`, `tracker.qu.ax`, `tracker.peerfect.org`, `tracker.ilibr.org`, `tracker.dler.org`, `tracker.bittor.pw`, `tracker.0x7c0.com`, `exodus.desync.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
+### ❗ ModDB Mods, Addons & Total Conversions — `moddb`
+
+Searches ModDB mods, addons, and total conversions (Diablo II LoD, S.T.A.L.K.E.R., Doom, Half-Life) and resolves 2-step mirror downloads with optional FlareSolverr fallback.
+
+**Source terms.** ModDB community-hosted game mods and patches. Uses realistic browser headers with automatic host FlareSolverr fallback when Cloudflare challenges.
+
+**Comments.** Supports game_slug config or prefixes like diablo-2-lod:plugy and resolves /downloads/start/{id} -> /downloads/mirror/... CDN redirects.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `www.moddb.com`, `moddb.com`, `media.moddb.com`, `*.moddb.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ Modrinth Mods, Modpacks & Shaders — `modrinth`
+
+Searches Modrinth open API v2 for Minecraft mods, modpacks, shaders, and plugins, downloading all latest version files directly from cdn.modrinth.com with zero API key.
+
+**Source terms.** Open-API Modrinth mod ecosystem; zero API key or Cloudflare solver required.
+
+**Comments.** Supports project_type filtering (mod, modpack, shader, plugin) and direct CDN downloads.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `api.modrinth.com`, `cdn.modrinth.com`, `modrinth.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ Nexus Mods — `nexusmods`
+
+Searches Nexus Mods anonymously across all games (Diablo II: Resurrected, BG3, Skyrim, etc.) via GraphQL v2, with v1 API file downloads for Premium keys or browser stream fallback.
+
+**Source terms.** Nexus Mods community mods. Public GraphQL v2 search requires zero key; Premium API key enables direct CDN downloads, while free accounts use browser stream links.
+
+**Comments.** Supports domain prefixes like skyrimspecialedition:skyui and exposes both importer and browser stream target.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `api.nexusmods.com`, `www.nexusmods.com`, `cf-files.nexusmods.com`, `*.nexusmods.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
 ### ❗ No-Intro sets on Archive.org — `nointro-archive`
 
 Censuses all 71 `identifier:nointro*` items on Archive.org -- 31,366 declared files, every one accounted for -- and serves search and import from the catalogue it built. `rom-hub census build nointro-archive`.
@@ -558,6 +681,20 @@ Lists and installs standalone emulator builds — twelve projects, from DuckStat
 
 **Network requested.** `api.github.com`, `github.com`, `release-assets.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
+### ✔ StrategyWiki Walkthroughs — `strategywiki`
+
+Searches StrategyWiki via MediaWiki JSON API and downloads complete walkthroughs, subchapters, and plain-text/HTML guides with zero API key or Cloudflare.
+
+**Source terms.** StrategyWiki content is licensed under CC BY-SA 3.0; accessible openly via /w/api.php.
+
+**Comments.** Zero key, zero Cloudflare. Discovers hierarchical subpages via apprefix and downloads parse JSON/HTML or plain text.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `strategywiki.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
 ### ❗ The ROM Depot — `theromdepot`
 
 > **cannot import** (every import is refused)
@@ -574,6 +711,20 @@ Browser-assisted provider. Searches a local export of the signed-in user's one-c
 
 **Network requested.** `theromdepot.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
+### ✔ Thunderstore Game Mods (100+ Games) — `thunderstore`
+
+Searches Thunderstore across 100+ modded PC games (Valheim, Lethal Company, Risk of Rain 2, etc.) and downloads package ZIPs directly with zero API key.
+
+**Source terms.** Open Thunderstore community package API; zero key or Cloudflare solver required.
+
+**Comments.** Supports community config or query prefix like lethal-company:morecompany.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `thunderstore.io`, `cdn.thunderstore.io`, `*.thunderstore.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
 ### ✔ Universal-DB (3DS/DS homebrew) — `universal-db`
 
 Filters the whole 400-entry Universal-DB catalogue in one request, imports the author's own release, and writes their title and the icon they shipped.
@@ -587,6 +738,20 @@ Filters the whole 400-entry Universal-DB catalogue in one request, imports the a
 **Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
 
 **Network requested.** `db.universal-team.net`, `github.com`, `*.githubusercontent.com`, `gitlab.com`, `codeberg.org`, `gbatemp.net`, `cdn.classicube.net`, `apotrisstorage.blob.core.windows.net` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ YouTube Game Tutorials & Walkthroughs — `youtube-tutorials`
+
+Searches YouTube game tutorials and walkthroughs (keyless InnerTube/search or optional YouTube Data API v3 key), downloads oEmbed metadata, thumbnails, and captions, and resolves watch streams.
+
+**Source terms.** YouTube public search, oEmbed, and caption metadata; optional Data API v3 key supported for higher quota.
+
+**Comments.** Supports keyless search, stream URLs, and downloading tutorial metadata, thumbnails, and timedtext transcripts.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
+
+**Network requested.** `www.youtube.com`, `www.googleapis.com`, `i.ytimg.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ## Adding your plugin
 
