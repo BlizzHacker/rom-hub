@@ -265,6 +265,34 @@
       ]
     },
     {
+      "slug": "gamesgames",
+      "name": "gamesgamesgamesgamesgames (Video Game Lexicons, HappyView & Cartridge Studio)",
+      "author": "gamesgamesgamesgamesgames / BlizzHacker",
+      "repository": "https://github.com/BlizzHacker/rom-hub-gamesgames",
+      "install": "https://github.com/BlizzHacker/rom-hub-gamesgames",
+      "download": "https://github.com/BlizzHacker/rom-hub-gamesgames/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-15",
+      "rpp_version": "1",
+      "capabilities": [
+        "metadata"
+      ],
+      "network": [
+        "api.github.com",
+        "raw.githubusercontent.com",
+        "bsky.social"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Decentralized video game data standard (games.gamesgamesgamesgames.* lexicons), HappyView gaming AppView XRPC & Jetstream sync, and Cartridge Studio sovereign game library claims.",
+      "terms": "MIT License. Absorbs gamesgamesgamesgamesgames' open video game data standard (https://github.com/gamesgamesgamesgamesgames/lexicon, MIT), HappyView schema-driven gaming AppView (https://github.com/gamesgamesgamesgamesgames/happyview), and Cartridge sovereign gaming studio (https://github.com/gamesgamesgamesgamesgames/cartridge). Rather than absorbing a generic social network, this plugin uses ATProto strictly as the transport for portable, player-owned video game records, DAT verification proofs, and cross-device playStates.",
+      "comments": "Purpose & concept: Self-hosted game libraries keep game metadata, verified ROM hashes, play states, and achievements inside isolated local databases. This plugin brings the `games.gamesgamesgamesgames.*` namespace (`game`, `release`, `playState`, `achievement`, `rating`, and `dev.cartridge.verificationRequest`) into ROM Hub so operators can enrich ROMs with deterministic AT-URIs and cryptographic No-Intro/Redump checksum assertions, query a local HappyView gaming AppView (`/xrpc/games.gamesgamesgamesgames.getGame`, `listGames`, `getPlayState`), process real-time Jetstream game commit events, and export their verified collection into sovereign player-owned records.",
+      "platforms": []
+    },
+    {
       "slug": "hasheous",
       "name": "Hasheous",
       "author": "BlizzHacker",
