@@ -113,3 +113,32 @@ def test_fetcher_post_and_validated_headers_block_forbidden_headers():
 def test_build_transport_returns_base_when_unset():
     base = httpx.MockTransport(lambda req: httpx.Response(200))
     assert build_transport(base, flaresolverr_url="") is base
+
+
+def test_flaresolverr_http_errors_scrub_solver_url_and_credentials():
+    def target_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            403,
+            headers={"cf-mitigated": "challenge"},
+            text="<html>Just a moment...</html>",
+        )
+
+    def solver_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(502, text="Bad Gateway")
+
+    transport = FlareSolverrTransport(
+        "http://solveruser:supersecret@localhost:8191",
+        inner=httpx.MockTransport(target_handler),
+        solver_transport=httpx.MockTransport(solver_handler),
+    )
+    fetcher = HttpxFetcher(transport=transport)
+    try:
+        with pytest.raises(RuntimeError) as exc_info:
+            fetcher.get("https://gamefaqs.gamespot.com/search", {"game": "chrono"})
+        msg = str(exc_info.value)
+        assert "HTTP 502" in msg
+        assert "supersecret" not in msg
+        assert "solveruser" not in msg
+        assert "8191" not in msg
+    finally:
+        fetcher.close()
