@@ -26,7 +26,7 @@ class Importer(ImportProvider):
 
         def _add_file(page_title: str, is_main: bool = False):
             quoted = quote(page_title.replace(" ", "_"))
-            url = f"{API_ENDPOINT}?action=parse&page={quoted}&prop=text&format=json"
+            url = f"{API_ENDPOINT}?action=parse&page={quoted}&redirects=1&prop=text&format=json"
             base_name = page_title.replace("/", " - ").strip()
             raw_filename = f"{base_name}.json"
             clean_name = safe_filename(raw_filename, fallback="guide.json")

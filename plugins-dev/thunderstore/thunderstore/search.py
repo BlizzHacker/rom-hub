@@ -31,14 +31,18 @@ class Search(SearchProvider):
             if len(results) >= limit:
                 break
 
-            url = f"https://thunderstore.io/c/{community}/api/v1/package/"
-            resp = self.ctx.http.get(url, headers=headers)
+            url = f"https://thunderstore.io/api/cyberstorm/listing/{community}/"
+            params = {"q": search_query} if search_query else {}
+            resp = self.ctx.http.get(url, params=params, headers=headers)
             if resp.status_code != 200:
                 continue
 
-            packages = resp.json()
-            if not isinstance(packages, list):
-                continue
+            payload = resp.json()
+            packages = (
+                payload.get("results", [])
+                if isinstance(payload, dict)
+                else (payload if isinstance(payload, list) else [])
+            )
 
             for pkg in packages:
                 if len(results) >= limit:
@@ -46,7 +50,7 @@ class Search(SearchProvider):
 
                 name = pkg.get("name", "")
                 full_name = pkg.get("full_name", "")
-                owner = pkg.get("owner", "")
+                owner = pkg.get("namespace") or pkg.get("owner") or ""
                 description = pkg.get("description", "") or ""
 
                 if terms:
@@ -56,9 +60,12 @@ class Search(SearchProvider):
 
                 versions = pkg.get("versions", [])
                 latest_ver = versions[0] if isinstance(versions, list) and versions else {}
-                ver_number = latest_ver.get("version_number", "")
-                file_size = latest_ver.get("file_size")
-                pkg_url = pkg.get("package_url") or f"https://thunderstore.io/c/{community}/p/{owner}/{name}/"
+                ver_number = pkg.get("latest_version_number") or latest_ver.get("version_number", "")
+                file_size = pkg.get("size") or latest_ver.get("file_size")
+                pkg_url = (
+                    pkg.get("package_url")
+                    or f"https://thunderstore.io/c/{community}/p/{owner}/{name}/"
+                )
                 source_id = f"{community}:{owner}/{name}"
 
                 results.append(
