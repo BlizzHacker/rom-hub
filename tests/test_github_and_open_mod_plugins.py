@@ -438,8 +438,8 @@ def test_thunderstore_search_community_and_syntax():
     ]
 
     mock_http = MockHttp({
-        "https://thunderstore.io/c/valheim/api/v1/package/": (200, fake_pkgs),
-        "https://thunderstore.io/c/lethal-company/api/v1/package/": (200, [
+        "https://thunderstore.io/api/cyberstorm/listing/valheim/": (200, {"results": fake_pkgs}),
+        "https://thunderstore.io/api/cyberstorm/listing/lethal-company/": (200, {"results": [
             {
                 "name": "MoreSuits",
                 "full_name": "x753-MoreSuits-1.4.1",
@@ -454,7 +454,7 @@ def test_thunderstore_search_community_and_syntax():
                     }
                 ],
             }
-        ]),
+        ]}),
     })
 
     # Test standard search in config community
@@ -476,22 +476,18 @@ def test_thunderstore_search_community_and_syntax():
 def test_thunderstore_importer():
     manifest = load_manifest(PLUGINS_DEV / "thunderstore" / "manifest.toml")
 
-    fake_pkgs = [
-        {
-            "name": "ValheimPlus",
-            "owner": "Grantapher",
-            "versions": [
-                {
-                    "version_number": "0.9.9",
-                    "file_size": 2500000,
-                    "download_url": "https://thunderstore.io/package/download/Grantapher/ValheimPlus/0.9.9/",
-                }
-            ],
-        }
-    ]
+    fake_pkg = {
+        "name": "ValheimPlus",
+        "owner": "Grantapher",
+        "latest": {
+            "version_number": "0.9.9",
+            "file_size": 2500000,
+            "download_url": "https://thunderstore.io/package/download/Grantapher/ValheimPlus/0.9.9/",
+        },
+    }
 
     mock_http = MockHttp({
-        "https://thunderstore.io/c/valheim/api/v1/package/": (200, fake_pkgs)
+        "https://thunderstore.io/api/experimental/package/Grantapher/ValheimPlus/": (200, fake_pkg)
     })
 
     ctx = PluginContext(config={"community": "valheim"}, http=mock_http)
@@ -753,12 +749,12 @@ def test_modrinth_importer_duplicates_and_refusal():
 
 def test_thunderstore_search_comma_separated_and_refusal():
     mock_http = MockHttp({
-        "https://thunderstore.io/c/valheim/api/v1/package/": (200, [
-            {"name": "ModA", "owner": "DevA", "description": "Mod A description", "versions": [{"download_url": "https://thunderstore.io/dl/a", "file_size": 100}]}
-        ]),
-        "https://thunderstore.io/c/lethal-company/api/v1/package/": (200, [
-            {"name": "ModB", "owner": "DevB", "description": "Mod B description", "versions": [{"download_url": "https://thunderstore.io/dl/b", "file_size": 200}]}
-        ]),
+        "https://thunderstore.io/api/cyberstorm/listing/valheim/": (200, {"results": [
+            {"name": "ModA", "namespace": "DevA", "description": "Mod A description", "latest_version_number": "1.0.0"}
+        ]}),
+        "https://thunderstore.io/api/cyberstorm/listing/lethal-company/": (200, {"results": [
+            {"name": "ModB", "namespace": "DevB", "description": "Mod B description", "latest_version_number": "2.0.0"}
+        ]}),
     })
     ctx = PluginContext(config={"community": "valheim,lethal-company"}, http=mock_http)
     searcher = thunderstore.search.Search(ctx)

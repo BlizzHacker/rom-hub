@@ -236,12 +236,15 @@ def test_gamefaqs_search_platform_filtering():
 
 
 def test_gamefaqs_search_empty_and_error():
+    from gamefaqs.search import GameFAQsError
+
     http = MockHttp(default_status=500, default_body="Server error")
     ctx = PluginContext(config={}, http=http)
     searcher = GamefaqsSearch(ctx)
 
     assert searcher.search("", None, 10) == []
-    assert searcher.search("chrono trigger", None, 10) == []
+    with pytest.raises(GameFAQsError):
+        searcher.search("chrono trigger", None, 10)
 
 
 def test_gamefaqs_importer_plan():

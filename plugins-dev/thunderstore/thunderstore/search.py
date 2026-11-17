@@ -31,51 +31,71 @@ class Search(SearchProvider):
             if len(results) >= limit:
                 break
 
-            url = f"https://thunderstore.io/c/{community}/api/v1/package/"
-            resp = self.ctx.http.get(url, headers=headers)
-            if resp.status_code != 200:
-                continue
-
-            packages = resp.json()
-            if not isinstance(packages, list):
-                continue
-
-            for pkg in packages:
-                if len(results) >= limit:
+            url = f"https://thunderstore.io/api/cyberstorm/listing/{community}/"
+            params = {"q": search_query} if search_query else {}
+            pages_fetched = 0
+            while url and len(results) < limit and pages_fetched < 3:
+                resp = self.ctx.http.get(url, params=params, headers=headers)
+                params = {}
+                pages_fetched += 1
+                if resp.status_code != 200:
                     break
 
-                name = pkg.get("name", "")
-                full_name = pkg.get("full_name", "")
-                owner = pkg.get("owner", "")
-                description = pkg.get("description", "") or ""
+                payload = resp.json()
+                if isinstance(payload, dict):
+                    packages = payload.get("results")
+                    next_url = payload.get("next")
+                elif isinstance(payload, list):
+                    packages = payload
+                    next_url = None
+                else:
+                    break
 
-                if terms:
-                    haystack = f"{name} {full_name} {owner} {description}".lower()
-                    if not all(term in haystack for term in terms):
+                if not isinstance(packages, list):
+                    break
+
+                for pkg in packages:
+                    if len(results) >= limit:
+                        break
+                    if not isinstance(pkg, dict):
                         continue
 
-                versions = pkg.get("versions", [])
-                latest_ver = versions[0] if isinstance(versions, list) and versions else {}
-                ver_number = latest_ver.get("version_number", "")
-                file_size = latest_ver.get("file_size")
-                pkg_url = pkg.get("package_url") or f"https://thunderstore.io/c/{community}/p/{owner}/{name}/"
-                source_id = f"{community}:{owner}/{name}"
+                    name = pkg.get("name", "")
+                    full_name = pkg.get("full_name", "")
+                    owner = pkg.get("namespace") or pkg.get("owner") or ""
+                    description = pkg.get("description", "") or ""
 
-                results.append(
-                    SearchResult(
-                        source_id=source_id,
-                        title=name or full_name or f"{owner}/{name}",
-                        platform="pc",
-                        size_bytes=file_size,
-                        url=pkg_url,
-                        extra={
-                            "community": community,
-                            "owner": owner,
-                            "name": name,
-                            "version": str(ver_number),
-                            "description": description[:200],
-                        },
+                    if terms:
+                        haystack = f"{name} {full_name} {owner} {description}".lower()
+                        if not all(term in haystack for term in terms):
+                            continue
+
+                    versions = pkg.get("versions", [])
+                    latest_ver = versions[0] if isinstance(versions, list) and versions else {}
+                    ver_number = pkg.get("latest_version_number") or latest_ver.get("version_number", "")
+                    file_size = pkg.get("size") or latest_ver.get("file_size")
+                    pkg_url = (
+                        pkg.get("package_url")
+                        or f"https://thunderstore.io/c/{community}/p/{owner}/{name}/"
                     )
-                )
+                    source_id = f"{community}:{owner}/{name}"
+
+                    results.append(
+                        SearchResult(
+                            source_id=source_id,
+                            title=name or full_name or f"{owner}/{name}",
+                            platform="pc",
+                            size_bytes=file_size,
+                            url=pkg_url,
+                            extra={
+                                "community": community,
+                                "owner": owner,
+                                "name": name,
+                                "version": str(ver_number),
+                                "description": description[:200],
+                            },
+                        )
+                    )
+                url = str(next_url) if isinstance(next_url, str) and next_url.startswith("https://thunderstore.io/") else ""
 
         return results

@@ -23,6 +23,10 @@ def _strip_tags(text: str) -> str:
     return " ".join(unescape(clean).split())
 
 
+class GameFAQsError(Exception):
+    """Raised when GameFAQs returns an HTTP error or Cloudflare challenge."""
+
+
 class Search(SearchProvider):
     def search(
         self, query: str, platform: str | None, limit: int
@@ -36,7 +40,11 @@ class Search(SearchProvider):
         search_url = f"https://gamefaqs.gamespot.com/search?{urlencode({'game': q})}"
         response = self.ctx.http.get(search_url)
         if response.status_code != 200:
-            return []
+            if response.status_code in (403, 503):
+                raise GameFAQsError(
+                    f"GameFAQs search blocked (HTTP {response.status_code}) — configure FlareSolverr URL in Settings -> General"
+                )
+            raise GameFAQsError(f"GameFAQs search failed (HTTP {response.status_code})")
 
         html = response.text or ""
         results: list[SearchResult] = []

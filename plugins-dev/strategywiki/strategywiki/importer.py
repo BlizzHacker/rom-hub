@@ -26,7 +26,7 @@ class Importer(ImportProvider):
 
         def _add_file(page_title: str, is_main: bool = False):
             quoted = quote(page_title.replace(" ", "_"))
-            url = f"{API_ENDPOINT}?action=parse&page={quoted}&prop=text&format=json"
+            url = f"{API_ENDPOINT}?action=parse&page={quoted}&redirects=1&prop=text&format=json"
             base_name = page_title.replace("/", " - ").strip()
             raw_filename = f"{base_name}.json"
             clean_name = safe_filename(raw_filename, fallback="guide.json")
@@ -40,6 +40,24 @@ class Importer(ImportProvider):
 
             seen_filenames.add(candidate.lower())
             files.append(FetchFile(url=url, filename=candidate))
+
+        # Resolve redirects first so subpage prefix lookup uses the canonical title.
+        try:
+            r_resp = self.ctx.http.get(
+                API_ENDPOINT,
+                params={"action": "query", "titles": title, "redirects": "1", "format": "json"},
+            )
+            if r_resp.status_code == 200:
+                r_data = json.loads(r_resp.text)
+                pages = r_data.get("query", {}).get("pages", {})
+                if isinstance(pages, dict):
+                    for page_obj in pages.values():
+                        canon = str((page_obj or {}).get("title") or "").strip()
+                        if canon:
+                            title = canon
+                            break
+        except Exception:
+            pass
 
         # Always include the main guide page first
         _add_file(title, is_main=True)

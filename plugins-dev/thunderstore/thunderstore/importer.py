@@ -43,33 +43,24 @@ class Importer(ImportProvider):
         community, owner, name = self._parse_coordinates(result)
 
         headers = {"User-Agent": USER_AGENT}
-        url = f"https://thunderstore.io/c/{community}/api/v1/package/"
+        url = f"https://thunderstore.io/api/experimental/package/{owner}/{name}/"
         resp = self.ctx.http.get(url, headers=headers)
         if resp.status_code != 200:
-            raise ImportRefused(f"Failed to fetch packages for community {community}: HTTP {resp.status_code}")
+            raise ImportRefused(
+                f"Package {owner}/{name} not found (HTTP {resp.status_code})"
+            )
 
         data = resp.json()
-        target_pkg = None
+        if not isinstance(data, dict):
+            raise ImportRefused(f"Unexpected Thunderstore response for {owner}/{name}")
 
-        if isinstance(data, list):
-            for pkg in data:
-                p_owner = pkg.get("owner", "")
-                p_name = pkg.get("name", "")
-                if p_owner.casefold() == owner.casefold() and p_name.casefold() == name.casefold():
-                    target_pkg = pkg
-                    break
-        elif isinstance(data, dict):
-            # In case a single-package object was returned
-            target_pkg = data
-
-        if not target_pkg:
-            raise ImportRefused(f"Package {owner}/{name} not found in community {community}")
-
-        versions = target_pkg.get("versions", [])
-        if not isinstance(versions, list) or not versions:
+        latest_ver = data.get("latest")
+        if not isinstance(latest_ver, dict):
+            versions = data.get("versions", [])
+            latest_ver = versions[0] if isinstance(versions, list) and versions else None
+        if not isinstance(latest_ver, dict):
             raise ImportRefused(f"No versions found for package {owner}/{name}")
 
-        latest_ver = versions[0]
         download_url = latest_ver.get("download_url")
         if not download_url:
             raise ImportRefused(f"Latest version for {owner}/{name} has no download_url")
