@@ -1760,6 +1760,33 @@
       "platforms": []
     },
     {
+      "slug": "compressatorium",
+      "name": "Compressatorium (batch decompression)",
+      "author": "BlizzHacker (Compressatorium by pacnpal)",
+      "repository": "https://github.com/BlizzHacker/rom-hub-compressatorium",
+      "install": "https://github.com/BlizzHacker/rom-hub-compressatorium",
+      "download": "https://github.com/BlizzHacker/rom-hub-compressatorium/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-19",
+      "rpp_version": "1",
+      "capabilities": [
+        "cores"
+      ],
+      "network": [
+        "api.github.com",
+        "raw.githubusercontent.com"
+      ],
+      "status": "ok",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Connects ROMarr's batch decompression to a Compressatorium container (by pacnpal) and offers Compressatorium's own docker-compose.yml. Preinstalled with ROMarr.",
+      "terms": "Compressatorium (https://github.com/pacnpal/compressatorium) by pacnpal publishes no licence, so this plugin includes none of its code: it stores the container's address and API key for ROMarr, and its cores entry downloads the compose file from pacnpal's own repository when asked. This plugin is MIT-licensed, Copyright (c) 2026 MOVE WEIGHT.",
+      "comments": "Credits pacnpal/Compressatorium. The plugin never connects to Compressatorium: ROM Hub plugins may only reach the HTTPS hosts in their manifest, so ROMarr reads the plugin's `url` and secret `api_key` and does the work host-side (CHD media-aware extract modes, tool gating via /api/tools, DAT verification, local extraction of RAR sets and multi-file archives). `cores` lists the latest upstream release and fetches that tag's docker-compose.yml from raw.githubusercontent.com.",
+      "platforms": []
+    },
+    {
       "slug": "mdm",
       "name": "Mister Download Manager (direct downloads)",
       "author": "BlizzHacker (Mister Download Manager by anefzaoui)",

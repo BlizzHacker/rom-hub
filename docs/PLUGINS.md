@@ -168,6 +168,7 @@ and neither can this directory change it for you.
 |---|---|---|---|---|---|---|---|---|---|
 | ❗ [Aminet (Amiga)](https://github.com/BlizzHacker/rom-hub-aminet) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-aminet)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-aminet/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `search` | Gaseous* · Retrom* · RomM | all 1 | — | `aminet.net` |
 | ✔ [Archive.org](https://github.com/BlizzHacker/rom-hub-archive-org) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-archive-org)) | 0.4.1 | 2026-11-12 | [`v0.4.1` tarball](https://github.com/BlizzHacker/rom-hub-archive-org/archive/refs/tags/v0.4.1.tar.gz) | `search`, `importer`, `metadata`, `stream`, `census` | Gaseous! · Retrom* · RomM | 37 of 64, 1 needs netplay | — | `archive.org`, `*.archive.org` |
+| ✔ [Compressatorium (batch decompression)](https://github.com/BlizzHacker/rom-hub-compressatorium) | BlizzHacker (Compressatorium by pacnpal) ([repo](https://github.com/BlizzHacker/rom-hub-compressatorium)) | 0.1.0 | 2026-11-19 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-compressatorium/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | — | `api.github.com`, `raw.githubusercontent.com` |
 | ✔ [CurseForge Mods & Addons](https://github.com/BlizzHacker/rom-hub-curseforge) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-curseforge)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-curseforge/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `api.curseforge.com`, `www.curseforge.com`, `edge.forgecdn.net`, `mediafilez.forgecdn.net`, `*.forgecdn.net` |
 | ❗ [Demozoo (demoscene)](https://github.com/BlizzHacker/rom-hub-demozoo) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-demozoo)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-demozoo/archive/refs/tags/v0.2.0.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | 27 of 46, 2 need netplay | — | `demozoo.org`, `media.demozoo.org`, `files.scene.org`, `archive.scene.org`, `fujiology.org` |
 | ✔ [eXo2romm (eXoDOS to RomM Repackager)](https://github.com/BlizzHacker/rom-hub-exo2romm) | derkommutator / BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-exo2romm)) | 0.1.0 | 2026-11-12 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-exo2romm/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | n/a (imports nothing) | — | `api.github.com`, `github.com`, `raw.githubusercontent.com` |
@@ -241,6 +242,20 @@ Searches Internet Archive software collections and individual files/ZIP members 
 **Backends.** Fully usable against RomM. *Gaseous:* `metadata` cannot run — the backend does not write metadata, so the Hub refuses up front rather than doing the work and discarding it; `importer` runs without collections — the operation completes and the skip is reported; `census`, `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `census`, `search`, `stream` are unaffected.
 
 **Network requested.** `archive.org`, `*.archive.org` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ Compressatorium (batch decompression) — `compressatorium`
+
+Connects ROMarr's batch decompression to a Compressatorium container (by pacnpal) and offers Compressatorium's own docker-compose.yml. Preinstalled with ROMarr.
+
+**Source terms.** Compressatorium (https://github.com/pacnpal/compressatorium) by pacnpal publishes no licence, so this plugin includes none of its code: it stores the container's address and API key for ROMarr, and its cores entry downloads the compose file from pacnpal's own repository when asked. This plugin is MIT-licensed, Copyright (c) 2026 MOVE WEIGHT.
+
+**Comments.** Credits pacnpal/Compressatorium. The plugin never connects to Compressatorium: ROM Hub plugins may only reach the HTTPS hosts in their manifest, so ROMarr reads the plugin's `url` and secret `api_key` and does the work host-side (CHD media-aware extract modes, tool gating via /api/tools, DAT verification, local extraction of RAR sets and multi-file archives). `cores` lists the latest upstream release and fetches that tag's docker-compose.yml from raw.githubusercontent.com.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
+
+**Network requested.** `api.github.com`, `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ CurseForge Mods & Addons — `curseforge`
 
