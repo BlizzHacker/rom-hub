@@ -108,6 +108,7 @@ NO_PLATFORM_TABLE: dict[str, str] = {
     "modrinth": "Minecraft mods, modpacks and shaders",
     "thunderstore": "mod packages across Thunderstore communities",
     "gamebanana": "mods, skins, maps and modding tools",
+    "mdm": "Mister Download Manager release archives by host, and ROMarr connection settings",
 }
 
 
