@@ -10,7 +10,9 @@ protocol's per-message cap, because whatever comes back here still has to fit
 in one JSON frame on its way to the plugin.
 """
 
+import os
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -18,6 +20,25 @@ from rom_hub.flaresolverr import build_transport
 from rom_hub.types import validate_headers
 
 USER_AGENT = "rom-hub/0.1 (+https://github.com/rommapp/romm)"
+
+#: The one host a GitHub token is ever sent to, and only on GET. Anonymous
+#: API use is 60 requests an hour per IP, which a few release listings use
+#: up; a token raises it to 5,000. The token is the operator's, set as
+#: ROM_HUB_GITHUB_TOKEN, and must carry NO scopes: every plugin allowed
+#: api.github.com can read whatever it can read.
+GITHUB_API_HOST = "api.github.com"
+
+
+def _github_auth(method: str, url: str) -> dict[str, str]:
+    token = (os.environ.get("ROM_HUB_GITHUB_TOKEN") or "").strip()
+    if not token or method != "GET":
+        return {}
+    try:
+        host = (urlsplit(url).hostname or "").lower()
+    except ValueError:
+        return {}
+    return {"Authorization": f"Bearer {token}"} if host == GITHUB_API_HOST else {}
+
 
 # Under protocol.MAX_MESSAGE_CHARS (8 MiB): the body is JSON-escaped into a
 # reply frame, which only ever grows it.
@@ -98,6 +119,9 @@ class HttpxFetcher:
         headers: dict[str, str] | None = None,
     ) -> tuple[int, str]:
         safe_headers = validate_headers(headers) if headers else None
+        auth = _github_auth("GET", url)
+        if auth and not any(k.lower() == "authorization" for k in (safe_headers or {})):
+            safe_headers = {**(safe_headers or {}), **auth}
         return self._stream_request(
             "GET", url, params=params or None, headers=safe_headers
         )

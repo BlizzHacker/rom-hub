@@ -123,13 +123,22 @@ def rom_ref_from(rom: dict, rom_id: int, extra: dict | None = None) -> RomRef:
         return value if isinstance(value, str) else ""
 
     size = rom.get("fs_size_bytes")
+    # The library's own hashes of the file. Plugins keyed by hash alone
+    # (hasheous, RetroAchievements) cannot identify anything without them,
+    # and a hash says what the file is without saying anything else about
+    # the library. What the operator passed wins over what the library says.
+    hashes = {key: text(field).strip().lower()
+              for key, field in (("sha1", "sha1_hash"), ("md5", "md5_hash"),
+                                 ("crc", "crc_hash"), ("ra_hash", "ra_hash"))}
+    merged = {k: v for k, v in hashes.items() if v}
+    merged.update({k: v for k, v in (extra or {}).items() if v})
     return RomRef(
         rom_id=rom_id,
         name=text("name"),
         filename=text("fs_name"),
         platform=text("platform_slug") or None,
         size_bytes=size if isinstance(size, int) and size >= 0 else None,
-        extra={k: v for k, v in (extra or {}).items() if v},
+        extra=merged,
     )
 
 

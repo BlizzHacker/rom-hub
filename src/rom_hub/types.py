@@ -796,7 +796,9 @@ _MAX_CORE_ID_CHARS = 64
 
 # An emulator catalogue, not a package index. Bounded like a FetchPlan's
 # file list, and for the same reason: the host walks whatever it is given.
-MAX_CORES_PER_PLUGIN = 256
+# 512, not 256: libretro's Linux x86_64 build target alone listed 261 cores
+# in November 2026, and a catalogue the host refuses lists nothing at all.
+MAX_CORES_PER_PLUGIN = 512
 
 
 class CoreArtifact(BaseModel):
