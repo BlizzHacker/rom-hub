@@ -168,3 +168,18 @@ def test_an_ordinary_gzip_403_reaches_the_caller_decoded_once():
         response = client.get("https://demozoo.org/api/v1/productions/")
     assert response.status_code == 403
     assert response.content == body
+
+
+def test_an_ordinary_403_with_a_non_ascii_header_is_returned_not_raised():
+    def target_handler(request):
+        return httpx.Response(403, headers=[(b"x-note", b"caf\xe9")], content=b"no")
+
+    transport = FlareSolverrTransport(
+        "http://solver:8191",
+        inner=httpx.MockTransport(target_handler),
+        solver_transport=httpx.MockTransport(lambda r: httpx.Response(500)),
+    )
+    with httpx.Client(transport=transport) as client:
+        response = client.get("https://example.org/")
+    assert response.status_code == 403 and response.content == b"no"
+    assert response.headers.raw[0] == (b"x-note", b"caf\xe9")
