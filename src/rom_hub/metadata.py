@@ -372,6 +372,22 @@ def _artwork(
     except UnsafeDestination as exc:
         raise EnrichError(str(exc)) from exc
 
+    # Every enrich of a rom fetches its cover to the same path
+    # (`<artwork>/<rom_id>/cover.png` unless the plugin names another), and
+    # HttpDownloader *resumes* any file it finds there with a Range request.
+    # A cover left by an earlier run -- another plugin's, or an error page
+    # from a failed one -- was therefore extended rather than replaced: RomM
+    # got 38 bytes of stale text, then the tail of a PNG with no header, and
+    # refused it ("detected text/plain"). A cover is small and never worth
+    # resuming, so whatever is there goes first.
+    try:
+        dest.unlink(missing_ok=True)
+    except OSError as exc:
+        raise EnrichError(
+            f"a previous artwork file at {dest} could not be removed, so the "
+            f"new cover was not fetched: {exc}"
+        ) from exc
+
     owns_downloader = downloader is None
     if owns_downloader:
         # Imported here rather than at module scope: importer pulls in the

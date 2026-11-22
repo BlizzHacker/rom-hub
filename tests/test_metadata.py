@@ -381,3 +381,30 @@ def test_the_summary_reaches_the_library_as_a_form_field(tmp_path):
     backend = FakeRomm()
     run_enrich(plugin, REF, backend=backend, work_dir=tmp_path)
     assert backend.calls[0][1] == {"summary": "Developed by HAL Laboratory."}
+
+
+class ResumingDownloader(FakeDownloader):
+    """Behaves like HttpDownloader: appends to whatever is already at `dest`."""
+
+    def download(self, url, dest, expected_size=None, headers=None):
+        self.calls.append(url)
+        dest = Path(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with dest.open("ab") as handle:
+            handle.write(self.payload)
+        return dest
+
+
+def test_a_cover_left_by_an_earlier_enrich_is_replaced_not_resumed(tmp_path):
+    """Found on a live Hub: RomM refused a cover as text/plain because the
+    new download had been appended to the previous run's file."""
+    stale = tmp_path / "artwork" / "cover.png"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"Super Metroid (Japan, USA) (En,Ja).png")
+    romm = FakeRomm()
+    plugin = FakePlugin(
+        MetadataPatch(artwork_url="https://allowed.example/cover.png", artwork_filename="cover.png")
+    )
+    _run(tmp_path, plugin, romm, ResumingDownloader(payload=b"\x89PNG-fresh"))
+    _, _, artwork = romm.calls[0]
+    assert artwork[1] == b"\x89PNG-fresh"
