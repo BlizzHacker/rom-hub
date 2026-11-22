@@ -1,0 +1,37 @@
+[plugin]
+slug        = "mdm"
+name        = "Mister Download Manager (direct downloads)"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+cores = "mdm.cores:Cores"
+
+# The release chain: the release JSON from api.github.com, the asset links on
+# github.com, and the release-assets host those links redirect to.
+[permissions]
+network = [
+  "api.github.com",
+  "github.com",
+  "release-assets.githubusercontent.com",
+]
+romm_api = []
+
+# ROMarr reads these to drive Mister Download Manager. The plugin itself never
+# connects to it: ROM Hub plugins may only make HTTPS requests to the hosts
+# listed above, and an MDM on your LAN is not one of them.
+#   mode        "cli" (ROMarr runs misterdownloadmanager-cli) or "remote"
+#               (ROMarr talks to `misterdownloadmanager --headless` or the
+#               desktop app). Blank leaves ROMarr's own client settings alone.
+#   remote_url  Remote mode only, for example https://127.0.0.1:8463
+#   api_token   Remote mode only: the bearer token MDM's Remote Access shows
+#   connections parallel HTTP range connections for direct downloads (1-128)
+#   category    optional MDM category in Remote mode: programs, compressed,
+#               documents, music, videos or other
+[config]
+mode        = { type = "str",    default = "" }
+remote_url  = { type = "str",    default = "" }
+api_token   = { type = "secret" }
+connections = { type = "int",    default = 8 }
+category    = { type = "str",    default = "" }

@@ -189,6 +189,7 @@ and neither can this directory change it for you.
 | ✔ [libretro Thumbnails](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `thumbnails.libretro.com` |
 | ❗ [Ludusavi (save locations)](https://github.com/BlizzHacker/rom-hub-ludusavi) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-ludusavi)) | 0.2.0 | 2026-08-01 | [`v0.2.0` tarball](https://github.com/BlizzHacker/rom-hub-ludusavi/archive/refs/tags/v0.2.0.tar.gz) | `metadata` | ~~Gaseous~~ · Retrom · RomM | n/a (imports nothing) | — | `raw.githubusercontent.com` |
 | ❗ [MiNERVA Archive](https://github.com/BlizzHacker/rom-hub-minerva) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-minerva)) | 0.3.0 | 2026-11-09 | [`v0.3.0` tarball](https://github.com/BlizzHacker/rom-hub-minerva/archive/refs/tags/v0.3.0.tar.gz) | `search`, `torrent` | Gaseous · Retrom · RomM | — | **cannot import** (every import is refused) | `minerva-archive.org`, `tracker.opentrackr.org`, `open.demonii.com`, `open.tracker.cl`, `tracker.publictracker.xyz`, `tracker.wildkat.net`, `tracker.qu.ax`, `tracker.peerfect.org`, `tracker.ilibr.org`, `tracker.dler.org`, `tracker.bittor.pw`, `tracker.0x7c0.com`, `exodus.desync.com` |
+| ✔ [Mister Download Manager (direct downloads)](https://github.com/BlizzHacker/rom-hub-mdm) | BlizzHacker (Mister Download Manager by anefzaoui) ([repo](https://github.com/BlizzHacker/rom-hub-mdm)) | 0.1.0 | 2026-11-21 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-mdm/archive/refs/tags/v0.1.0.tar.gz) | `cores` | Gaseous · Retrom · RomM | — | — | `api.github.com`, `github.com`, `release-assets.githubusercontent.com` |
 | ❗ [ModDB Mods, Addons & Total Conversions](https://github.com/BlizzHacker/rom-hub-moddb) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-moddb)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-moddb/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `www.moddb.com`, `moddb.com`, `media.moddb.com`, `*.moddb.com` |
 | ✔ [Modrinth Mods, Modpacks & Shaders](https://github.com/BlizzHacker/rom-hub-modrinth) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-modrinth)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-modrinth/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `api.modrinth.com`, `cdn.modrinth.com`, `modrinth.com` |
 | ❗ [Nexus Mods](https://github.com/BlizzHacker/rom-hub-nexusmods) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-nexusmods)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-nexusmods/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `api.nexusmods.com`, `www.nexusmods.com`, `cf-files.nexusmods.com`, `*.nexusmods.com` |
@@ -538,6 +539,20 @@ Searches MiNERVA's public ROM API and keeps each matching archive row distinct, 
 **Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
 
 **Network requested.** `minerva-archive.org`, `tracker.opentrackr.org`, `open.demonii.com`, `open.tracker.cl`, `tracker.publictracker.xyz`, `tracker.wildkat.net`, `tracker.qu.ax`, `tracker.peerfect.org`, `tracker.ilibr.org`, `tracker.dler.org`, `tracker.bittor.pw`, `tracker.0x7c0.com`, `exodus.desync.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ✔ Mister Download Manager (direct downloads) — `mdm`
+
+Holds the settings ROMarr's Mister Download Manager clients (standalone direct HTTP and BitTorrent) use, and offers MDM's official release archives (by anefzaoui) per host. Preinstalled with ROMarr.
+
+**Source terms.** Mister Download Manager (https://github.com/anefzaoui/misterdownloadmanager) by anefzaoui is GPL-3.0-or-later, so this plugin includes none of its code: it stores ROMarr's MDM mode, remote URL, API token, connections and category, and its cores entries download MDM's official release archives and SHA256SUMS.txt from anefzaoui's GitHub releases when asked. ROMarr drives MDM across a process or HTTP boundary only. This plugin is MIT-licensed, Copyright (c) 2026 MOVE WEIGHT.
+
+**Comments.** Credits anefzaoui/misterdownloadmanager. The plugin never connects to MDM: ROM Hub plugins may only reach the HTTPS hosts in their manifest, so ROMarr reads the plugin's config and secret `api_token` and runs MDM host-side (CLI mode) or over its Remote HTTPS API. `cores` lists the latest upstream release, one core per host (Linux x86_64, Windows x86_64, macOS arm64 and x86_64), offers only assets whose SHA-256 GitHub reports from a release that publishes SHA256SUMS.txt, and lands that file beside the archive for `sha256sum -c`.
+
+**Playability.** This plugin files no ROMs and maps no platform, so there is nothing here that can be unplayable.
+
+**Backends.** Everything this plugin declares works against all 3 supported library servers (Gaseous, Retrom, RomM).
+
+**Network requested.** `api.github.com`, `github.com`, `release-assets.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ❗ ModDB Mods, Addons & Total Conversions — `moddb`
 
