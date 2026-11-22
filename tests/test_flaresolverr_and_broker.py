@@ -142,3 +142,29 @@ def test_flaresolverr_http_errors_scrub_solver_url_and_credentials():
         assert "8191" not in msg
     finally:
         fetcher.close()
+
+
+def test_an_ordinary_gzip_403_reaches_the_caller_decoded_once():
+    """Demozoo answers a keyless API call with a gzip-encoded 403. Through
+    the FlareSolverr transport it came back as a zlib error, not the 403."""
+    import gzip
+
+    body = b'{"detail":"Authentication credentials were not provided."}'
+
+    def target_handler(request):
+        return httpx.Response(403, headers={"content-encoding": "gzip",
+                                            "content-type": "application/json"},
+                              content=gzip.compress(body))
+
+    def solver_handler(request):  # pragma: no cover - must not be reached
+        raise AssertionError("an ordinary 403 is not a challenge")
+
+    transport = FlareSolverrTransport(
+        "http://solver:8191",
+        inner=httpx.MockTransport(target_handler),
+        solver_transport=httpx.MockTransport(solver_handler),
+    )
+    with httpx.Client(transport=transport) as client:
+        response = client.get("https://demozoo.org/api/v1/productions/")
+    assert response.status_code == 403
+    assert response.content == body
