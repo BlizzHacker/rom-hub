@@ -799,9 +799,9 @@
       "author": "BlizzHacker",
       "repository": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails",
       "install": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails",
-      "download": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.2.1.tar.gz",
-      "version": "0.2.1",
-      "ref": "v0.2.1",
+      "download": "https://github.com/BlizzHacker/rom-hub-libretro-thumbnails/archive/refs/tags/v0.2.2.tar.gz",
+      "version": "0.2.2",
+      "ref": "v0.2.2",
       "updated": "2026-11-22",
       "rpp_version": "1",
       "capabilities": [

@@ -18,7 +18,7 @@ run offline.
 | `libretro-content` | <https://github.com/BlizzHacker/rom-hub-libretro-content> | `v0.2.1` |
 | `libretro-cores` | <https://github.com/BlizzHacker/rom-hub-libretro-cores> | `v0.2.1` |
 | `libretro-database` | <https://github.com/BlizzHacker/rom-hub-libretro-database> | `v0.2.1` |
-| `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.2.1` |
+| `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.2.2` |
 | `minerva-archive` | <https://github.com/BlizzHacker/rom-hub-minerva> | `v0.2.0` |
 | `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.2.1` |
 | `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.4.1` |
