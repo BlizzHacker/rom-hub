@@ -33,7 +33,8 @@ The plugin only offers an archive whose SHA-256 GitHub reports and whose release
 # In the folder `rom-hub cores install` printed: <cores dir>/mdm, where the
 # cores dir is ROM_HUB_CORES_DIR if set, otherwise ROM Hub's default.
 cd "<cores dir>/mdm"
-sha256sum -c --ignore-missing MisterDownloadManager-0.5.2-SHA256SUMS.txt
+# <ver> is the version just installed, e.g. 0.5.2; check that version's file only.
+sha256sum -c --ignore-missing MisterDownloadManager-<ver>-SHA256SUMS.txt
 ```
 
 The plugin cannot run that check for you: its sandbox does not follow the redirect GitHub answers with, and ROM Hub does not hash what it fetches.
