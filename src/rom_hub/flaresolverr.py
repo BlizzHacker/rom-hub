@@ -48,6 +48,11 @@ def is_cloudflare_challenge(
     return any(marker in sample for marker in _CHALLENGE_MARKERS)
 
 
+#: Headers that describe the bytes on the wire, not the decoded body a
+#: re-wrapped response carries.
+_REENCODED_HEADERS = frozenset({b"content-encoding", b"content-length", b"transfer-encoding"})
+
+
 class FlareSolverrTransport(httpx.BaseTransport):
     """httpx transport that transparently solves Cloudflare challenges on GET."""
 
@@ -148,9 +153,22 @@ class FlareSolverrTransport(httpx.BaseTransport):
             return response
         body = response.read()
         if not is_cloudflare_challenge(response.status_code, response.headers, body):
+            # `read()` has already decoded the body. Keeping the original
+            # Content-Encoding made httpx decode it a second time, so every
+            # ordinary 403/503 from a gzip-serving site (Demozoo's API-key
+            # refusal, for one) surfaced as "Error -3 while decompressing data"
+            # instead of the site's own answer.
+            # Raw bytes, not `multi_items()`: decoded strings are re-encoded
+            # as ASCII by httpx.Response, and a non-ASCII header value would
+            # then raise instead of returning the site's answer.
+            headers = [
+                (name, value)
+                for name, value in response.headers.raw
+                if name.lower() not in _REENCODED_HEADERS
+            ]
             return httpx.Response(
                 status_code=response.status_code,
-                headers=response.headers,
+                headers=headers,
                 content=body,
                 request=req,
             )
