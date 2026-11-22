@@ -1,5 +1,23 @@
 # Homebrew plugin for ROM Hub — gbdev's Homebrew Hub
 
+<table><tr><td>
+
+**Part of [Cartridge](https://github.com/BlizzHacker/rom-hub/blob/master/BRAND.md) by MoveWeight** — a self-hosted retro-gaming ecosystem. Run the whole stack, not just this piece:
+
+```
+MoveWeight
+└── Cartridge                                  play + acquire your library
+    ├── ROMarr  ─────────────  request a game, it finds / grabs / files it
+    │   └── ROM Hub + plugins   backend-agnostic sources (RomM/Gaseous/Retrom)
+    └── Apps                    Desktop · Xbox · Roku · Stream server
+```
+
+**Acquire:** [ROMarr](https://github.com/BlizzHacker/romarr) · [ROM Hub](https://github.com/BlizzHacker/rom-hub) — **Play:** [Desktop](https://github.com/BlizzHacker/RommForDesktop) · [Xbox](https://github.com/BlizzHacker/RommForXbox) · [Roku](https://github.com/BlizzHacker/RommForRoku) · [Stream](https://github.com/BlizzHacker/RommStreamServer)
+
+<sub>Unofficial; not affiliated with or endorsed by RomM, Gaseous or Retrom.</sub>
+
+</td></tr></table>
+
 Implements the RPP v1 `search`, `importer`, `metadata` and `stream`
 capabilities against [Homebrew Hub](https://hh.gbdev.io), the gbdev
 community's archive of Game Boy, Game Boy Color, Game Boy Advance and NES

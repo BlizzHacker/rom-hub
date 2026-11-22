@@ -1,11 +1,29 @@
 # libretro Thumbnails plugin for ROM Hub
 
+<table><tr><td>
+
+**Part of [Cartridge](https://github.com/BlizzHacker/rom-hub/blob/master/BRAND.md) by MoveWeight** — a self-hosted retro-gaming ecosystem. Run the whole stack, not just this piece:
+
+```
+MoveWeight
+└── Cartridge                                  play + acquire your library
+    ├── ROMarr  ─────────────  request a game, it finds / grabs / files it
+    │   └── ROM Hub + plugins   backend-agnostic sources (RomM/Gaseous/Retrom)
+    └── Apps                    Desktop · Xbox · Roku · Stream server
+```
+
+**Acquire:** [ROMarr](https://github.com/BlizzHacker/romarr) · [ROM Hub](https://github.com/BlizzHacker/rom-hub) — **Play:** [Desktop](https://github.com/BlizzHacker/RommForDesktop) · [Xbox](https://github.com/BlizzHacker/RommForXbox) · [Roku](https://github.com/BlizzHacker/RommForRoku) · [Stream](https://github.com/BlizzHacker/RommStreamServer)
+
+<sub>Unofficial; not affiliated with or endorsed by RomM, Gaseous or Retrom.</sub>
+
+</td></tr></table>
+
 Implements the RPP v1 `metadata` capability: box art for a ROM that is already
 in your RomM library, from libretro's public thumbnail repositories.
 
 | Capability | Endpoint | Does |
 |---|---|---|
-| `metadata` | `thumbnails.libretro.com/<system>/Named_Boxarts/<name>.png` | proposes an `artwork_url`; the **Hub** fetches it |
+| `metadata` | `raw.githubusercontent.com/libretro-thumbnails/<repo>/HEAD/Named_Boxarts/<name>.png` | proposes an `artwork_url`; the **Hub** fetches it |
 
 ## Install
 
@@ -131,8 +149,8 @@ not fail — it would succeed, with another console's box art, and nothing about
 your library afterwards would say so.
 
 Both sides of that table are captured reality, and a test pins each: every
-value is a directory `thumbnails.libretro.com` actually serves (127 of them,
-read 2026-07-29), and every key is a slug from RomM 4.9.2's own
+value is a directory `thumbnails.libretro.com` served (127 of them,
+read 2026-07-29; since 0.2.1 each maps to its libretro-thumbnails GitHub repository), and every key is a slug from RomM 4.9.2's own
 `GET /api/platforms/supported` (458 of them).
 
 `c128`, `new-nintendo-3ds`, `msx-turbo` and `msx2plus` are deliberately absent:
@@ -151,12 +169,20 @@ skipped — you said which file you wanted.
 
 ## Terms and licensing, in plain language
 
-`thumbnails.libretro.com` is a public, unauthenticated static file server run
-by the libretro project, and it exists to be read by RetroArch installations
-doing exactly what this plugin does. It served no `robots.txt` at all when this
-plugin was written (2026-07-29, HTTP 404), so there is no crawl directive to
-observe; the plugin nonetheless issues at most nine requests per ROM and none
-on a refusal.
+The images are the libretro-thumbnails GitHub organisation's public
+repositories, one per system, which `thumbnails.libretro.com` mirrored until
+November 2026 (its index is now empty and every image URL answers 404). They
+exist to be read by RetroArch installations doing exactly what this plugin
+does. The plugin issues at most nine image probes per ROM and none on a
+refusal; the title-match fallback adds two GitHub API requests per image set.
+An anonymous Hub gets 60 GitHub API requests an hour, so set
+`ROM_HUB_GITHUB_TOKEN` (a token with no scopes is enough) on a busy Hub. A
+rate-limited listing is reported as unreadable, never as a crash.
+
+Two repositories are named differently from the old directories
+(`Atari - 8-bit` is `Atari_-_8-bit_Family`, `NEC - PC-8001 - PC-8801` is
+`NEC_-_PC-88`), and `Philips - Videopac+` has no repository at all, so it is
+refused by name rather than sent to a different machine's covers.
 
 The images come from the libretro-thumbnails project, which distributes them
 publicly for RetroArch to use. libretro does not, however, claim to own them:
@@ -172,7 +198,8 @@ This plugin's own code is MIT (see `LICENSE`). It bundles no artwork.
 ## Notes
 
 The plugin opens no sockets. `ctx.http` is an RPC back to the Hub, which checks
-every URL against this plugin's declared allowlist (`thumbnails.libretro.com`,
-and nothing else) before fetching anything — including the `artwork_url` this
-plugin returns, which the **Hub**, not the plugin, fetches. There is no CDN hop
-to declare: a real boxart URL answers `200` directly with zero redirects.
+every URL against this plugin's declared allowlist (`raw.githubusercontent.com`
+and `api.github.com`, and nothing else) before fetching anything — including the
+`artwork_url` this plugin returns, which the **Hub**, not the plugin, fetches.
+There is no CDN hop to declare: a real boxart URL answers `200` directly with
+zero redirects.

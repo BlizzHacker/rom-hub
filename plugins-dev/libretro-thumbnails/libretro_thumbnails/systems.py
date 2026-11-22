@@ -9,7 +9,8 @@ console, and nothing about the library afterwards would say so.
 Both sides of the table are real listings, not lists from memory:
 
 * the values are the directory names served by
-  `https://thumbnails.libretro.com/` (127 of them, read on 2026-07-29);
+  `https://thumbnails.libretro.com/` (127 of them, read on 2026-07-29; each is
+  now read from its libretro-thumbnails GitHub repository, see metadata.py);
 * the keys are RomM 4.9.2's own platform slugs, read from
   `GET /api/platforms/supported` (458 of them).
 

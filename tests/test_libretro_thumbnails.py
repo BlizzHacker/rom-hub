@@ -10,12 +10,16 @@ driven by **directory listings captured from the live service** on
   server's own header and footer. Only the *choice* of rows is ours.
 
 So a URL answers 200 in these tests exactly when it answers 200 in
-reality. No test opens a socket: the plugin's only network path is
+reality. The service moved in November 2026 -- thumbnails.libretro.com went
+empty, and the same sets are read from the libretro-thumbnails GitHub
+repositories -- so `FakeLibretro` now answers raw.githubusercontent.com
+probes and api.github.com tree listings, still built from those listings. No test opens a socket: the plugin's only network path is
 `ctx.http`, and the artwork URL it returns is fetched by the host, not by
 the plugin (see tests/test_broker_enrich.py).
 """
 
 import html
+import json
 import re
 import sys
 from pathlib import Path
@@ -26,7 +30,7 @@ import pytest
 PLUGIN_ROOT = Path(__file__).resolve().parents[1] / "plugins-dev" / "libretro-thumbnails"
 sys.path.insert(0, str(PLUGIN_ROOT))
 
-from libretro_thumbnails.metadata import BASE, Metadata, NoThumbnail  # noqa: E402
+from libretro_thumbnails.metadata import API, RAW, Metadata, NoThumbnail, repo_for  # noqa: E402
 from libretro_thumbnails.systems import NeedsMapping  # noqa: E402
 
 from rom_hub.types import RomRef  # noqa: E402
@@ -52,37 +56,50 @@ def _names(fixture: str) -> list[str]:
 
 
 class FakeLibretro:
-    """Answers like thumbnails.libretro.com does, from the real listings."""
+    """Answers like libretro's GitHub repositories do, from the real listings.
+
+    Images: `RAW/<repo>/HEAD/<kind>/<file>.png`. Listings: the repository's
+    root tree at `API/<repo>/git/trees/HEAD`, then the set's own tree at
+    `API/<repo>/git/trees/sha-<kind>`.
+    """
 
     def __init__(self, kind="Named_Boxarts", status_override=None):
         self.kind = kind
         self.status_override = status_override
         self.calls: list[str] = []
         self.files = {
-            system: set(_names(fixture)) for system, fixture in LISTINGS.items()
+            repo_for(system): set(_names(fixture)) for system, fixture in LISTINGS.items()
         }
 
     def get(self, url, params=None):
         self.calls.append(url)
         if self.status_override is not None:
             return HttpResponse(status_code=self.status_override, text="")
-        assert url.startswith(BASE), f"off-allowlist URL: {url}"
-        rest = unquote(url[len(BASE) :])
-        system, _, tail = rest.partition("/")
-        kind, _, filename = tail.partition("/")
-        if kind != self.kind or system not in self.files:
-            return HttpResponse(status_code=404, text="")
-        if filename == "":
-            # A directory listing: hand back the captured HTML verbatim.
-            return HttpResponse(
-                status_code=200,
-                text=(FIXTURES / LISTINGS[system]).read_text(encoding="utf-8"),
-            )
-        if filename in self.files[system]:
+        if url.startswith(API):
+            return self._tree(unquote(url[len(API) :]))
+        assert url.startswith(RAW), f"off-allowlist URL: {url}"
+        repo, ref, kind, filename = unquote(url[len(RAW) :]).split("/", 3)
+        assert ref == "HEAD", url
+        if kind == self.kind and filename in self.files.get(repo, ()):
             # The real server sends PNG bytes; the plugin only reads the
             # status code, and ctx.http would hand it a lossy decode anyway.
-            return HttpResponse(status_code=200, text="�PNG")
+            return HttpResponse(status_code=200, text="\ufffdPNG")
         return HttpResponse(status_code=404, text="")
+
+    def _tree(self, rest):
+        repo, _, ref = rest.partition("/git/trees/")
+        if repo not in self.files:
+            return HttpResponse(status_code=404, text="")
+        if ref == "HEAD":
+            tree = [
+                {"path": ".gitignore", "type": "blob", "sha": "x"},
+                {"path": self.kind, "type": "tree", "sha": f"sha-{self.kind}"},
+            ]
+        elif ref == f"sha-{self.kind}":
+            tree = [{"path": name, "type": "blob", "sha": "x"} for name in sorted(self.files[repo])]
+        else:
+            return HttpResponse(status_code=404, text="")
+        return HttpResponse(status_code=200, text=json.dumps({"tree": tree, "truncated": False}))
 
 
 def _provider(http=None, config=None):
@@ -102,8 +119,9 @@ def _ref(**kwargs):
     return RomRef(**base)
 
 
-SNES = BASE + "Nintendo%20-%20Super%20Nintendo%20Entertainment%20System/Named_Boxarts/"
-DOS = BASE + "DOS/Named_Boxarts/"
+SNES = RAW + "Nintendo_-_Super_Nintendo_Entertainment_System/HEAD/Named_Boxarts/"
+DOS = RAW + "DOS/HEAD/Named_Boxarts/"
+DOS_LISTING = API + "DOS/git/trees/sha-Named_Boxarts"
 
 
 # -- the happy path -----------------------------------------------------
@@ -122,7 +140,7 @@ def test_the_plugin_names_a_url_and_never_fetches_the_artwork_itself():
 
     provider, _ = _provider()
     patch = provider.enrich(_ref())
-    check_url(patch.artwork_url, ["thumbnails.libretro.com"])
+    check_url(patch.artwork_url, ["raw.githubusercontent.com"])
 
 
 def test_an_ampersand_title_is_found_by_substituting_underscore():
@@ -228,7 +246,7 @@ def test_a_library_without_the_year_tag_is_matched_through_the_listing():
         DOS + "Prince%20of%20Persia%202%20-%20The%20Shadow%20and%20The%20Flame"
         "%20%281993%29.png"
     )
-    assert http.calls[-1] == DOS, "the listing is the last resort, not the first"
+    assert http.calls[-1] == DOS_LISTING, "the listing is the last resort, not the first"
 
 
 def test_the_listing_match_is_an_equality_not_a_prefix():
@@ -273,7 +291,7 @@ def test_the_fallback_can_be_switched_off():
             )
         )
     assert "no entry matches" not in str(exc.value)
-    assert not any(call.endswith("Named_Boxarts/") for call in http.calls)
+    assert not any("/git/trees/" in call for call in http.calls)
 
 
 # -- refusals -----------------------------------------------------------
@@ -349,7 +367,7 @@ def test_a_wrong_source_id_is_a_refusal_not_a_404_from_the_host():
     provider, http = _provider()
     with pytest.raises(NoThumbnail, match="Star Fux"):
         provider.enrich(_ref(extra={"source_id": "Star Fux (USA)"}))
-    assert not any(call.endswith("Named_Boxarts/") for call in http.calls), (
+    assert not any("/git/trees/" in call for call in http.calls), (
         "an explicit name must not be second-guessed against the listing"
     )
 
@@ -376,7 +394,7 @@ def test_every_kind_stays_inside_the_allowlist(kind):
         "logo": "Named_Logos",
     }[kind]
     provider, _ = _provider(FakeLibretro(kind=directory), config={"art_kind": kind})
-    check_url(provider.enrich(_ref()).artwork_url, ["thumbnails.libretro.com"])
+    check_url(provider.enrich(_ref()).artwork_url, ["raw.githubusercontent.com"])
 
 
 # -- the fallback chain -------------------------------------------------
@@ -432,7 +450,7 @@ def test_art_kind_singular_still_means_only_that_one():
     )
     with pytest.raises(NoThumbnail):
         provider.enrich(_ref())
-    assert all("/Named_Boxarts/" in url for url in http.calls)
+    assert all("Named_Titles" not in url and "Named_Snaps" not in url for url in http.calls)
 
 
 def test_art_kinds_sets_the_chain_and_its_order():
@@ -489,7 +507,7 @@ def test_an_unreadable_listing_does_not_fail_the_enrich():
 
     class Ceiling(FakeLibretro):
         def get(self, url, params=None):
-            if url.endswith("/") and "/Named_Titles/" in url:
+            if url.endswith("/git/trees/sha-Named_Titles"):
                 self.calls.append(url)
                 raise RuntimeError(
                     "ResponseTooLarge: response from %r exceeded the "
@@ -509,7 +527,7 @@ def test_the_refusal_says_a_listing_could_not_be_read():
 
     class AllTooBig(FakeLibretro):
         def get(self, url, params=None):
-            if url.endswith("/"):
+            if "/git/trees/" in url:
                 self.calls.append(url)
                 raise RuntimeError("ResponseTooLarge: 4297395 bytes")
             return super().get(url, params)
@@ -520,3 +538,39 @@ def test_the_refusal_says_a_listing_could_not_be_read():
     message = str(exc.value)
     assert "could not be read" in message
     assert "4 MiB" in message
+
+
+# -- the November 2026 move to GitHub ------------------------------------
+
+
+def test_a_renamed_repository_is_used_for_its_system():
+    """GitHub named two repositories differently from the old directories."""
+    assert repo_for("Atari - 8-bit") == "Atari_-_8-bit_Family"
+    assert repo_for("NEC - PC-8001 - PC-8801") == "NEC_-_PC-88"
+    assert repo_for("DOS") == "DOS"
+
+
+def test_a_system_with_no_repository_is_refused_before_any_request():
+    provider, http = _provider()
+    with pytest.raises(NoThumbnail, match="no thumbnail repository"):
+        provider.enrich(_ref(platform="videopac-g7400"))
+    assert http.calls == []
+
+
+def test_a_rate_limited_listing_is_unreadable_not_a_fault():
+    """An anonymous Hub gets 60 GitHub API requests an hour; hitting that
+    after the probes missed must read as "could not be read", not a crash."""
+
+    class Limited(FakeLibretro):
+        def get(self, url, params=None):
+            if url.startswith(API):
+                self.calls.append(url)
+                return HttpResponse(status_code=403, text="rate limit exceeded")
+            return super().get(url, params)
+
+    provider, http = _provider(Limited())
+    with pytest.raises(NoThumbnail, match="could not be read"):
+        provider.enrich(_ref(name="Not A Real Game", filename=""))
+    assert sum(1 for call in http.calls if call.startswith(API)) == 1, (
+        "the root tree is read once per enrich, not once per set"
+    )

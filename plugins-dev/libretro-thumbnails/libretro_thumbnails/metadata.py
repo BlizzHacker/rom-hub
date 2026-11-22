@@ -55,16 +55,39 @@ validator rejects anyway, since a provider id may not contain spaces or
 parentheses. An invented id is worse than an absent one.
 """
 
-import html
+import json
 import re
-from urllib.parse import quote, unquote
+from urllib.parse import quote
 
 from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
 
 from .names import candidates, match_key, scrub
 from .systems import NeedsMapping, system_for  # noqa: F401  (re-exported)
 
-BASE = "https://thumbnails.libretro.com/"
+# Where the images live. thumbnails.libretro.com served these from 2019 until
+# November 2026, when its index went empty and every image URL started to
+# answer 404. The same sets are the libretro-thumbnails GitHub organisation's
+# repositories -- one per system, which is what the server was a mirror of --
+# so the plugin reads them there. `HEAD` is the repository's default branch:
+# most are `master`, twelve are `main`, and neither is worth pinning per repo.
+RAW = "https://raw.githubusercontent.com/libretro-thumbnails/"
+API = "https://api.github.com/repos/libretro-thumbnails/"
+
+# Kept for anything that imported the old name; it is the image base now.
+BASE = RAW
+
+# A system's repository is its name with spaces as underscores, except where
+# the GitHub organisation named the repository differently from the server's
+# directory. Read from GET /orgs/libretro-thumbnails/repos on 2026-11-22.
+_REPO_NAMES = {
+    "Atari - 8-bit": "Atari_-_8-bit_Family",
+    "NEC - PC-8001 - PC-8801": "NEC_-_PC-88",
+}
+
+# Directories the server had that GitHub has no repository for. Refused by
+# name, because the nearest repository (`Philips_-_Videopac`) is a different
+# machine's library and its covers would be confidently wrong.
+_NO_REPO = {"Philips - Videopac+"}
 
 # The four sets every system directory carries. `boxart` is the default
 # because it is the one RomM shows as a cover; the others are here because
@@ -102,17 +125,27 @@ _UNWANTED = re.compile(
     re.IGNORECASE,
 )
 
-_HREF_RE = re.compile(r'href="([^"]+?\.png)"', re.IGNORECASE)
-
 
 class NoThumbnail(Exception):
     """No thumbnail could be identified for this rom, and the message says
     which spellings were tried."""
 
 
+def repo_for(system: str) -> str:
+    """The libretro-thumbnails repository that holds this system's sets."""
+    if system in _NO_REPO:
+        raise NoThumbnail(
+            f"libretro publishes no thumbnail repository for {system!r}; "
+            f"its old server had the directory, GitHub does not"
+        )
+    return _REPO_NAMES.get(system, system.replace(" ", "_"))
+
+
 class Metadata(MetadataProvider):
     def enrich(self, rom: RomRef) -> MetadataPatch:
         system = system_for(rom.platform)
+        repo_for(system)  # refuse an unpublished system before any request
+        self._trees: dict[str, dict | None] = {}
         kinds = self._kinds()
 
         override = (rom.extra.get("source_id") or "").strip()
@@ -216,9 +249,9 @@ class Metadata(MetadataProvider):
 
     def _url(self, system: str, kind: str, name: str) -> str:
         return (
-            BASE
-            + quote(system, safe="")
-            + "/"
+            RAW
+            + quote(repo_for(system), safe="")
+            + "/HEAD/"
             + KINDS[kind]
             + "/"
             + quote(f"{name}.png", safe="")
@@ -237,8 +270,8 @@ class Metadata(MetadataProvider):
         if response.status_code == 404:
             return False
         raise NoThumbnail(
-            f"libretro's thumbnail server answered HTTP {response.status_code} "
-            f"for {url!r}; nothing was proposed for this rom"
+            f"GitHub answered HTTP {response.status_code} for libretro's "
+            f"thumbnail {url!r}; nothing was proposed for this rom"
         )
 
     def _from_index(self, system: str, kind: str, labels, listing) -> str | None:
@@ -285,7 +318,49 @@ class Metadata(MetadataProvider):
         service being unwell and probing it seven more times would be both
         rude and useless.
         """
-        url = BASE + quote(system, safe="") + "/" + KINDS[kind] + "/"
+        tree = self._root_tree(system)
+        if tree is None:
+            return None
+        entry = next(
+            (
+                item
+                for item in tree.get("tree", [])
+                if item.get("path") == KINDS[kind] and item.get("type") == "tree"
+            ),
+            None,
+        )
+        if entry is None:
+            # This system has no directory for this set at all, which is
+            # ordinary -- not every system carries all four. An answer,
+            # not a fault, exactly as a 404 on a single file is: the
+            # caller moves to the next kind in the chain. Raising here is
+            # what made the chain abort on the first system that happened
+            # to lack `Named_Titles`.
+            return []
+        listing = self._tree(repo_for(system), str(entry.get("sha") or ""), system, kind)
+        if listing is None:
+            return None
+        return [
+            item["path"].removesuffix(".png")
+            for item in listing.get("tree", [])
+            if item.get("type") == "blob" and str(item.get("path", "")).endswith(".png")
+        ]
+
+    def _root_tree(self, system: str) -> dict | None:
+        """The repository's top level, read once per enrich."""
+        if system not in self._trees:
+            tree = self._tree(repo_for(system), "HEAD", system, "root")
+            self._trees[system] = {"tree": []} if tree == {} else tree
+        return self._trees[system]
+
+    def _tree(self, repo: str, ref: str, system: str, what: str) -> dict | None:
+        """One git tree from the GitHub API: `{}` for 404, `None` if unreadable.
+
+        A rate limit (403/429) is "unreadable", not a fault: the probe
+        ladder has already run, and an anonymous Hub gets 60 API requests
+        an hour -- set ROM_HUB_GITHUB_TOKEN on the Hub to lift that.
+        """
+        url = API + quote(repo, safe="") + "/git/trees/" + quote(ref, safe="")
         try:
             response = self.ctx.http.get(url)
         except RuntimeError:
@@ -294,22 +369,18 @@ class Metadata(MetadataProvider):
             # carrying the host's message.
             return None
         if response.status_code == 404:
-            # This system has no directory for this set at all, which is
-            # ordinary -- not every system carries all four. An answer,
-            # not a fault, exactly as a 404 on a single file is: the
-            # caller moves to the next kind in the chain. Raising here is
-            # what made the chain abort on the first system that happened
-            # to lack `Named_Titles`.
-            return []
+            return {}
+        if response.status_code in (403, 429):
+            return None
         if response.status_code != 200:
             raise NoThumbnail(
-                f"libretro's thumbnail server answered HTTP "
-                f"{response.status_code} for the {system!r} {kind} listing"
+                f"GitHub answered HTTP {response.status_code} for the "
+                f"{system!r} {what} listing of libretro's thumbnails"
             )
-        return [
-            unquote(html.unescape(match.group(1))).removesuffix(".png")
-            for match in _HREF_RE.finditer(response.text)
-        ]
+        try:
+            return json.loads(response.text)
+        except ValueError:
+            return None
 
     # -- choosing between releases ---------------------------------------
 
@@ -352,7 +423,8 @@ class Metadata(MetadataProvider):
             extra += (
                 f" The listing for {', '.join(unreadable)} could not be read "
                 f"(the Hub caps a plugin's response at 4 MiB and libretro's "
-                f"largest directory indexes are over it), so the title match "
+                f"largest directory indexes are over it, or GitHub's API rate "
+                f"limit was reached), so the title match "
                 f"never ran for {'that set' if len(unreadable) == 1 else 'those sets'}."
             )
         return (

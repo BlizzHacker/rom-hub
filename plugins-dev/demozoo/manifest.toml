@@ -1,7 +1,7 @@
 [plugin]
 slug        = "demozoo"
 name        = "Demozoo (demoscene)"
-version     = "0.2.0"
+version     = "0.2.1"
 rpp_version = "1"
 license     = "MIT"
 
@@ -53,6 +53,10 @@ network  = [
 romm_api = []
 
 [config]
+# Required since 2026-11-01, when Demozoo started enforcing API keys: every
+# /api/v1/ request without one answers 403. Free, per account; see
+# demozoo/auth.py. Sent as `Authorization: Api-Key <key>`, never in a URL.
+api_key         = { type = "secret" }
 # The RomM collection everything from here lands in.
 collection      = { type = "str", default = "Demozoo" }
 # `metadata` only. Whether to write Demozoo's title over the library's. On

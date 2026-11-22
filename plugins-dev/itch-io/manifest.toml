@@ -1,7 +1,7 @@
 [plugin]
 slug        = "itch-io"
 name        = "itch.io (free games) — play in browser, NO IMPORT"
-version     = "0.4.0"
+version     = "0.4.1"
 rpp_version = "1"
 license     = "MIT"
 

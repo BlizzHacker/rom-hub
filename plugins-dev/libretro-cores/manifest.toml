@@ -1,7 +1,7 @@
 [plugin]
 slug        = "libretro-cores"
 name        = "libretro cores (buildbot)"
-version     = "0.2.0"
+version     = "0.2.1"
 rpp_version = "1"
 license     = "MIT"
 
@@ -35,7 +35,7 @@ romm_api = []
 # defaulted -- see libretro_cores/targets.py for the table and the reason.
 target = { type = "str", default = "linux/x86_64" }
 # Narrow the catalogue to these core ids. Empty means all of them, which
-# is what you want unless the target ever exceeds the 256 cores a plugin
+# is what you want unless the target ever exceeds the 512 cores a plugin
 # may return in one list.
 only   = { type = "list[str]", default = [] }
 # Narrow the catalogue to the cores for one console. Matched against the

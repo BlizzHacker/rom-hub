@@ -52,6 +52,7 @@ than one row fewer.
 
 from rom_hub_sdk import SearchProvider, SearchResult
 
+from . import auth
 from .platforms import demozoo_ids_for_slug, slug_for
 from .productions import is_importable, parse_production, type_id_for
 
@@ -138,11 +139,12 @@ class Search(SearchProvider):
     # -- one page --------------------------------------------------------
 
     def _page(self, params: dict) -> dict:
-        response = self.ctx.http.get(ENDPOINT, params=params)
+        response = auth.get(self.ctx, ENDPOINT, params)
         if response.status_code != 200:
             raise SearchError(
                 f"Demozoo answered HTTP {response.status_code} for "
-                f"{ENDPOINT} with {params!r}"
+                f"{ENDPOINT} with {params!r}."
+                + auth.hint(response.status_code, self.ctx.config)
             )
         try:
             body = response.json()

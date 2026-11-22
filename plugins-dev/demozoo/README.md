@@ -1,5 +1,23 @@
 # Demozoo plugin for ROM Hub
 
+<table><tr><td>
+
+**Part of [Cartridge](https://github.com/BlizzHacker/rom-hub/blob/master/BRAND.md) by MoveWeight** — a self-hosted retro-gaming ecosystem. Run the whole stack, not just this piece:
+
+```
+MoveWeight
+└── Cartridge                                  play + acquire your library
+    ├── ROMarr  ─────────────  request a game, it finds / grabs / files it
+    │   └── ROM Hub + plugins   backend-agnostic sources (RomM/Gaseous/Retrom)
+    └── Apps                    Desktop · Xbox · Roku · Stream server
+```
+
+**Acquire:** [ROMarr](https://github.com/BlizzHacker/romarr) · [ROM Hub](https://github.com/BlizzHacker/rom-hub) — **Play:** [Desktop](https://github.com/BlizzHacker/RommForDesktop) · [Xbox](https://github.com/BlizzHacker/RommForXbox) · [Roku](https://github.com/BlizzHacker/RommForRoku) · [Stream](https://github.com/BlizzHacker/RommStreamServer)
+
+<sub>Unofficial; not affiliated with or endorsed by RomM, Gaseous or Retrom.</sub>
+
+</td></tr></table>
+
 Implements the RPP v1 `search`, `importer` and `metadata` capabilities
 against [Demozoo](https://demozoo.org), the demoscene's catalogue:
 386,682 productions on 2026-07-29, indexed by platform, type, author and
@@ -46,6 +64,7 @@ blocked.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `api_key` | `secret` | — | **required since 2026-11-01**: a Demozoo API key, from your account page on demozoo.org |
 | `collection` | `str` | `"Demozoo"` | the library collection imports land in |
 | `production_type` | `str` | `""` | narrow a browse to one type — `Cracktro`, `Demo`, `64K Intro` … |
 | `max_requests` | `int` | `12` | requests one search may make, across platform ids and pages (capped at 40) |
@@ -90,8 +109,12 @@ spellings are tried — the name as given, the name without a trailing
 extension, the filename's stem — each matched exactly by Demozoo, so a
 wrong guess costs a request and a miss rather than a wrong cover.
 
-No credentials. The API is public and unauthenticated and this plugin
-sends nothing but a GET.
+One credential. Demozoo's API was public until 2026-11-01, when the site
+began enforcing API keys: without one every `/api/v1/` request answers 403,
+"Authentication credentials were not provided." A key is free, per account,
+and goes in the `Authorization: Api-Key <key>` header — never the URL, where
+it would end up in logs. A 403 says which of the two problems it is: no key,
+or a key Demozoo refused. Nothing but GETs is ever sent.
 
 `media.demozoo.org` joins the allowlist in 0.2.0 and only for `metadata`:
 a `MetadataPatch.artwork_url` is fetched by the **host** and gated against
