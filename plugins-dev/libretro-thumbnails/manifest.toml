@@ -1,19 +1,20 @@
 [plugin]
 slug        = "libretro-thumbnails"
 name        = "libretro Thumbnails"
-version     = "0.2.0"
+version     = "0.2.1"
 rpp_version = "1"
 license     = "MIT"
 
 [capabilities]
 metadata = "libretro_thumbnails.metadata:Metadata"
 
-# One host, and only one: thumbnails.libretro.com serves the images
-# directly with no redirect (verified 2026-07-29 -- `curl -w %{num_redirects}`
-# reports 0 for a real boxart URL), so there is no CDN hop to declare and
-# nothing else to allow.
+# Two hosts, both GitHub. raw.githubusercontent.com serves the images with
+# no redirect (verified 2026-11-22: `curl -w %{num_redirects}` reports 0 for
+# a real boxart URL). api.github.com lists a set's files for the title-match
+# fallback. thumbnails.libretro.com, the only host before 0.2.1, emptied its
+# index in November 2026 and now answers 404 for every image.
 [permissions]
-network  = ["thumbnails.libretro.com"]
+network  = ["raw.githubusercontent.com", "api.github.com"]
 romm_api = []
 
 [config]

@@ -1,7 +1,7 @@
 [plugin]
 slug        = "homebrew"
 name        = "Homebrew Hub (gbdev)"
-version     = "0.3.0"
+version     = "0.3.1"
 rpp_version = "1"
 license     = "MIT"
 

@@ -6,26 +6,26 @@ run offline.
 
 | Plugin | Canonical repository | Pinned tag |
 |---|---|---|
-| `aminet` | <https://github.com/BlizzHacker/rom-hub-aminet> | `v0.2.0` |
+| `aminet` | <https://github.com/BlizzHacker/rom-hub-aminet> | `v0.2.1` |
 | `archive-org` | <https://github.com/BlizzHacker/rom-hub-archive-org> | `v0.4.1` |
-| `demozoo` | <https://github.com/BlizzHacker/rom-hub-demozoo> | `v0.2.0` |
-| `emulators` | <https://github.com/BlizzHacker/rom-hub-emulators> | `v0.1.0` |
-| `hasheous` | <https://github.com/BlizzHacker/rom-hub-hasheous> | `v0.1.0` |
-| `homebrew` | <https://github.com/BlizzHacker/rom-hub-homebrew> | `v0.3.0` |
-| `if-archive` | <https://github.com/BlizzHacker/rom-hub-if-archive> | `v0.2.0` |
+| `demozoo` | <https://github.com/BlizzHacker/rom-hub-demozoo> | `v0.2.1` |
+| `emulators` | <https://github.com/BlizzHacker/rom-hub-emulators> | `v0.2.1` |
+| `hasheous` | <https://github.com/BlizzHacker/rom-hub-hasheous> | `v0.2.1` |
+| `homebrew` | <https://github.com/BlizzHacker/rom-hub-homebrew> | `v0.3.1` |
+| `if-archive` | <https://github.com/BlizzHacker/rom-hub-if-archive> | `v0.2.1` |
 | `igir` | <https://github.com/BlizzHacker/rom-hub-igir> | `v0.1.0` |
-| `itch-io` | <https://github.com/BlizzHacker/rom-hub-itch-io> | `v0.4.0` |
-| `libretro-content` | <https://github.com/BlizzHacker/rom-hub-libretro-content> | `v0.2.0` |
-| `libretro-cores` | <https://github.com/BlizzHacker/rom-hub-libretro-cores> | `v0.1.0` |
-| `libretro-database` | <https://github.com/BlizzHacker/rom-hub-libretro-database> | `v0.1.0` |
-| `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.1.0` |
+| `itch-io` | <https://github.com/BlizzHacker/rom-hub-itch-io> | `v0.4.1` |
+| `libretro-content` | <https://github.com/BlizzHacker/rom-hub-libretro-content> | `v0.2.1` |
+| `libretro-cores` | <https://github.com/BlizzHacker/rom-hub-libretro-cores> | `v0.2.1` |
+| `libretro-database` | <https://github.com/BlizzHacker/rom-hub-libretro-database> | `v0.2.1` |
+| `libretro-thumbnails` | <https://github.com/BlizzHacker/rom-hub-libretro-thumbnails> | `v0.2.1` |
 | `minerva-archive` | <https://github.com/BlizzHacker/rom-hub-minerva> | `v0.2.0` |
-| `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.1.0` |
-| `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.4.0` |
-| `openvgdb` | <https://github.com/BlizzHacker/rom-hub-openvgdb> | `v0.2.0` |
-| `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.2.0` |
-| `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.2.0` |
-| `universal-db` | <https://github.com/BlizzHacker/rom-hub-universal-db> | `v0.2.0` |
+| `ludusavi` | <https://github.com/BlizzHacker/rom-hub-ludusavi> | `v0.2.1` |
+| `nointro-archive` | <https://github.com/BlizzHacker/rom-hub-nointro-archive> | `v0.4.1` |
+| `openvgdb` | <https://github.com/BlizzHacker/rom-hub-openvgdb> | `v0.3.1` |
+| `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.3.1` |
+| `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.2.1` |
+| `universal-db` | <https://github.com/BlizzHacker/rom-hub-universal-db> | `v0.2.1` |
 
 **`aminet`, `demozoo`, `emulators`, `if-archive`, `libretro-content`,
 `ludusavi` and `scummvm-freeware` are new; their repositories do not exist

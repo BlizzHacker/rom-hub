@@ -1,7 +1,7 @@
 [plugin]
 slug        = "if-archive"
 name        = "IF Archive (Interactive Fiction)"
-version     = "0.2.0"
+version     = "0.2.1"
 rpp_version = "1"
 license     = "MIT"
 

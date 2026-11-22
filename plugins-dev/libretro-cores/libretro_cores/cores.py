@@ -68,11 +68,12 @@ from .systems import system_for
 from .targets import DEFAULT_TARGET, NeedsMapping, target_for  # noqa: F401
 
 # The host refuses a catalogue over `rom_hub.types.MAX_CORES_PER_PLUGIN`
-# (256). Linux x86_64 shipped 218 cores on 2026-07-29, which is close
-# enough that the ceiling is a real event rather than a theoretical one --
-# so it is checked here, where the message can name the config keys that
-# fix it, instead of surfacing as the host's generic "over the limit".
-MAX_CORES = 256
+# (512 since rom-hub PR #60; 256 before). Linux x86_64 shipped 218 cores on
+# 2026-07-29 and 261 by 2026-11-22, which passed the old 256 and refused the
+# whole catalogue -- so it is checked here, where the message can name the
+# config keys that fix it, instead of surfacing as the host's generic
+# "over the limit".
+MAX_CORES = 512
 
 
 class CoreListError(Exception):

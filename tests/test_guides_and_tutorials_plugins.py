@@ -87,7 +87,7 @@ def test_gamefaqs_manifest():
     m = load_manifest(path)
     assert m.slug == "gamefaqs"
     assert m.name == "GameFAQs Guides & FAQs"
-    assert m.version == "0.1.0"
+    assert m.version == "0.1.1"
     assert m.rpp_version == "1"
     assert m.license == "MIT"
     assert m.capabilities == {

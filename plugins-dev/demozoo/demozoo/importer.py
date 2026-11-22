@@ -40,6 +40,7 @@ from urllib.parse import quote
 
 from rom_hub_sdk import FetchFile, FetchPlan, ImportProvider, SearchResult
 
+from . import auth
 from .filenames import safe_filename
 from .links import resolve
 from .productions import parse_production, require_importable
@@ -108,7 +109,7 @@ class Importer(ImportProvider):
 
     def _detail(self, production_id: int) -> dict:
         url = f"{DETAIL}{quote(str(production_id))}/"
-        response = self.ctx.http.get(url, params={"format": "json"})
+        response = auth.get(self.ctx, url, {"format": "json"})
         if response.status_code == 404:
             raise ImportRefused(
                 f"Demozoo has no production {production_id} (its API answered "
@@ -118,7 +119,7 @@ class Importer(ImportProvider):
         if response.status_code != 200:
             raise ImportRefused(
                 f"Demozoo answered HTTP {response.status_code} for production "
-                f"{production_id}"
+                f"{production_id}." + auth.hint(response.status_code, self.ctx.config)
             )
         try:
             body = response.json()

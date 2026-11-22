@@ -42,6 +42,7 @@ still refuses -- an enrich that writes nothing is not a degraded enrich.
 from __future__ import annotations
 
 import mimetypes
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -100,6 +101,15 @@ class EnrichResult:
     enriching_ids: dict[str, str] = field(default_factory=dict)
 
 
+# The shape each library hash must have to be forwarded to a plugin.
+_HASH_SHAPES = {
+    "sha1": re.compile(r"[0-9a-f]{40}"),
+    "md5": re.compile(r"[0-9a-f]{32}"),
+    "crc": re.compile(r"[0-9a-f]{8}"),
+    "ra_hash": re.compile(r"[0-9a-f]{32}"),
+}
+
+
 def rom_ref_from(rom: dict, rom_id: int, extra: dict | None = None) -> RomRef:
     """Build the `RomRef` a plugin is given, from a RomM rom record.
 
@@ -123,13 +133,33 @@ def rom_ref_from(rom: dict, rom_id: int, extra: dict | None = None) -> RomRef:
         return value if isinstance(value, str) else ""
 
     size = rom.get("fs_size_bytes")
+    # The library's own hashes of the file. Plugins keyed by hash alone
+    # (hasheous, RetroAchievements) cannot identify anything without them,
+    # and a hash says what the file is without saying anything else about
+    # the library.
+    #
+    # Two limits. A value is forwarded only in its hash's own shape: RomM's
+    # columns are free strings, and RetroAchievements reads `ra_hash` before
+    # `md5`, so one malformed `ra_hash` would hide a good `md5`. And when the
+    # operator names the item with `--source-id`, no library hash is added
+    # at all: plugins read `ra_hash` before `source_id`, and the operator's
+    # correction must still win over what the library recorded.
+    operator = {k: v for k, v in (extra or {}).items() if v}
+    merged: dict = {}
+    if "source_id" not in operator:
+        for key, field in (("sha1", "sha1_hash"), ("md5", "md5_hash"),
+                           ("crc", "crc_hash"), ("ra_hash", "ra_hash")):
+            value = text(field).strip().lower()
+            if _HASH_SHAPES[key].fullmatch(value):
+                merged[key] = value
+    merged.update(operator)
     return RomRef(
         rom_id=rom_id,
         name=text("name"),
         filename=text("fs_name"),
         platform=text("platform_slug") or None,
         size_bytes=size if isinstance(size, int) and size >= 0 else None,
-        extra={k: v for k, v in (extra or {}).items() if v},
+        extra=merged,
     )
 
 

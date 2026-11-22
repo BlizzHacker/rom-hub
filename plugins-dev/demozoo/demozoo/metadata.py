@@ -46,6 +46,7 @@ import json
 
 from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
 
+from . import auth
 from .filenames import safe_filename
 from .platforms import demozoo_ids_for_slug
 from .productions import is_importable, parse_production
@@ -245,11 +246,11 @@ class Metadata(MetadataProvider):
         return self._get(ENDPOINT, params)
 
     def _get(self, url: str, params: dict) -> dict:
-        response = self.ctx.http.get(url, params=params)
+        response = auth.get(self.ctx, url, params)
         if response.status_code != 200:
             raise ApiFailed(
                 f"Demozoo answered HTTP {response.status_code} for {url!r} "
-                f"with {params!r}"
+                f"with {params!r}." + auth.hint(response.status_code, self.ctx.config)
             )
         try:
             body = json.loads(response.text)

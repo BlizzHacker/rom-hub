@@ -787,3 +787,39 @@ def test_the_request_budget_was_raised_and_is_still_bounded():
     search, http = make_search(WINDOWS_DEMO, config={"max_requests": 500})
     search.search("", None, MAX_LIMIT)
     assert len(http.calls) == MAX_REQUESTS_CAP
+
+
+# -- API keys (enforced by demozoo.org since 2026-11-01) ------------------
+
+
+class KeyedHttp(FakeHttp):
+    """FakeHttp that also records the headers each call carried."""
+
+    def __init__(self, bodies, status=200):
+        super().__init__(bodies, status)
+        self.headers = []
+
+    def get(self, url, params=None, headers=None):
+        self.headers.append(dict(headers or {}))
+        return super().get(url, params)
+
+
+def test_a_configured_key_goes_in_the_header_and_never_the_url():
+    http = KeyedHttp(json.dumps({"count": 0, "next": None, "results": []}))
+    Search(PluginContext(config={"api_key": "k123"}, http=http)).search("Second Reality", None, 5)
+    assert http.headers[0] == {"Authorization": "Api-Key k123"}
+    url, params = http.calls[0]
+    assert "k123" not in url and "k123" not in json.dumps(params)
+
+
+def test_without_a_key_a_403_says_how_to_get_one():
+    search, _ = make_search('{"detail":"Authentication credentials were not provided."}', status=403)
+    with pytest.raises(SearchError, match="api_key") as exc:
+        search.search("Second Reality", None, 5)
+    assert "2026-11-01" in str(exc.value)
+
+
+def test_a_refused_key_is_named_as_the_problem():
+    http = KeyedHttp('{"detail":"Invalid API key."}', status=403)
+    with pytest.raises(SearchError, match="configured api_key was refused"):
+        Search(PluginContext(config={"api_key": "bad"}, http=http)).search("Second Reality", None, 5)

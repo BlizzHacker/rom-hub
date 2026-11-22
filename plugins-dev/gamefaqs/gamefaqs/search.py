@@ -1,5 +1,15 @@
-"""GameFAQs search capability."""
+"""GameFAQs search capability.
 
+    term -> /ajax/home_game_search (JSON) -> each game's /faqs page -> guides
+
+The site's /search page builds its results with script, so its HTML carries
+no game links (seen 2026-11-22). The JSON endpoint behind the site's own
+search box answers with each game's path, and the per-game /faqs pages still
+list guides as plain links. The results page is still parsed afterwards, in
+case it ever renders server-side again.
+"""
+
+import json
 import re
 from html import unescape
 from urllib.parse import urlencode
@@ -15,6 +25,11 @@ _GAME_LINK_RE = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 _TAG_RE = re.compile(r"<[^>]+>")
+_PRE_RE = re.compile(r"<pre[^>]*>(.*?)</pre>", re.DOTALL | re.IGNORECASE)
+_GAME_PATH_RE = re.compile(r"^/([a-zA-Z0-9_-]+)/(\d+-[a-zA-Z0-9_-]+)$")
+AJAX_SEARCH = "https://gamefaqs.gamespot.com/ajax/home_game_search"
+#: Games whose /faqs page is read per search. Each one is a request.
+MAX_GAMES = 3
 _IGNORED_PLATS = frozenset({"search", "user", "boards", "community", "features", "news"})
 
 
@@ -36,6 +51,16 @@ class Search(SearchProvider):
             return []
 
         wanted_platform = (platform or self.ctx.config.get("platform") or "").strip().lower()
+
+        ajax = self.ctx.http.get(f"{AJAX_SEARCH}?{urlencode({'term': q})}")
+        if ajax.status_code in (403, 503):
+            raise GameFAQsError(
+                f"GameFAQs search blocked (HTTP {ajax.status_code}) — configure FlareSolverr URL in Settings -> General"
+            )
+        if ajax.status_code == 200:
+            games = _ajax_games(ajax.text, wanted_platform)
+            if games:
+                return self._guides_for(games[:MAX_GAMES], limit, set())
 
         search_url = f"https://gamefaqs.gamespot.com/search?{urlencode({'game': q})}"
         response = self.ctx.http.get(search_url)
@@ -97,6 +122,12 @@ class Search(SearchProvider):
             if len(game_links) >= 3:
                 break
 
+        results.extend(self._guides_for(game_links, limit - len(results), seen_ids))
+        return results
+
+    def _guides_for(self, game_links, limit: int, seen_ids: set[str]) -> list[SearchResult]:
+        """Read each game's /faqs page and return its guides, up to `limit`."""
+        results: list[SearchResult] = []
         for _, plat, game_slug, game_title in game_links:
             if len(results) >= limit:
                 break
@@ -129,3 +160,38 @@ class Search(SearchProvider):
                 )
 
         return results
+
+
+def _ajax_games(text: str, wanted_platform: str) -> list[tuple[str, str, str, str]]:
+    """Games from /ajax/home_game_search, guide-carrying ones first.
+
+    Through FlareSolverr the JSON arrives wrapped in the browser's own
+    `<pre>` viewer, HTML-escaped; direct, it is bare JSON. Both are read.
+    """
+    body = text or ""
+    wrapped = _PRE_RE.search(body)
+    if wrapped:
+        body = unescape(wrapped.group(1))
+    try:
+        rows = json.loads(body)
+    except ValueError:
+        return []
+    if not isinstance(rows, list):
+        return []
+    games = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        match = _GAME_PATH_RE.match(str(row.get("url") or ""))
+        if not match:
+            continue
+        plat, game_slug = match.groups()
+        if plat.lower() in _IGNORED_PLATS:
+            continue
+        if wanted_platform and plat.lower() != wanted_platform:
+            continue
+        title = " ".join(str(row.get("game_name") or row.get("product_name") or "").split())
+        has_guides = str(row.get("has_guides") or "0") != "0"
+        games.append((not has_guides, (f"/{plat}/{game_slug}", plat, game_slug, title)))
+    games.sort(key=lambda item: item[0])
+    return [game for _, game in games]
