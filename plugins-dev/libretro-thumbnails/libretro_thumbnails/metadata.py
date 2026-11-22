@@ -56,8 +56,9 @@ parentheses. An invented id is worse than an absent one.
 """
 
 import json
+import posixpath
 import re
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 from rom_hub_sdk import MetadataPatch, MetadataProvider, RomRef
 
@@ -72,6 +73,14 @@ from .systems import NeedsMapping, system_for  # noqa: F401  (re-exported)
 # most are `master`, twelve are `main`, and neither is worth pinning per repo.
 RAW = "https://raw.githubusercontent.com/libretro-thumbnails/"
 API = "https://api.github.com/repos/libretro-thumbnails/"
+
+# A git symlink is served by raw.githubusercontent.com as its *target's
+# name*, with a 200: about one file in six in these repositories is one (599
+# of 3,716 SNES box arts, 2026-11-22), linking a re-release to the original
+# release's image. Proposing that URL hands RomM 38 bytes of text, which it
+# refuses ("detected text/plain"). So a probe whose body is a bare `.png`
+# name is followed, up to this many hops.
+MAX_SYMLINK_HOPS = 3
 
 # Kept for anything that imported the old name; it is the image base now.
 BASE = RAW
@@ -170,9 +179,9 @@ class Metadata(MetadataProvider):
         # box art, not for names probed in an unlucky order.
         for kind in kinds:
             for name in names:
-                url = self._url(system, kind, name)
-                if self._exists(url):
-                    return MetadataPatch(artwork_url=url)
+                resolved = self._resolve(self._url(system, kind, name))
+                if resolved:
+                    return MetadataPatch(artwork_url=resolved)
 
         if override or not self._index_fallback():
             raise NoThumbnail(self._refusal(rom, system, kinds, names))
@@ -185,7 +194,9 @@ class Metadata(MetadataProvider):
                 continue
             found = self._from_index(system, kind, [rom.name, rom.filename], listing)
             if found is not None:
-                return MetadataPatch(artwork_url=self._url(system, kind, found))
+                resolved = self._resolve(self._url(system, kind, found))
+                if resolved:
+                    return MetadataPatch(artwork_url=resolved)
 
         raise NoThumbnail(
             self._refusal(rom, system, kinds, names, indexed=True, unreadable=unreadable)
@@ -257,8 +268,27 @@ class Metadata(MetadataProvider):
             + quote(f"{name}.png", safe="")
         )
 
-    def _exists(self, url: str) -> bool:
-        """True if libretro serves this file.
+    def _resolve(self, url: str) -> str | None:
+        """The URL that serves this image's bytes, or None on a 404.
+
+        Follows git symlinks (see MAX_SYMLINK_HOPS): the body of a symlink
+        is one line naming a `.png` relative to the link's own directory.
+        """
+        for _ in range(MAX_SYMLINK_HOPS + 1):
+            body = self._fetch(url)
+            if body is None:
+                return None
+            target = _symlink_target(body)
+            if target is None:
+                return url
+            url = _sibling(url, target)
+        raise NoThumbnail(
+            f"libretro's thumbnail {url!r} is a chain of more than "
+            f"{MAX_SYMLINK_HOPS} symlinks; nothing was proposed for this rom"
+        )
+
+    def _fetch(self, url: str) -> str | None:
+        """The body if libretro serves this file, None on a 404.
 
         A 404 is an answer, not a fault: it means "try the next spelling".
         Anything else is the service being unwell, and probing it seven
@@ -266,9 +296,9 @@ class Metadata(MetadataProvider):
         """
         response = self.ctx.http.get(url)
         if response.status_code == 200:
-            return True
+            return response.text or ""
         if response.status_code == 404:
-            return False
+            return None
         raise NoThumbnail(
             f"GitHub answered HTTP {response.status_code} for libretro's "
             f"thumbnail {url!r}; nothing was proposed for this rom"
@@ -433,3 +463,23 @@ class Metadata(MetadataProvider):
             f"Tried: {tried}.{extra} If the library's name differs from "
             f"libretro's, pass the exact one with --source-id."
         )
+
+
+def _symlink_target(body: str) -> str | None:
+    """The target named by a git symlink's body, or None for image bytes."""
+    text = body.strip()
+    if not text or len(text) > 512 or "\n" in text or "\ufffd" in text:
+        return None
+    return text if text.lower().endswith(".png") else None
+
+
+def _sibling(url: str, target: str) -> str:
+    """Resolve a symlink target against the link's directory, inside the repo."""
+    parts = urlsplit(url)
+    directory = posixpath.dirname(unquote(parts.path))
+    path = posixpath.normpath(posixpath.join(directory, target))
+    # /libretro-thumbnails/<repo>/HEAD/... : never climb out of the repository.
+    prefix = "/".join(unquote(parts.path).split("/")[:4])
+    if not path.startswith(prefix + "/"):
+        raise NoThumbnail(f"libretro's thumbnail symlink {target!r} points outside its repository")
+    return f"{parts.scheme}://{parts.netloc}" + quote(path, safe="/")

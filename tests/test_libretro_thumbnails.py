@@ -55,6 +55,19 @@ def _names(fixture: str) -> list[str]:
     return [unquote(html.unescape(m.group(1))) for m in _HREF.finditer(text)]
 
 
+# Symlinks as raw.githubusercontent.com serves them: (repo, set, file) -> body.
+SYMLINKS = {
+    ("Nintendo_-_Super_Nintendo_Entertainment_System", "Named_Boxarts",
+     "Super Mario World (USA) (Virtual Console).png"): "Super Mario World (USA).png",
+    ("Nintendo_-_Super_Nintendo_Entertainment_System", "Named_Boxarts",
+     "Loop A.png"): "Loop B.png",
+    ("Nintendo_-_Super_Nintendo_Entertainment_System", "Named_Boxarts",
+     "Loop B.png"): "Loop A.png",
+    ("Nintendo_-_Super_Nintendo_Entertainment_System", "Named_Boxarts",
+     "Escape.png"): "../../../other-repo/HEAD/x.png",
+}
+
+
 class FakeLibretro:
     """Answers like libretro's GitHub repositories do, from the real listings.
 
@@ -80,6 +93,10 @@ class FakeLibretro:
         assert url.startswith(RAW), f"off-allowlist URL: {url}"
         repo, ref, kind, filename = unquote(url[len(RAW) :]).split("/", 3)
         assert ref == "HEAD", url
+        link = SYMLINKS.get((repo, kind, filename))
+        if link is not None:
+            # raw.githubusercontent.com serves a git symlink as its target's name.
+            return HttpResponse(status_code=200, text=link)
         if kind == self.kind and filename in self.files.get(repo, ()):
             # The real server sends PNG bytes; the plugin only reads the
             # status code, and ctx.http would hand it a lossy decode anyway.
@@ -246,7 +263,8 @@ def test_a_library_without_the_year_tag_is_matched_through_the_listing():
         DOS + "Prince%20of%20Persia%202%20-%20The%20Shadow%20and%20The%20Flame"
         "%20%281993%29.png"
     )
-    assert http.calls[-1] == DOS_LISTING, "the listing is the last resort, not the first"
+    assert http.calls[-2] == DOS_LISTING, "the listing is the last resort, not the first"
+    assert http.calls[-1] == patch.artwork_url, "then the match is probed, to follow a symlink"
 
 
 def test_the_listing_match_is_an_equality_not_a_prefix():
@@ -574,3 +592,27 @@ def test_a_rate_limited_listing_is_unreadable_not_a_fault():
     assert sum(1 for call in http.calls if call.startswith(API)) == 1, (
         "the root tree is read once per enrich, not once per set"
     )
+
+
+# -- git symlinks ----------------------------------------------------------
+
+
+def test_a_symlinked_thumbnail_proposes_the_file_it_points_to():
+    """raw.githubusercontent.com answers 200 for a symlink, with the target's
+    name as the body. Proposing that URL sent RomM 38 bytes of text."""
+    provider, http = _provider()
+    patch = provider.enrich(_ref(name="Super Mario World (USA) (Virtual Console)", filename=""))
+    assert patch.artwork_url == SNES + "Super%20Mario%20World%20%28USA%29.png"
+    assert len(http.calls) == 2
+
+
+def test_a_symlink_loop_is_refused_not_followed_forever():
+    provider, _ = _provider()
+    with pytest.raises(NoThumbnail, match="chain of more than"):
+        provider.enrich(_ref(name="Loop A", filename=""))
+
+
+def test_a_symlink_out_of_the_repository_is_refused():
+    provider, _ = _provider()
+    with pytest.raises(NoThumbnail, match="outside its repository"):
+        provider.enrich(_ref(name="Escape", filename=""))
