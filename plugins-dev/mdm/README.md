@@ -30,7 +30,9 @@ ROMarr does the downloading itself, through MDM. The plugin never connects to MD
 The plugin only offers an archive whose SHA-256 GitHub reports and whose release publishes `SHA256SUMS.txt`. ROM Hub checks each download's size, and writes `SHA256SUMS.txt` beside the archive as `MisterDownloadManager-<ver>-SHA256SUMS.txt`. Check the archive against it before you unpack it, the same check ROMarr's **Install MDM** button makes:
 
 ```bash
-cd "$ROM_HUB_HOME/var/cores/mdm"
+# In the folder `rom-hub cores install` printed: <cores dir>/mdm, where the
+# cores dir is ROM_HUB_CORES_DIR if set, otherwise ROM Hub's default.
+cd "<cores dir>/mdm"
 sha256sum -c --ignore-missing MisterDownloadManager-0.5.2-SHA256SUMS.txt
 ```
 
