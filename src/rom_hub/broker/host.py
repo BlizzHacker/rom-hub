@@ -64,7 +64,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from rom_hub.manifest import Manifest
-from rom_hub.netpolicy import PolicyViolation, check_url, network_policy
+from rom_hub.netpolicy import NetworkPolicy, PolicyViolation, check_url, network_policy
 from rom_hub.protocol import ProtocolError, read_message, write_message
 from rom_hub.secrets import scrub
 from rom_hub.types import (
@@ -86,7 +86,7 @@ from rom_hub.types import (
     validate_headers,
 )
 
-from .fetcher import Fetcher
+from .fetcher import Fetcher, HttpxFetcher
 
 # Enough stderr to diagnose a crash, bounded so a chatty plugin cannot make
 # the host's own memory its problem.
@@ -456,13 +456,13 @@ class PluginProcess:
             check_url(url, self.network_policy)
             req_headers = params.get("headers")
             safe_headers = validate_headers(req_headers) if req_headers else None
+            fetch_options = {}
+            if isinstance(self.network_policy, NetworkPolicy) and isinstance(self.fetcher, HttpxFetcher):
+                fetch_options["allow_solver"] = False
             if method == "http.get":
                 if safe_headers:
-                    status, text = self.fetcher.get(
-                        url, params.get("params") or {}, headers=safe_headers
-                    )
-                else:
-                    status, text = self.fetcher.get(url, params.get("params") or {})
+                    fetch_options["headers"] = safe_headers
+                status, text = self.fetcher.get(url, params.get("params") or {}, **fetch_options)
             else:
                 post_fn = getattr(self.fetcher, "post", None)
                 if post_fn is None:
@@ -473,6 +473,7 @@ class PluginProcess:
                     json=params.get("json"),
                     data=params.get("data"),
                     headers=safe_headers,
+                    **fetch_options,
                 )
             reply = {
                 "kind": "result",

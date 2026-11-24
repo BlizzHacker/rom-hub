@@ -7,6 +7,7 @@ import pytest
 
 from rom_hub.broker.fetcher import HttpxFetcher
 from rom_hub.broker.host import PluginProcess
+from rom_hub.flaresolverr import BYPASS_SOLVER
 from rom_hub.importer import DownloadError, HttpDownloader
 from rom_hub.manifest import ManifestError, parse_manifest
 from rom_hub.netpolicy import network_policy, url_allowed
@@ -93,6 +94,7 @@ def test_plugin_can_search_and_download_from_an_operator_shop(tmp_path, monkeypa
 
     def serve(request):
         """Provide a small catalogue and a fake payload without network access."""
+        assert request.extensions.get(BYPASS_SOLVER) is True
         return httpx.Response(200, text={"list": "Game", "file": "fixture"}[request.url.path[1:]])
 
     transport = httpx.MockTransport(serve)
@@ -118,13 +120,15 @@ def test_redirects_are_rechecked_and_credentials_stay_on_their_origin(manifest, 
 
     def serve(request):
         """Redirect to a second grant, then to a port the operator did not grant."""
-        requests.append((request.url.port, request.headers.get("authorization")))
+        requests.append((request.url.port, request.headers.get("authorization"), request.headers.get("cookie")))
         if request.url.port == 8080:
-            return httpx.Response(302, headers={"Location": "http://127.0.0.1:8081/file"})
+            return httpx.Response(302, headers={
+                "Location": "http://127.0.0.1:8081/file", "Set-Cookie": "session=fixture; Path=/",
+            })
         return httpx.Response(302, headers={"Location": "http://127.0.0.1:8082/file"})
 
     with HttpDownloader(policy, transport=httpx.MockTransport(serve)) as downloader:
         with pytest.raises(DownloadError, match="outside.*allowlist"):
             downloader.download(SHOP + "/file", tmp_path / "file",
                                 headers={"Authorization": "Bearer fixture"})
-    assert requests == [(8080, "Bearer fixture"), (8081, None)]
+    assert requests == [(8080, "Bearer fixture", None), (8081, None, None)]

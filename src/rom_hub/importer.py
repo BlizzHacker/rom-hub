@@ -70,6 +70,7 @@ from rom_hub.backends.base import (
 )
 from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from rom_hub.jobs import Job, JobQueue, JobState
+from rom_hub.flaresolverr import BYPASS_SOLVER
 from rom_hub.netpolicy import NetworkPolicy, PolicyViolation, check_url, network_policy
 from rom_hub.paths import (
     UnsafeDestination,
@@ -219,6 +220,10 @@ class HttpDownloader:
         current = url
         hops = 0
         restarted = False
+        operator_policy = isinstance(self.allowlist, NetworkPolicy)
+        extensions = {BYPASS_SOLVER: True} if operator_policy else None
+        if operator_policy:
+            self._client.cookies.clear()
 
         while True:
             # The enforcement point, re-entered for every hop. Nothing below
@@ -232,7 +237,7 @@ class HttpDownloader:
                 # Range for exactly this reason, so this cannot clobber a
                 # credential -- it IS the only header of its name.
                 headers["Range"] = f"bytes={offset}-"
-            with self._client.stream("GET", current, headers=headers) as resp:
+            with self._client.stream("GET", current, headers=headers, extensions=extensions) as resp:
                 if resp.is_redirect:
                     hops += 1
                     if hops > self.max_redirects:
@@ -241,10 +246,11 @@ class HttpDownloader:
                             f"{self.max_redirects} redirects (last: {current!r})"
                         )
                     target = self._redirect_target(resp, current)
-                    if isinstance(self.allowlist, NetworkPolicy):
+                    if operator_policy:
                         before, after = httpx.URL(current), httpx.URL(target)
                         if (before.scheme, before.netloc) != (after.scheme, after.netloc):
                             extra_headers = None
+                            self._client.cookies.clear()
                     current = target
                     continue
 
