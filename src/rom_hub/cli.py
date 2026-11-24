@@ -74,6 +74,7 @@ from .ia_session import archive_transport
 from .jobs import JobQueue, JobState
 from .manifest import ManifestError
 from .metadata import EnrichError, rom_ref_from, run_enrich
+from .netpolicy import NetworkPolicy, network_policy
 from .registry import Registry, RegistryError
 from .sandbox import probe
 from .secrets import SecretError
@@ -1196,7 +1197,7 @@ def _auth_downloader(plugin):
     transport = archive_transport(plugin.slug, default_root())
     if transport is None:
         return nullcontext(None)
-    return HttpDownloader(allowlist=list(plugin.manifest.network), transport=transport)
+    return HttpDownloader(allowlist=network_policy(plugin.manifest), transport=transport)
 
 
 def _cmd_auth(args) -> int:
@@ -1796,8 +1797,9 @@ def _resolve_torrent(args):
         )
 
     transport = archive_transport(plugin.slug, default_root())
-    raw = (_download_torrent(source.source, allowlist, transport=transport)
-           if transport is not None else _download_torrent(source.source, allowlist))
+    download_policy = network_policy(plugin.manifest)
+    raw = (_download_torrent(source.source, download_policy, transport=transport)
+           if transport is not None else _download_torrent(source.source, download_policy))
     torrent = parse_torrent(raw)
 
     if source.info_hash and source.info_hash != torrent.info_hash:
@@ -1823,7 +1825,7 @@ def _resolve_torrent(args):
     return outcome, allowlist
 
 
-def _download_torrent(url: str, allowlist: list[str], transport=None) -> bytes:
+def _download_torrent(url: str, allowlist: list[str] | NetworkPolicy, transport=None) -> bytes:
     """Pull a `.torrent` with the same downloader an import uses.
 
     Written to a temporary file and read back rather than buffered from a

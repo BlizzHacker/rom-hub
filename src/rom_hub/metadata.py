@@ -55,7 +55,7 @@ from rom_hub.backends.base import (
     provider_id_policy,
     require,
 )
-from rom_hub.netpolicy import PolicyViolation, check_url
+from rom_hub.netpolicy import NetworkPolicy, PolicyViolation, check_url, network_policy
 from rom_hub.paths import UnsafeDestination, dest_in_job_dir
 from rom_hub.types import (
     MAX_ARTWORK_BYTES,
@@ -182,7 +182,7 @@ def run_enrich(
     work_dir = Path(work_dir)
     manifest = getattr(plugin, "manifest", None)
     slug = getattr(manifest, "slug", "") or "unknown"
-    allowlist = list(getattr(manifest, "network", []))
+    allowlist = network_policy(manifest)
 
     try:
         patch = plugin.enrich(rom)
@@ -336,7 +336,7 @@ def _gate_provider_ids(
 def _artwork(
     patch: MetadataPatch,
     slug: str,
-    allowlist: list[str],
+    allowlist: list[str] | NetworkPolicy,
     work_dir: Path,
     downloader,
 ) -> tuple[str, bytes, str] | None:

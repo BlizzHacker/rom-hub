@@ -64,7 +64,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from rom_hub.manifest import Manifest
-from rom_hub.netpolicy import PolicyViolation, check_url
+from rom_hub.netpolicy import PolicyViolation, check_url, network_policy
 from rom_hub.protocol import ProtocolError, read_message, write_message
 from rom_hub.secrets import scrub
 from rom_hub.types import (
@@ -200,6 +200,7 @@ class PluginProcess:
     ):
         self.plugin_dir = Path(plugin_dir)
         self.manifest = manifest
+        self.network_policy = network_policy(manifest)
         self.config = config
         # Kept apart from `config` on purpose: anything that inspects a live
         # PluginProcess's config -- a debugger, a repr, a future dump -- sees
@@ -452,7 +453,7 @@ class PluginProcess:
             params = msg.get("params") or {}
             url = params["url"]
             # The enforcement point. Nothing below runs for a blocked URL.
-            check_url(url, self.manifest.network)
+            check_url(url, self.network_policy)
             req_headers = params.get("headers")
             safe_headers = validate_headers(req_headers) if req_headers else None
             if method == "http.get":
@@ -555,7 +556,7 @@ class PluginProcess:
         # the valid half of a plan whose other half was rejected.
         for index, f in enumerate(plan.files):
             try:
-                check_url(f.url, self.manifest.network)
+                check_url(f.url, self.network_policy)
             except PolicyViolation as exc:
                 raise self._fail(
                     f"plugin {self.manifest.slug} FetchPlan rejected "
@@ -784,7 +785,7 @@ class PluginProcess:
             ) from exc
         if patch.artwork_url is not None:
             try:
-                check_url(patch.artwork_url, self.manifest.network)
+                check_url(patch.artwork_url, self.network_policy)
             except PolicyViolation as exc:
                 raise self._fail(
                     f"plugin {self.manifest.slug} MetadataPatch rejected "
@@ -857,7 +858,7 @@ class PluginProcess:
             ) from exc
         if source.kind == "torrent_url":
             try:
-                check_url(source.source, self.manifest.network)
+                check_url(source.source, self.network_policy)
             except PolicyViolation as exc:
                 raise self._fail(
                     f"plugin {self.manifest.slug} TorrentSource rejected: {exc}"

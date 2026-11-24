@@ -145,6 +145,8 @@ class FlareSolverrTransport(httpx.BaseTransport):
         return status, html, resp_headers
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
+        if request.url.scheme != "https":
+            return self._inner.handle_request(request)
         req = self._apply_cached(request)
         response = self._inner.handle_request(req)
         if request.method.upper() != "GET":

@@ -70,6 +70,8 @@ class HttpxFetcher:
             follow_redirects=False,  # a redirect could escape the allowlist
             headers={"User-Agent": USER_AGENT},
             transport=effective_transport,
+            # Plain HTTP is only brokered to operator-approved LAN origins.
+            mounts={"http://": httpx.HTTPTransport()} if effective_transport is None else None,
         )
 
     def _too_large(self, url: str, size: int) -> ResponseTooLarge:
