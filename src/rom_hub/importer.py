@@ -70,7 +70,8 @@ from rom_hub.backends.base import (
 )
 from rom_hub.dedup import FileHashes, find_by_filename, find_duplicate, hash_file
 from rom_hub.jobs import Job, JobQueue, JobState
-from rom_hub.netpolicy import PolicyViolation, check_url
+from rom_hub.flaresolverr import BYPASS_SOLVER
+from rom_hub.netpolicy import NetworkPolicy, PolicyViolation, check_url, network_policy
 from rom_hub.paths import (
     UnsafeDestination,
     dest_in_job_dir,
@@ -121,13 +122,13 @@ class HttpDownloader:
 
     def __init__(
         self,
-        allowlist: list[str],
+        allowlist: list[str] | NetworkPolicy,
         timeout: float = DOWNLOAD_TIMEOUT,
         transport: httpx.BaseTransport | None = None,
         max_redirects: int = MAX_REDIRECTS,
         max_bytes: int | None = None,
     ):
-        self.allowlist = list(allowlist)
+        self.allowlist = allowlist if isinstance(allowlist, NetworkPolicy) else list(allowlist)
         self.max_redirects = max_redirects
         # `None` for a ROM or a core: those are multi-GB by nature and the
         # operator asked for the specific file. A *data asset* is a
@@ -136,6 +137,8 @@ class HttpDownloader:
         # constructs its downloader with a bound. Enforced on the declared
         # length and again while streaming, because the header is a hint.
         self.max_bytes = max_bytes
+        direct_http = (isinstance(allowlist, NetworkPolicy)
+                       and allowlist.http_origins and transport is None)
         self._client = httpx.Client(
             timeout=timeout,
             # httpx must never follow a redirect on its own: by the time it
@@ -143,6 +146,9 @@ class HttpDownloader:
             follow_redirects=False,
             headers={"User-Agent": USER_AGENT},
             transport=transport,
+            # Operator-approved HTTP destinations are local. Do not send their
+            # traffic to the ambient HTTP proxy.
+            mounts={"http://": httpx.HTTPTransport()} if direct_http else None,
         )
 
     def close(self) -> None:
@@ -168,8 +174,8 @@ class HttpDownloader:
         a request at all -- the cheapest possible resume.
 
         `headers` (from `FetchFile.headers`, validated when the plan was
-        re-established host-side) are extra request headers sent on every
-        hop of this download. Authentication is the motivating case -- an
+        re-established host-side) are extra request headers for this download. An opted-in policy drops
+        them when a redirect changes origin. Authentication is the motivating case -- an
         Archive.org S3 plugin sending `Authorization: LOW <access>:
         <secret>` to `*.archive.org` -- and the allowlist gate, not this
         parameter, is what bounds where a credential can travel: every
@@ -214,6 +220,10 @@ class HttpDownloader:
         current = url
         hops = 0
         restarted = False
+        operator_policy = isinstance(self.allowlist, NetworkPolicy)
+        extensions = {BYPASS_SOLVER: True} if operator_policy else None
+        if operator_policy:
+            self._client.cookies.clear()
 
         while True:
             # The enforcement point, re-entered for every hop. Nothing below
@@ -227,7 +237,7 @@ class HttpDownloader:
                 # Range for exactly this reason, so this cannot clobber a
                 # credential -- it IS the only header of its name.
                 headers["Range"] = f"bytes={offset}-"
-            with self._client.stream("GET", current, headers=headers) as resp:
+            with self._client.stream("GET", current, headers=headers, extensions=extensions) as resp:
                 if resp.is_redirect:
                     hops += 1
                     if hops > self.max_redirects:
@@ -235,7 +245,13 @@ class HttpDownloader:
                             f"downloading {url!r} gave up after "
                             f"{self.max_redirects} redirects (last: {current!r})"
                         )
-                    current = self._redirect_target(resp, current)
+                    target = self._redirect_target(resp, current)
+                    if operator_policy:
+                        before, after = httpx.URL(current), httpx.URL(target)
+                        if (before.scheme, before.netloc) != (after.scheme, after.netloc):
+                            extra_headers = None
+                            self._client.cookies.clear()
+                    current = target
                     continue
 
                 if resp.status_code == 416 and offset and not restarted:
@@ -360,7 +376,7 @@ def run_import(
     # reused across imports and is not ours to shut.
     owns_downloader = downloader is None
     if owns_downloader:
-        downloader = HttpDownloader(allowlist=list(getattr(manifest, "network", [])))
+        downloader = HttpDownloader(allowlist=network_policy(manifest))
 
     # The backend registers its own uploads. This opens nothing here --
     # RomM's scanner connects only when scan_platform() is called, which

@@ -170,6 +170,36 @@ Declare the hosts you actually use and no more. The allowlist is the one thing
 a reader can judge you on before installing, and a search plugin asking for
 hosts unrelated to its source is the thing people are told to be suspicious of.
 
+### Operator-run servers
+
+For a plugin that searches or downloads from a service configured by the
+operator, add `network_from_env = true` to `[permissions]`. The host reads
+`ROM_HUB_NETWORK_<SLUG>`, with the plugin slug in uppercase and its hyphens
+replaced by underscores. For example, for a plugin named `test-shop`:
+
+```sh
+ROM_HUB_NETWORK_TEST_SHOP="games.example.net,*.cdn.example.net,http://192.168.1.12:8080"
+```
+
+Set the variable on the process running ROM Hub or ROMarr. In Compose, pass it
+through the service environment. Then restart the host. Set the plugin's shop
+URL separately in its configuration. The configuration supplies the URL and
+the environment grant authorizes the destination.
+
+Bare hosts, IP literals and wildcard DNS suffixes extend HTTPS access. For HTTP,
+specify the exact origin with a port. Allowed HTTP addresses are literal
+RFC 1918, loopback and IPv6 unique-local addresses. Use HTTPS for DNS names,
+including `.local` names. Public and link-local HTTP addresses, CIDRs, URLs with
+credentials and grants with paths are rejected. Keep cleartext shop traffic on
+your private network.
+
+These grants apply to brokered requests and host-side file downloads, including
+artwork, core, firmware, emulator, and torrent metadata downloads. Every
+download redirect is checked, and plugin-supplied headers stay on their
+original origin. Install-time data assets and URLs handed to browsers or
+torrent clients still use the declared manifest hosts. The variable is not
+included in the plugin subprocess environment.
+
 ## Authenticated downloads: `FetchFile.headers`
 
 Some sources gate their download endpoints behind a credential — Archive.org's

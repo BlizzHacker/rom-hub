@@ -609,17 +609,18 @@ def test_a_remote_catalog_cannot_widen_an_installed_plugins_reach(tmp_path):
     assert "evil.example.test" in claimed.network
     assert "evil.example.test" not in manifest.network
 
-    # What the broker consults is the manifest, and nothing else.
+    # The runtime policy is computed without the remote catalogue.
+    policy = PluginProcess(tmp_path, manifest, {}, None).network_policy
     with pytest.raises(PolicyViolation):
-        check_url("https://evil.example.test/steal", list(manifest.network))
-    check_url("https://archive.org/ok", list(manifest.network))
+        check_url("https://evil.example.test/steal", policy)
+    check_url("https://archive.org/ok", policy)
 
     # And the code path says so structurally: the module that opens the
     # socket does not know this module exists.
     import inspect
 
     source = inspect.getsource(PluginProcess._serve_plugin_call)
-    assert "self.manifest.network" in source
+    assert "check_url(url, self.network_policy)" in source
     assert "catalog" not in source.lower()
 
 

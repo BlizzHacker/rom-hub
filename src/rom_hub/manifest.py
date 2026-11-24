@@ -138,6 +138,7 @@ class Manifest:
     romm_api: list[str]
     config_schema: dict = field(default_factory=dict)
     data_assets: tuple[DataAsset, ...] = ()
+    network_from_env: bool = False
 
 
 def parse_manifest(text: str) -> Manifest:
@@ -186,7 +187,12 @@ def parse_manifest(text: str) -> Manifest:
                 f"capability {cap!r} entrypoint {entrypoint!r} must be 'module:Class'"
             )
 
-    permissions = raw.get("permissions") or {}
+    permissions = raw.get("permissions", {})
+    if not isinstance(permissions, dict):
+        raise ManifestError("[permissions] must be a table")
+    network_from_env = permissions.get("network_from_env", False)
+    if not isinstance(network_from_env, bool):
+        raise ManifestError("permissions.network_from_env must be a boolean")
     network = permissions.get("network") or []
     romm_api = permissions.get("romm_api") or []
     if not isinstance(network, list) or not all(isinstance(h, str) for h in network):
@@ -228,6 +234,7 @@ def parse_manifest(text: str) -> Manifest:
         romm_api=list(romm_api),
         config_schema=config_schema,
         data_assets=_parse_data_assets(raw.get("data_assets"), list(network)),
+        network_from_env=network_from_env,
     )
 
 

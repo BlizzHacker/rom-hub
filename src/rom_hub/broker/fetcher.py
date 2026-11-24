@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from rom_hub.flaresolverr import build_transport
+from rom_hub.flaresolverr import BYPASS_SOLVER, build_transport
 from rom_hub.types import validate_headers
 
 USER_AGENT = "rom-hub/0.1 (+https://github.com/rommapp/romm)"
@@ -70,6 +70,8 @@ class HttpxFetcher:
             follow_redirects=False,  # a redirect could escape the allowlist
             headers={"User-Agent": USER_AGENT},
             transport=effective_transport,
+            # Plain HTTP is only brokered to operator-approved LAN origins.
+            mounts={"http://": httpx.HTTPTransport()} if effective_transport is None else None,
         )
 
     def _too_large(self, url: str, size: int) -> ResponseTooLarge:
@@ -117,13 +119,15 @@ class HttpxFetcher:
         params: dict | None = None,
         *,
         headers: dict[str, str] | None = None,
+        allow_solver: bool = True,
     ) -> tuple[int, str]:
         safe_headers = validate_headers(headers) if headers else None
         auth = _github_auth("GET", url)
         if auth and not any(k.lower() == "authorization" for k in (safe_headers or {})):
             safe_headers = {**(safe_headers or {}), **auth}
         return self._stream_request(
-            "GET", url, params=params or None, headers=safe_headers
+            "GET", url, params=params or None, headers=safe_headers,
+            extensions=None if allow_solver else {BYPASS_SOLVER: True}
         )
 
     def post(
@@ -134,6 +138,7 @@ class HttpxFetcher:
         json: Any = None,
         data: dict | None = None,
         headers: dict[str, str] | None = None,
+        allow_solver: bool = True,
     ) -> tuple[int, str]:
         safe_headers = validate_headers(headers) if headers else None
         return self._stream_request(
@@ -143,6 +148,7 @@ class HttpxFetcher:
             json=json,
             data=data,
             headers=safe_headers,
+            extensions=None if allow_solver else {BYPASS_SOLVER: True},
         )
 
     def close(self) -> None:
