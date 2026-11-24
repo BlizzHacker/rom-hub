@@ -245,7 +245,8 @@ def test_catalog_cannot_widen_permissions():
     import inspect
 
     source = inspect.getsource(PluginProcess._serve_plugin_call)
-    assert "self.manifest.network" in source
+    assert "check_url(url, self.network_policy)" in source
+    assert "network_policy(manifest)" in inspect.getsource(PluginProcess.__init__)
     assert "catalog" not in source.lower()
 
 
