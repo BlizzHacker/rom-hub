@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # check-version compares manifest.toml against the latest v* tag.
+          fetch-depth: 0
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: DeterminateSystems/magic-nix-cache-action@v15
+      - name: nix flake check
+        run: nix flake check --print-build-logs
+      - name: just ci
+        run: nix develop -c just ci
+
+  # A real Ownfoil in Docker, seeded with the fixture's dummy files. Kept out
+  # of the required ci check, so a Docker Hub or GitHub release outage cannot
+  # block a merge.
+  ownfoil:
+    name: ownfoil
+    runs-on: ubuntu-latest
+    env:
+      # 2.5.0, pinned by digest.
+      OWNFOIL_IMAGE: a1ex4/ownfoil@sha256:123130aad6a260b1eeacf3968b6b56fbf510662034faab2f4cd2da08d967f3f7
+      SWITCHFOIL_OWNFOIL_URL: http://127.0.0.1:8465
+      # Throwaway accounts that exist only inside this job's container.
+      SWITCHFOIL_OWNFOIL_USER: fixture-guest
+      SWITCHFOIL_OWNFOIL_PASSWORD: fixture-guest-pass
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: DeterminateSystems/magic-nix-cache-action@v15
+      - name: Seed the dummy library
+        run: nix develop -c python3 tools/seed_ownfoil.py "$RUNNER_TEMP/games"
+      - name: Start Ownfoil
+        run: >-
+          docker run -d --name ownfoil
+          -p 127.0.0.1:8465:8465
+          -v "$RUNNER_TEMP/games:/games"
+          -e USER_ADMIN_NAME=fixture-admin
+          -e USER_ADMIN_PASSWORD=fixture-admin-pass
+          -e USER_GUEST_NAME="$SWITCHFOIL_OWNFOIL_USER"
+          -e USER_GUEST_PASSWORD="$SWITCHFOIL_OWNFOIL_PASSWORD"
+          "$OWNFOIL_IMAGE"
+      - name: Test against Ownfoil
+        run: nix develop -c just ownfoil-test
+      - name: Ownfoil log
+        if: always()
+        run: docker logs ownfoil
