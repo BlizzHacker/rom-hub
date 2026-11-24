@@ -1,0 +1,25 @@
+[plugin]
+slug        = "switchfoil"
+name        = "Tinfoil / CyberFoil Shops"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search   = "switchfoil.search:Search"
+importer = "switchfoil.importer:Importer"
+
+# The only declared host is the one titledb's versions.json is read from.
+# Shops are configured by the operator and granted through
+# ROM_HUB_NETWORK_SWITCHFOIL on the ROMarr process, never through config.
+[permissions]
+network          = ["raw.githubusercontent.com"]
+network_from_env = true
+romm_api         = []
+
+[config]
+# One shop per line, `name|url[|protocol][|hauth]`. Credentials go in the
+# URL as `https://user:pass@host` and are stored unencrypted.
+sources = { type = "list[str]", default = [] }
+# Read titledb's versions.json to report updates behind the latest version.
+titledb = { type = "bool", default = true }

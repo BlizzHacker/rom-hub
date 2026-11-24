@@ -406,6 +406,7 @@ NO_EQUIVALENT: dict[str, str] = {
         "the Watara Supervision. Another Game Boy-alike with its own "
         "hardware, and `gb`'s cores do not read its cartridges"
     ),
+    "switch": "the Nintendo Switch. No core in the map, and no other Nintendo slug is one",
     "tic-80": (
         "a fantasy console. Its cartridges run on its own runtime and on "
         "nothing else; there is no hardware to substitute"

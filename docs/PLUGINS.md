@@ -204,6 +204,7 @@ and neither can this directory change it for you.
 | ✔ [StrategyWiki Walkthroughs](https://github.com/BlizzHacker/rom-hub-strategywiki) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-strategywiki)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-strategywiki/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `strategywiki.org` |
 | ❗ [The ROM Depot](https://git.romarr.app/romarr/rom-hub-theromdepot) | MoveWeight ([repo](https://git.romarr.app/romarr/rom-hub-theromdepot)) | 0.2.2 | 2026-11-14 | [`v0.2.2` tarball](https://git.romarr.app/romarr/rom-hub-theromdepot/archive/v0.2.2.tar.gz) | `search`, `stream` | Gaseous · Retrom · RomM | n/a (imports nothing) | **cannot import** (every import is refused) | `theromdepot.com` |
 | ✔ [Thunderstore Game Mods (100+ Games)](https://github.com/BlizzHacker/rom-hub-thunderstore) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-thunderstore)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-thunderstore/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `thunderstore.io`, `cdn.thunderstore.io`, `*.thunderstore.io` |
+| ❗ [Tinfoil / CyberFoil Shops](https://github.com/MatthewDeSouza/rom-hub-switchfoil) | Matthew DeSouza ([repo](https://github.com/MatthewDeSouza/rom-hub-switchfoil)) | 0.1.0 | 2026-11-24 | [`v0.1.0` tarball](https://github.com/MatthewDeSouza/rom-hub-switchfoil/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer` | Gaseous* · Retrom* · RomM | **none** — catalogue only (1) | — | `raw.githubusercontent.com` |
 | ✔ [Universal-DB (3DS/DS homebrew)](https://github.com/BlizzHacker/rom-hub-universal-db) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-universal-db)) | 0.2.1 | 2026-11-22 | [`v0.2.1` tarball](https://github.com/BlizzHacker/rom-hub-universal-db/archive/refs/tags/v0.2.1.tar.gz) | `importer`, `metadata`, `search` | Gaseous! · Retrom* · RomM | 1 of 2, 1 needs netplay | — | `db.universal-team.net`, `github.com`, `*.githubusercontent.com`, `gitlab.com`, `codeberg.org`, `gbatemp.net`, `cdn.classicube.net`, `apotrisstorage.blob.core.windows.net` |
 | ✔ [YouTube Game Tutorials & Walkthroughs](https://github.com/BlizzHacker/rom-hub-youtube-tutorials) | BlizzHacker ([repo](https://github.com/BlizzHacker/rom-hub-youtube-tutorials)) | 0.1.0 | 2026-11-16 | [`v0.1.0` tarball](https://github.com/BlizzHacker/rom-hub-youtube-tutorials/archive/refs/tags/v0.1.0.tar.gz) | `search`, `importer`, `stream` | Gaseous* · Retrom* · RomM | — | — | `www.youtube.com`, `www.googleapis.com`, `i.ytimg.com` |
 
@@ -756,6 +757,20 @@ Searches Thunderstore across 100+ modded PC games (Valheim, Lethal Company, Risk
 **Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search`, `stream` are unaffected.
 
 **Network requested.** `thunderstore.io`, `cdn.thunderstore.io`, `*.thunderstore.io` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
+
+### ❗ Tinfoil / CyberFoil Shops — `switchfoil`
+
+Searches operator-run Tinfoil and CyberFoil shops, such as a self-hosted Ownfoil, and hands Nintendo Switch files to ROMarr's import.
+
+**Source terms.** This plugin includes no shops, files or keys. It reaches only Tinfoil and CyberFoil shops that the ROMarr operator adds to `sources` and grants through `ROM_HUB_NETWORK_SWITCHFOIL`. The shop decides what it serves, and the plugin cannot see the rights attached to any file. The operator is responsible for downloading only titles they have the right to, such as dumps of games they own served from their own Ownfoil.
+
+**Comments.** Needs `ROM_HUB_NETWORK_SWITCHFOIL` set on the ROMarr process for each shop. Encrypted and compressed `TINFOIL` indexes are unsupported.
+
+**Playability.** **Nothing this plugin imports can be played in the web player.** `switch` has no EmulatorJS core in RomM 4.9.2. A ROM filed there imports, appears in the library and does nothing when played — which is a fine thing to want from a catalogue, and the reason the Hub warns rather than refuses.
+
+**Backends.** Fully usable against RomM. *Gaseous:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected. *Retrom:* `importer` runs without collections — the operation completes and the skip is reported; `search` is unaffected.
+
+**Network requested.** `raw.githubusercontent.com` — declared in this plugin's own `manifest.toml`, which is what the broker enforces. The line above is a copy for reading, not the thing that grants it.
 
 ### ✔ Universal-DB (3DS/DS homebrew) — `universal-db`
 

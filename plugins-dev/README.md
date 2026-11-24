@@ -26,6 +26,7 @@ run offline.
 | `retroachievements` | <https://github.com/BlizzHacker/rom-hub-retroachievements> | `v0.3.1` |
 | `scummvm-freeware` | <https://github.com/BlizzHacker/rom-hub-scummvm-freeware> | `v0.2.1` |
 | `universal-db` | <https://github.com/BlizzHacker/rom-hub-universal-db> | `v0.2.1` |
+| `switchfoil` | <https://github.com/MatthewDeSouza/rom-hub-switchfoil> | `v0.1.0` |
 
 **`aminet`, `demozoo`, `emulators`, `if-archive`, `libretro-content`,
 `ludusavi` and `scummvm-freeware` are new; their repositories do not exist

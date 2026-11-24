@@ -1814,6 +1814,35 @@
       "terms": "Mister Download Manager (https://github.com/anefzaoui/misterdownloadmanager) by anefzaoui is GPL-3.0-or-later, so this plugin includes none of its code: it stores ROMarr's MDM mode, remote URL, API token, connections and category, and its cores entries download MDM's official release archives and SHA256SUMS.txt from anefzaoui's GitHub releases when asked. ROMarr drives MDM across a process or HTTP boundary only. This plugin is MIT-licensed, Copyright (c) 2026 MOVE WEIGHT.",
       "comments": "Credits anefzaoui/misterdownloadmanager. The plugin never connects to MDM: ROM Hub plugins may only reach the HTTPS hosts in their manifest, so ROMarr reads the plugin's config and secret `api_token` and runs MDM host-side (CLI mode) or over its Remote HTTPS API. `cores` lists the latest upstream release, one core per host (Linux x86_64, Windows x86_64, macOS arm64 and x86_64), offers only assets whose SHA-256 GitHub reports from a release that publishes SHA256SUMS.txt, and lands that file beside the archive for `sha256sum -c`.",
       "platforms": []
+    },
+    {
+      "slug": "switchfoil",
+      "name": "Tinfoil / CyberFoil Shops",
+      "author": "Matthew DeSouza",
+      "repository": "https://github.com/MatthewDeSouza/rom-hub-switchfoil",
+      "install": "https://github.com/MatthewDeSouza/rom-hub-switchfoil",
+      "download": "https://github.com/MatthewDeSouza/rom-hub-switchfoil/archive/refs/tags/v0.1.0.tar.gz",
+      "version": "0.1.0",
+      "ref": "v0.1.0",
+      "updated": "2026-11-24",
+      "rpp_version": "1",
+      "capabilities": [
+        "search",
+        "importer"
+      ],
+      "network": [
+        "raw.githubusercontent.com"
+      ],
+      "status": "caveat",
+      "search_only": false,
+      "key_required": false,
+      "in_tree": false,
+      "description": "Searches operator-run Tinfoil and CyberFoil shops, such as a self-hosted Ownfoil, and hands Nintendo Switch files to ROMarr's import.",
+      "terms": "This plugin includes no shops, files or keys. It reaches only Tinfoil and CyberFoil shops that the ROMarr operator adds to `sources` and grants through `ROM_HUB_NETWORK_SWITCHFOIL`. The shop decides what it serves, and the plugin cannot see the rights attached to any file. The operator is responsible for downloading only titles they have the right to, such as dumps of games they own served from their own Ownfoil.",
+      "comments": "Needs `ROM_HUB_NETWORK_SWITCHFOIL` set on the ROMarr process for each shop. Encrypted and compressed `TINFOIL` indexes are unsupported.",
+      "platforms": [
+        "switch"
+      ]
     }
   ]
 }
