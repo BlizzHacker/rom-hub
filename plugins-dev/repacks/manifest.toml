@@ -1,0 +1,37 @@
+[plugin]
+slug        = "repacks"
+name        = "FitGirl & DODI Repacks"
+version     = "0.1.0"
+rpp_version = "1"
+license     = "MIT"
+
+[capabilities]
+search  = "repacks.search:Search"
+torrent = "repacks.torrent:Torrent"
+
+[permissions]
+network = [
+  "fitgirl-repacks.site",
+  "dodi-repacks.site",
+  "tracker.opentrackr.org",
+  "open.demonii.com",
+  "open.tracker.cl",
+  "tracker.publictracker.xyz",
+  "tracker.wildkat.net",
+  "tracker.qu.ax",
+  "tracker.peerfect.org",
+  "tracker.ilibr.org",
+  "tracker.dler.org",
+  "tracker.bittor.pw",
+  "tracker.0x7c0.com",
+  "exodus.desync.com",
+]
+romm_api = []
+
+[config]
+fitgirl_enabled = { type = "bool", default = true }
+dodi_enabled    = { type = "bool", default = true }
+fitgirl_feed    = { type = "str",  default = "https://fitgirl-repacks.site/feed/" }
+dodi_feed       = { type = "str",  default = "https://dodi-repacks.site/feed/" }
+rss_subscribe   = { type = "bool", default = true }
+include_mirrors = { type = "bool", default = true }

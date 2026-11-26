@@ -85,6 +85,7 @@ TABLES: dict[str, tuple[str, str, object]] = {
     "theromdepot": ("theromdepot", "theromdepot.platforms", lambda m: values(m.PLATFORM_ALIASES)),
     "universal-db": ("universal-db", "universal_db.platforms", lambda m: values(m.SYSTEM_PLATFORMS)),
     "switchfoil": ("switchfoil", "switchfoil.search", lambda m: [m.PLATFORM]),
+    "repacks": ("repacks", "repacks.search", lambda m: [m.PLATFORM]),
 }
 
 #: Plugins with no platform mapping, and what they map instead. Named so
