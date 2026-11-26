@@ -590,7 +590,7 @@ def test_a_plugin_that_can_import_nothing_playable_says_so_in_the_directory():
         for e in load_catalog(CATALOG_PATH)
         if playability_fit(e).verdict == "catalogue-only"
     ]
-    assert sorted(catalogue_only) == ["if-archive", "itch-io", "scummvm-freeware", "switchfoil"]
+    assert sorted(catalogue_only) == ["if-archive", "itch-io", "repacks", "scummvm-freeware", "switchfoil"]
     assert "**none** — catalogue only" in md
 
 
